@@ -62,7 +62,7 @@ describe("diagnostics", () => {
     assert.equal(first.code, "optimization/prefer-moveq");
     assert.equal(first.source, "m68k-lint");
     assert.equal(first.severity, 3, "suggestion maps to Information, not Hint");
-    assert.match(first.message, /−4 bytes, −8 cycles/);
+    assert.match(first.message, /saves: 4 bytes, 8\(2,0\) cycles/);
     // Columns are 0-based on both sides, so they pass through untouched.
     assert.deepEqual(first.range, {
       start: { line: 1, character: 1 },
@@ -127,6 +127,7 @@ describe("code actions", () => {
       `no quick fix in ${JSON.stringify(actions.map((a) => a.title))}`,
     );
     assert.equal(fix.kind, "quickfix");
+    assert.match(fix.title, /saves: 4 bytes, 8\(2,0\) cycles/);
     assert.equal(
       fix.isPreferred,
       true,

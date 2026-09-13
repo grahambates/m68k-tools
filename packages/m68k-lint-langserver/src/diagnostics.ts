@@ -62,21 +62,25 @@ export function spanRange(span: SourceSpan, document: TextDocument): Range {
   };
 }
 
-function metric(value: number | undefined, unit: string): string | undefined {
-  if (value === undefined || value === 0) return undefined;
-  return `${value > 0 ? "+" : "−"}${Math.abs(value)} ${unit}`;
-}
-
-/** A short "−2 bytes, −4 cycles" tail for action titles and hovers. */
+/** Savings in CPU(read,write) notation, matching the CLI; negative means a cost. */
 export function formatImpact(
   impact: OptimizationImpact | undefined,
 ): string | undefined {
   if (!impact) return undefined;
-  const parts = [
-    metric(impact.sizeBytes?.delta, "bytes"),
-    metric(impact.execution?.cpuCycles?.delta, "cycles"),
-  ].filter((part): part is string => part !== undefined);
-  return parts.length ? parts.join(", ") : undefined;
+  const saving = (delta: number | undefined): string =>
+    delta === undefined ? "?" : `${-delta}`;
+  const parts: string[] = [];
+  if (impact.sizeBytes) parts.push(`${saving(impact.sizeBytes.delta)} bytes`);
+  const execution = impact.execution;
+  if (
+    execution &&
+    (execution.cpuCycles || execution.readCycles || execution.writeCycles)
+  ) {
+    parts.push(
+      `${saving(execution.cpuCycles?.delta)}(${saving(execution.readCycles?.delta)},${saving(execution.writeCycles?.delta)}) cycles`,
+    );
+  }
+  return parts.length ? `saves: ${parts.join(", ")}` : undefined;
 }
 
 export function toLspDiagnostic(

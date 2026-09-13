@@ -15,7 +15,14 @@ import type { Diagnostic } from "./diagnostic.js";
  * you have actually fixed stops being reported on its own.
  */
 export type Decision =
-  "apply" | "apply-rule" | "skip" | "skip-rule" | "allow" | "disable" | "quit";
+  | "apply"
+  | "apply-rule"
+  | "skip"
+  | "skip-rule"
+  | "allow"
+  | "disable"
+  | "quit"
+  | { alternative: number };
 
 export interface InteractiveResult {
   output: string;
@@ -36,7 +43,7 @@ function indentOf(line: string | undefined): string {
 }
 
 function suppressionFor(diagnostic: Diagnostic, indent: string): string {
-  return `${indent}; m68k-lint-disable-next-line ${diagnostic.ruleId} -- allowed here`;
+  return `${indent}; m68k-lint-disable-next-line ${[diagnostic, ...(diagnostic.alternatives ?? [])].map((d) => d.ruleId).join(", ")} -- allowed here`;
 }
 
 /**
@@ -67,7 +74,8 @@ export async function runInteractive(
   const acceptedRules = new Set<string>();
   const skippedRules = new Set<string>();
   let quit = false;
-  for (const diagnostic of reviewable) {
+  for (const original of reviewable) {
+    let diagnostic = original;
     // Once a rule is off for the project, or set aside for this run, there is
     // nothing left to ask about it.
     if (
@@ -80,12 +88,24 @@ export async function runInteractive(
     // A rule already accepted wholesale is not asked about again. A finding of
     // it with no rewrite still is: there is nothing to apply, so the standing
     // answer does not reach it.
-    if (acceptedRules.has(diagnostic.ruleId) && fixable) {
+    if (
+      acceptedRules.has(diagnostic.ruleId) &&
+      fixable &&
+      !diagnostic.alternatives?.length
+    ) {
       decisions.push({ diagnostic, decision: "apply" });
       continue;
     }
 
-    const decision = await decide(diagnostic);
+    const answer = await decide(diagnostic);
+    if (typeof answer === "object") {
+      const selected = [diagnostic, ...(diagnostic.alternatives ?? [])][
+        answer.alternative
+      ];
+      if (!selected) continue;
+      diagnostic = { ...selected, alternatives: undefined };
+    }
+    const decision = typeof answer === "object" ? "apply" : answer;
     if (decision === "quit") {
       quit = true;
       break;
@@ -96,7 +116,8 @@ export async function runInteractive(
       continue;
     }
     if (decision === "disable") {
-      disabledRules.add(diagnostic.ruleId);
+      for (const choice of [diagnostic, ...(diagnostic.alternatives ?? [])])
+        disabledRules.add(choice.ruleId);
       continue;
     }
     if (decision === "apply-rule") {

@@ -125,21 +125,28 @@ export function codeActionsFor(
   const accept = acceptedApplicabilities(options.conditional);
 
   for (const diagnostic of selected) {
-    if (diagnostic.suggestion?.replacement !== undefined && diagnostic.span) {
-      const fix = singleFixEdit(source, diagnostic, accept, options.annotate);
-      if (fix) {
-        actions.push({
-          title: fixTitle(diagnostic),
-          kind: CodeActionKind.QuickFix,
-          diagnostics: [],
-          isPreferred: diagnostic.suggestion.applicability === "safe",
-          edit: edit(document, spanRange(fix.span, document), fix.newText),
-        });
+    for (const choice of [
+      { ...diagnostic, alternatives: undefined },
+      ...(diagnostic.alternatives ?? []),
+    ]) {
+      if (choice.suggestion?.replacement !== undefined && choice.span) {
+        const fix = singleFixEdit(source, choice, accept, options.annotate);
+        if (fix) {
+          actions.push({
+            title: fixTitle(choice),
+            kind: CodeActionKind.QuickFix,
+            diagnostics: [],
+            isPreferred:
+              !diagnostic.alternatives?.length &&
+              choice.suggestion.applicability === "safe",
+            edit: edit(document, spanRange(fix.span, document), fix.newText),
+          });
+        }
       }
-    }
 
-    actions.push(disableOnLine(document, diagnostic));
-    actions.push(disableInFile(document, diagnostic));
+      actions.push(disableOnLine(document, choice));
+      actions.push(disableInFile(document, choice));
+    }
   }
 
   if (

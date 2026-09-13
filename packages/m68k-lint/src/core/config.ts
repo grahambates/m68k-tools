@@ -22,6 +22,8 @@ export interface LintConfig {
   goal?: OptimizationGoal;
   /** Measure 68000 replacement impact with 68kcounter when mc68000 is targeted. */
   measureImpact?: boolean;
+  /** Disable consolidation when auditing individual rule output. */
+  consolidateOptimizations?: boolean;
   /** Honor m68k-lint directives embedded in assembly comments. */
   inlineConfig?: boolean;
   /** Optional rule presets. `style` enables subjective convention rules. */

@@ -124,6 +124,7 @@ function eligible(
   accept: readonly Applicability[],
   assessments: readonly OptimizationAssessment[],
 ): boolean {
+  if (diagnostic.alternatives?.length) return false;
   const suggestion = diagnostic.suggestion;
   if (
     suggestion === undefined ||

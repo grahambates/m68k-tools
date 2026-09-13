@@ -1,3 +1,4 @@
+import { consolidateOptimizations } from "./optimizations.js";
 import { parseFile, type ParsedFile } from "m68k-parser";
 import { DefaultRuleContext } from "./context.js";
 import { defaultConfig, type LintConfig } from "./config.js";
@@ -168,7 +169,14 @@ export function lintParsedFile(
   // grouped by rule rather than in the order a reader encounters them in the
   // file. Sort by position, keeping rule order as the tie-break so output stays
   // deterministic for two rules matching the same spot.
-  return reported
+  const consolidated =
+    config.consolidateOptimizations === false
+      ? reported
+      : consolidateOptimizations(
+          reported,
+          config.processors.length === 1 && config.processors[0] === "mc68000",
+        );
+  return consolidated
     .map((diagnostic, order) => ({ diagnostic, order }))
     .sort(
       (a, b) =>

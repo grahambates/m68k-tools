@@ -59,7 +59,14 @@ export async function reviewFile(
   return runInteractive(source, diagnostics, async (diagnostic) => {
     console.log(`\n${formatDiagnostic(path, source, diagnostic, color)}`);
     const fixable = diagnostic.suggestion?.replacement !== undefined;
-    const choices = fixable ? "y/Y/n/N/a/d/q/?" : "n/N/a/d/q/?";
+    const alternatives = diagnostic.alternatives?.length
+      ? [diagnostic, ...diagnostic.alternatives]
+      : undefined;
+    const choices = alternatives
+      ? `1-${alternatives.length}/n/N/a/d/q/?`
+      : fixable
+        ? "y/Y/n/N/a/d/q/?"
+        : "n/N/a/d/q/?";
     for (;;) {
       // Case matters here, so the answer is not folded to lower case.
       const answer = (
@@ -67,7 +74,17 @@ export async function reviewFile(
           `  ${fixable ? "apply" : "no rewrite available"} [${choices}] `,
         )
       ).trim();
+      if (
+        alternatives &&
+        /^[1-9][0-9]*$/.test(answer) &&
+        Number(answer) <= alternatives.length
+      )
+        return { alternative: Number(answer) - 1 };
       if (answer === "?" || answer === "h") {
+        if (alternatives)
+          console.log(
+            "  Enter the alternative number to apply that replacement.",
+          );
         if (fixable) {
           console.log("  y  apply the rewrite");
           console.log(
@@ -83,14 +100,14 @@ export async function reviewFile(
         console.log("  q  stop; what has been decided still stands");
         continue;
       }
-      if (answer === "Y" && fixable) return "apply-rule";
+      if (answer === "Y" && fixable && !alternatives) return "apply-rule";
       if (answer === "N") return "skip-rule";
       const lowered = answer.toLowerCase();
       if (lowered === "q") return "quit";
       if (lowered === "a") return "allow";
       if (lowered === "d") return "disable";
       if (lowered === "n" || lowered === "") return "skip";
-      if (lowered === "y" && fixable) return "apply";
+      if (lowered === "y" && fixable && !alternatives) return "apply";
       console.error(`  Expected one of: ${choices}`);
     }
   });

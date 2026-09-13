@@ -98,6 +98,23 @@ describe("diagnostics", () => {
 });
 
 describe("code actions", () => {
+  it("offers both equal-cost alternatives under one diagnostic", async () => {
+    const client = withClient();
+    await client.initialize(fixture("basic"));
+    const { uri, diagnostics } = await client.open(
+      fixture("basic/alternatives.s"),
+    );
+    assert.equal(diagnostics.filter((d) => d.range.start.line === 0).length, 1);
+    const actions = await client.codeActions(uri, 0);
+    const fixes = actions.filter(
+      (a) => a.title.includes("NOT.B") || a.title.includes("ADD.B"),
+    );
+    assert.equal(fixes.length, 2);
+    assert.ok(fixes.every((a) => !a.isPreferred));
+    assert.ok(fixes.some((a) => editsOf(a, uri)[0].newText.includes("not.b")));
+    assert.ok(fixes.some((a) => editsOf(a, uri)[0].newText.includes("add.b")));
+  });
+
   it("offers a quick fix that replaces just the matched line", async () => {
     const client = withClient();
     await client.initialize(fixture("basic"));

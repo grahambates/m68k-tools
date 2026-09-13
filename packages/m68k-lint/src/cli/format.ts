@@ -250,33 +250,39 @@ export function formatDiagnostic(
     header,
     ...sourceContext(source, diagnostic.span, color),
   ];
-  if (diagnostic.suggestion) {
-    const replacement = diagnostic.suggestion.replacement;
-    const applicability = formatApplicability(
-      diagnostic.suggestion.applicability,
-      color,
-    );
-    lines.push(
-      `${paint(color, 90, "action:")} ${diagnostic.suggestion.description} (${applicability})`,
-    );
-    if (replacement) {
+  const choices = [diagnostic, ...(diagnostic.alternatives ?? [])];
+  const summaries = choices.map((choice) =>
+    choice.suggestion?.impact
+      ? formatImpact(choice.suggestion.impact, color)
+      : undefined,
+  );
+  const sharedImpact =
+    choices.length > 1 &&
+    summaries[0] &&
+    summaries.every((s) => s === summaries[0]);
+  for (const [index, choice] of choices.entries()) {
+    if (choices.length > 1)
+      lines.push(`Alternative ${index + 1} [${choice.ruleId}]:`);
+    if (choice.suggestion) {
+      const suggestion = choice.suggestion;
       lines.push(
-        ...replacement.split("\n").map((text) => highlightAsm(text, color)),
+        `${paint(color, 90, "action:")} ${suggestion.description} (${formatApplicability(suggestion.applicability, color)})`,
       );
+      if (suggestion.replacement)
+        lines.push(
+          ...suggestion.replacement
+            .split("\n")
+            .map((text) => highlightAsm(text, color)),
+        );
+      if (!sharedImpact && summaries[index]) lines.push(summaries[index]);
     }
-    const impact = diagnostic.suggestion.impact;
-    if (impact) {
-      const summary = formatImpact(impact, color);
-      if (summary) lines.push(summary);
-    }
+    if (choice.notes?.length)
+      lines.push(
+        `${paint(color, 90, "notes:")}`,
+        ...choice.notes.map((n) => " - " + n.message),
+      );
   }
-  const notes = diagnostic.notes ?? [];
-  if (notes.length) {
-    lines.push(
-      `${paint(color, 90, "notes:")}`,
-      ...notes.map((n) => " - " + n.message),
-    );
-  }
+  if (sharedImpact) lines.push(summaries[0]!);
   return lines.join("\n");
 }
 
@@ -288,7 +294,7 @@ export function formatImpactSummary(
     string,
     Record<"improvement" | "tradeoff" | "neutral" | "regression", number>
   >();
-  for (const d of diagnostics) {
+  for (const d of diagnostics.flatMap((d) => [d, ...(d.alternatives ?? [])])) {
     const assessment = d.suggestion?.impact?.assessment;
     if (!assessment) continue;
     const counts = byRule.get(d.ruleId) ?? {

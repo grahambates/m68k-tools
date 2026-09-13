@@ -87,7 +87,9 @@ export function toLspDiagnostic(
   diagnostic: Diagnostic,
   document: TextDocument,
 ): LspDiagnostic {
-  const impact = formatImpact(diagnostic.suggestion?.impact);
+  const impact = diagnostic.alternatives?.length
+    ? undefined
+    : formatImpact(diagnostic.suggestion?.impact);
   const lsp: LspDiagnostic = {
     range: diagnosticRange(diagnostic, document),
     severity: SEVERITIES[diagnostic.severity],
@@ -100,7 +102,14 @@ export function toLspDiagnostic(
   // Notes carry the reasoning a rule wants the reader to check before acting on
   // it, and several are located elsewhere in the file. relatedInformation is
   // the only place a client will show that as something clickable.
-  const notes = diagnostic.notes ?? [];
+  const notes = diagnostic.alternatives?.length
+    ? [diagnostic, ...diagnostic.alternatives].flatMap((choice) => [
+        {
+          message: `${choice.suggestion?.description} [${choice.ruleId}]: ${formatImpact(choice.suggestion?.impact) ?? "unmeasured"}`,
+        },
+        ...(choice.notes ?? []),
+      ])
+    : (diagnostic.notes ?? []);
   if (notes.length) {
     lsp.relatedInformation = notes.map((note) => ({
       location: {

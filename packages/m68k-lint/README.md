@@ -246,6 +246,14 @@ must not read arguments relative to SP, a device that must tolerate a wider
 access — that is `conditional`, and the replacement is given along with the
 condition.
 
+## Overlapping optimizations
+
+Safe, high-confidence optimizations covering the same complete source span are consolidated. Identical replacements with matching notes are shown once. On a single 68000 target, a replacement is omitted when another is no worse in bytes, CPU cycles, reads and writes, and strictly better in at least one. This requires exact measurements; suggestions with explanatory notes are retained because they may describe benefits the counter cannot model.
+
+Remaining alternatives appear under one finding. The CLI shows each replacement and its notes, sharing the savings summary when equal. Interactive review accepts the alternative number; VS Code provides a separate code action for each. Automatic fixing leaves grouped alternatives unchanged. Conditional suggestions and partially overlapping spans remain separate.
+
+Library consumers receive the first suggestion on the diagnostic and the other complete diagnostics in `alternatives`. Set `consolidateOptimizations: false` in `LintConfig` to inspect individual rule output, for example in a rule audit.
+
 ## Applying fixes
 
 `--fix` rewrites files in place, applying `safe` suggestions until nothing more

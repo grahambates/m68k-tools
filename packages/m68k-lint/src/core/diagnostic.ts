@@ -74,5 +74,7 @@ export interface Diagnostic {
   span?: SourceSpan;
   notes?: DiagnosticNote[];
   suggestion?: Suggestion;
+  /** Other safe replacements for the same span; each retains its rule and notes. */
+  alternatives?: Diagnostic[];
   data?: Record<string, unknown>;
 }

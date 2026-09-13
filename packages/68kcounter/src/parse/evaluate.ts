@@ -1,4 +1,10 @@
-import * as expEval from "expression-eval";
+import * as expressionEval from "expression-eval";
+
+// Node loads the CJS entry, whose `parse` export is only visible on default.
+// Browser bundlers load the ESM entry, which has named exports only.
+const expEval =
+  (Reflect.get(expressionEval, "default") as
+    typeof expressionEval | undefined) ?? expressionEval;
 
 export type Variables = Record<string, number>;
 

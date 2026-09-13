@@ -43,8 +43,8 @@ type CounterLine = {
   };
 };
 
-// 68kcounter is CommonJS today. Node's ESM bridge may expose its TS default
-// export either directly or under the CommonJS module object's `.default`.
+// Support native ESM and the CommonJS namespace shape used by bundled consumers.
+// The CommonJS module object may carry the default export under `.default`.
 const outerCounter = counterNamespace as unknown as CounterApi;
 const cjsCounter =
   outerCounter.default && typeof outerCounter.default === "object"

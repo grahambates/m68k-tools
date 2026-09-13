@@ -4,6 +4,10 @@ export default defineConfig({
   ...libraryDefaults,
   entry: ["src/index.ts", "src/cli.ts"],
   outDir: "out",
-  format: "cjs",
+  format: ["esm", "cjs"],
   fixedExtension: false,
+  outExtensions: ({ format }) => ({
+    js: format === "es" ? ".mjs" : ".js",
+    dts: format === "es" ? ".d.mts" : ".d.ts",
+  }),
 });

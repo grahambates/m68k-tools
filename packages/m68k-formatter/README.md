@@ -121,3 +121,7 @@ column counts. Labels remain in column zero.
 
 Block openers, alternatives, and closers align at the enclosing level. Aligned
 comments shift with the code; comments in column zero remain untouched.
+
+## Module formats
+
+ESM imports and CommonJS `require` are supported through conditional exports, with matching TypeScript declarations. Existing CommonJS file paths remain available. ESM consumers receive the native `.mjs` entry point.

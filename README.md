@@ -36,9 +36,12 @@ pnpm --filter m68k-parser test
 pnpm --filter 68kcounter-web dev
 pnpm check:packages
 pnpm package
-pnpm --filter m68k-lint-vscode package
+pnpm package:assembly
+pnpm package:lint
 pnpm package:counter
 ```
+
+`pnpm package` (alias for `pnpm package:extensions`) builds the workspace and creates all three extension VSIX files. After building, use `package:assembly`, `package:lint` or `package:counter` to package just one extension. These commands do not publish anything.
 
 Build before running the isolated tarball checks. VS Code host tests run separately with `pnpm test:extension-host` and require a graphical display (or Xvfb on Linux). Counter packaging generates `.staging/68kcounter-vscode` and preserves Marketplace identity `gigabates.68kcounter`.
 

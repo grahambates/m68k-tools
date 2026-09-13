@@ -35,5 +35,24 @@
     "@types/node": "22.18.0",
     "tsdown": "0.23.0",
     "vitest": "5.0.0"
+  },
+  "module": "out/index.mjs",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./out/index.d.mts",
+        "default": "./out/index.mjs"
+      },
+      "require": {
+        "types": "./out/index.d.ts",
+        "default": "./out/index.js"
+      }
+    },
+    "./*": "./*",
+    "./out/*.js": "./out/*.js",
+    "./out/*.mjs": "./out/*.mjs",
+    "./out/*.d.ts": "./out/*.d.ts",
+    "./out/*.d.mts": "./out/*.d.mts",
+    "./out/*": "./out/*.js"
   }
 }

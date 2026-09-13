@@ -25,7 +25,7 @@
     "test": "node scripts/workspace.mjs test",
     "test:coverage": "vitest run --coverage",
     "build-docs": "scripts/conv-directives && scripts/conv-instructions",
-    "package": "pnpm --filter m68k-lsp package",
+    "package": "pnpm run package:extensions",
     "prepare": "husky",
     "format:check": "prettier --check .",
     "build:formatter": "pnpm --filter m68k-formatter build",
@@ -35,7 +35,10 @@
     "version-packages": "changeset version && pnpm install --lockfile-only",
     "package:counter": "pnpm --filter 68kcounter-vscode package",
     "check:packages": "node scripts/check-packages.mjs",
-    "test:extension-host": "pnpm --filter 68kcounter-vscode test"
+    "test:extension-host": "pnpm --filter 68kcounter-vscode test",
+    "package:extensions": "pnpm run build && pnpm run package:assembly && pnpm run package:lint && pnpm run package:counter",
+    "package:assembly": "pnpm --filter m68k-lsp package",
+    "package:lint": "pnpm --filter m68k-lint-vscode package"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.2",

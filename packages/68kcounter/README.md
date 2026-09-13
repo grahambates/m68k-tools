@@ -74,3 +74,7 @@ Requires Node.js 22.15.1 or later at runtime. Use the root-pinned Node version f
 ## License
 
 [MIT](LICENSE).
+
+## Module formats
+
+ESM imports and CommonJS `require` are supported through conditional exports, with matching TypeScript declarations. Existing CommonJS file paths remain available. ESM consumers receive the native `.mjs` entry point.

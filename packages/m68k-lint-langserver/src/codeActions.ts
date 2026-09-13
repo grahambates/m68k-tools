@@ -93,7 +93,14 @@ function fixTitle(diagnostic: Diagnostic): string {
   const description = diagnostic.suggestion?.description ?? "Apply suggestion";
   const impact = formatImpact(diagnostic.suggestion?.impact);
   const conditional = diagnostic.suggestion?.applicability === "conditional";
-  const tail = [impact, conditional ? "check the notes" : undefined]
+  const tail = [
+    impact,
+    conditional
+      ? "conditional — check the notes"
+      : diagnostic.suggestion?.applicability === "manual"
+        ? "manual review — check the notes"
+        : undefined,
+  ]
     .filter(Boolean)
     .join(", ");
   return tail ? `${description} (${tail})` : description;
@@ -122,7 +129,7 @@ export function codeActionsFor(
   options: ActionOptions,
 ): CodeAction[] {
   const actions: CodeAction[] = [];
-  const accept = acceptedApplicabilities(options.conditional);
+  const accept: Applicability[] = ["safe", "conditional", "manual"];
 
   for (const diagnostic of selected) {
     for (const choice of [

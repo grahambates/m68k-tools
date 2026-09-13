@@ -34,7 +34,7 @@ Settings, under the `m68kLint` section:
   "enable": true,
   "run": "onType", // or "onSave"
   "quickFix": {
-    "conditional": false, // offer fixes that rest on a stated assumption
+    "conditional": false, // include conditional replacements in Fix All
     "annotate": false, // keep the original commented above an opaque rewrite
   },
   "defaults": {

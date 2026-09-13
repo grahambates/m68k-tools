@@ -20,7 +20,7 @@ export interface Settings {
   /** Fall back to these when the workspace has no config file. */
   defaults: Partial<LintConfig>;
   quickFix: {
-    /** Offer fixes whose applicability is `conditional`, not just `safe`. */
+    /** Include conditional fixes in Fix All; individual actions always allow review. */
     conditional: boolean;
     /** Keep the original commented above an opaque rewrite. */
     annotate: boolean;

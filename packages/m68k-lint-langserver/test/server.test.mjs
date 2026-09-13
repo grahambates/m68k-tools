@@ -66,7 +66,7 @@ describe("diagnostics", () => {
     // Columns are 0-based on both sides, so they pass through untouched.
     assert.deepEqual(first.range, {
       start: { line: 1, character: 1 },
-      end: { line: 1, character: 5 },
+      end: { line: 1, character: 13 },
     });
   });
 
@@ -197,19 +197,28 @@ describe("code actions", () => {
      * sees. It spans two lines and replaces them with one, which is also the
      * case that exercises the span arithmetic.
      */
-    it("are withheld by default", async () => {
+    it("are offered on either line by default, but excluded from fix-all", async () => {
       const client = withClient();
       await client.initialize(fixture("basic"));
-      const { uri } = await client.open(fixture("basic/tailcall.s"));
-      const actions = await client.codeActions(uri, 1);
-
-      assert.ok(
-        actions.every(
-          (action) =>
-            action.kind !== "quickfix" || action.title.startsWith("Disable"),
-        ),
-        `expected suppressions only, got ${JSON.stringify(actions.map((a) => a.title))}`,
+      const { uri, diagnostics } = await client.open(
+        fixture("basic/tailcall.s"),
       );
+      const finding = diagnostics.find(
+        (d) => d.message.includes("BSR") || d.range.start.line === 1,
+      );
+      assert.equal(finding.range.start.line, 1);
+      assert.equal(finding.range.end.line, 2);
+      for (const line of [1, 2]) {
+        const actions = await client.codeActions(uri, line);
+        const fix = actions.find((a) => a.title.startsWith("Replace"));
+        assert.ok(fix);
+        assert.match(fix.title, /conditional.*check the notes/);
+        assert.equal(fix.isPreferred, false);
+        assert.equal(editsOf(fix, uri)[0].range.end.line, 3);
+        assert.ok(!actions.some((a) => a.kind === "source.fixAll"));
+      }
+      const outside = await client.codeActions(uri, 3);
+      assert.ok(!outside.some((a) => a.title.startsWith("Replace")));
     });
 
     it("collapse a multi-line span when enabled", async () => {

@@ -87,7 +87,7 @@
         "m68kLint.quickFix.conditional": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Also offer fixes marked `conditional`. These rest on an assumption stated in the finding's notes, so read them before applying."
+          "markdownDescription": "Include conditional fixes in Fix All. Individual conditional replacements are always offered with a review label; read their notes before applying."
         },
         "m68kLint.quickFix.annotate": {
           "type": "boolean",

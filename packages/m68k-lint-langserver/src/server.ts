@@ -260,8 +260,10 @@ connection.onCodeAction(async (params: CodeActionParams) => {
   const selected = diagnostics.filter((diagnostic) => {
     const range = diagnosticRange(diagnostic, document);
     return (
-      range.start.line <= requested.end.line &&
-      range.end.line >= requested.start.line
+      (diagnostic.span ? diagnostic.span.startLine - 1 : range.start.line) <=
+        requested.end.line &&
+      (diagnostic.span ? diagnostic.span.endLine - 1 : range.end.line) >=
+        requested.start.line
     );
   });
   if (

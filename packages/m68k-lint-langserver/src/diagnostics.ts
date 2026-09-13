@@ -29,22 +29,18 @@ const SEVERITIES: Record<Severity, DiagnosticSeverity> = {
   info: DiagnosticSeverity.Hint,
 };
 
-/**
- * `loc` columns are 0-based, as LSP characters are, so they pass through.
- *
- * A diagnostic covering a run of lines still points its squiggle at `loc`
- * alone. The span is what a fix replaces, and underlining five lines of a
- * matched idiom buries the one instruction the reader needs to look at.
- */
+/** Use the rule display extent, falling back to its precise diagnostic location. */
 export function diagnosticRange(
   diagnostic: Diagnostic,
   document: TextDocument,
 ): Range {
-  const line = (diagnostic.loc.line ?? 1) - 1;
-  const start = { line, character: diagnostic.loc.start };
+  const from = diagnostic.highlight?.start ?? diagnostic.loc;
+  const to = diagnostic.highlight?.end ?? diagnostic.loc;
+  const line = (from.line ?? 1) - 1;
+  const start = { line, character: from.start };
   const end = {
-    line,
-    character: Math.max(diagnostic.loc.end, diagnostic.loc.start),
+    line: (to.line ?? from.line ?? 1) - 1,
+    character: to.end,
   };
   // Clamp through the document so a stale or out-of-range loc cannot produce a
   // range the client will reject.
@@ -115,7 +111,10 @@ export function toLspDiagnostic(
       location: {
         uri: document.uri,
         range: note.loc
-          ? diagnosticRange({ ...diagnostic, loc: note.loc }, document)
+          ? diagnosticRange(
+              { ...diagnostic, highlight: undefined, loc: note.loc },
+              document,
+            )
           : lsp.range,
       },
       message: note.message,

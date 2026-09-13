@@ -47,9 +47,10 @@ and presets instead.
 ### Conditional fixes
 
 Some rewrites are only equivalent under an assumption the rule states in its notes — replacing
-`BSR`/`RTS` with `BRA` changes the stack depth the callee sees, for instance. These are hidden
-by default. Set `m68kLint.quickFix.conditional` to `true` to be offered them; the action title
-says to check the notes, and the notes are on the finding.
+`BSR`/`RTS` with `BRA` changes the stack depth the callee sees, for instance. Individual replacements are always offered with a conditional or manual-review label.
+Read the notes on the finding before choosing one. Fix All excludes conditional replacements
+by default; `m68kLint.quickFix.conditional` opts them into Fix All. Advice without replacement
+text cannot provide an edit. Actions are available from any line of a matched sequence.
 
 ## License
 

@@ -359,8 +359,25 @@ export class DefaultRuleContext implements RuleContext {
     const data = lost.length
       ? { ...(diagnostic.data ?? {}), symbolsLost: lost }
       : diagnostic.data;
+    let highlight = diagnostic.highlight;
+    if (!highlight && span && diagnostic.category === "optimization") {
+      const first = this.file.lines[span.startLine - 1];
+      const last = this.file.lines[span.endLine - 1];
+      const mnemonic = first?.mnemonic?.loc;
+      if (
+        mnemonic &&
+        last &&
+        (span.startLine !== span.endLine ||
+          (diagnostic.loc.start === mnemonic.start &&
+            diagnostic.loc.end === mnemonic.end))
+      ) {
+        const end = last.operands?.at(-1)?.loc ?? last.mnemonic?.loc;
+        if (end) highlight = { start: mnemonic, end };
+      }
+    }
     this.diagnostics.push({
       ...diagnostic,
+      ...(highlight ? { highlight } : {}),
       notes,
       span,
       data,

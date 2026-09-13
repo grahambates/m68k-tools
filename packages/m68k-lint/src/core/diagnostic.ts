@@ -67,6 +67,8 @@ export interface Diagnostic {
   confidence: Confidence;
   message: string;
   loc: Location;
+  /** Display extent, distinct from the full lines replaced by a fix. */
+  highlight?: { start: Location; end: Location };
   /**
    * The source lines this finding covers, inclusive. A suggestion's replacement
    * stands in for the whole run, so applying or measuring one needs this.

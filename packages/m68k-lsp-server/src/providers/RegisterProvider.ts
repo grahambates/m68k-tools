@@ -1,3 +1,4 @@
+import { registerRemapWarnings } from "../registerRemapValidation";
 import {
   RegisterRangesRequest,
   RegisterUsageRequest,
@@ -156,39 +157,45 @@ export default class RegisterProvider implements Provider {
     if (!usage) {
       return;
     }
-    if (usage.incomplete) {
-      return {
-        documentVersion: document.document.version,
-        edits: [],
-        error: "analysis-incomplete",
-      };
-    }
     const byName = new Map(usage.registers.map((item) => [item.name, item]));
 
     const references = Array.from(mappings.keys()).flatMap(
       (source) => byName.get(source)?.references ?? [],
     );
     const unsupported = references.filter(({ kind }) => kind !== "explicit");
-    if (unsupported.length) {
+
+    const edits = Array.from(mappings, ([source, destination]) =>
+      (byName.get(source)?.references ?? [])
+        .filter((reference) => reference.kind === "explicit")
+        .map((reference) =>
+          lsp.TextEdit.replace(
+            reference.range,
+            matchRegisterCase(reference.spelling, destination),
+          ),
+        ),
+    ).flat();
+    const plannedEdits = uniqueEdits(edits);
+    const warnings = registerRemapWarnings(
+      document.document,
+      plannedEdits,
+      this.ctx.config.processors,
+    );
+    if (usage.incomplete || unsupported.length) {
       return {
         documentVersion: document.document.version,
         edits: [],
-        error: "unsupported-reference",
-        unsupported,
+        error: usage.incomplete
+          ? "analysis-incomplete"
+          : "unsupported-reference",
+        ...(unsupported.length ? { unsupported } : {}),
+        warnings,
+        validationIncomplete: true,
       };
     }
-
-    const edits = Array.from(mappings, ([source, destination]) =>
-      (byName.get(source)?.references ?? []).map((reference) =>
-        lsp.TextEdit.replace(
-          reference.range,
-          matchRegisterCase(reference.spelling, destination),
-        ),
-      ),
-    ).flat();
     return {
       documentVersion: document.document.version,
-      edits: uniqueEdits(edits),
+      edits: plannedEdits,
+      ...(warnings.length ? { warnings } : {}),
     };
   }
 }

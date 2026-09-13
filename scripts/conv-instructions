@@ -23,11 +23,11 @@ function processMd(mnemonic) {
       prop = prop[0].toLowerCase() + prop.substring(1); // lcfirst
 
       if (prop === "syntax") {
-        acc.syntax = lines.slice(1, -1).map((s) => {
+        acc.syntax = [...(acc.syntax || []), ...lines.slice(1, -1).map((s) => {
           const parts = s.split(/\s+/);
           parts[0] = parts[0].toLowerCase();
           return parts.join(" ");
-        });
+        })];
       } else if (prop === "sample syntax") {
         acc.sampleSyntax = lines.slice(1, -1);
       } else if (prop === "attributes") {

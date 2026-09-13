@@ -297,6 +297,26 @@ export function activate(context: ExtensionContext): void {
   const remappingView = new RegisterRemappingView(
     loadRemappingModel,
     applyRemappings,
+    async (mappings) => {
+      const snapshot = remappingContext;
+      if (!snapshot?.isCurrent())
+        return ["The editor scope changed. Refresh to validate."];
+      const plan = await client.sendRequest(RegisterRemapRequest, {
+        textDocument: { uri: snapshot.uri },
+        documentVersion: snapshot.documentVersion,
+        range: snapshot.range,
+        mappings,
+      });
+      if (!snapshot.isCurrent()) return [];
+      if (plan?.validationIncomplete)
+        return [
+          ...(plan.warnings ?? []),
+          "Checked explicit instructions only; some macro or register-list references could not be checked.",
+        ];
+      if (!plan || plan.error)
+        return ["Unable to validate this mapping in the current scope."];
+      return plan.warnings ?? [];
+    },
   );
 
   const listRegistersInSelection = async () => {

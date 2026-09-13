@@ -3333,6 +3333,8 @@
     "summary": "Logical Exclusive-OR Immediate",
     "operation": "IF [S] = 1<br/>\n&nbsp;THEN<br/>\n&nbsp;&nbsp;[SR] ← \\<literal\\> ⊕ [SR]<br/>\n&nbsp;ELSE TRAP<br/>",
     "syntax": [
+      "eori[.(bwl)] #<data>,<destination>",
+      "eori #<data>,CCR",
       "eori #<data>,SR"
     ],
     "description": "EOR (exclusive OR) the immediate data with the contents of the status register and store the result in the status register. All bits of the status register are affected.",

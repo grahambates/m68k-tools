@@ -82,6 +82,10 @@ export interface RegisterSwapResult {
 }
 
 export interface RegisterRemapResult {
+  /** Warnings cover explicit references only when macro analysis is incomplete. */
+  validationIncomplete?: boolean;
+  /** Advisory only: the edit plan remains applicable. */
+  warnings?: string[];
   documentVersion: number;
   edits: TextEdit[];
   error?: RegisterRemapError;

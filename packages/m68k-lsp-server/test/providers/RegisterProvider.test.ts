@@ -1119,6 +1119,46 @@ Second:
   });
 
   describe("#onRegisterRemap()", () => {
+    it.each([
+      ["unknown macro", " UnknownMacro d0\n moveq #1,d0\n", 0],
+      [
+        "fixed macro reference",
+        "Use macro\n move.l d0,d1\n endm\n Use\n moveq #1,d0\n",
+        3,
+      ],
+      ["recursive macro", "Use macro\n Use\n endm\n Use\n moveq #1,d0\n", 3],
+    ])(
+      "validates explicit instructions alongside %s",
+      async (label, source, start) => {
+        const textDocument = await createDoc(`${label}.s`, source);
+        const result = provider.onRegisterRemap({
+          textDocument,
+          documentVersion: 0,
+          range: range(start, 0, source.split("\n").length, 0),
+          mappings: { d0: "a0" },
+        });
+        expect(result?.warnings?.some((w) => w.includes("MOVEQ"))).toBe(true);
+        if (label !== "unknown macro") {
+          expect(result?.validationIncomplete).toBe(true);
+          expect(result?.edits).toEqual([]);
+        }
+      },
+    );
+
+    it("returns invalid-code warnings without withholding edits", async () => {
+      const textDocument = await createDoc("invalid-remap.s", " moveq #1,d0\n");
+      const result = provider.onRegisterRemap({
+        textDocument,
+        documentVersion: 0,
+        range: range(0, 0, 1, 0),
+        mappings: { d0: "a0" },
+      });
+      expect(result?.error).toBeUndefined();
+      expect(result?.warnings?.[0]).toContain("MOVEQ operands do not match");
+      expect(result?.edits).toHaveLength(1);
+      expect(result?.edits[0].newText).toBe("a0");
+    });
+
     it("plans multiple mappings against the original source", async () => {
       const textDocument = await createDoc(
         "remap.s",

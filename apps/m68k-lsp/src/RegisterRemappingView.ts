@@ -24,6 +24,7 @@ export class RegisterRemappingView implements WebviewViewProvider, Disposable {
 
   private view?: WebviewView;
   private refreshGeneration = 0;
+  private validationGeneration = 0;
   private pendingRefresh?: Promise<void>;
   private messageSubscription?: Disposable;
   private visibilitySubscription?: Disposable;
@@ -35,6 +36,9 @@ export class RegisterRemappingView implements WebviewViewProvider, Disposable {
     private readonly apply: (
       mappings: Record<string, string>,
     ) => Promise<RegisterRemappingResult>,
+    private readonly validateMappings: (
+      mappings: Record<string, string>,
+    ) => Promise<string[]> = () => Promise.resolve([]),
   ) {}
 
   resolveWebviewView(view: WebviewView): void {
@@ -45,9 +49,33 @@ export class RegisterRemappingView implements WebviewViewProvider, Disposable {
     view.webview.options = { enableScripts: true };
     view.webview.html = webviewHtml(view.webview);
     this.messageSubscription = view.webview.onDidReceiveMessage(
-      async (message: { type?: string; mappings?: Record<string, string> }) => {
+      async (message: {
+        type?: string;
+        mappings?: Record<string, string>;
+        requestId?: number;
+      }) => {
         if (message.type === "ready" || message.type === "refresh") {
           await this.refresh();
+        } else if (message.type === "validate" && message.mappings) {
+          const generation = ++this.validationGeneration;
+          const refresh = this.refreshGeneration;
+          let warnings: string[];
+          try {
+            warnings = await this.validateMappings(message.mappings);
+          } catch {
+            warnings = ["Unable to validate this mapping."];
+          }
+          if (
+            this.view !== view ||
+            generation !== this.validationGeneration ||
+            refresh !== this.refreshGeneration
+          )
+            return;
+          await view.webview.postMessage({
+            type: "validation",
+            requestId: message.requestId,
+            warnings,
+          });
         } else if (message.type === "apply" && message.mappings) {
           const generation = this.refreshGeneration;
           const result = await this.apply(message.mappings);
@@ -158,6 +186,7 @@ function webviewHtml(webview: Webview): string {
       align-items: center;
       justify-content: space-between;
     }
+    .warning { color: var(--vscode-editorWarning-foreground); white-space: pre-line; }
     .remap-label { font-weight: bold; }
     main { padding: 4px 12px 4px; }
     .unsaved main { padding-bottom: 44px; }
@@ -262,6 +291,13 @@ function webviewHtml(webview: Webview): string {
       return parts.join(', ');
     }
 
+    let validationId = 0;
+    let validationWarnings = [];
+    let conflictMessage = '';
+    function showWarnings() {
+      status.textContent = [conflictMessage, ...validationWarnings].filter(Boolean).join('\\n');
+      status.className = status.textContent ? 'warning' : '';
+    }
     function validate() {
       const changed = Object.entries(mappings).filter(([source, destination]) => source !== destination);
       const destinations = changed.map(([, destination]) => destination);
@@ -270,8 +306,11 @@ function webviewHtml(webview: Webview): string {
       const sources = new Set(changed.map(([source]) => source));
       const occupied = destinations.find((destination) => used.has(destination) && !sources.has(destination));
       const conflict = duplicate || occupied;
-      status.textContent = conflict ? conflict.toUpperCase() + ' has conflicting mappings' : '';
-      status.className = conflict ? 'error' : '';
+      conflictMessage = conflict ? conflict.toUpperCase() + ' has conflicting mappings' : '';
+      validationWarnings = [];
+      showWarnings();
+      const requestId = ++validationId;
+      if (changed.length) vscode.postMessage({ type: 'validate', mappings, requestId });
       const hasUnsavedChanges = changed.length > 0;
       if (hasUnsavedChanges) {
         document.body.classList.add('unsaved');
@@ -347,6 +386,10 @@ function webviewHtml(webview: Webview): string {
     });
     window.addEventListener('message', ({ data }) => {
       if (data.type === 'model') render(data.model);
+      if (data.type === 'validation' && data.requestId === validationId) {
+        validationWarnings = data.warnings || [];
+        showWarnings();
+      }
       if (data.type === 'result') {
         status.textContent = data.message;
         status.className = data.ok ? '' : 'error';

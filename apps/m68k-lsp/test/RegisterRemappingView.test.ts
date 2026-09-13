@@ -167,3 +167,51 @@ it("does not lose a refresh arriving as the previous post completes", async () =
     model: { scope: "second", registers: [] },
   });
 });
+
+it("displays validation warnings without disabling Apply and ignores stale results", () => {
+  const webview = { html: "", cspSource: "test", onDidReceiveMessage: vi.fn() };
+  new RegisterRemappingView(vi.fn(), vi.fn()).resolveWebviewView({
+    webview,
+    onDidChangeVisibility: vi.fn(),
+  } as unknown as WebviewView);
+  const elements = new Map<string, Element>();
+  let receive!: (event: { data: unknown }) => void;
+  const script = webview.html.match(
+    /<script nonce="[^"]+">([\s\S]*?)<\/script>/,
+  )![1];
+  const context = {
+    acquireVsCodeApi: () => ({ getState() {}, postMessage() {} }),
+    window: {
+      addEventListener: (_name: string, callback: typeof receive) => {
+        receive = callback;
+      },
+    },
+    document: {
+      body: new Element(),
+      createElement: () => new Element(),
+      getElementById: (id: string) => {
+        if (!elements.has(id)) elements.set(id, new Element());
+        return elements.get(id);
+      },
+    },
+  };
+  runInNewContext(
+    script +
+      '\nrender({ scope: "test", registers: [{ name: "d0" }] }); mappings = { d0: "a0" }; validate();',
+    context,
+  );
+  receive({
+    data: {
+      type: "validation",
+      requestId: 2,
+      warnings: ["Line 1: MOVEQ requires a data register"],
+    },
+  });
+  expect(elements.get("status")?.textContent).toContain("MOVEQ");
+  expect(elements.get("status")?.className).toBe("warning");
+  expect(
+    (elements.get("apply") as Element & { disabled?: boolean }).disabled,
+  ).not.toBe(true);
+  receive({ data: { type: "validation", requestId: 1, warnings: ["stale"] } });
+  expect(elements.get("status")?.textContent).not.toContain("stale");
+});

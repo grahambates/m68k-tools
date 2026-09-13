@@ -8,7 +8,9 @@ function targetSymbol(expr: ExpressionNode): string | undefined {
   return undefined;
 }
 
-function branchTarget(line: Parameters<NonNullable<Rule["checkLine"]>>[1]): string | undefined {
+function branchTarget(
+  line: Parameters<NonNullable<Rule["checkLine"]>>[1],
+): string | undefined {
   const target = operand(line, 0);
   if (!target) return undefined;
 
@@ -27,7 +29,8 @@ export const nullBranch: Rule = {
     id: "optimization/null-branch",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Remove an unconditional branch to the immediately following label",
+    description:
+      "Remove an unconditional branch to the immediately following label",
     tags: ["asp68k", "control-flow"],
     docs: { source: "ASP68K" },
   },

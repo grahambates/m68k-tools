@@ -35,7 +35,11 @@ type Triple = [number, number, number];
 type CounterLine = {
   timing?: {
     values: Triple[];
-    calculation?: { base?: Triple[]; multiplier?: Triple; n?: number | [number, number] };
+    calculation?: {
+      base?: Triple[];
+      multiplier?: Triple;
+      n?: number | [number, number];
+    };
   };
 };
 
@@ -46,9 +50,13 @@ const cjsCounter =
   outerCounter.default && typeof outerCounter.default === "object"
     ? (outerCounter.default as CounterApi)
     : outerCounter;
-const parse68kCounter = (typeof outerCounter.default === "function" ? outerCounter.default : cjsCounter.default) as
-  ((source: string) => unknown[]) | undefined;
-const calculateCounterTotals = outerCounter.calculateTotals ?? cjsCounter.calculateTotals;
+const parse68kCounter = (
+  typeof outerCounter.default === "function"
+    ? outerCounter.default
+    : cjsCounter.default
+) as ((source: string) => unknown[]) | undefined;
+const calculateCounterTotals =
+  outerCounter.calculateTotals ?? cjsCounter.calculateTotals;
 
 interface Measurement {
   bytes: number;
@@ -65,7 +73,9 @@ export function normalizeCounterSnippet(source: string): string {
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
     .split("\n")
-    .map((line) => (line.trim().length === 0 || /^[ \t]/.test(line) ? line : `\t${line}`))
+    .map((line) =>
+      line.trim().length === 0 || /^[ \t]/.test(line) ? line : `\t${line}`,
+    )
     .map(dropRedundantBitSize)
     .join("\n");
 }
@@ -81,7 +91,10 @@ export function normalizeCounterSnippet(source: string): string {
  * Only the measurement copy is rewritten; the suggestion keeps its spelling.
  */
 function dropRedundantBitSize(line: string): string {
-  return line.replace(/\b(bset|bclr|bchg|btst)\.[bwl]\b(?=\s+[^,]*,\s*d[0-7]\s*$)/i, "$1");
+  return line.replace(
+    /\b(bset|bclr|bchg|btst)\.[bwl]\b(?=\s+[^,]*,\s*d[0-7]\s*$)/i,
+    "$1",
+  );
 }
 
 /**
@@ -98,9 +111,14 @@ function dropRedundantBitSize(line: string): string {
  * conditional branch, whose timing depends on whether it is taken -- is left
  * alone, since no count makes that determinate.
  */
-function resolveRangeWithCount(lines: unknown[], count: number): Triple | undefined {
+function resolveRangeWithCount(
+  lines: unknown[],
+  count: number,
+): Triple | undefined {
   const timed = (lines as CounterLine[]).filter((line) => line.timing);
-  const ranged = timed.filter((line) => Array.isArray(line.timing?.calculation?.n));
+  const ranged = timed.filter((line) =>
+    Array.isArray(line.timing?.calculation?.n),
+  );
   if (ranged.length !== 1) return undefined;
 
   const total: Triple = [0, 0, 0];
@@ -130,7 +148,9 @@ function resolveRangeWithCount(lines: unknown[], count: number): Triple | undefi
 }
 
 /** Resolves an expression to a constant, using the symbols in scope for the file. */
-export type ConstantEvaluator = (expression: ExpressionNode) => number | undefined;
+export type ConstantEvaluator = (
+  expression: ExpressionNode,
+) => number | undefined;
 
 /**
  * The expression on an operand whose width decides how the operand is encoded.
@@ -144,10 +164,13 @@ function sizingExpression(operand: OperandNode): ExpressionNode | undefined {
     operand.type === "immediate"
       ? operand.value
       : "displacement" in operand
-        ? (operand.displacement as ExpressionNode | { type: "string-literal" } | undefined)
+        ? (operand.displacement as
+            ExpressionNode | { type: "string-literal" } | undefined)
         : undefined;
   // A string has no value to collapse to, and no bearing on operand width here.
-  return expression && expression.type !== "string-literal" ? expression : undefined;
+  return expression && expression.type !== "string-literal"
+    ? expression
+    : undefined;
 }
 
 /**
@@ -163,7 +186,10 @@ function sizingExpression(operand: OperandNode): ExpressionNode | undefined {
  * A plain number is left alone, and anything that does not evaluate is left as
  * written, so this can only sharpen a measurement, never invent one.
  */
-function collapseConstantExpressions(snippet: string, evaluate: ConstantEvaluator | undefined): string {
+function collapseConstantExpressions(
+  snippet: string,
+  evaluate: ConstantEvaluator | undefined,
+): string {
   if (!evaluate) return snippet;
   return snippet
     .split("\n")
@@ -180,7 +206,11 @@ function collapseConstantExpressions(snippet: string, evaluate: ConstantEvaluato
         if (!expression || expression.type === "numeric-literal") continue;
         const value = evaluate(expression);
         if (value === undefined) continue;
-        edits.push({ start: expression.loc.start, end: expression.loc.end, text: String(value) });
+        edits.push({
+          start: expression.loc.start,
+          end: expression.loc.end,
+          text: String(value),
+        });
       }
       let out = line;
       for (const edit of edits.sort((a, b) => b.start - a.start)) {
@@ -207,7 +237,11 @@ function provenCount(diagnostic: Diagnostic): number | undefined {
   return undefined;
 }
 
-function measureSnippet(source: string, knownShiftCount?: number, branchTiming?: "not-taken"): Measurement | undefined {
+function measureSnippet(
+  source: string,
+  knownShiftCount?: number,
+  branchTiming?: "not-taken",
+): Measurement | undefined {
   try {
     if (!parse68kCounter || !calculateCounterTotals) return undefined;
     const normalized = normalizeCounterSnippet(source);
@@ -247,7 +281,10 @@ function measureSnippet(source: string, knownShiftCount?: number, branchTiming?:
   }
 }
 
-function metric(before: number | undefined, after: number | undefined): OptimizationMetric | undefined {
+function metric(
+  before: number | undefined,
+  after: number | undefined,
+): OptimizationMetric | undefined {
   if (before === undefined || after === undefined) return undefined;
   return { before, after, delta: after - before, confidence: "exact" };
 }
@@ -257,12 +294,17 @@ function preserveSourceClaim(
   rule: ImpactRuleMeta | undefined,
 ): OptimizationSourceClaim[] | undefined {
   if (!existing) return undefined;
-  const size = existing.sizeBytes?.confidence === "source" ? existing.sizeBytes : undefined;
+  const size =
+    existing.sizeBytes?.confidence === "source"
+      ? existing.sizeBytes
+      : undefined;
   const execution =
     existing.execution &&
-    [existing.execution.cpuCycles, existing.execution.readCycles, existing.execution.writeCycles].some(
-      (m) => m?.confidence === "source",
-    )
+    [
+      existing.execution.cpuCycles,
+      existing.execution.readCycles,
+      existing.execution.writeCycles,
+    ].some((m) => m?.confidence === "source")
       ? existing.execution
       : undefined;
   const previous = existing.sourceClaims ?? [];
@@ -277,7 +319,9 @@ function preserveSourceClaim(
   ];
 }
 
-export function assessOptimizationImpact(impact: OptimizationImpact): OptimizationImpact["assessment"] {
+export function assessOptimizationImpact(
+  impact: OptimizationImpact,
+): OptimizationImpact["assessment"] {
   const metrics = [
     impact.sizeBytes,
     impact.execution?.cpuCycles,
@@ -308,15 +352,29 @@ export function measureDiagnosticImpact(
   const span = diagnostic.span ?? computeSourceSpan(diagnostic, file);
   if (!span) return diagnostic;
 
-  const sourceLines = source.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-  const original = sourceLines.slice(span.startLine - 1, span.endLine).join("\n");
+  const sourceLines = source
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n");
+  const original = sourceLines
+    .slice(span.startLine - 1, span.endLine)
+    .join("\n");
   // A rule that matched a shift by a register only fires once the count is
   // proven, and records it. Without it the original measures as a range and
   // only the size is comparable, which reported a cycle win as a regression.
   const shiftCount = provenCount(diagnostic);
-  const branchTiming = diagnostic.data?.branchTiming === "not-taken" ? "not-taken" : undefined;
-  const before = measureSnippet(collapseConstantExpressions(original, evaluate), shiftCount, branchTiming);
-  const after = measureSnippet(collapseConstantExpressions(replacement, evaluate), shiftCount, branchTiming);
+  const branchTiming =
+    diagnostic.data?.branchTiming === "not-taken" ? "not-taken" : undefined;
+  const before = measureSnippet(
+    collapseConstantExpressions(original, evaluate),
+    shiftCount,
+    branchTiming,
+  );
+  const after = measureSnippet(
+    collapseConstantExpressions(replacement, evaluate),
+    shiftCount,
+    branchTiming,
+  );
   if (!before || !after) return diagnostic;
 
   const prior = diagnostic.suggestion!.impact;
@@ -335,8 +393,13 @@ export function measureDiagnosticImpact(
   impact.assessment = assessOptimizationImpact(impact);
 
   const notes = [...(diagnostic.notes ?? [])];
-  const sourceSize = prior?.sizeBytes?.confidence === "source" ? prior.sizeBytes : undefined;
-  if (sourceSize && impact.sizeBytes && sourceSize.delta !== impact.sizeBytes.delta) {
+  const sourceSize =
+    prior?.sizeBytes?.confidence === "source" ? prior.sizeBytes : undefined;
+  if (
+    sourceSize &&
+    impact.sizeBytes &&
+    sourceSize.delta !== impact.sizeBytes.delta
+  ) {
     notes.push({
       message: `This rule carried an unverified figure of ${sourceSize.delta > 0 ? "+" : ""}${sourceSize.delta} bytes, which the measurement above does not match.`,
     });

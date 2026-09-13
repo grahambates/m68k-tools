@@ -1,5 +1,10 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
 
 export const shiftTwoAdds: Rule = {
@@ -13,7 +18,11 @@ export const shiftTwoAdds: Rule = {
     docs: { source: "ASP68K" },
   },
   checkLine(ctx, line, index) {
-    const shift = isInstruction(line, "asl") ? "asl" : isInstruction(line, "lsl") ? "lsl" : undefined;
+    const shift = isInstruction(line, "asl")
+      ? "asl"
+      : isInstruction(line, "lsl")
+        ? "lsl"
+        : undefined;
     if (!shift) return;
     const size = instructionSize(line);
     if (size !== "b" && size !== "w") return;
@@ -23,10 +32,19 @@ export const shiftTwoAdds: Rule = {
     const value = ctx.evaluate(count.value);
     if (!value.known || value.value !== 2) return;
 
-    const allowed = shift === "asl" ? ["mc68000", "mc68010", "mc68030", "mc68040"] : ["mc68000", "mc68010", "mc68030"];
+    const allowed =
+      shift === "asl"
+        ? ["mc68000", "mc68010", "mc68030", "mc68040"]
+        : ["mc68000", "mc68010", "mc68030"];
     if (!ctx.config.processors.every((cpu) => allowed.includes(cpu))) return;
 
-    const safety = changedFlagsApplicability(ctx, index, ["X", "N", "Z", "V", "C"]);
+    const safety = changedFlagsApplicability(ctx, index, [
+      "X",
+      "N",
+      "Z",
+      "V",
+      "C",
+    ]);
     const add = `add.${size} ${dest.register},${dest.register}`;
     ctx.report({
       ruleId: this.meta.id,
@@ -44,7 +62,10 @@ export const shiftTwoAdds: Rule = {
         ...(safety.applicability === "safe"
           ? []
           : [
-              { message: "Multi-bit shift and repeated ADD flag behaviour is not assumed equivalent; review CCR use." },
+              {
+                message:
+                  "Multi-bit shift and repeated ADD flag behaviour is not assumed equivalent; review CCR use.",
+              },
             ]),
       ],
     });

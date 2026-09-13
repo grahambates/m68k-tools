@@ -1,7 +1,8 @@
 import type { Location } from "m68k-parser";
 import type { SourceSpan } from "./span.js";
 
-export type RuleCategory = "correctness" | "suspicious" | "optimization" | "portability" | "style";
+export type RuleCategory =
+  "correctness" | "suspicious" | "optimization" | "portability" | "style";
 
 export type Severity = "error" | "warning" | "suggestion" | "info";
 export type Confidence = "certain" | "high" | "medium" | "low";
@@ -37,7 +38,8 @@ export interface OptimizationSourceClaim {
   execution?: OptimizationExecutionImpact;
 }
 
-export type OptimizationAssessment = "improvement" | "tradeoff" | "neutral" | "regression";
+export type OptimizationAssessment =
+  "improvement" | "tradeoff" | "neutral" | "regression";
 
 export interface OptimizationImpact {
   /** Machine-code bytes. Negative delta means smaller. */

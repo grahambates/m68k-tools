@@ -1,5 +1,9 @@
 import type { Rule } from "../../core/rule.js";
-import { addressRegisterOperand, isInstruction, operand } from "../../util/ast.js";
+import {
+  addressRegisterOperand,
+  isInstruction,
+  operand,
+} from "../../util/ast.js";
 
 export const leaZeroAddress: Rule = {
   meta: {
@@ -17,9 +21,17 @@ export const leaZeroAddress: Rule = {
     if (!source || source.type !== "absolute-address" || !dest) return;
     const value = ctx.evaluate(source.address);
     if (!value.known || value.value !== 0) return;
-    if (source.addressSize?.type !== "size" || (source.addressSize.size !== "w" && source.addressSize.size !== "l"))
+    if (
+      source.addressSize?.type !== "size" ||
+      (source.addressSize.size !== "w" && source.addressSize.size !== "l")
+    )
       return;
-    if (!ctx.config.processors.every((cpu) => ["mc68000", "mc68010", "mc68030"].includes(cpu))) return;
+    if (
+      !ctx.config.processors.every((cpu) =>
+        ["mc68000", "mc68010", "mc68030"].includes(cpu),
+      )
+    )
+      return;
 
     ctx.report({
       ruleId: this.meta.id,

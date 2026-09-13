@@ -1,7 +1,7 @@
-import * as lsp from "vscode-languageserver";
-import { Provider } from ".";
+import type * as lsp from "vscode-languageserver";
+import { type Provider } from ".";
 import { mnemonicDocs, isInstructionDoc } from "../docs/index";
-import { Context } from "../context";
+import { type Context } from "../context";
 import { isProcessed } from "../DocumentProcessor";
 import { componentAtIndex, ComponentType, parseLine } from "../parse";
 import { parseSignature } from "../signature";

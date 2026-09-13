@@ -25,13 +25,29 @@ export const platformLabels: Readonly<Record<Platform, string>> = {
  * false positives on code that targets a range of machines.
  */
 const ATARI_RANGES: readonly ExpectedAbsoluteAddressRange[] = [
-  { start: 0x000000, end: 0x0005ff, description: "68000 exception vectors and Atari system variables" },
+  {
+    start: 0x000000,
+    end: 0x0005ff,
+    description: "68000 exception vectors and Atari system variables",
+  },
   // One span from the memory controller through the end of the MFP register
   // file. It deliberately covers the gaps between blocks: this is a heuristic
   // for a missing '#', and no plausible intended immediate lands up here.
-  { start: 0xff8000, end: 0xfffa3f, description: "Atari hardware registers: MMU, video, DMA, PSG, blitter, MFP" },
-  { start: 0xfffa80, end: 0xfffabf, description: "Atari second MFP (Mega STE and TT)" },
-  { start: 0xfffc00, end: 0xfffc07, description: "Atari keyboard and MIDI ACIAs" },
+  {
+    start: 0xff8000,
+    end: 0xfffa3f,
+    description: "Atari hardware registers: MMU, video, DMA, PSG, blitter, MFP",
+  },
+  {
+    start: 0xfffa80,
+    end: 0xfffabf,
+    description: "Atari second MFP (Mega STE and TT)",
+  },
+  {
+    start: 0xfffc00,
+    end: 0xfffc07,
+    description: "Atari keyboard and MIDI ACIAs",
+  },
 ];
 
 /**
@@ -40,12 +56,22 @@ const ATARI_RANGES: readonly ExpectedAbsoluteAddressRange[] = [
  *
  * This is intentionally a lint heuristic, not a complete platform memory map.
  */
-export const expectedAbsoluteAddressRanges: Readonly<Record<Platform, readonly ExpectedAbsoluteAddressRange[]>> = {
+export const expectedAbsoluteAddressRanges: Readonly<
+  Record<Platform, readonly ExpectedAbsoluteAddressRange[]>
+> = {
   generic: [],
   amiga: [
-    { start: 0x000000, end: 0x0000bc, description: "68000 zero-page exception vectors" },
+    {
+      start: 0x000000,
+      end: 0x0000bc,
+      description: "68000 zero-page exception vectors",
+    },
     { start: 0xbfd000, end: 0xbfefff, description: "Amiga CIA register space" },
-    { start: 0xdff000, end: 0xdff1fc, description: "Amiga custom-chip registers" },
+    {
+      start: 0xdff000,
+      end: 0xdff1fc,
+      description: "Amiga custom-chip registers",
+    },
   ],
   atari: ATARI_RANGES,
 };
@@ -70,7 +96,9 @@ export function expectedAbsoluteAddressRange(
 ): ExpectedAbsoluteAddressRange | undefined {
   const ranges = expectedAbsoluteAddressRanges[platform];
   for (const candidate of addressAliases(address)) {
-    const match = ranges.find((range) => candidate >= range.start && candidate <= range.end);
+    const match = ranges.find(
+      (range) => candidate >= range.start && candidate <= range.end,
+    );
     if (match) return match;
   }
   return undefined;
@@ -78,8 +106,11 @@ export function expectedAbsoluteAddressRange(
 
 /** Ranges rendered for diagnostic text, e.g. "$FF8201-$FFFA23 (Atari hardware registers)". */
 export function describeExpectedRanges(platform: Platform): string {
-  const hex = (value: number) => `$${value.toString(16).toUpperCase().padStart(6, "0")}`;
+  const hex = (value: number) =>
+    `$${value.toString(16).toUpperCase().padStart(6, "0")}`;
   return expectedAbsoluteAddressRanges[platform]
-    .map((range) => `${hex(range.start)}-${hex(range.end)} (${range.description})`)
+    .map(
+      (range) => `${hex(range.start)}-${hex(range.end)} (${range.description})`,
+    )
     .join(", ");
 }

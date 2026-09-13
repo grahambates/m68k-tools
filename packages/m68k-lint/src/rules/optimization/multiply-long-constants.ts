@@ -1,8 +1,16 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateExpressionOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateExpressionOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { changedFlagsApplicability, isPowerOfTwo } from "./helpers.js";
 
-function allTargets(ctx: Parameters<NonNullable<Rule["checkLine"]>>[0], allowed: readonly string[]): boolean {
+function allTargets(
+  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
+  allowed: readonly string[],
+): boolean {
   return ctx.config.processors.every((cpu) => allowed.includes(cpu));
 }
 
@@ -10,7 +18,11 @@ function longMulMatch(
   ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
   line: Parameters<NonNullable<Rule["checkLine"]>>[1],
 ) {
-  if (!(isInstruction(line, "muls") || isInstruction(line, "mulu")) || instructionSize(line) !== "l") return undefined;
+  if (
+    !(isInstruction(line, "muls") || isInstruction(line, "mulu")) ||
+    instructionSize(line) !== "l"
+  )
+    return undefined;
   const expr = immediateExpressionOperand(line, 0);
   const dest = dataRegisterOperand(line, 1);
   if (!expr || !dest) return undefined;
@@ -23,17 +35,22 @@ function scratchAfter(
   index: number,
   dest: string,
 ): string | undefined {
-  return ctx.registers.deadDataRegistersAfter(index).find((r) => r !== dest.toLowerCase());
+  return ctx.registers
+    .deadDataRegistersAfter(index)
+    .find((r) => r !== dest.toLowerCase());
 }
 
 const recipes: Readonly<Record<number, (d: string, s: string) => string>> = {
   3: (d, s) => `move.l ${d},${s}\nadd.l ${d},${d}\nadd.l ${s},${d}`,
   5: (d, s) => `move.l ${d},${s}\nasl.l #2,${d}\nadd.l ${s},${d}`,
-  6: (d, s) => `add.l ${d},${d}\nmove.l ${d},${s}\nadd.l ${d},${d}\nadd.l ${s},${d}`,
+  6: (d, s) =>
+    `add.l ${d},${d}\nmove.l ${d},${s}\nadd.l ${d},${d}\nadd.l ${s},${d}`,
   7: (d, s) => `move.l ${d},${s}\nasl.l #3,${d}\nsub.l ${s},${d}`,
   9: (d, s) => `move.l ${d},${s}\nasl.l #3,${d}\nadd.l ${s},${d}`,
-  10: (d, s) => `add.l ${d},${d}\nmove.l ${d},${s}\nasl.l #2,${d}\nadd.l ${s},${d}`,
-  12: (d, s) => `asl.l #2,${d}\nmove.l ${d},${s}\nadd.l ${d},${d}\nadd.l ${s},${d}`,
+  10: (d, s) =>
+    `add.l ${d},${d}\nmove.l ${d},${s}\nasl.l #2,${d}\nadd.l ${s},${d}`,
+  12: (d, s) =>
+    `asl.l #2,${d}\nmove.l ${d},${s}\nadd.l ${d},${d}\nadd.l ${s},${d}`,
 };
 
 export const multiplyLongSmallConstant: Rule = {
@@ -52,7 +69,16 @@ export const multiplyLongSmallConstant: Rule = {
     const d = match.dest.register;
 
     if (factor === 2) {
-      if (!allTargets(ctx, ["mc68000", "mc68010", "mc68030", "mc68040", "mc68060"])) return;
+      if (
+        !allTargets(ctx, [
+          "mc68000",
+          "mc68010",
+          "mc68030",
+          "mc68040",
+          "mc68060",
+        ])
+      )
+        return;
       const safety = changedFlagsApplicability(ctx, index, ["X", "V", "C"]);
       ctx.report({
         ruleId: this.meta.id,
@@ -66,7 +92,12 @@ export const multiplyLongSmallConstant: Rule = {
           replacement: `add.l ${d},${d}`,
           applicability: safety.applicability,
         },
-        notes: [{ message: "Multiplying by two is a single left shift, but X/V/C can differ from the multiply." }],
+        notes: [
+          {
+            message:
+              "Multiplying by two is a single left shift, but X/V/C can differ from the multiply.",
+          },
+        ],
       });
       return;
     }
@@ -94,7 +125,9 @@ export const multiplyLongSmallConstant: Rule = {
         applicability: safety.applicability,
       },
       notes: [
-        { message: `${scratch.toUpperCase()} is proven dead after the original multiply and can be used as scratch.` },
+        {
+          message: `${scratch.toUpperCase()} is proven dead after the original multiply and can be used as scratch.`,
+        },
         {
           message:
             "The final arithmetic produces the same low 32-bit result; X/V/C can differ from MUL and are checked for observability.",
@@ -109,7 +142,8 @@ export const multiplyLongLargePowerOfTwo: Rule = {
     id: "optimization/multiply-long-large-power-of-two",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Replace long multiply by 2^m (9<m<14) with register-count ASL",
+    description:
+      "Replace long multiply by 2^m (9<m<14) with register-count ASL",
     tags: ["asp68k", "multiply", "constant", "scratch", "ccr"],
     docs: { source: "ASP68K" },
   },
@@ -136,7 +170,9 @@ export const multiplyLongLargePowerOfTwo: Rule = {
         applicability: safety.applicability,
       },
       notes: [
-        { message: `${scratch.toUpperCase()} is proven dead after the original multiply.` },
+        {
+          message: `${scratch.toUpperCase()} is proven dead after the original multiply.`,
+        },
         { message: "This recipe applies for 8 < m < 14." },
       ],
     });
@@ -153,7 +189,12 @@ export const multiplySignedLong060: Rule = {
     docs: { source: "ASP68K" },
   },
   checkLine(ctx, line, index) {
-    if (!isInstruction(line, "muls") || instructionSize(line) !== "l" || !allTargets(ctx, ["mc68060"])) return;
+    if (
+      !isInstruction(line, "muls") ||
+      instructionSize(line) !== "l" ||
+      !allTargets(ctx, ["mc68060"])
+    )
+      return;
     const expr = immediateExpressionOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
     if (!expr || !dest) return;
@@ -167,7 +208,11 @@ export const multiplySignedLong060: Rule = {
         confidence: "certain",
         message: "MULS.L by zero can use MOVEQ #0 on 68060",
         loc: line.mnemonic!.loc,
-        suggestion: { description: "Use MOVEQ #0", replacement: `moveq #0,${dest.register}`, applicability: "safe" },
+        suggestion: {
+          description: "Use MOVEQ #0",
+          replacement: `moveq #0,${dest.register}`,
+          applicability: "safe",
+        },
       });
       return;
     }

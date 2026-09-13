@@ -1,7 +1,7 @@
 # M68k Lint
 
 Static analysis, correctness checks and optimization hints for Motorola 68k assembly, powered by
-[m68k-lint](https://github.com/grahambates/m68k-lint).
+[m68k-lint](https://github.com/grahambates/m68k-tools/tree/main/packages/m68k-lint).
 
 - Findings appear as you type, with measured impact:
   `Immediate 1 fits the MOVEQ signed 8-bit range (−4 bytes, −8 cycles)`.
@@ -16,7 +16,7 @@ Static analysis, correctness checks and optimization hints for Motorola 68k asse
 ## Works alongside M68k Assembly Language Server
 
 This extension provides diagnostics and quick fixes only — no hover, completion, definition or
-formatting. Install it next to [`grahambates.m68k`](https://marketplace.visualstudio.com/items?itemName=gigabates.m68k-lsp)
+formatting. Install it next to [`gigabates.m68k-lsp`](https://marketplace.visualstudio.com/items?itemName=gigabates.m68k-lsp)
 and the two do not collide: that one reports what vasm says won't assemble, this one reports
 what assembles fine but is wrong, suspicious or slow.
 
@@ -54,3 +54,7 @@ says to check the notes, and the notes are on the finding.
 ## License
 
 MIT
+
+## Development
+
+This extension is not released yet. Requires VS Code 1.101 or later. Open the monorepo root and choose **Linter: Extension** in Run and Debug. To create a VSIX, run `pnpm build` then `pnpm --filter m68k-lint-vscode package` at the root.

@@ -1,8 +1,18 @@
 import type { Rule } from "../../core/rule.js";
-import { immediateOperand, instructionSize, isAddqDestination, isInstructionFamily, operand } from "../../util/ast.js";
+import {
+  immediateOperand,
+  instructionSize,
+  isAddqDestination,
+  isInstructionFamily,
+  operand,
+} from "../../util/ast.js";
 import { changedFlagsApplicability, sourceOperand } from "./helpers.js";
 
-function quickNegative(id: string, from: "add" | "sub", to: "subq" | "addq"): Rule {
+function quickNegative(
+  id: string,
+  from: "add" | "sub",
+  to: "subq" | "addq",
+): Rule {
   return {
     meta: {
       id,
@@ -17,7 +27,12 @@ function quickNegative(id: string, from: "add" | "sub", to: "subq" | "addq"): Ru
       const imm = immediateOperand(line, 0);
       const dest = operand(line, 1);
       const size = instructionSize(line);
-      if (!imm || imm.value.type === "string-literal" || !isAddqDestination(dest, size)) return;
+      if (
+        !imm ||
+        imm.value.type === "string-literal" ||
+        !isAddqDestination(dest, size)
+      )
+        return;
       const value = ctx.evaluate(imm.value);
       if (!value.known || value.value < -8 || value.value > -1) return;
       // The value is the same either way, but the carry is not: ADD sets C on a
@@ -52,5 +67,13 @@ function quickNegative(id: string, from: "add" | "sub", to: "subq" | "addq"): Ru
     },
   };
 }
-export const preferSubqForNegativeAdd = quickNegative("optimization/prefer-subq-negative-add", "add", "subq");
-export const preferAddqForNegativeSub = quickNegative("optimization/prefer-addq-negative-sub", "sub", "addq");
+export const preferSubqForNegativeAdd = quickNegative(
+  "optimization/prefer-subq-negative-add",
+  "add",
+  "subq",
+);
+export const preferAddqForNegativeSub = quickNegative(
+  "optimization/prefer-addq-negative-sub",
+  "sub",
+  "addq",
+);

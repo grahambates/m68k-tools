@@ -1,4 +1,4 @@
-import { baseTimes, lookupTimes, TimingTable } from "./tables";
+import { baseTimes, lookupTimes, type TimingTable } from "./tables";
 import {
   baseTimes as baseTimes68020,
   moveTimes as moveTimes68020,
@@ -8,25 +8,28 @@ import {
   fetchImmEa,
   fetchImmEaL,
   calcImmEa,
-  Timing2,
+  type Timing2,
 } from "./tables68020";
 import {
   Qualifiers,
-  AddressingMode,
+  type AddressingMode,
   AddressingModes,
   Mnemonics,
   mnemonicGroups,
-  Mnemonic,
-  Cpu,
+  type Mnemonic,
+  type Cpu,
   Cpus,
   defaultCpu,
-  CacheModel,
+  type CacheModel,
   CacheModels,
   defaultCacheModel,
 } from "../syntax";
 import instructionQualifier from "../parse/instructionQualifier";
-import { EffectiveAddressNode, InstructionStatement } from "../parse/nodes";
-import evaluate, { Variables } from "../parse/evaluate";
+import {
+  type EffectiveAddressNode,
+  type InstructionStatement,
+} from "../parse/nodes";
+import evaluate, { type Variables } from "../parse/evaluate";
 
 /**
  * Timing vector. The first element is always the clock count; the remaining
@@ -76,7 +79,7 @@ export function instructionTimings(
   statement: InstructionStatement,
   vars: Variables,
   cpu: Cpu = defaultCpu,
-  cacheModel: CacheModel = defaultCacheModel
+  cacheModel: CacheModel = defaultCacheModel,
 ): InstructionTiming | null {
   const key = buildKey(statement);
   const timingMap = timingMaps[cpu];
@@ -134,7 +137,7 @@ export function instructionTimings(
     // MOVEM
     else if (op.name === Mnemonics.MOVEM) {
       const listOperand = operands.find(
-        (o) => o.mode === AddressingModes.RegList
+        (o) => o.mode === AddressingModes.RegList,
       );
       if (listOperand) {
         calculation.n = listOperand && rangeN(listOperand.text);
@@ -259,7 +262,7 @@ function buildKey(statement: InstructionStatement): string | null {
 // instruction string, e.g. "MOVE.L Dn,Dn": [4, 1, 0]
 function buildTimingMap(
   baseTimes: TimingTable,
-  lookupTimes: Record<string, [Timing, Timing]>
+  lookupTimes: Record<string, [Timing, Timing]>,
 ): Map<string, Calculation> {
   const timingMap = new Map<string, Calculation>();
 
@@ -315,7 +318,7 @@ function buildTimingMap(
           if (operands.length) {
             key += " " + operands.join(",");
           }
-          timingMap.set(key, { base: base, multiplier });
+          timingMap.set(key, { base, multiplier });
         }
       }
     }
@@ -337,7 +340,7 @@ function build68020Map(): Map<string, Calculation> {
   ]) {
     // Normalise to a list of outcomes, each a [cache, worst] pair.
     const outcomes: Timing2[] = Array.isArray(
-      (timing as Timing2[] | Timing2)[0][0]
+      (timing as Timing2[] | Timing2)[0][0],
     )
       ? (timing as Timing2[])
       : [timing as Timing2];
@@ -347,14 +350,14 @@ function build68020Map(): Map<string, Calculation> {
       eaKind === "calc"
         ? calcEa
         : eaKind === "jump"
-        ? jumpEa
-        : eaKind === "fetchImm"
-        ? fetchImmEa
-        : eaKind === "fetchImmL"
-        ? fetchImmEaL
-        : eaKind === "calcImm"
-        ? calcImmEa
-        : fetchEa;
+          ? jumpEa
+          : eaKind === "fetchImm"
+            ? fetchImmEa
+            : eaKind === "fetchImmL"
+              ? fetchImmEaL
+              : eaKind === "calcImm"
+                ? calcImmEa
+                : fetchEa;
 
     // Fold an optional EA time into each outcome and split into worst/cache.
     const entry = (ea?: Timing2): Calculation => ({

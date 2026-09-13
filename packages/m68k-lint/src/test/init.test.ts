@@ -22,7 +22,9 @@ function scriptedPrompt(answers: string[]): Prompt {
     // eslint-disable-next-line @typescript-eslint/require-await
     async choice(_question, _choices, fallback) {
       const answer = take();
-      return (answer === undefined || answer === "" ? fallback : answer) as typeof fallback;
+      return (
+        answer === undefined || answer === "" ? fallback : answer
+      ) as typeof fallback;
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     async list(_question, fallback) {
@@ -33,7 +35,9 @@ function scriptedPrompt(answers: string[]): Prompt {
     // eslint-disable-next-line @typescript-eslint/require-await
     async confirm(_question, fallback) {
       const answer = take();
-      return answer === undefined || answer === "" ? fallback : /^y/i.test(answer);
+      return answer === undefined || answer === ""
+        ? fallback
+        : /^y/i.test(answer);
     },
   };
 }
@@ -50,7 +54,9 @@ const base: InitAnswers = {
 describe("m68k-lint --init", () => {
   test("accepting every default writes only the schema reference", () => {
     // A config restating the defaults is noise, and pins behaviour never chosen.
-    expect(renderInitConfig(base)).toBe(`{\n  "$schema": "./node_modules/m68k-lint/m68k-lint.schema.json"\n}\n`);
+    expect(renderInitConfig(base)).toBe(
+      `{\n  "$schema": "./node_modules/m68k-lint/m68k-lint.schema.json"\n}\n`,
+    );
   });
 
   test("writes only what differs from the defaults", () => {
@@ -77,7 +83,14 @@ describe("m68k-lint --init", () => {
   });
 
   test("collects answers in order and falls back on empty input", async () => {
-    const prompt = scriptedPrompt(["amiga", "mc68000,mc68020", "", "y", "src/**", "vendor"]);
+    const prompt = scriptedPrompt([
+      "amiga",
+      "mc68000,mc68020",
+      "",
+      "y",
+      "src/**",
+      "vendor",
+    ]);
     const answers = await collectInitAnswers(prompt, ["**"]);
     expect(answers).toEqual({
       platform: "amiga",
@@ -90,19 +103,19 @@ describe("m68k-lint --init", () => {
   });
 
   test("uses the detected source globs when the answer is left blank", async () => {
-    const answers = await collectInitAnswers(scriptedPrompt(["", "", "", "", "", ""]), ["asm/**"]);
+    const answers = await collectInitAnswers(
+      scriptedPrompt(["", "", "", "", "", ""]),
+      ["asm/**"],
+    );
     expect(answers.files).toEqual(["asm/**"]);
     expect(answers.platform).toBe("generic");
   });
 
   test("gives a bare directory the trailing glob it needs to match anything", () => {
     // `vendor` on its own matches no file, and does so silently.
-    expect(normalizeIgnoreGlobs(["vendor", "generated/", "build/**", "*.tmp"])).toEqual([
-      "vendor/**",
-      "generated/**",
-      "build/**",
-      "*.tmp",
-    ]);
+    expect(
+      normalizeIgnoreGlobs(["vendor", "generated/", "build/**", "*.tmp"]),
+    ).toEqual(["vendor/**", "generated/**", "build/**", "*.tmp"]);
   });
 
   test("rejects an unknown processor rather than writing it", () => {
@@ -127,50 +140,83 @@ describe("m68k-lint --init", () => {
 
     test("sources in the project root suggest everything", async () => {
       // A common layout, and a narrower glob would silently miss these.
-      expect(await detectSourceGlobs(await tree(["main.s", "sprite.asm"]))).toEqual(["**"]);
+      expect(
+        await detectSourceGlobs(await tree(["main.s", "sprite.asm"])),
+      ).toEqual(["**"]);
     });
 
     test("sources only in the root win even when subdirectories exist", async () => {
-      expect(await detectSourceGlobs(await tree(["main.s", "lib/helper.s"]))).toEqual(["**"]);
+      expect(
+        await detectSourceGlobs(await tree(["main.s", "lib/helper.s"])),
+      ).toEqual(["**"]);
     });
 
     test("sources confined to subdirectories suggest those", async () => {
-      expect(await detectSourceGlobs(await tree(["src/main.s", "lib/helper.i"]))).toEqual(["lib/**", "src/**"]);
+      expect(
+        await detectSourceGlobs(await tree(["src/main.s", "lib/helper.i"])),
+      ).toEqual(["lib/**", "src/**"]);
     });
 
     test("finds sources nested well below a subdirectory", async () => {
-      expect(await detectSourceGlobs(await tree(["game/code/level/one.s"]))).toEqual(["game/**"]);
+      expect(
+        await detectSourceGlobs(await tree(["game/code/level/one.s"])),
+      ).toEqual(["game/**"]);
     });
 
     test("ignores directories that only hold other things", async () => {
       // Detection is by file, not by directory name.
-      expect(await detectSourceGlobs(await tree(["src/main.s", "docs/readme.md"]))).toEqual(["src/**"]);
+      expect(
+        await detectSourceGlobs(await tree(["src/main.s", "docs/readme.md"])),
+      ).toEqual(["src/**"]);
     });
 
     test("skips build output and dot directories", async () => {
-      const root = await tree(["dist/generated.s", ".cache/x.s", "node_modules/pkg/y.s"]);
+      const root = await tree([
+        "dist/generated.s",
+        ".cache/x.s",
+        "node_modules/pkg/y.s",
+      ]);
       expect(await detectSourceGlobs(root)).toEqual(["**"]);
     });
   });
 
   test("summarises what the config turns on", () => {
-    expect(describeInitConfig({ ...base, platform: "atari", style: true })).toBe(
-      "platform atari, cpu mc68000, goal balanced, style preset on",
-    );
+    expect(
+      describeInitConfig({ ...base, platform: "atari", style: true }),
+    ).toBe("platform atari, cpu mc68000, goal balanced, style preset on");
   });
 
   test("terminal prompt parses answers and honours blank input", async () => {
     const asked: string[] = [];
     const replies = ["", "amiga", "", "src/**, vendor/**", "y", "n", ""];
     let next = 0;
-    // eslint-disable-next-line @typescript-eslint/require-await
-    const rl = { question: async (query: string) => (asked.push(query), replies[next++] ?? "") };
+    const rl = {
+      question: (query: string) => {
+        asked.push(query);
+        return Promise.resolve(replies[next++] ?? "");
+      },
+    };
     const prompt = terminalPrompt(rl);
 
-    expect(await prompt.choice("Target platform", ["generic", "amiga"] as const, "generic")).toBe("generic");
-    expect(await prompt.choice("Target platform", ["generic", "amiga"] as const, "generic")).toBe("amiga");
+    expect(
+      await prompt.choice(
+        "Target platform",
+        ["generic", "amiga"] as const,
+        "generic",
+      ),
+    ).toBe("generic");
+    expect(
+      await prompt.choice(
+        "Target platform",
+        ["generic", "amiga"] as const,
+        "generic",
+      ),
+    ).toBe("amiga");
     expect(await prompt.list("Source globs", ["**"])).toEqual(["**"]);
-    expect(await prompt.list("Source globs", ["**"])).toEqual(["src/**", "vendor/**"]);
+    expect(await prompt.list("Source globs", ["**"])).toEqual([
+      "src/**",
+      "vendor/**",
+    ]);
     expect(await prompt.confirm("Style?", false)).toBe(true);
     expect(await prompt.confirm("Style?", true)).toBe(false);
     expect(await prompt.confirm("Style?", true)).toBe(true);
@@ -186,9 +232,17 @@ describe("m68k-lint --init", () => {
     let next = 0;
     // eslint-disable-next-line @typescript-eslint/require-await
     const rl = { question: async () => replies[next++] ?? "" };
-    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const error = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
     try {
-      expect(await terminalPrompt(rl).choice("Platform", ["generic", "atari"] as const, "generic")).toBe("atari");
+      expect(
+        await terminalPrompt(rl).choice(
+          "Platform",
+          ["generic", "atari"] as const,
+          "generic",
+        ),
+      ).toBe("atari");
       expect(error).toHaveBeenCalledWith("  Expected one of: generic, atari");
     } finally {
       error.mockRestore();

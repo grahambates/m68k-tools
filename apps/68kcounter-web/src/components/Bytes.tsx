@@ -1,4 +1,4 @@
-import { FC } from "react";
+import { type FC } from "react";
 import { lengthLevel } from "68kcounter";
 
 export interface WordsProps {

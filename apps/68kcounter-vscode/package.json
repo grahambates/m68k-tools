@@ -39,11 +39,11 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "pnpm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run lint",
-    "lint": "eslint .",
+    "pretest": "pnpm run compile && pnpm run lint",
+    "lint": "pnpm --dir ../.. exec eslint apps/68kcounter-vscode",
     "test": "node ../../scripts/package-counter-extension.mjs --stage-only && node ./out/test/runTest.js",
     "package": "node ../../scripts/package-counter-extension.mjs"
   },
@@ -53,15 +53,11 @@
     "@types/mocha": "^8.0.4",
     "@types/node": "22.18.0",
     "@types/vscode": "1.101.0",
-    "eslint": "9.39.5",
     "glob": "^7.1.6",
-    "husky": "^6.0.0",
     "mocha": "^8.2.1",
-    "prettier": "3.9.6",
     "typescript": "5.9.3",
     "vscode-test": "^1.5.0",
-    "@vscode/vsce": "^3.6.0",
-    "typescript-eslint": "8.70.0"
+    "@vscode/vsce": "^3.6.0"
   },
   "dependencies": {
     "68kcounter": "npm:68kcounter@^3.1.2",

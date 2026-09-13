@@ -1,8 +1,8 @@
-import { TextEdit } from "vscode-languageserver-types";
+import { type TextEdit } from "vscode-languageserver-types";
 import { walkLine } from "../../ast";
 import { locationAsRange } from "../../geometry";
 import { controlMnemonics, sectionTypes } from "../../syntax";
-import { FormatContext, Formatter } from "../DocumentFormatter";
+import { type FormatContext, type Formatter } from "../DocumentFormatter";
 
 export type CaseOptions = Case | Partial<Record<CaseType, Case>>;
 type Case = "upper" | "lower" | "any";

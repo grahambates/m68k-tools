@@ -1,5 +1,5 @@
-import { Line } from "./parse";
-import { Timing } from "./timings";
+import { type Line } from "./parse";
+import { type Timing } from "./timings";
 
 export interface Totals {
   /**

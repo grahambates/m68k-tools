@@ -57,7 +57,9 @@ function strip(value: unknown): unknown {
   return value;
 }
 
-export function buildProjectSymbols(files: readonly ProjectSourceFile[]): ProjectSymbols {
+export function buildProjectSymbols(
+  files: readonly ProjectSourceFile[],
+): ProjectSymbols {
   const definitions = new Map<string, Definition>();
   const conflicted = new Set<string>();
 
@@ -79,12 +81,19 @@ export function buildProjectSymbols(files: readonly ProjectSourceFile[]): Projec
       const name = definition.name.toLowerCase();
       if (conflicted.has(name)) return;
       const existing = definitions.get(name);
-      if (existing && !sameExpression(existing.expression, definition.expression)) {
+      if (
+        existing &&
+        !sameExpression(existing.expression, definition.expression)
+      ) {
         conflicted.add(name);
         definitions.delete(name);
         return;
       }
-      if (!existing) definitions.set(name, { expression: definition.expression, origin: path });
+      if (!existing)
+        definitions.set(name, {
+          expression: definition.expression,
+          origin: path,
+        });
     });
   }
 
@@ -94,7 +103,9 @@ export function buildProjectSymbols(files: readonly ProjectSourceFile[]): Projec
     const definition = definitions.get(key);
     if (!definition) return undefined;
     const next = new Set(stack).add(key);
-    const result = evaluateConstant(definition.expression, (referenced) => resolve(referenced, next));
+    const result = evaluateConstant(definition.expression, (referenced) =>
+      resolve(referenced, next),
+    );
     return result.known ? result.value : undefined;
   };
 

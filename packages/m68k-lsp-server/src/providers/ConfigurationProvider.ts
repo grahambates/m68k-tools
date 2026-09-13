@@ -1,9 +1,9 @@
-import * as lsp from "vscode-languageserver";
+import type * as lsp from "vscode-languageserver";
 import { DidChangeConfigurationNotification } from "vscode-languageserver";
 import { URI } from "vscode-uri";
-import { Provider } from ".";
-import { Config, defaultConfig, mergeConfig } from "../config";
-import { Context } from "../context";
+import { type Provider } from ".";
+import { type Config, defaultConfig, mergeConfig } from "../config";
+import { type Context } from "../context";
 import { join } from "path";
 import { readdirSync, readFileSync, watch } from "fs";
 

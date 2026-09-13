@@ -1,5 +1,9 @@
 import type { Rule } from "../../core/rule.js";
-import { addressRegisterOperand, dataRegisterOperand, instructionSize } from "../../util/ast.js";
+import {
+  addressRegisterOperand,
+  dataRegisterOperand,
+  instructionSize,
+} from "../../util/ast.js";
 import type { RuleContext } from "../../core/context.js";
 import { hasLabelBetween, sourceOperand, valueText } from "./helpers.js";
 import { semanticMnemonic } from "../../semantics/mnemonics.js";
@@ -29,7 +33,8 @@ export const foldIndexIntoEffectiveAddress: Rule = {
     id: "optimization/fold-index-into-effective-address",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Fold an address-register index addition into the indexed addressing mode",
+    description:
+      "Fold an address-register index addition into the indexed addressing mode",
     tags: ["addressing", "address-register", "sequence"],
     docs: { source: "EAB 68000 code optimisations" },
   },
@@ -53,7 +58,8 @@ export const foldIndexIntoEffectiveAddress: Rule = {
     const operands = next.line.operands ?? [];
     const uses = operands.findIndex(
       (op) =>
-        (op.type === "address-register-indirect" || op.type === "address-register-indirect-displacement") &&
+        (op.type === "address-register-indirect" ||
+          op.type === "address-register-indirect-displacement") &&
         op.register.type === "address-register" &&
         op.register.register.toLowerCase() === base.register.toLowerCase(),
     );
@@ -66,7 +72,11 @@ export const foldIndexIntoEffectiveAddress: Rule = {
     // The index register has to survive to the point of use, which it does
     // here, but it must not be the destination of the dereferencing move.
     const written = dataRegisterOperand(next.line, 1);
-    if (written && written.register.toLowerCase() === indexRegister.register.toLowerCase()) return;
+    if (
+      written &&
+      written.register.toLowerCase() === indexRegister.register.toLowerCase()
+    )
+      return;
 
     const operandText = sourceOperand(ctx, next.line, uses);
     if (!operandText) return;
@@ -74,7 +84,11 @@ export const foldIndexIntoEffectiveAddress: Rule = {
     if (matched.type === "address-register-indirect-displacement") {
       const result = ctx.evaluate(matched.displacement);
       if (!result.known || result.value !== 0)
-        displacement = valueText(ctx, matched.displacement, result.known ? result.value : 0);
+        displacement = valueText(
+          ctx,
+          matched.displacement,
+          result.known ? result.value : 0,
+        );
     }
     const replacementOperand = `${displacement}(${base.register},${indexRegister.register}.${size})`;
     const rest = (next.line.operands ?? []).map((_, i) =>
@@ -82,7 +96,10 @@ export const foldIndexIntoEffectiveAddress: Rule = {
     );
     if (rest.some((text) => text === undefined)) return;
 
-    const mnemonicText = next.line.mnemonic?.type === "instruction" ? next.line.mnemonic.instruction : undefined;
+    const mnemonicText =
+      next.line.mnemonic?.type === "instruction"
+        ? next.line.mnemonic.instruction
+        : undefined;
     if (!mnemonicText) return;
     const suffix = instructionSize(next.line);
     const replacement = `${mnemonicText.toLowerCase()}${suffix ? `.${suffix}` : ""} ${rest.join(",")}`;
@@ -108,7 +125,11 @@ export const foldIndexIntoEffectiveAddress: Rule = {
             "Only offered for the 68000 family and 68060. On the 68020 and 68040 precomputing the address into the register is the faster form.",
         },
       ],
-      data: { base: base.register, index: indexRegister.register, sourceEndIndex: next.index },
+      data: {
+        base: base.register,
+        index: indexRegister.register,
+        sourceEndIndex: next.index,
+      },
     });
   },
 };

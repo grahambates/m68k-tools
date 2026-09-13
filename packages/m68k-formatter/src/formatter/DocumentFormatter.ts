@@ -1,16 +1,18 @@
 import type { ParsedFile } from "m68k-parser";
-import { TextEdit, Range } from "vscode-languageserver-types";
+import { type TextEdit, type Range } from "vscode-languageserver-types";
 import { containsRange } from "../geometry";
-import AlignFormatter, { AlignOptions } from "./formatters/AlignFormatter";
-import CaseFormatter, { CaseOptions } from "./formatters/CaseFormatter";
+import AlignFormatter, { type AlignOptions } from "./formatters/AlignFormatter";
+import CaseFormatter, { type CaseOptions } from "./formatters/CaseFormatter";
 import EndOfLineFormatter from "./formatters/EndOfLineFormatter";
 import LabelColonFormatter, {
-  LabelColonOptions,
+  type LabelColonOptions,
 } from "./formatters/LabelColonFormatter";
 import OperandSpaceFormatter, {
-  OperandSpaceOptions,
+  type OperandSpaceOptions,
 } from "./formatters/OperandSpaceFormatter";
-import QuotesFormatter, { QuotesOptions } from "./formatters/QuotesFormatter";
+import QuotesFormatter, {
+  type QuotesOptions,
+} from "./formatters/QuotesFormatter";
 import TrimWhitespaceFormatter from "./formatters/TrimWhitespaceFormatter";
 
 export interface FormatterOptions {

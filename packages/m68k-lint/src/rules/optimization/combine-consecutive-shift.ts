@@ -1,7 +1,17 @@
 import type { ParsedLine } from "m68k-parser";
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateOperand, instructionSize, isInstruction } from "../../util/ast.js";
-import { containsSymbol, embeddedValueText, hasLabelBetween, sourceOperand } from "./helpers.js";
+import {
+  dataRegisterOperand,
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
+import {
+  containsSymbol,
+  embeddedValueText,
+  hasLabelBetween,
+  sourceOperand,
+} from "./helpers.js";
 
 const SHIFT_MNEMONICS = ["lsl", "lsr", "asl", "asr"] as const;
 type ShiftMnemonic = (typeof SHIFT_MNEMONICS)[number];
@@ -39,7 +49,8 @@ export const combineConsecutiveShift: Rule = {
     id: "optimization/combine-consecutive-shift",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Combine consecutive immediate shifts of the same direction on the same register",
+    description:
+      "Combine consecutive immediate shifts of the same direction on the same register",
     tags: ["sequence", "shift", "ccr"],
     docs: {
       note: "Found by mining a corpus of real Amiga assembly for repeated instruction shapes, then verified with 68kcounter rather than taken from a documented source.",
@@ -58,10 +69,15 @@ export const combineConsecutiveShift: Rule = {
 
     const next = ctx.nextInstruction(index);
     if (!next || hasLabelBetween(ctx, index, next.index)) return;
-    if (shiftMnemonic(next.line) !== mnemonic || instructionSize(next.line) !== size) return;
+    if (
+      shiftMnemonic(next.line) !== mnemonic ||
+      instructionSize(next.line) !== size
+    )
+      return;
     const secondImm = immediateOperand(next.line, 0);
     const nextDest = dataRegisterOperand(next.line, 1);
-    if (!secondImm || secondImm.value.type === "string-literal" || !nextDest) return;
+    if (!secondImm || secondImm.value.type === "string-literal" || !nextDest)
+      return;
     if (nextDest.register.toLowerCase() !== dest.register.toLowerCase()) return;
     const m = ctx.evaluate(secondImm.value);
     if (!m.known || m.value < 1 || m.value > 8) return;
@@ -69,7 +85,8 @@ export const combineConsecutiveShift: Rule = {
     const total = n.value + m.value;
     const destText = sourceOperand(ctx, line, 1);
     if (!destText) return;
-    const symbolic = containsSymbol(firstImm.value) || containsSymbol(secondImm.value);
+    const symbolic =
+      containsSymbol(firstImm.value) || containsSymbol(secondImm.value);
     const totalText = symbolic
       ? `${embeddedValueText(ctx, firstImm.value, n.value)}+${embeddedValueText(ctx, secondImm.value, m.value)}`
       : String(total);

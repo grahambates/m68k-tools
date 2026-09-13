@@ -1,4 +1,4 @@
-import { Disposable, TextDocument, window, workspace } from "vscode";
+import { type Disposable, type TextDocument, window, workspace } from "vscode";
 import { Annotator } from "./Annotator";
 
 /**
@@ -11,7 +11,7 @@ export default class AnnotateController implements Disposable {
   constructor() {
     this.subscription = workspace.onDidCloseTextDocument(
       this.onDidCloseTextDocument,
-      this
+      this,
     );
   }
 

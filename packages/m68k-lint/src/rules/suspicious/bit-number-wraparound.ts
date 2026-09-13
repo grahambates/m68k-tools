@@ -36,7 +36,10 @@ export const bitNumberWraparound: Rule = {
     if (result.value >= 0 && result.value < width) return;
 
     const actualBit = modulo(result.value, width);
-    const target = destination.type === "data-register" ? destination.register.toUpperCase() : "memory";
+    const target =
+      destination.type === "data-register"
+        ? destination.register.toUpperCase()
+        : "memory";
     ctx.report({
       ruleId: this.meta.id,
       category: this.meta.category,

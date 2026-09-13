@@ -11,7 +11,7 @@ import {
   isFPUControlRegister,
 } from "./syntax.js";
 import {
-  ParseError,
+  type ParseError,
   unknownCharacter,
   malformedNumber,
 } from "./parse-error.js";

@@ -13,7 +13,11 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
 import { lintSource, type Diagnostic } from "m68k-lint";
 import { ConfigResolver, defaultSettings, type Settings } from "./config.js";
-import { DIAGNOSTIC_SOURCE, diagnosticRange, toLspDiagnostic } from "./diagnostics.js";
+import {
+  DIAGNOSTIC_SOURCE,
+  diagnosticRange,
+  toLspDiagnostic,
+} from "./diagnostics.js";
 import { codeActionsFor, type ActionOptions } from "./codeActions.js";
 import { ProjectIndexCache } from "./projectIndex.js";
 
@@ -57,15 +61,20 @@ function openDocumentText(): Map<string, string> {
   return overrides;
 }
 
-async function lintDocument(document: TextDocument): Promise<Diagnostic[] | undefined> {
+async function lintDocument(
+  document: TextDocument,
+): Promise<Diagnostic[] | undefined> {
   const uri = URI.parse(document.uri);
   if (uri.scheme !== "file") return undefined;
 
   const { config, error } = await configs.resolve(uri.fsPath);
   if (error) connection.console.warn(`m68k-lint: ${error}`);
 
-  const root = config.projectSymbols === false ? undefined : rootFor(uri.fsPath);
-  const external = root ? await indexes.get(root, openDocumentText()) : undefined;
+  const root =
+    config.projectSymbols === false ? undefined : rootFor(uri.fsPath);
+  const external = root
+    ? await indexes.get(root, openDocumentText())
+    : undefined;
 
   return lintSource(document.getText(), config, undefined, external);
 }
@@ -81,12 +90,16 @@ async function validate(document: TextDocument): Promise<void> {
     if (!diagnostics) return;
     connection.sendDiagnostics({
       uri: document.uri,
-      diagnostics: diagnostics.map((diagnostic) => toLspDiagnostic(diagnostic, document)),
+      diagnostics: diagnostics.map((diagnostic) =>
+        toLspDiagnostic(diagnostic, document),
+      ),
     });
   } catch (error) {
     // A parse or rule failure on one document must not take the server down or
     // leave stale squiggles behind.
-    connection.console.error(`m68k-lint failed on ${document.uri}: ${String(error)}`);
+    connection.console.error(
+      `m68k-lint failed on ${document.uri}: ${String(error)}`,
+    );
     connection.sendDiagnostics({ uri: document.uri, diagnostics: [] });
   }
 }
@@ -118,8 +131,12 @@ function validateAll(): void {
 }
 
 connection.onInitialize((params: InitializeParams): InitializeResult => {
-  hasConfigurationCapability = Boolean(params.capabilities.workspace?.configuration);
-  hasWorkspaceFolderCapability = Boolean(params.capabilities.workspace?.workspaceFolders);
+  hasConfigurationCapability = Boolean(
+    params.capabilities.workspace?.configuration,
+  );
+  hasWorkspaceFolderCapability = Boolean(
+    params.capabilities.workspace?.workspaceFolders,
+  );
   // Nothing to wait for when the client cannot serve settings at all.
   if (!hasConfigurationCapability) markSettingsReady();
 
@@ -160,14 +177,18 @@ connection.onInitialized(async () => {
   if (hasConfigurationCapability) {
     connection.client
       .register(DidChangeConfigurationNotification.type, undefined)
-      .catch((error: unknown) => connection.console.warn(`m68k-lint: ${String(error)}`));
+      .catch((error: unknown) =>
+        connection.console.warn(`m68k-lint: ${String(error)}`),
+      );
   }
 
   // Subscribing without this throws: the notification only exists if the
   // client said it sends it, and plenty of non-VS Code clients do not.
   if (!hasWorkspaceFolderCapability) return;
   connection.workspace.onDidChangeWorkspaceFolders((event) => {
-    const removed = new Set(event.removed.map((folder) => URI.parse(folder.uri).fsPath));
+    const removed = new Set(
+      event.removed.map((folder) => URI.parse(folder.uri).fsPath),
+    );
     workspaceRoots = workspaceRoots.filter((root) => !removed.has(root));
     for (const folder of event.added) {
       const uri = URI.parse(folder.uri);
@@ -182,7 +203,9 @@ connection.onInitialized(async () => {
 async function refreshSettings(): Promise<void> {
   if (!hasConfigurationCapability) return;
   try {
-    const settings = (await connection.workspace.getConfiguration("m68kLint")) as Partial<Settings> | null;
+    const settings = (await connection.workspace.getConfiguration(
+      "m68kLint",
+    )) as Partial<Settings> | null;
     configs.updateSettings({ ...defaultSettings, ...(settings ?? {}) });
   } catch {
     configs.updateSettings(defaultSettings);
@@ -236,14 +259,24 @@ connection.onCodeAction(async (params: CodeActionParams) => {
   const requested = params.range;
   const selected = diagnostics.filter((diagnostic) => {
     const range = diagnosticRange(diagnostic, document);
-    return range.start.line <= requested.end.line && range.end.line >= requested.start.line;
+    return (
+      range.start.line <= requested.end.line &&
+      range.end.line >= requested.start.line
+    );
   });
-  if (!selected.length && !params.context.only?.includes(CodeActionKind.SourceFixAll)) return [];
+  if (
+    !selected.length &&
+    !params.context.only?.includes(CodeActionKind.SourceFixAll)
+  )
+    return [];
 
   const uri = URI.parse(document.uri);
   const { config } = await configs.resolve(uri.fsPath);
-  const root = config.projectSymbols === false ? undefined : rootFor(uri.fsPath);
-  const external = root ? await indexes.get(root, openDocumentText()) : undefined;
+  const root =
+    config.projectSymbols === false ? undefined : rootFor(uri.fsPath);
+  const external = root
+    ? await indexes.get(root, openDocumentText())
+    : undefined;
 
   const settings = configs.getSettings();
   const options: ActionOptions = {
@@ -252,9 +285,17 @@ connection.onCodeAction(async (params: CodeActionParams) => {
     lint: (text) => lintSource(text, config, undefined, external),
   };
 
-  const actions = codeActionsFor(document, document.getText(), diagnostics, selected, options);
+  const actions = codeActionsFor(
+    document,
+    document.getText(),
+    diagnostics,
+    selected,
+    options,
+  );
   const only = params.context.only;
-  return only ? actions.filter((action) => action.kind && only.includes(action.kind)) : actions;
+  return only
+    ? actions.filter((action) => action.kind && only.includes(action.kind))
+    : actions;
 });
 
 export { DIAGNOSTIC_SOURCE };

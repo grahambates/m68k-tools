@@ -28,7 +28,8 @@ export const foldAddressExpressionToLea: Rule = {
     id: "optimization/address-expression-to-lea",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Fold an address-register copy plus constant/index additions into LEA",
+    description:
+      "Fold an address-register copy plus constant/index additions into LEA",
     tags: ["asp68k", "address-register", "sequence", "lea"],
     docs: { source: "ASP68K" },
   },
@@ -49,7 +50,12 @@ export const foldAddressExpressionToLea: Rule = {
     const immediate = immediateExpressionOperand(second.line, 0);
     const secondDest = addressRegisterOperand(second.line, 1);
     const secondSize = instructionSize(second.line);
-    if (!immediate || !secondDest || !sameRegister(secondDest.register, dest.register)) return;
+    if (
+      !immediate ||
+      !secondDest ||
+      !sameRegister(secondDest.register, dest.register)
+    )
+      return;
     if (secondSize !== "w" && secondSize !== "l") return;
     const value = ctx.evaluate(immediate);
     if (!value.known || value.value < -32768 || value.value > 32767) return;
@@ -64,7 +70,12 @@ export const foldAddressExpressionToLea: Rule = {
     const indexRegister = dataIndex?.register ?? addressIndex?.register;
     const thirdDest = addressRegisterOperand(third.line, 1);
     const indexSize = instructionSize(third.line);
-    if (!indexRegister || !thirdDest || !sameRegister(thirdDest.register, dest.register)) return;
+    if (
+      !indexRegister ||
+      !thirdDest ||
+      !sameRegister(thirdDest.register, dest.register)
+    )
+      return;
     if (indexSize !== "w" && indexSize !== "l") return;
     // The index EA is computed before An is written back, but LEA's indexed
     // mode reads An as part of forming its own result -- using An as its own
@@ -78,7 +89,8 @@ export const foldAddressExpressionToLea: Rule = {
       category: this.meta.category,
       severity: this.meta.defaultSeverity,
       confidence: "certain",
-      message: "This address copy and two additions can be folded into one indexed LEA",
+      message:
+        "This address copy and two additions can be folded into one indexed LEA",
       loc: line.mnemonic!.loc,
       suggestion: {
         description: "Use one indexed LEA",
@@ -86,7 +98,10 @@ export const foldAddressExpressionToLea: Rule = {
         applicability: "safe",
       },
       notes: [],
-      data: { secondInstructionIndex: second.index, thirdInstructionIndex: third.index },
+      data: {
+        secondInstructionIndex: second.index,
+        thirdInstructionIndex: third.index,
+      },
     });
   },
 };

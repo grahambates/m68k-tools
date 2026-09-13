@@ -1,10 +1,10 @@
 import { IndexChangedNotification } from "@m68k-lsp/protocol";
 import * as lsp from "vscode-languageserver";
 import type { FileOperationFilter } from "vscode-languageserver-protocol/lib/common/protocol.fileOperations";
-import { Definition, Symbols } from "../symbols";
+import { type Definition, type Symbols } from "../symbols";
 
-import { Provider } from ".";
-import { Context } from "../context";
+import { type Provider } from ".";
+import { type Context } from "../context";
 import DocumentProcessor, { isProcessed } from "../DocumentProcessor";
 import { getAsmFilesInDir, isAsmExt, isDir } from "../files";
 import { isIndexExcluded } from "../workspace";

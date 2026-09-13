@@ -11,12 +11,15 @@ import { COLORS, highlightAsm } from "../cli/format.js";
  */
 const ESC = "\u001b";
 const OFF = `${ESC}[0m`;
-const as = (kind: keyof typeof COLORS, text: string) => `${ESC}[${COLORS[kind]}m${text}${OFF}`;
+const as = (kind: keyof typeof COLORS, text: string) =>
+  `${ESC}[${COLORS[kind]}m${text}${OFF}`;
 
-const paint = (text: string, color: boolean = true) => highlightAsm(text, color);
+const paint = (text: string, color: boolean = true) =>
+  highlightAsm(text, color);
 
 /** The line with every escape sequence removed, as the terminal renders its width. */
-const visible = (text: string) => text.replace(new RegExp(`${ESC}\\[\\d+m`, "g"), "");
+const visible = (text: string) =>
+  text.replace(new RegExp(`${ESC}\\[\\d+m`, "g"), "");
 
 describe("assembly highlighting", () => {
   test("colour is off unless asked for", () => {
@@ -41,7 +44,9 @@ describe("assembly highlighting", () => {
   });
 
   test("splits the mnemonic from its size qualifier", () => {
-    expect(paint("\tmove.l\td0,d1")).toContain(`${as("mnemonic", "move")}${as("size", ".l")}`);
+    expect(paint("\tmove.l\td0,d1")).toContain(
+      `${as("mnemonic", "move")}${as("size", ".l")}`,
+    );
   });
 
   test("a mnemonic with no size is left whole", () => {
@@ -65,7 +70,9 @@ describe("assembly highlighting", () => {
   // The names carrying the meaning stay the most readable thing on the line.
   test("symbols and labels are left uncoloured", () => {
     expect(paint("\tlea\tSCREEN_BW(a3),a3")).toContain("SCREEN_BW");
-    expect(paint("\tlea\tSCREEN_BW(a3),a3")).not.toContain(as("mnemonic", "SCREEN_BW"));
+    expect(paint("\tlea\tSCREEN_BW(a3),a3")).not.toContain(
+      as("mnemonic", "SCREEN_BW"),
+    );
     expect(paint("start:")).toBe("start:");
   });
 
@@ -108,7 +115,9 @@ describe("assembly highlighting", () => {
     });
 
     test("a branch size is a size", () => {
-      expect(paint("\tbsr.s\tmy_sub")).toContain(`${as("mnemonic", "bsr")}${as("size", ".s")}`);
+      expect(paint("\tbsr.s\tmy_sub")).toContain(
+        `${as("mnemonic", "bsr")}${as("size", ".s")}`,
+      );
     });
 
     test("postincrement punctuation inside an operand", () => {
@@ -129,7 +138,9 @@ describe("assembly highlighting", () => {
     });
 
     test("a banner comment in column zero is dimmed whole", () => {
-      expect(paint("* a banner comment")).toBe(as("comment", "* a banner comment"));
+      expect(paint("* a banner comment")).toBe(
+        as("comment", "* a banner comment"),
+      );
     });
 
     test("a semicolon inside a string does not start a comment", () => {

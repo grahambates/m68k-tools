@@ -1,5 +1,5 @@
 import { parseLine } from "./line-parser.js";
-import { ParsedFile, ParsedLine, ParseError } from "./types.js";
+import { type ParsedFile, type ParsedLine, type ParseError } from "./types.js";
 
 /**
  * Parse an entire source file (multiple lines)

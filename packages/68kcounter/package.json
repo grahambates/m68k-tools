@@ -13,8 +13,8 @@
     "win-uae"
   ],
   "scripts": {
-    "test": "vitest run",
-    "lint": "eslint .",
+    "test": "vitest run --config ../../vitest.package.config.mts",
+    "lint": "pnpm --dir ../.. exec eslint packages/68kcounter",
     "build": "tsdown",
     "clean": "tsc --build --clean"
   },
@@ -31,13 +31,9 @@
   },
   "devDependencies": {
     "@types/node": "22.18.0",
-    "eslint": "9.39.5",
-    "husky": "^6.0.0",
-    "prettier": "3.9.6",
     "typescript": "5.9.3",
     "vitest": "5.0.0",
-    "tsdown": "0.23.0",
-    "typescript-eslint": "8.70.0"
+    "tsdown": "0.23.0"
   },
   "dependencies": {
     "@types/yargs": "^17.0.24",
@@ -52,7 +48,8 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "images"
   ],
   "types": "dist/index.d.ts"
 }

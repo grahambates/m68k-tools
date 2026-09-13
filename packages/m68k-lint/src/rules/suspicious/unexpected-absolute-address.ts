@@ -38,7 +38,10 @@ function isPureNumericExpression(expr: ExpressionNode): boolean {
     case "unary-op":
       return isPureNumericExpression(expr.operand);
     case "binary-op":
-      return isPureNumericExpression(expr.left) && isPureNumericExpression(expr.right);
+      return (
+        isPureNumericExpression(expr.left) &&
+        isPureNumericExpression(expr.right)
+      );
     default:
       return false;
   }
@@ -54,7 +57,8 @@ export const unexpectedAbsoluteAddress: Rule = {
     category: "suspicious",
     defaultSeverity: "warning",
     platforms: ["amiga", "atari"],
-    description: "Flag unusual numeric absolute source addresses that may be missing an immediate '#' prefix",
+    description:
+      "Flag unusual numeric absolute source addresses that may be missing an immediate '#' prefix",
     tags: ["amiga", "atari", "absolute-address", "likely-typo", "immediate"],
     docs: {
       note: "Heuristic for the common 68k typo where an intended immediate constant is written without '#'. Expected absolute regions are kept as platform metadata rather than hard-coded into the rule.",
@@ -68,7 +72,9 @@ export const unexpectedAbsoluteAddress: Rule = {
     // for the whole file rather than second-guessing individual operands.
     if (
       ctx.file.lines.some(
-        (line) => line.mnemonic?.type === "directive" && line.mnemonic.directive.toLowerCase() === "org",
+        (line) =>
+          line.mnemonic?.type === "directive" &&
+          line.mnemonic.directive.toLowerCase() === "org",
       )
     )
       return;

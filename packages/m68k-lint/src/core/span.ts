@@ -24,7 +24,10 @@ export interface SourceSpan {
  * convention predates this function and is kept, but it is now read once, here,
  * so every diagnostic carries the answer whether or not anything measures it.
  */
-export function computeSourceSpan(diagnostic: Diagnostic, file: ParsedFile): SourceSpan | undefined {
+export function computeSourceSpan(
+  diagnostic: Diagnostic,
+  file: ParsedFile,
+): SourceSpan | undefined {
   const located = diagnostic.loc.line;
   let start =
     located !== undefined && located >= 1 && located <= file.lines.length
@@ -36,7 +39,8 @@ export function computeSourceSpan(diagnostic: Diagnostic, file: ParsedFile): Sou
   for (const [key, value] of Object.entries(diagnostic.data ?? {})) {
     if (typeof value !== "number" || !Number.isInteger(value)) continue;
     if (key === "sourceStartIndex") start = Math.min(start, value);
-    else if (key === "sourceEndIndex" || key.endsWith("InstructionIndex")) end = Math.max(end, value);
+    else if (key === "sourceEndIndex" || key.endsWith("InstructionIndex"))
+      end = Math.max(end, value);
   }
   return { startLine: start + 1, endLine: end + 1 };
 }

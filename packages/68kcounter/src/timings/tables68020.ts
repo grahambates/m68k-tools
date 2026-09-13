@@ -1,12 +1,12 @@
-import { Timing } from ".";
+import { type Timing } from ".";
 import {
-  AddressingMode,
+  type AddressingMode,
   AddressingModes as O,
   addressingModeGroups as OG,
-  Mnemonic,
+  type Mnemonic,
   Mnemonics as M,
   mnemonicGroups,
-  Qualifier,
+  type Qualifier,
   Qualifiers,
 } from "../syntax";
 
@@ -37,12 +37,7 @@ export type Timing2 = [cache: Timing, worst: Timing];
 
 /** Which effective-address table to fold into an EA operand's base timing. */
 export type EaKind =
-  | "fetch"
-  | "calc"
-  | "jump"
-  | "fetchImm"
-  | "fetchImmL"
-  | "calcImm";
+  "fetch" | "calc" | "jump" | "fetchImm" | "fetchImmL" | "calcImm";
 
 /**
  * A 68020 base-timing row:
@@ -64,7 +59,7 @@ export type Timing2Row = [
   EaKind?,
   // Optional per-n multiplier (e.g. MOVEM: cost per register transferred),
   // applied by instructionTimings using the register-list count.
-  Timing?
+  Timing?,
 ];
 
 const { B, W, L } = Qualifiers;

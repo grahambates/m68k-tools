@@ -55,9 +55,15 @@ export class TestClient {
     for (;;) {
       const headerEnd = this.#buffer.indexOf("\r\n\r\n");
       if (headerEnd < 0) return;
-      const length = Number(/Content-Length: (\d+)/.exec(this.#buffer.subarray(0, headerEnd).toString())?.[1]);
+      const length = Number(
+        /Content-Length: (\d+)/.exec(
+          this.#buffer.subarray(0, headerEnd).toString(),
+        )?.[1],
+      );
       if (this.#buffer.length < headerEnd + 4 + length) return;
-      const message = JSON.parse(this.#buffer.subarray(headerEnd + 4, headerEnd + 4 + length).toString());
+      const message = JSON.parse(
+        this.#buffer.subarray(headerEnd + 4, headerEnd + 4 + length).toString(),
+      );
       this.#buffer = this.#buffer.subarray(headerEnd + 4 + length);
       this.#dispatch(message);
     }
@@ -69,22 +75,29 @@ export class TestClient {
     // would otherwise resolve against the server's own request.
     if (message.method === "client/registerCapability") {
       const reply = () => this.#send({ id: message.id, result: null });
-      if (this.options.registerDelayMs) setTimeout(reply, this.options.registerDelayMs);
+      if (this.options.registerDelayMs)
+        setTimeout(reply, this.options.registerDelayMs);
       else reply();
       return;
     }
     if (message.method === "workspace/configuration") {
-      this.#send({ id: message.id, result: message.params.items.map(() => this.options.settings) });
+      this.#send({
+        id: message.id,
+        result: message.params.items.map(() => this.options.settings),
+      });
       return;
     }
     for (let i = this.#waiters.length - 1; i >= 0; i--) {
-      if (this.#waiters[i].match(message)) this.#waiters.splice(i, 1)[0].resolve(message);
+      if (this.#waiters[i].match(message))
+        this.#waiters.splice(i, 1)[0].resolve(message);
     }
   }
 
   #send(message) {
     const body = JSON.stringify({ jsonrpc: "2.0", ...message });
-    this.#child.stdin.write(`Content-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`);
+    this.#child.stdin.write(
+      `Content-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`,
+    );
   }
 
   notify(method, params) {
@@ -93,7 +106,10 @@ export class TestClient {
 
   wait(match, label, timeoutMs = 20000) {
     return new Promise((resolvePromise, reject) => {
-      const timer = setTimeout(() => reject(new Error(`timed out waiting for ${label}`)), timeoutMs);
+      const timer = setTimeout(
+        () => reject(new Error(`timed out waiting for ${label}`)),
+        timeoutMs,
+      );
       this.#waiters.push({
         match,
         resolve: (message) => {
@@ -106,7 +122,10 @@ export class TestClient {
 
   request(method, params) {
     const id = this.#nextId++;
-    const response = this.wait((message) => message.id === id && !message.method, method);
+    const response = this.wait(
+      (message) => message.id === id && !message.method,
+      method,
+    );
     this.#send({ id, method, params });
     return response;
   }
@@ -120,7 +139,9 @@ export class TestClient {
       processId: process.pid,
       rootUri,
       capabilities: { workspace, textDocument: { codeAction: {} } },
-      workspaceFolders: this.options.workspaceFolders ? [{ uri: rootUri, name: "fixture" }] : null,
+      workspaceFolders: this.options.workspaceFolders
+        ? [{ uri: rootUri, name: "fixture" }]
+        : null,
     });
     this.notify("initialized", {});
     // The capabilities themselves, not the InitializeResult wrapping them:
@@ -134,11 +155,17 @@ export class TestClient {
     const uri = pathToFileURL(path).toString();
     const published = this.wait(
       (message) =>
-        message.method === "textDocument/publishDiagnostics" && message.params.uri === uri,
+        message.method === "textDocument/publishDiagnostics" &&
+        message.params.uri === uri,
       `diagnostics for ${path}`,
     );
     this.notify("textDocument/didOpen", {
-      textDocument: { uri, languageId, version: 1, text: readFileSync(path, "utf8") },
+      textDocument: {
+        uri,
+        languageId,
+        version: 1,
+        text: readFileSync(path, "utf8"),
+      },
     });
     return { uri, diagnostics: (await published).params.diagnostics };
   }

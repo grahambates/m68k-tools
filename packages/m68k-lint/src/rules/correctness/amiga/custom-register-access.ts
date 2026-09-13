@@ -4,7 +4,11 @@ import type { RuleContext } from "../../../core/context.js";
 import { canonicalMnemonic } from "../../../semantics/mnemonics.js";
 import { operand } from "../../../util/ast.js";
 import { evaluateConstant } from "../../../analysis/constants.js";
-import { getRegisterSemantics, normalizeRegister, type Register } from "../../../semantics/registers.js";
+import {
+  getRegisterSemantics,
+  normalizeRegister,
+  type Register,
+} from "../../../semantics/registers.js";
 import { semanticMnemonic } from "../../../semantics/mnemonics.js";
 
 type Access = "read" | "write" | "readwrite";
@@ -115,7 +119,9 @@ function generatedWriteOnly(): [number, string][] {
   // Audio: four channels of LCH/LCL/LEN/PER/VOL/DAT, 16 bytes apart.
   const audio = ["LCH", "LCL", "LEN", "PER", "VOL", "DAT"];
   for (let channel = 0; channel < 4; channel++) {
-    audio.forEach((field, i) => entries.push([0x0a0 + channel * 0x10 + i * 2, `AUD${channel}${field}`]));
+    audio.forEach((field, i) =>
+      entries.push([0x0a0 + channel * 0x10 + i * 2, `AUD${channel}${field}`]),
+    );
   }
   // Bitplane pointers BPL1PTH..BPL6PTL and data BPL1DAT..BPL6DAT.
   for (let plane = 1; plane <= 6; plane++) {
@@ -133,15 +139,22 @@ function generatedWriteOnly(): [number, string][] {
   }
   // COLOR00..COLOR31.
   for (let colour = 0; colour < 32; colour++) {
-    entries.push([0x180 + colour * 2, `COLOR${String(colour).padStart(2, "0")}`]);
+    entries.push([
+      0x180 + colour * 2,
+      `COLOR${String(colour).padStart(2, "0")}`,
+    ]);
   }
   return entries;
 }
 
 export const amigaCustomRegisters = new Map<number, CustomRegister>([
-  ...OCS_READ_ONLY.map(([offset, name]) => [0xdff000 + offset, { name, access: "read-only" as const }] as const),
+  ...OCS_READ_ONLY.map(
+    ([offset, name]) =>
+      [0xdff000 + offset, { name, access: "read-only" as const }] as const,
+  ),
   ...[...OCS_WRITE_ONLY, ...generatedWriteOnly()].map(
-    ([offset, name]) => [0xdff000 + offset, { name, access: "write-only" as const }] as const,
+    ([offset, name]) =>
+      [0xdff000 + offset, { name, access: "write-only" as const }] as const,
   ),
 ]);
 
@@ -152,11 +165,17 @@ const CUSTOM_BASE = 0xdff000;
 // external include files are not required merely to understand hardware EAs.
 const amigaCustomSymbolValues = new Map<string, number>();
 for (const [address, register] of amigaCustomRegisters) {
-  amigaCustomSymbolValues.set(register.name.toLowerCase(), address - CUSTOM_BASE);
+  amigaCustomSymbolValues.set(
+    register.name.toLowerCase(),
+    address - CUSTOM_BASE,
+  );
 }
 amigaCustomSymbolValues.set("custom", CUSTOM_BASE);
 
-function evaluateAmigaExpression(ctx: RuleContext, expr: ExpressionNode): number | undefined {
+function evaluateAmigaExpression(
+  ctx: RuleContext,
+  expr: ExpressionNode,
+): number | undefined {
   const result = evaluateConstant(expr, (name) => {
     const project = ctx.symbols.evaluate(name);
     if (project.known) return project.value;
@@ -165,7 +184,11 @@ function evaluateAmigaExpression(ctx: RuleContext, expr: ExpressionNode): number
   return result.known ? result.value : undefined;
 }
 
-function knownAddressRegisterBefore(ctx: RuleContext, lineIndex: number, register: Register): number | undefined {
+function knownAddressRegisterBefore(
+  ctx: RuleContext,
+  lineIndex: number,
+  register: Register,
+): number | undefined {
   const known = ctx.registers.knownConstantBefore(lineIndex, register);
   if (known !== undefined) return known;
 
@@ -237,10 +260,16 @@ function operandAccess(line: ParsedLine, index: number): Access | undefined {
   if (!mnemonic) return undefined;
 
   if (mnemonic === "move" || mnemonic === "movea")
-    return index === 0 ? "read" : mnemonic === "move" && index === 1 ? "write" : undefined;
+    return index === 0
+      ? "read"
+      : mnemonic === "move" && index === 1
+        ? "write"
+        : undefined;
   if (["cmp", "cmpa", "tst", "btst"].includes(mnemonic)) return "read";
-  if (["clr", "not", "neg", "negx", "nbcd", "tas"].includes(mnemonic)) return index === 0 ? "readwrite" : undefined;
-  if (["bchg", "bclr", "bset"].includes(mnemonic)) return index === 1 ? "readwrite" : undefined;
+  if (["clr", "not", "neg", "negx", "nbcd", "tas"].includes(mnemonic))
+    return index === 0 ? "readwrite" : undefined;
+  if (["bchg", "bclr", "bset"].includes(mnemonic))
+    return index === 1 ? "readwrite" : undefined;
   if (["add", "adda", "sub", "suba", "and", "or", "eor"].includes(mnemonic))
     return index === 0 ? "read" : index === 1 ? "readwrite" : undefined;
   return undefined;
@@ -273,7 +302,12 @@ export const amigaCustomRegisterAccess: Rule = {
       const access = operandAccess(line, index);
       if (!access || !violates(register.access, access)) continue;
 
-      const action = access === "read" ? "read" : access === "write" ? "write" : "read/modify/write";
+      const action =
+        access === "read"
+          ? "read"
+          : access === "write"
+            ? "write"
+            : "read/modify/write";
       ctx.report({
         ruleId: this.meta.id,
         category: this.meta.category,

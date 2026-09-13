@@ -14,7 +14,12 @@ export const jsrJmpDispatch: Rule = {
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "jsr")) return;
     const next = ctx.nextInstruction(index);
-    if (!next || !isInstruction(next.line, "jmp") || hasLabelBetween(ctx, index, next.index)) return;
+    if (
+      !next ||
+      !isInstruction(next.line, "jmp") ||
+      hasLabelBetween(ctx, index, next.index)
+    )
+      return;
     const sub = sourceOperand(ctx, line, 0);
     const cont = sourceOperand(ctx, next.line, 0);
     if (!sub || !cont) return;
@@ -23,7 +28,8 @@ export const jsrJmpDispatch: Rule = {
       category: this.meta.category,
       severity: this.meta.defaultSeverity,
       confidence: "high",
-      message: "JSR followed by JMP can pre-push the continuation and jump directly to the subroutine",
+      message:
+        "JSR followed by JMP can pre-push the continuation and jump directly to the subroutine",
       loc: line.mnemonic!.loc,
       suggestion: {
         description: `Push ${cont} as the return address, then JMP directly to ${sub}`,

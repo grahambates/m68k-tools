@@ -1,5 +1,5 @@
 import LabelColonFormatter, {
-  LabelColonOptions,
+  type LabelColonOptions,
 } from "../../src/formatter/formatters/LabelColonFormatter";
 import { applyEdits, formatContext } from "../helpers";
 

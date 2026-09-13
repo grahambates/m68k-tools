@@ -4,10 +4,10 @@ import { LineTotals } from "./LineTotals";
 import { Bytes } from "./Bytes";
 import "./Line.css";
 import {
-  Line as LineType,
-  Timing as TimingType,
+  type Line as LineType,
+  type Timing as TimingType,
   Mnemonics,
-  Totals,
+  type Totals,
 } from "68kcounter";
 
 export interface LineProps {

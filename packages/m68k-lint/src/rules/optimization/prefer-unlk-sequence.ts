@@ -1,6 +1,11 @@
 import type { ParsedLine } from "m68k-parser";
 import type { Rule } from "../../core/rule.js";
-import { addressRegisterOperand, instructionSize, isInstruction, operand } from "../../util/ast.js";
+import {
+  addressRegisterOperand,
+  instructionSize,
+  isInstruction,
+  operand,
+} from "../../util/ast.js";
 
 function isSpRegister(line: ParsedLine, operandIndex: number): boolean {
   const op = addressRegisterOperand(line, operandIndex);
@@ -31,10 +36,19 @@ export const preferUnlkSequence: Rule = {
     if (!frame || !isSpRegister(line, 1)) return;
 
     const next = ctx.nextInstruction(index);
-    if (!next || !isInstruction(next.line, "movea") || instructionSize(next.line) !== "l") return;
+    if (
+      !next ||
+      !isInstruction(next.line, "movea") ||
+      instructionSize(next.line) !== "l"
+    )
+      return;
     if (!isSpPostinc(next.line, 0)) return;
     const restored = addressRegisterOperand(next.line, 1);
-    if (!restored || restored.register.toLowerCase() !== frame.register.toLowerCase()) return;
+    if (
+      !restored ||
+      restored.register.toLowerCase() !== frame.register.toLowerCase()
+    )
+      return;
 
     const manual = !!next.line.label;
     ctx.report({

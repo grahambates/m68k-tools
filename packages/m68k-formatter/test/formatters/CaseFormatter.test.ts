@@ -1,5 +1,5 @@
 import CaseFormatter, {
-  CaseOptions,
+  type CaseOptions,
 } from "../../src/formatter/formatters/CaseFormatter";
 import { applyEdits, formatContext } from "../helpers";
 

@@ -1,6 +1,1 @@
-out
-dist
-node_modules
-.vscode-test/
-*.vsix
-.DS_Store
+# Common build and dependency ignores are inherited from the repository root.

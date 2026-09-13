@@ -1,5 +1,5 @@
 import type { BlockStructure, ParsedFile } from "m68k-parser";
-import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver";
+import { type Diagnostic, DiagnosticSeverity } from "vscode-languageserver";
 import { URI } from "vscode-uri";
 import which from "which";
 import * as cp from "child_process";
@@ -7,7 +7,7 @@ import { tmpdir } from "os";
 import { basename, dirname, join, relative } from "path";
 import { minimatch } from "minimatch";
 
-import { Context } from "./context";
+import { type Context } from "./context";
 import { getEntryPointsFor } from "./files";
 import { instructionDocs } from "./docs";
 import { locationAsRange } from "./geometry";

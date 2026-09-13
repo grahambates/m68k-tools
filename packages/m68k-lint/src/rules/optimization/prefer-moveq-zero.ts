@@ -1,5 +1,9 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 
 export const preferMoveqZero: Rule = {
   meta: {
@@ -16,7 +20,12 @@ export const preferMoveqZero: Rule = {
     if (!dest) return;
 
     // ASP68K marks this as a win on 68000/68010, but not 68030+.
-    if (!ctx.config.processors.every((cpu) => cpu === "mc68000" || cpu === "mc68010")) return;
+    if (
+      !ctx.config.processors.every(
+        (cpu) => cpu === "mc68000" || cpu === "mc68010",
+      )
+    )
+      return;
 
     ctx.report({
       ruleId: this.meta.id,

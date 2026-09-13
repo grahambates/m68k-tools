@@ -4,53 +4,106 @@ import { dirname, relative, resolve, sep } from "node:path";
 import { parseFile } from "m68k-parser";
 import { lintParsedFile } from "../core/lint.js";
 import { applyFixes, type FixResult } from "../core/fix.js";
-import type { Applicability, Diagnostic, OptimizationAssessment, RuleCategory, Severity } from "../core/diagnostic.js";
-import { buildProjectSymbols, type ProjectSymbols } from "../analysis/project-symbols.js";
+import type {
+  Applicability,
+  Diagnostic,
+  OptimizationAssessment,
+  RuleCategory,
+  Severity,
+} from "../core/diagnostic.js";
+import {
+  buildProjectSymbols,
+  type ProjectSymbols,
+} from "../analysis/project-symbols.js";
 import type { ExternalSymbols } from "../analysis/symbols.js";
 import { defaultConfig, type LintConfig } from "../core/config.js";
 import { formatDiagnostic, formatImpactSummary, paint } from "./format.js";
 import { runInit } from "./init.js";
 import { runRuleImpactAudit } from "../audit/rule-impact.js";
 import { defaultAssemblyExtensions, discoverFiles } from "./file-discovery.js";
-import { findProjectConfig, loadProjectConfig, type ProjectConfig } from "./project-config.js";
-import { categories, parseArgs, severityRank, usage, type CliOptions } from "./args.js";
-import { ruleImpactAuditFailed, ruleImpactAuditLines, ruleListLines } from "./reports.js";
+import {
+  findProjectConfig,
+  loadProjectConfig,
+  type ProjectConfig,
+} from "./project-config.js";
+import {
+  categories,
+  parseArgs,
+  severityRank,
+  usage,
+  type CliOptions,
+} from "./args.js";
+import {
+  ruleImpactAuditFailed,
+  ruleImpactAuditLines,
+  ruleListLines,
+} from "./reports.js";
 import { runInteractiveFixes } from "./review.js";
 import { VERSION } from "./version.js";
 
-export function buildConfig(options: CliOptions, project: ProjectConfig = {}): LintConfig {
+export function buildConfig(
+  options: CliOptions,
+  project: ProjectConfig = {},
+): LintConfig {
   const config: LintConfig = {
     ...defaultConfig,
-    processors: options.processors ?? project.processors ?? defaultConfig.processors,
+    processors:
+      options.processors ?? project.processors ?? defaultConfig.processors,
     platform: options.platform ?? project.platform ?? defaultConfig.platform,
     goal: options.goal ?? project.goal ?? defaultConfig.goal,
-    measureImpact: options.measureImpact ?? project.measureImpact ?? defaultConfig.measureImpact,
-    inlineConfig: options.inlineConfig ?? project.inlineConfig ?? defaultConfig.inlineConfig,
-    presets: [...new Set([...(defaultConfig.presets ?? []), ...(project.presets ?? []), ...options.presets])],
+    measureImpact:
+      options.measureImpact ??
+      project.measureImpact ??
+      defaultConfig.measureImpact,
+    inlineConfig:
+      options.inlineConfig ??
+      project.inlineConfig ??
+      defaultConfig.inlineConfig,
+    presets: [
+      ...new Set([
+        ...(defaultConfig.presets ?? []),
+        ...(project.presets ?? []),
+        ...options.presets,
+      ]),
+    ],
     rules: { ...(project.rules ?? {}), ...options.rules },
   };
 
-  const categoryConfig: Partial<Record<RuleCategory, boolean>> = { ...(project.categories ?? {}) };
+  const categoryConfig: Partial<Record<RuleCategory, boolean>> = {
+    ...(project.categories ?? {}),
+  };
   if (options.onlyCategories) {
-    for (const category of categories) categoryConfig[category] = options.onlyCategories.includes(category);
+    for (const category of categories)
+      categoryConfig[category] = options.onlyCategories.includes(category);
   }
-  for (const category of options.disabledCategories) categoryConfig[category] = false;
+  for (const category of options.disabledCategories)
+    categoryConfig[category] = false;
   if (Object.keys(categoryConfig).length) config.categories = categoryConfig;
   if (!Object.keys(config.rules ?? {}).length) config.rules = undefined;
   return config;
 }
 
-export function failsThreshold(diagnostics: readonly Diagnostic[], threshold: Severity): boolean {
+export function failsThreshold(
+  diagnostics: readonly Diagnostic[],
+  threshold: Severity,
+): boolean {
   const rank = severityRank[threshold];
   return diagnostics.some((d) => severityRank[d.severity] <= rank);
 }
 
-async function lintOne(path: string, options: CliOptions, config: LintConfig, external?: ExternalSymbols) {
+async function lintOne(
+  path: string,
+  options: CliOptions,
+  config: LintConfig,
+  external?: ExternalSymbols,
+) {
   let source = await readFile(path, "utf8");
   let fixed: FixResult | undefined;
 
   if (options.fix) {
-    const accept: Applicability[] = options.fixConditional ? ["safe", "conditional"] : ["safe"];
+    const accept: Applicability[] = options.fixConditional
+      ? ["safe", "conditional"]
+      : ["safe"];
     // A trade-off is only a decision once you have said which resource matters.
     // Under an explicit goal the filtering has already dropped the ones that
     // hurt it, so what is left genuinely helps the axis asked for; under
@@ -62,12 +115,17 @@ async function lintOne(path: string, options: CliOptions, config: LintConfig, ex
     // A rewrite that will not parse is worse than no rewrite, so a round whose
     // result reads worse than what went in is rolled back rather than written.
     const errorCount = parseFile(source).errors.length;
-    fixed = applyFixes(source, (text) => lintParsedFile(parseFile(text), text, config, undefined, external), {
-      accept,
-      acceptAssessments,
-      annotate: options.fixAnnotate,
-      verify: (candidate) => parseFile(candidate).errors.length <= errorCount,
-    });
+    fixed = applyFixes(
+      source,
+      (text) =>
+        lintParsedFile(parseFile(text), text, config, undefined, external),
+      {
+        accept,
+        acceptAssessments,
+        annotate: options.fixAnnotate,
+        verify: (candidate) => parseFile(candidate).errors.length <= errorCount,
+      },
+    );
     if (fixed.applied.length && !options.fixDryRun) {
       await writeFile(path, fixed.output, "utf8");
       source = fixed.output;
@@ -77,7 +135,13 @@ async function lintOne(path: string, options: CliOptions, config: LintConfig, ex
   }
 
   const parsed = parseFile(source);
-  const diagnostics = lintParsedFile(parsed, source, config, undefined, external);
+  const diagnostics = lintParsedFile(
+    parsed,
+    source,
+    config,
+    undefined,
+    external,
+  );
   return { path, source, parseErrors: parsed.errors, diagnostics, fixed };
 }
 
@@ -91,7 +155,9 @@ async function lintOne(path: string, options: CliOptions, config: LintConfig, ex
 export function inputRoot(inputs: readonly string[], fallback: string): string {
   const directories = inputs.map((input) => {
     const absolute = resolve(fallback, input);
-    return statSync(absolute, { throwIfNoEntry: false })?.isDirectory() ? absolute : dirname(absolute);
+    return statSync(absolute, { throwIfNoEntry: false })?.isDirectory()
+      ? absolute
+      : dirname(absolute);
   });
   if (directories.length === 0) return fallback;
 
@@ -123,7 +189,9 @@ async function buildProjectIndex(
   try {
     paths = await discoverFiles([root], {
       cwd: root,
-      extensions: [...new Set([...extensions, ...defaultAssemblyExtensions, ".inc", ".h"])],
+      extensions: [
+        ...new Set([...extensions, ...defaultAssemblyExtensions, ".inc", ".h"]),
+      ],
       ignorePatterns: [...ignorePatterns],
     });
   } catch {
@@ -133,7 +201,10 @@ async function buildProjectIndex(
   const files = [];
   for (const path of paths) {
     try {
-      files.push({ path: relative(root, path) || path, source: await readFile(path, "utf8") });
+      files.push({
+        path: relative(root, path) || path,
+        source: await readFile(path, "utf8"),
+      });
     } catch {
       // Unreadable files simply contribute nothing to the index.
     }
@@ -141,7 +212,8 @@ async function buildProjectIndex(
   return buildProjectSymbols(files);
 }
 
-type LintResult = Awaited<ReturnType<typeof lintOne>> | { path: string; ioError: string };
+type LintResult =
+  Awaited<ReturnType<typeof lintOne>> | { path: string; ioError: string };
 
 /**
  * Print the findings, then what changed on disk, then what could not be read.
@@ -151,11 +223,21 @@ type LintResult = Awaited<ReturnType<typeof lintOne>> | { path: string; ioError:
  * only a newline at the boundary between two, so the last finding of one ran
  * straight into the first of the next.
  */
-function reportPretty(results: readonly LintResult[], options: CliOptions): void {
+function reportPretty(
+  results: readonly LintResult[],
+  options: CliOptions,
+): void {
   const blocks = results
-    .filter((result): result is Extract<LintResult, { source: string }> => "source" in result)
+    .filter(
+      (result): result is Extract<LintResult, { source: string }> =>
+        "source" in result,
+    )
     .map((result) =>
-      result.diagnostics.map((d) => formatDiagnostic(result.path, result.source, d, options.color)).join("\n\n\n"),
+      result.diagnostics
+        .map((d) =>
+          formatDiagnostic(result.path, result.source, d, options.color),
+        )
+        .join("\n\n\n"),
     )
     .filter((block) => block.length > 0);
   if (blocks.length) console.log(blocks.join("\n\n\n"));
@@ -166,7 +248,8 @@ function reportPretty(results: readonly LintResult[], options: CliOptions): void
     if (!fixed || fixed.applied.length === 0) continue;
     const verb = options.fixDryRun ? "would fix" : "fixed";
     const counts = new Map<string, number>();
-    for (const one of fixed.applied) counts.set(one.ruleId, (counts.get(one.ruleId) ?? 0) + 1);
+    for (const one of fixed.applied)
+      counts.set(one.ruleId, (counts.get(one.ruleId) ?? 0) + 1);
     const detail = [...counts]
       .sort()
       .map(([ruleId, n]) => `${ruleId}${n > 1 ? ` x${n}` : ""}`)
@@ -205,24 +288,38 @@ function reportPretty(results: readonly LintResult[], options: CliOptions): void
     );
   }
 
-  const diagnostics = results.flatMap((r) => ("diagnostics" in r ? r.diagnostics : []));
+  const diagnostics = results.flatMap((r) =>
+    "diagnostics" in r ? r.diagnostics : [],
+  );
   if (options.impactSummary) {
     const summary = formatImpactSummary(diagnostics);
     if (summary) console.log(`\n${summary}`);
   }
 
-  const counts = { error: 0, warning: 0, suggestion: 0, info: 0 } satisfies Record<Severity, number>;
+  const counts = {
+    error: 0,
+    warning: 0,
+    suggestion: 0,
+    info: 0,
+  } satisfies Record<Severity, number>;
   for (const d of diagnostics) counts[d.severity]++;
   const total = diagnostics.length;
   if (!total) return;
 
   const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? "s" : ""}`;
   const groups: string[] = [];
-  if (counts.error) groups.push(paint(options.color, 31, plural(counts.error, "error")));
-  if (counts.warning) groups.push(paint(options.color, 33, plural(counts.warning, "warning")));
-  if (counts.suggestion) groups.push(paint(options.color, 36, plural(counts.suggestion, "suggestion")));
+  if (counts.error)
+    groups.push(paint(options.color, 31, plural(counts.error, "error")));
+  if (counts.warning)
+    groups.push(paint(options.color, 33, plural(counts.warning, "warning")));
+  if (counts.suggestion)
+    groups.push(
+      paint(options.color, 36, plural(counts.suggestion, "suggestion")),
+    );
   if (counts.info) groups.push(paint(options.color, 90, `${counts.info} info`));
-  console.log(`\n\n${total} issue${total === 1 ? "" : "s"}: ${groups.join(", ")}`);
+  console.log(
+    `\n\n${total} issue${total === 1 ? "" : "s"}: ${groups.join(", ")}`,
+  );
 }
 
 /**
@@ -237,7 +334,9 @@ export async function run(argv: string[]): Promise<number> {
   try {
     parsedArgs = parseArgs(argv);
   } catch (error) {
-    console.error(`m68k-lint: ${error instanceof Error ? error.message : String(error)}\n`);
+    console.error(
+      `m68k-lint: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
     console.error(usage());
     return 2;
   }
@@ -259,7 +358,8 @@ export async function run(argv: string[]): Promise<number> {
   }
   if (options.auditRuleImpact) {
     const audit = runRuleImpactAudit();
-    if (options.format === "json") console.log(JSON.stringify({ version: VERSION, audit }, null, 2));
+    if (options.format === "json")
+      console.log(JSON.stringify({ version: VERSION, audit }, null, 2));
     else console.log(ruleImpactAuditLines(audit).join("\n"));
     return ruleImpactAuditFailed(audit) ? 1 : 0;
   }
@@ -276,23 +376,33 @@ export async function run(argv: string[]): Promise<number> {
       : options.useConfig
         ? await findProjectConfig()
         : undefined;
-    if (projectConfigPath) projectConfig = await loadProjectConfig(projectConfigPath);
+    if (projectConfigPath)
+      projectConfig = await loadProjectConfig(projectConfigPath);
   } catch (error) {
-    console.error(`m68k-lint: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(
+      `m68k-lint: ${error instanceof Error ? error.message : String(error)}`,
+    );
     return 2;
   }
 
-  const projectRoot = projectConfigPath ? dirname(projectConfigPath) : process.cwd();
+  const projectRoot = projectConfigPath
+    ? dirname(projectConfigPath)
+    : process.cwd();
   const rawInputs = options.files.length
     ? options.files.map((input) => resolve(process.cwd(), input))
-    : (projectConfig.files ?? projectConfig.include ?? []).map((input) => resolve(projectRoot, input));
+    : (projectConfig.files ?? projectConfig.include ?? []).map((input) =>
+        resolve(projectRoot, input),
+      );
   if (!rawInputs.length) {
-    console.error("m68k-lint: no input files, directories, or globs (and config has no include patterns)\n");
+    console.error(
+      "m68k-lint: no input files, directories, or globs (and config has no include patterns)\n",
+    );
     console.error(usage());
     return 2;
   }
 
-  const extensions = options.extensions ?? projectConfig.extensions ?? defaultAssemblyExtensions;
+  const extensions =
+    options.extensions ?? projectConfig.extensions ?? defaultAssemblyExtensions;
   const ignorePatterns = [
     "node_modules/**",
     ".git/**",
@@ -302,20 +412,32 @@ export async function run(argv: string[]): Promise<number> {
 
   let inputFiles: string[];
   try {
-    inputFiles = await discoverFiles(rawInputs, { cwd: projectRoot, extensions, ignorePatterns });
+    inputFiles = await discoverFiles(rawInputs, {
+      cwd: projectRoot,
+      extensions,
+      ignorePatterns,
+    });
   } catch (error) {
-    console.error(`m68k-lint: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(
+      `m68k-lint: ${error instanceof Error ? error.message : String(error)}`,
+    );
     return 2;
   }
   if (!inputFiles.length) {
-    console.error(`m68k-lint: no matching assembly files (extensions: ${extensions.join(", ")})`);
+    console.error(
+      `m68k-lint: no matching assembly files (extensions: ${extensions.join(", ")})`,
+    );
     return 2;
   }
 
   const config = buildConfig(options, projectConfig);
 
   if (options.fixInteractive) {
-    return runInteractiveFixes(inputFiles, config, { color: options.color, projectConfigPath, projectRoot });
+    return runInteractiveFixes(inputFiles, config, {
+      color: options.color,
+      projectConfigPath,
+      projectRoot,
+    });
   }
 
   const projectIndex =
@@ -335,8 +457,12 @@ export async function run(argv: string[]): Promise<number> {
     } catch (error) {
       ioFailed = true;
       const message = error instanceof Error ? error.message : String(error);
-      if (options.format === "json") results.push({ path: file, ioError: message });
-      else console.error(`${file}: ${paint(options.color, 31, "error")}: ${message}`);
+      if (options.format === "json")
+        results.push({ path: file, ioError: message });
+      else
+        console.error(
+          `${file}: ${paint(options.color, 31, "error")}: ${message}`,
+        );
     }
   }
 
@@ -359,7 +485,9 @@ export async function run(argv: string[]): Promise<number> {
     reportPretty(results, options);
   }
 
-  const allDiagnostics = results.flatMap((r) => ("diagnostics" in r ? r.diagnostics : []));
+  const allDiagnostics = results.flatMap((r) =>
+    "diagnostics" in r ? r.diagnostics : [],
+  );
   // A file this parser cannot read is not a lint failure. The assembler decides
   // what is valid syntax, and its grammar is the narrower one.
   return ioFailed || failsThreshold(allDiagnostics, options.failOn) ? 1 : 0;

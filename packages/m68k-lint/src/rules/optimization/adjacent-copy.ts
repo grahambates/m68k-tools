@@ -1,6 +1,10 @@
 import type { Rule } from "../../core/rule.js";
 import { instructionSize, isInstruction, operand } from "../../util/ast.js";
-import { isAdjacentLocation, locationOf, type Location } from "./adjacent-location.js";
+import {
+  isAdjacentLocation,
+  locationOf,
+  type Location,
+} from "./adjacent-location.js";
 import { hasLabelBetween, sourceOperand } from "./helpers.js";
 
 /**
@@ -13,7 +17,12 @@ function sameRegister(a: Location, b: Location): boolean {
   return "register" in a && "register" in b && a.register === b.register;
 }
 
-function copyPair(fromSize: "b" | "w", toSize: "w" | "l", delta: number, id: string): Rule {
+function copyPair(
+  fromSize: "b" | "w",
+  toSize: "w" | "l",
+  delta: number,
+  id: string,
+): Rule {
   return {
     meta: {
       id,
@@ -26,7 +35,8 @@ function copyPair(fromSize: "b" | "w", toSize: "w" | "l", delta: number, id: str
       },
     },
     checkLine(ctx, line, index) {
-      if (!isInstruction(line, "move") || instructionSize(line) !== fromSize) return;
+      if (!isInstruction(line, "move") || instructionSize(line) !== fromSize)
+        return;
       const srcA = locationOf(ctx, operand(line, 0));
       const dstA = locationOf(ctx, operand(line, 1));
       if (!srcA || !dstA || sameRegister(srcA, dstA)) return;
@@ -43,7 +53,11 @@ function copyPair(fromSize: "b" | "w", toSize: "w" | "l", delta: number, id: str
       const srcB = locationOf(ctx, operand(next.line, 0));
       const dstB = locationOf(ctx, operand(next.line, 1));
       if (!srcB || !dstB) return;
-      if (!isAdjacentLocation(srcA, srcB, delta) || !isAdjacentLocation(dstA, dstB, delta)) return;
+      if (
+        !isAdjacentLocation(srcA, srcB, delta) ||
+        !isAdjacentLocation(dstA, dstB, delta)
+      )
+        return;
 
       const src = sourceOperand(ctx, line, 0);
       const dst = sourceOperand(ctx, line, 1);
@@ -73,5 +87,15 @@ function copyPair(fromSize: "b" | "w", toSize: "w" | "l", delta: number, id: str
   };
 }
 
-export const combineAdjacentCopyBytes = copyPair("b", "w", 1, "optimization/combine-adjacent-copy-bytes");
-export const combineAdjacentCopyWords = copyPair("w", "l", 2, "optimization/combine-adjacent-copy-words");
+export const combineAdjacentCopyBytes = copyPair(
+  "b",
+  "w",
+  1,
+  "optimization/combine-adjacent-copy-bytes",
+);
+export const combineAdjacentCopyWords = copyPair(
+  "w",
+  "l",
+  2,
+  "optimization/combine-adjacent-copy-words",
+);

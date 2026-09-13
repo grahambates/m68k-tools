@@ -20,24 +20,64 @@ const DEAD_WRITE = "suspicious/dead-register-write";
 
 describe("macro invocations are opaque", () => {
   test("a register the macro goes on to read is not a dead write", () => {
-    expect(lint(["start:", "\tmove.w #100,d0", "\tSetColor d0", "\tmove.w #200,d0", "\trts"], DEAD_WRITE)).toEqual([]);
+    expect(
+      lint(
+        [
+          "start:",
+          "\tmove.w #100,d0",
+          "\tSetColor d0",
+          "\tmove.w #200,d0",
+          "\trts",
+        ],
+        DEAD_WRITE,
+      ),
+    ).toEqual([]);
   });
 
   test("a macro taking no operands still clobbers what we cannot see", () => {
-    expect(lint(["start:", "\tmove.w #100,d0", "\tWaitVBlank", "\tmove.w #200,d0", "\trts"], DEAD_WRITE)).toEqual([]);
+    expect(
+      lint(
+        [
+          "start:",
+          "\tmove.w #100,d0",
+          "\tWaitVBlank",
+          "\tmove.w #200,d0",
+          "\trts",
+        ],
+        DEAD_WRITE,
+      ),
+    ).toEqual([]);
   });
 
   test("the same code without the macro is still reported", () => {
-    expect(lint(["start:", "\tmove.w #100,d0", "\tmove.w #200,d0", "\trts"], DEAD_WRITE)).toEqual([`${DEAD_WRITE}@2`]);
+    expect(
+      lint(
+        ["start:", "\tmove.w #100,d0", "\tmove.w #200,d0", "\trts"],
+        DEAD_WRITE,
+      ),
+    ).toEqual([`${DEAD_WRITE}@2`]);
   });
 
   // The replacement spans the matched run, so fusing across a call would have
   // deleted it.
   test("a sequence rule does not fuse instructions across a macro call", () => {
-    const split = ["\tmove.l a6,-(sp)", "\tTraceEntry", "\tmove.l sp,a6", "\tadd.w #-32,sp", "\tmoveq #0,d0", "\trts"];
+    const split = [
+      "\tmove.l a6,-(sp)",
+      "\tTraceEntry",
+      "\tmove.l sp,a6",
+      "\tadd.w #-32,sp",
+      "\tmoveq #0,d0",
+      "\trts",
+    ];
     expect(lint(split)).not.toContain("optimization/prefer-link-sequence@1");
 
-    const joined = ["\tmove.l a6,-(sp)", "\tmove.l sp,a6", "\tadd.w #-32,sp", "\tmoveq #0,d0", "\trts"];
+    const joined = [
+      "\tmove.l a6,-(sp)",
+      "\tmove.l sp,a6",
+      "\tadd.w #-32,sp",
+      "\tmoveq #0,d0",
+      "\trts",
+    ];
     expect(lint(joined)).toContain("optimization/prefer-link-sequence@1");
   });
 });
@@ -45,17 +85,37 @@ describe("macro invocations are opaque", () => {
 describe("macro definitions emit no code where they are written", () => {
   test("flow does not run through a definition body", () => {
     // The body never executes here, so d0 is overwritten without being read.
-    const source = ["\tmove.w #100,d0", "MyMacro macro", "\tmove.w d0,d3", "\tendm", "\tmove.w #200,d0", "\trts"];
+    const source = [
+      "\tmove.w #100,d0",
+      "MyMacro macro",
+      "\tmove.w d0,d3",
+      "\tendm",
+      "\tmove.w #200,d0",
+      "\trts",
+    ];
     expect(lint(source, DEAD_WRITE)).toEqual([`${DEAD_WRITE}@1`]);
   });
 
   test("a write the body itself overwrites is dead in every expansion", () => {
-    const source = ["MyMacro macro", "\tmove.w #1,d0", "\tmove.w #2,d0", "\trts", "\tendm", "start:", "\tnop"];
+    const source = [
+      "MyMacro macro",
+      "\tmove.w #1,d0",
+      "\tmove.w #2,d0",
+      "\trts",
+      "\tendm",
+      "start:",
+      "\tnop",
+    ];
     expect(lint(source, DEAD_WRITE)).toEqual([`${DEAD_WRITE}@2`]);
   });
 
   test("a body's final write is not dead, since the caller may read it", () => {
-    expect(lint(["MyMacro macro", "\tmove.w #1,d0", "\tendm", "start:", "\tnop"], DEAD_WRITE)).toEqual([]);
+    expect(
+      lint(
+        ["MyMacro macro", "\tmove.w #1,d0", "\tendm", "start:", "\tnop"],
+        DEAD_WRITE,
+      ),
+    ).toEqual([]);
   });
 });
 
@@ -88,9 +148,12 @@ describe("REPT assembles its body more than once", () => {
   });
 
   test("a write dead within a single iteration is still reported", () => {
-    expect(lint(["\trept 4", "\tmove.w #1,d0", "\tmove.w #2,d0", "\tendr", "\trts"], DEAD_WRITE)).toEqual([
-      `${DEAD_WRITE}@2`,
-    ]);
+    expect(
+      lint(
+        ["\trept 4", "\tmove.w #1,d0", "\tmove.w #2,d0", "\tendr", "\trts"],
+        DEAD_WRITE,
+      ),
+    ).toEqual([`${DEAD_WRITE}@2`]);
   });
 });
 
@@ -112,12 +175,27 @@ describe("conditional assembly arms are alternatives", () => {
   });
 
   test("with no ELSE the code below is reachable without the arm", () => {
-    const source = ["\tmoveq\t#1,d7", "\tifne\tX", "\tmoveq\t#2,d7", "\tendc", "\tmove.w\td7,d0", "\trts"];
+    const source = [
+      "\tmoveq\t#1,d7",
+      "\tifne\tX",
+      "\tmoveq\t#2,d7",
+      "\tendc",
+      "\tmove.w\td7,d0",
+      "\trts",
+    ];
     expect(lint(source, DEAD_WRITE)).toEqual([]);
   });
 
   test("ENDIF closes a block as well as ENDC", () => {
-    const source = ["\tifne\tX", "\tmoveq\t#1,d7", "\telse", "\tmoveq\t#2,d7", "\tendif", "\tmove.w\td7,d0", "\trts"];
+    const source = [
+      "\tifne\tX",
+      "\tmoveq\t#1,d7",
+      "\telse",
+      "\tmoveq\t#2,d7",
+      "\tendif",
+      "\tmove.w\td7,d0",
+      "\trts",
+    ];
     expect(lint(source, DEAD_WRITE)).toEqual([]);
   });
 

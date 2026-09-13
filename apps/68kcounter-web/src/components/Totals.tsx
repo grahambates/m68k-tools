@@ -1,5 +1,5 @@
-import { FC } from "react";
-import { Totals as TotalsType } from "68kcounter";
+import { type FC } from "react";
+import { type Totals as TotalsType } from "68kcounter";
 import { Timing } from "./Timing";
 import { Bytes } from "./Bytes";
 import "./Totals.css";

@@ -1,9 +1,9 @@
 import {
-  BinaryOperatorNode,
-  ImmediateNode,
+  type BinaryOperatorNode,
+  type ImmediateNode,
   parseLine,
-  UnaryOperatorNode,
-  ValueNode,
+  type UnaryOperatorNode,
+  type ValueNode,
 } from "../index.js";
 import { formatError } from "../parse-error.js";
 

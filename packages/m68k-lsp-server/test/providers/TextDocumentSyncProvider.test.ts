@@ -1,6 +1,6 @@
-import * as lsp from "vscode-languageserver";
+import type * as lsp from "vscode-languageserver";
 
-import { Context } from "../../src/context";
+import { type Context } from "../../src/context";
 import TextDocumentSyncProvider from "../../src/providers/TextDocumentSyncProvider";
 import { createTestContext, range } from "../helpers";
 import type {

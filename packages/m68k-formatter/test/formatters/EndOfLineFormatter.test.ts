@@ -1,5 +1,5 @@
 import EndOfLineFormatter, {
-  EOL,
+  type EOL,
 } from "../../src/formatter/formatters/EndOfLineFormatter";
 import { applyEdits, formatContext } from "../helpers";
 

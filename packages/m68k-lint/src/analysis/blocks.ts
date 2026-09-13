@@ -1,4 +1,10 @@
-import { blockRole, parseBlocks, type Block, type ParsedFile, type ParsedLine } from "m68k-parser";
+import {
+  blockRole,
+  parseBlocks,
+  type Block,
+  type ParsedFile,
+  type ParsedLine,
+} from "m68k-parser";
 
 export { directiveName } from "m68k-parser";
 
@@ -41,7 +47,10 @@ export interface ConditionalBlock {
 }
 
 /** Whether a line sits inside a macro definition rather than at file level. */
-export function isInMacroDefinition(blocks: BlockStructure, index: number): boolean {
+export function isInMacroDefinition(
+  blocks: BlockStructure,
+  index: number,
+): boolean {
   return (blocks.region[index] ?? 0) !== 0;
 }
 
@@ -71,7 +80,8 @@ export function scanBlocks(file: ParsedFile): BlockStructure {
    */
   const visit = (blocks: Block[], current: number): void => {
     for (const block of blocks) {
-      const inner = block.kind === "macro" && current === 0 ? ++nextRegion : current;
+      const inner =
+        block.kind === "macro" && current === 0 ? ++nextRegion : current;
       if (inner !== 0) {
         const last = block.end ?? file.lines.length - 1;
         for (let i = block.start; i <= last; i++) region[i] = inner;
@@ -82,7 +92,11 @@ export function scanBlocks(file: ParsedFile): BlockStructure {
         if (block.kind === "repeat") {
           repeats.push({ start: block.start, end: block.end });
         } else if (block.kind === "conditional") {
-          conditionals.push({ start: block.start, alternatives: block.alternatives, end: block.end });
+          conditionals.push({
+            start: block.start,
+            alternatives: block.alternatives,
+            end: block.end,
+          });
         }
       }
 

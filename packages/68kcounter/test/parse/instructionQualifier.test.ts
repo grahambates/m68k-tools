@@ -1,4 +1,4 @@
-import { InstructionStatement } from "../../src/parse/nodes";
+import { type InstructionStatement } from "../../src/parse/nodes";
 import { AddressingModes, Mnemonics, Qualifiers } from "../../src/syntax";
 import instructionQualifier from "../../src/parse/instructionQualifier";
 

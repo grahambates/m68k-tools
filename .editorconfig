@@ -8,7 +8,6 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 2
 
-# Assembly is column-sensitive: a mnemonic in column 0 parses as a label.
 [*.{s,asm,i,inc}]
 indent_style = tab
 trim_trailing_whitespace = false

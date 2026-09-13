@@ -1,5 +1,10 @@
 import type { RegisterUsage } from "@m68k-lsp/protocol";
-import { Disposable, Webview, WebviewView, WebviewViewProvider } from "vscode";
+import {
+  type Disposable,
+  type Webview,
+  type WebviewView,
+  type WebviewViewProvider,
+} from "vscode";
 
 export type RegisterViewUsage = Omit<RegisterUsage, "references">;
 

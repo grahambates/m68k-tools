@@ -8,18 +8,25 @@ import type { Diagnostic, Severity } from "../core/diagnostic.js";
 
 function options(argv: string[] = []): CliOptions {
   const parsed = parseArgs(argv, false);
-  if (parsed === "help" || parsed === "version") throw new Error("expected options");
+  if (parsed === "help" || parsed === "version")
+    throw new Error("expected options");
   return parsed;
 }
 
 const at = (severity: Severity) => ({ severity }) as Diagnostic;
 
 /** Runs the CLI with output captured, so the exit code can be asserted quietly. */
-async function capture(argv: string[]): Promise<{ code: number; out: string; err: string }> {
+async function capture(
+  argv: string[],
+): Promise<{ code: number; out: string; err: string }> {
   const out: string[] = [];
   const err: string[] = [];
-  const log = vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => void out.push(args.join(" ")));
-  const error = vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => void err.push(args.join(" ")));
+  const log = vi
+    .spyOn(console, "log")
+    .mockImplementation((...args: unknown[]) => void out.push(args.join(" ")));
+  const error = vi
+    .spyOn(console, "error")
+    .mockImplementation((...args: unknown[]) => void err.push(args.join(" ")));
   try {
     return { code: await run(argv), out: out.join("\n"), err: err.join("\n") };
   } finally {
@@ -29,7 +36,9 @@ async function capture(argv: string[]): Promise<{ code: number; out: string; err
 }
 
 /** A file with one finding a default run reports: MOVE.L #1 fits MOVEQ. */
-async function fixture(contents = "start:\n\tmove.l\t#1,d0\n\trts\n"): Promise<{ dir: string; file: string }> {
+async function fixture(
+  contents = "start:\n\tmove.l\t#1,d0\n\trts\n",
+): Promise<{ dir: string; file: string }> {
   const dir = await mkdtemp(join(tmpdir(), "m68k-lint-run-"));
   const file = join(dir, "game.s");
   await writeFile(file, contents, "utf8");
@@ -48,11 +57,14 @@ describe("buildConfig", () => {
   });
 
   test("prefers the command line over the config file", () => {
-    const config = buildConfig(options(["--platform", "amiga", "--goal", "size"]), {
-      platform: "atari",
-      goal: "speed",
-      processors: ["mc68020"],
-    });
+    const config = buildConfig(
+      options(["--platform", "amiga", "--goal", "size"]),
+      {
+        platform: "atari",
+        goal: "speed",
+        processors: ["mc68020"],
+      },
+    );
     expect(config.platform).toBe("amiga");
     expect(config.goal).toBe("size");
     // Not overridden on the command line, so the config file still decides.
@@ -63,7 +75,10 @@ describe("buildConfig", () => {
     const config = buildConfig(options(["--rule", "suspicious/nop=error"]), {
       rules: { "suspicious/nop": "off", "suspicious/self-move": "warning" },
     });
-    expect(config.rules).toEqual({ "suspicious/nop": "error", "suspicious/self-move": "warning" });
+    expect(config.rules).toEqual({
+      "suspicious/nop": "error",
+      "suspicious/self-move": "warning",
+    });
   });
 
   test("--only enables the named categories and disables the rest", () => {
@@ -78,13 +93,24 @@ describe("buildConfig", () => {
   });
 
   test("--disable-category wins over --only for the same category", () => {
-    const config = buildConfig(options(["--only", "correctness,style", "--disable-category", "style"]));
-    expect(config.categories).toMatchObject({ correctness: true, style: false });
+    const config = buildConfig(
+      options(["--only", "correctness,style", "--disable-category", "style"]),
+    );
+    expect(config.categories).toMatchObject({
+      correctness: true,
+      style: false,
+    });
   });
 
   test("presets accumulate over the defaults without duplicating", () => {
-    const config = buildConfig(options(["--preset", "style", "--preset", "recommended"]), { presets: ["style"] });
-    expect([...(config.presets ?? [])].sort()).toEqual(["recommended", "style"]);
+    const config = buildConfig(
+      options(["--preset", "style", "--preset", "recommended"]),
+      { presets: ["style"] },
+    );
+    expect([...(config.presets ?? [])].sort()).toEqual([
+      "recommended",
+      "style",
+    ]);
   });
 });
 
@@ -96,15 +122,21 @@ describe("failsThreshold", () => {
   });
 
   test("passes when every finding is less severe than the threshold", () => {
-    expect(failsThreshold([at("warning"), at("suggestion")], "error")).toBe(false);
+    expect(failsThreshold([at("warning"), at("suggestion")], "error")).toBe(
+      false,
+    );
     expect(failsThreshold([], "info")).toBe(false);
   });
 });
 
 describe("inputRoot", () => {
   test("is the common ancestor of the inputs, not the working directory", () => {
-    expect(inputRoot(["/game/src/a.s", "/game/src/b.s"], "/elsewhere")).toBe("/game/src");
-    expect(inputRoot(["/game/src/a.s", "/game/data/b.s"], "/elsewhere")).toBe("/game");
+    expect(inputRoot(["/game/src/a.s", "/game/src/b.s"], "/elsewhere")).toBe(
+      "/game/src",
+    );
+    expect(inputRoot(["/game/src/a.s", "/game/data/b.s"], "/elsewhere")).toBe(
+      "/game",
+    );
   });
 
   test("falls back when there are no inputs or no shared prefix", () => {
@@ -122,21 +154,47 @@ describe("run", () => {
 
   test("exits 1 when --fail-on is lowered to the finding's severity", async () => {
     const { file } = await fixture();
-    expect((await capture(["--no-config", "--no-color", "--fail-on", "suggestion", file])).code).toBe(1);
+    expect(
+      (
+        await capture([
+          "--no-config",
+          "--no-color",
+          "--fail-on",
+          "suggestion",
+          file,
+        ])
+      ).code,
+    ).toBe(1);
   });
 
   test("exits 0 for a file with nothing to report", async () => {
     const { file } = await fixture("start:\n\tmoveq\t#1,d0\n\trts\n");
-    const { code, out } = await capture(["--no-config", "--no-color", "--fail-on", "suggestion", file]);
+    const { code, out } = await capture([
+      "--no-config",
+      "--no-color",
+      "--fail-on",
+      "suggestion",
+      file,
+    ]);
     expect(out).toBe("");
     expect(code).toBe(0);
   });
 
   test("--format json emits the package version and one entry per file", async () => {
     const { file } = await fixture();
-    const { code, out } = await capture(["--no-config", "--format", "json", file]);
-    const report = JSON.parse(out) as { version: string; files: { path: string; diagnostics: unknown[] }[] };
-    const manifest = JSON.parse(await readFile("package.json", "utf8")) as { version: string };
+    const { code, out } = await capture([
+      "--no-config",
+      "--format",
+      "json",
+      file,
+    ]);
+    const report = JSON.parse(out) as {
+      version: string;
+      files: { path: string; diagnostics: unknown[] }[];
+    };
+    const manifest = JSON.parse(await readFile("package.json", "utf8")) as {
+      version: string;
+    };
     expect(report.version).toBe(manifest.version);
     expect(report.files).toHaveLength(1);
     expect(report.files[0].path).toBe(file);
@@ -165,7 +223,9 @@ describe("run", () => {
   });
 
   test("--version prints the version alone", async () => {
-    const manifest = JSON.parse(await readFile("package.json", "utf8")) as { version: string };
+    const manifest = JSON.parse(await readFile("package.json", "utf8")) as {
+      version: string;
+    };
     const { code, out } = await capture(["--version"]);
     expect(out).toBe(manifest.version);
     expect(code).toBe(0);
@@ -188,9 +248,16 @@ describe("run", () => {
     expect(empty.code).toBe(2);
     expect(empty.err).toContain("no input files");
 
-    const conflicting = await capture(["--no-config", "--config", "m68k-lint.json", "x.s"]);
+    const conflicting = await capture([
+      "--no-config",
+      "--config",
+      "m68k-lint.json",
+      "x.s",
+    ]);
     expect(conflicting.code).toBe(2);
-    expect(conflicting.err).toContain("--config cannot be combined with --no-config");
+    expect(conflicting.err).toContain(
+      "--config cannot be combined with --no-config",
+    );
   });
 
   test("exits 2 when a directory matches no assembly files", async () => {

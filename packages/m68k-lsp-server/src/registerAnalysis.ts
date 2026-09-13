@@ -11,9 +11,9 @@ import type {
 import * as lsp from "vscode-languageserver";
 import { parseLine } from "m68k-parser";
 import type { Block, ParsedLine } from "m68k-parser";
-import { AstNode, childNodes, walkFile, walkLine } from "./ast";
-import { Context } from "./context";
-import { isProcessed, MacroDefinition } from "./DocumentProcessor";
+import { type AstNode, childNodes, walkFile, walkLine } from "./ast";
+import { type Context } from "./context";
+import { isProcessed, type MacroDefinition } from "./DocumentProcessor";
 import { getUnitFilesByDistance } from "./files";
 import { locationAsRange } from "./geometry";
 

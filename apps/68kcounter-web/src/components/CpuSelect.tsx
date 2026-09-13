@@ -1,5 +1,5 @@
-import { FC } from "react";
-import { CacheModel, CacheModels, Cpu, Cpus } from "68kcounter";
+import { type FC } from "react";
+import { type CacheModel, CacheModels, type Cpu, Cpus } from "68kcounter";
 import "./CpuSelect.css";
 
 export interface CpuSelectProps {

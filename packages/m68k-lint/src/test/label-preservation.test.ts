@@ -12,13 +12,18 @@ import { lintSource } from "../core/lint.js";
  * collapses, so there is no rewrite to offer.
  */
 const suggestion = (lines: string[], ruleId: string) =>
-  lintSource(lines.join("\n"), { processors: ["mc68000"] }).find((d) => d.ruleId === ruleId)?.suggestion;
+  lintSource(lines.join("\n"), { processors: ["mc68000"] }).find(
+    (d) => d.ruleId === ruleId,
+  )?.suggestion;
 
 describe("a label on the first line is kept", () => {
   test("through a one-for-one replacement", () => {
-    expect(suggestion(["start:\tmove.l\t#100,d0", "\trts"], "optimization/prefer-moveq")?.replacement).toBe(
-      "start:\tmoveq\t#100,d0",
-    );
+    expect(
+      suggestion(
+        ["start:\tmove.l\t#100,d0", "\trts"],
+        "optimization/prefer-moveq",
+      )?.replacement,
+    ).toBe("start:\tmoveq\t#100,d0");
   });
 
   test("on the first line of a multi-line replacement", () => {
@@ -32,7 +37,12 @@ describe("a label on the first line is kept", () => {
   // Deleting the instruction still leaves somewhere to branch to.
   test("when the instruction is deleted outright", () => {
     const found = suggestion(
-      ["start:\tmove.w\t#100,d0", "\tmove.w\t#200,d0", "\tmove.l\td0,(a0)", "\trts"],
+      [
+        "start:\tmove.w\t#100,d0",
+        "\tmove.w\t#200,d0",
+        "\tmove.l\td0,(a0)",
+        "\trts",
+      ],
       "suspicious/dead-register-write",
     );
     expect(found?.replacement).toBe("start:");
@@ -40,9 +50,12 @@ describe("a label on the first line is kept", () => {
   });
 
   test("a label on its own line above is outside the match and untouched", () => {
-    expect(suggestion(["start:", "\tmove.l\t#100,d0", "\trts"], "optimization/prefer-moveq")?.replacement).toBe(
-      "\tmoveq\t#100,d0",
-    );
+    expect(
+      suggestion(
+        ["start:", "\tmove.l\t#100,d0", "\trts"],
+        "optimization/prefer-moveq",
+      )?.replacement,
+    ).toBe("\tmoveq\t#100,d0");
   });
 });
 
@@ -51,7 +64,13 @@ describe("a label further into the match leaves nothing to offer", () => {
 
   test("sharing a line with an interior instruction", () => {
     const found = suggestion(
-      ["\tmove.l\ta6,-(sp)", ".ret:\tmove.l\tsp,a6", "\tadd.w\t#-32,sp", "\tmoveq\t#0,d0", "\trts"],
+      [
+        "\tmove.l\ta6,-(sp)",
+        ".ret:\tmove.l\tsp,a6",
+        "\tadd.w\t#-32,sp",
+        "\tmoveq\t#0,d0",
+        "\trts",
+      ],
       LINK,
     );
     expect(found?.replacement).toBeUndefined();
@@ -60,7 +79,14 @@ describe("a label further into the match leaves nothing to offer", () => {
 
   test("on its own line inside the match", () => {
     const found = suggestion(
-      ["\tmove.l\ta6,-(sp)", ".ret:", "\tmove.l\tsp,a6", "\tadd.w\t#-32,sp", "\tmoveq\t#0,d0", "\trts"],
+      [
+        "\tmove.l\ta6,-(sp)",
+        ".ret:",
+        "\tmove.l\tsp,a6",
+        "\tadd.w\t#-32,sp",
+        "\tmoveq\t#0,d0",
+        "\trts",
+      ],
       LINK,
     );
     expect(found?.replacement).toBeUndefined();
@@ -69,7 +95,13 @@ describe("a label further into the match leaves nothing to offer", () => {
 
   test("the same match without a label is still offered", () => {
     const found = suggestion(
-      ["\tmove.l\ta6,-(sp)", "\tmove.l\tsp,a6", "\tadd.w\t#-32,sp", "\tmoveq\t#0,d0", "\trts"],
+      [
+        "\tmove.l\ta6,-(sp)",
+        "\tmove.l\tsp,a6",
+        "\tadd.w\t#-32,sp",
+        "\tmoveq\t#0,d0",
+        "\trts",
+      ],
       LINK,
     );
     expect(found?.replacement).toBe("\tlink\ta6,#-32");
@@ -84,15 +116,21 @@ describe("a label further into the match leaves nothing to offer", () => {
  */
 describe("trailing comments survive the replacement", () => {
   test("carried across a one-for-one rewrite, spacing and all", () => {
-    expect(suggestion(["\tmove.l\t#100,d0\t; how many faces", "\trts"], "optimization/prefer-moveq")?.replacement).toBe(
-      "\tmoveq\t#100,d0\t; how many faces",
-    );
+    expect(
+      suggestion(
+        ["\tmove.l\t#100,d0\t; how many faces", "\trts"],
+        "optimization/prefer-moveq",
+      )?.replacement,
+    ).toBe("\tmoveq\t#100,d0\t; how many faces");
   });
 
   test("alongside a label on the same line", () => {
-    expect(suggestion(["start:\tmove.l\t#100,d0\t; go", "\trts"], "optimization/prefer-moveq")?.replacement).toBe(
-      "start:\tmoveq\t#100,d0\t; go",
-    );
+    expect(
+      suggestion(
+        ["start:\tmove.l\t#100,d0\t; go", "\trts"],
+        "optimization/prefer-moveq",
+      )?.replacement,
+    ).toBe("start:\tmoveq\t#100,d0\t; go");
   });
 
   // The comment describes the operation, which is now the whole block.
@@ -108,30 +146,54 @@ describe("trailing comments survive the replacement", () => {
   // rather than dropped, indented to match the code they came from.
   test("kept when the lines they sat on collapse", () => {
     const found = suggestion(
-      ["\tmove.l\ta6,-(sp)\t; save frame", "\tmove.l\tsp,a6", "\tadd.w\t#-32,sp\t; locals", "\tmoveq\t#0,d0", "\trts"],
+      [
+        "\tmove.l\ta6,-(sp)\t; save frame",
+        "\tmove.l\tsp,a6",
+        "\tadd.w\t#-32,sp\t; locals",
+        "\tmoveq\t#0,d0",
+        "\trts",
+      ],
       "optimization/prefer-link-sequence",
     );
-    expect(found?.replacement).toBe("\tlink\ta6,#-32\t; save frame\n\t; locals");
+    expect(found?.replacement).toBe(
+      "\tlink\ta6,#-32\t; save frame\n\t; locals",
+    );
   });
 
   test("kept when the instruction is deleted, with its label", () => {
     const found = suggestion(
-      ["start:\tmove.w\t#100,d0\t; unused", "\tmove.w\t#200,d0", "\tmove.l\td0,(a0)", "\trts"],
+      [
+        "start:\tmove.w\t#100,d0\t; unused",
+        "\tmove.w\t#200,d0",
+        "\tmove.l\td0,(a0)",
+        "\trts",
+      ],
       "suspicious/dead-register-write",
     );
     expect(found?.replacement).toBe("start:\t; unused");
   });
 
   test("an uncommented line gains nothing", () => {
-    expect(suggestion(["\tmove.l\t#100,d0", "\trts"], "optimization/prefer-moveq")?.replacement).toBe(
-      "\tmoveq\t#100,d0",
-    );
+    expect(
+      suggestion(["\tmove.l\t#100,d0", "\trts"], "optimization/prefer-moveq")
+        ?.replacement,
+    ).toBe("\tmoveq\t#100,d0");
   });
 
   test("comments do not disturb the measurement", () => {
-    const commented = suggestion(["\tmove.l\t#100,d0\t; note", "\trts"], "optimization/prefer-moveq");
-    const plain = suggestion(["\tmove.l\t#100,d0", "\trts"], "optimization/prefer-moveq");
-    expect(commented?.impact?.sizeBytes?.delta).toBe(plain?.impact?.sizeBytes?.delta);
-    expect(commented?.impact?.execution?.cpuCycles?.delta).toBe(plain?.impact?.execution?.cpuCycles?.delta);
+    const commented = suggestion(
+      ["\tmove.l\t#100,d0\t; note", "\trts"],
+      "optimization/prefer-moveq",
+    );
+    const plain = suggestion(
+      ["\tmove.l\t#100,d0", "\trts"],
+      "optimization/prefer-moveq",
+    );
+    expect(commented?.impact?.sizeBytes?.delta).toBe(
+      plain?.impact?.sizeBytes?.delta,
+    );
+    expect(commented?.impact?.execution?.cpuCycles?.delta).toBe(
+      plain?.impact?.execution?.cpuCycles?.delta,
+    );
   });
 });

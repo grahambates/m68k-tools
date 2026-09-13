@@ -2,7 +2,11 @@ import type { Rule } from "../../core/rule.js";
 import { isInstruction } from "../../util/ast.js";
 import { hasLabelBetween, sourceOperand } from "./helpers.js";
 
-function makeTailCallRule(id: string, from: "jsr" | "bsr", to: "jmp" | "bra"): Rule {
+function makeTailCallRule(
+  id: string,
+  from: "jsr" | "bsr",
+  to: "jmp" | "bra",
+): Rule {
   return {
     meta: {
       id,
@@ -60,5 +64,13 @@ function makeTailCallRule(id: string, from: "jsr" | "bsr", to: "jmp" | "bra"): R
   };
 }
 
-export const jsrRtsTailCall = makeTailCallRule("optimization/jsr-rts-tail-call", "jsr", "jmp");
-export const bsrRtsTailCall = makeTailCallRule("optimization/bsr-rts-tail-call", "bsr", "bra");
+export const jsrRtsTailCall = makeTailCallRule(
+  "optimization/jsr-rts-tail-call",
+  "jsr",
+  "jmp",
+);
+export const bsrRtsTailCall = makeTailCallRule(
+  "optimization/bsr-rts-tail-call",
+  "bsr",
+  "bra",
+);

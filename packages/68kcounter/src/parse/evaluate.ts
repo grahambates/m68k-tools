@@ -10,7 +10,7 @@ export type Variables = Record<string, number>;
  */
 export default function evaluate(
   expression: string,
-  vars: Variables = {}
+  vars: Variables = {},
 ): number | undefined {
   // Transform ASM expression syntax to be compatible with `expression-eval`
   const preprocessed = expression

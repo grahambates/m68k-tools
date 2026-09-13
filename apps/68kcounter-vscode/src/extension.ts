@@ -1,4 +1,4 @@
-import { commands, ExtensionContext, languages } from "vscode";
+import { commands, type ExtensionContext, languages } from "vscode";
 import AnnotateCodeLensProvider from "./AnnotateCodeLensProvider";
 import AnnotateController from "./AnnotateController";
 import countSelection from "./countSelection";
@@ -9,14 +9,14 @@ export function activate(context: ExtensionContext): void {
 
   context.subscriptions.push(
     commands.registerCommand("68kcounter.toggleCounts", () =>
-      controller.toggle()
-    )
+      controller.toggle(),
+    ),
   );
 
   context.subscriptions.push(
     commands.registerCommand("68kcounter.countSelection", () =>
-      countSelection()
-    )
+      countSelection(),
+    ),
   );
 
   const codeLensProvider = new AnnotateCodeLensProvider();
@@ -24,8 +24,8 @@ export function activate(context: ExtensionContext): void {
   context.subscriptions.push(
     languages.registerCodeLensProvider(
       { pattern: "**/*.{s,i,asm}" },
-      codeLensProvider
-    )
+      codeLensProvider,
+    ),
   );
 }
 

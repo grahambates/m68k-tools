@@ -1,4 +1,4 @@
-import { Location } from "./types.js";
+import { type Location } from "./types.js";
 
 export type ParseErrorCode =
   | "UNEXPECTED_TOKEN"

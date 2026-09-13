@@ -41,7 +41,11 @@ describe("reviewing findings one at a time", () => {
   });
 
   test("skipping everything leaves the file alone", async () => {
-    const { output, applied, suppressed } = await review(SOURCE, ["skip", "skip", "skip"]);
+    const { output, applied, suppressed } = await review(SOURCE, [
+      "skip",
+      "skip",
+      "skip",
+    ]);
     expect(output).toBe(SOURCE);
     expect(applied).toEqual([]);
     expect(suppressed).toEqual([]);
@@ -55,7 +59,11 @@ describe("reviewing findings one at a time", () => {
   });
 
   test("several decisions at once land in the right places", async () => {
-    const { output, applied, suppressed } = await review(SOURCE, ["apply", "allow", "allow"]);
+    const { output, applied, suppressed } = await review(SOURCE, [
+      "apply",
+      "allow",
+      "allow",
+    ]);
     expect(output.split("\n")).toEqual([
       "start:",
       "\tmoveq\t#100,d0\t; count",
@@ -73,7 +81,9 @@ describe("reviewing findings one at a time", () => {
   // The whole point of a suppression comment is that it silences the finding.
   test("what it writes actually suppresses on the next run", async () => {
     const { output } = await review(SOURCE, ["skip", "allow", "allow"]);
-    const remaining = lintSource(output, { processors: ["mc68000"] }).map((d) => d.ruleId);
+    const remaining = lintSource(output, { processors: ["mc68000"] }).map(
+      (d) => d.ruleId,
+    );
     expect(remaining).toEqual(["optimization/prefer-moveq"]);
   });
 
@@ -81,13 +91,21 @@ describe("reviewing findings one at a time", () => {
   // the only distinction worth encoding: one writes a directive beside the
   // code, the other is reported back for the config.
   test("disabling a rule asks nothing further about it", async () => {
-    const { output, disabledRules, asked } = await review(SOURCE, ["disable", "allow"]);
+    const { output, disabledRules, asked } = await review(SOURCE, [
+      "disable",
+      "allow",
+    ]);
     expect(disabledRules).toEqual(["optimization/prefer-moveq"]);
     // The second PREFER-MOVEQ finding is never put to the reader.
-    expect(asked).toEqual(["optimization/prefer-moveq@2", "suspicious/partial-register-write@4"]);
+    expect(asked).toEqual([
+      "optimization/prefer-moveq@2",
+      "suspicious/partial-register-write@4",
+    ]);
     // And nothing is written into the file for it.
     expect(output).not.toContain("disable-next-line optimization/prefer-moveq");
-    expect(output).toContain("disable-next-line suspicious/partial-register-write");
+    expect(output).toContain(
+      "disable-next-line suspicious/partial-register-write",
+    );
   });
 
   test("quitting keeps the decisions already made", async () => {
@@ -103,11 +121,15 @@ describe("reviewing findings one at a time", () => {
     const source = "\tmove.w\td4,d7\n\tmove.l\td7,(a0)\n\trts";
     const { output, suppressed } = await review(source, ["allow"]);
     expect(suppressed).toHaveLength(1);
-    expect(output.split("\n")[0]).toContain("m68k-lint-disable-next-line suspicious/partial-register-write");
+    expect(output.split("\n")[0]).toContain(
+      "m68k-lint-disable-next-line suspicious/partial-register-write",
+    );
   });
 
   test("a directive is indented to match the code it guards", async () => {
-    const { output } = await review("        move.l  #100,d0\n        rts", ["allow"]);
+    const { output } = await review("        move.l  #100,d0\n        rts", [
+      "allow",
+    ]);
     expect(output.split("\n")[0]).toBe(
       "        ; m68k-lint-disable-next-line optimization/prefer-moveq -- allowed here",
     );
@@ -132,9 +154,16 @@ describe("accepting a whole rule at once", () => {
 
   test("asks once and applies the rest", async () => {
     const { output, applied, asked } = await review(MANY, ["apply-rule"]);
-    expect(asked).toEqual(["optimization/prefer-moveq@2", "suspicious/partial-register-write@5"]);
+    expect(asked).toEqual([
+      "optimization/prefer-moveq@2",
+      "suspicious/partial-register-write@5",
+    ]);
     expect(applied).toHaveLength(3);
-    expect(output.split("\n").slice(1, 4)).toEqual(["\tmoveq\t#100,d0", "\tmoveq\t#5,d1", "\tmoveq\t#7,d2"]);
+    expect(output.split("\n").slice(1, 4)).toEqual([
+      "\tmoveq\t#100,d0",
+      "\tmoveq\t#5,d1",
+      "\tmoveq\t#7,d2",
+    ]);
   });
 
   test("other rules are still put to the reader", async () => {
@@ -157,7 +186,9 @@ describe("accepting a whole rule at once", () => {
       "\trts",
     ].join("\n");
     const { asked, applied } = await review(source, ["apply-rule"]);
-    const link = asked.filter((a) => a.startsWith("optimization/prefer-link-sequence"));
+    const link = asked.filter((a) =>
+      a.startsWith("optimization/prefer-link-sequence"),
+    );
     expect(link).toHaveLength(2);
     expect(applied).toHaveLength(1);
   });
@@ -174,13 +205,24 @@ describe("accepting a whole rule at once", () => {
  * them different from `d`, which is a config entry and permanent.
  */
 describe("setting a rule aside for this run only", () => {
-  const MANY = ["start:", "\tmove.l\t#100,d0", "\tmove.l\t#5,d1", "\tmove.w\td4,d7", "\tmove.l\td7,(a0)", "\trts"].join(
-    "\n",
-  );
+  const MANY = [
+    "start:",
+    "\tmove.l\t#100,d0",
+    "\tmove.l\t#5,d1",
+    "\tmove.w\td4,d7",
+    "\tmove.l\td7,(a0)",
+    "\trts",
+  ].join("\n");
 
   test("stops asking without changing anything", async () => {
-    const { output, applied, suppressed, disabledRules, asked } = await review(MANY, ["skip-rule"]);
-    expect(asked).toEqual(["optimization/prefer-moveq@2", "suspicious/partial-register-write@4"]);
+    const { output, applied, suppressed, disabledRules, asked } = await review(
+      MANY,
+      ["skip-rule"],
+    );
+    expect(asked).toEqual([
+      "optimization/prefer-moveq@2",
+      "suspicious/partial-register-write@4",
+    ]);
     expect(output).toBe(MANY);
     expect(applied).toEqual([]);
     expect(suppressed).toEqual([]);

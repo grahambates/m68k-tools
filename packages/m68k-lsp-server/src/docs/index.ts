@@ -1,7 +1,7 @@
 import instructionsJson from "./instructions.json";
 import directivesJson from "./directives.json";
 import type { Size } from "m68k-parser";
-import { AddressingMode, RegisterName } from "../syntax";
+import { type AddressingMode, type RegisterName } from "../syntax";
 
 export type ConditionCode = "x" | "n" | "z" | "v" | "c";
 

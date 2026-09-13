@@ -1,11 +1,11 @@
-import { MarkupContent, MarkupKind } from "vscode-languageserver-types";
+import { type MarkupContent, MarkupKind } from "vscode-languageserver-types";
 import {
   addressingModeDocs,
-  AddressingModes,
+  type AddressingModes,
   isInstructionDoc,
-  MnemonicDoc,
+  type MnemonicDoc,
 } from "./docs";
-import { AddressingMode } from "./syntax";
+import { type AddressingMode } from "./syntax";
 
 export function formatDeclaration(definitionLine: string) {
   return definitionLine

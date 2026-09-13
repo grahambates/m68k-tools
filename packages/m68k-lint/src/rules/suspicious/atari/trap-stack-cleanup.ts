@@ -85,7 +85,8 @@ function releasedBytes(ctx: RuleContext, line: ParsedLine): number | undefined {
   if (mnemonic === "lea") {
     if (!isStackPointerOperand(line, 1)) return undefined;
     const source = operand(line, 0);
-    if (source?.type !== "address-register-indirect-displacement") return undefined;
+    if (source?.type !== "address-register-indirect-displacement")
+      return undefined;
     if (source.register.type !== "address-register") return undefined;
     const base = source.register.register.toLowerCase();
     if (base !== "a7" && base !== "sp") return undefined;
@@ -110,7 +111,8 @@ export const atariTrapStackCleanup: Rule = {
     category: "suspicious",
     defaultSeverity: "warning",
     platforms: ["atari"],
-    description: "Check that TOS trap parameters are removed from the stack by the caller",
+    description:
+      "Check that TOS trap parameters are removed from the stack by the caller",
     tags: ["atari", "tos", "stack", "calling-convention"],
     docs: {
       note: "GEMDOS/BIOS/XBIOS are caller-cleans-stack. Pushes are accumulated across calls and compared against the stack adjustment that follows, because cleanup is often deferred so that one adjustment covers several calls. Needs no table of TOS function signatures, so it does not depend on the TOS version.",
@@ -144,7 +146,9 @@ export const atariTrapStackCleanup: Rule = {
         message: `${outstanding} bytes are pushed for this ${lastTrap.api} call but ${detail}`,
         loc: trapLine.mnemonic.loc,
         notes: [
-          { message: `${lastTrap.api} takes its parameters on the stack and the caller removes them.` },
+          {
+            message: `${lastTrap.api} takes its parameters on the stack and the caller removes them.`,
+          },
           {
             message:
               "Suppress this inline if the call does not return, or if the stack is unwound elsewhere, for example by restoring a saved stack pointer.",
@@ -154,7 +158,11 @@ export const atariTrapStackCleanup: Rule = {
           description: `Remove ${outstanding} bytes, e.g. ${outstanding <= 8 ? `addq.l #${outstanding},sp` : `lea ${outstanding}(sp),sp`}`,
           applicability: "manual",
         },
-        data: { pushedBytes: outstanding, releasedBytes: released, trapIndex: lastTrap.index },
+        data: {
+          pushedBytes: outstanding,
+          releasedBytes: released,
+          trapIndex: lastTrap.index,
+        },
       });
     };
 
@@ -201,7 +209,10 @@ export const atariTrapStackCleanup: Rule = {
       const vector = trapVector(ctx, line);
       const api = vector === undefined ? undefined : STACK_TRAPS.get(vector);
       if (api) {
-        const nonReturning = vector === 1 && opcodeWord !== undefined && NON_RETURNING_GEMDOS.has(opcodeWord);
+        const nonReturning =
+          vector === 1 &&
+          opcodeWord !== undefined &&
+          NON_RETURNING_GEMDOS.has(opcodeWord);
         if (!nonReturning && pushedRun > 0) {
           outstanding += pushedRun;
           lastTrap = { index, api };

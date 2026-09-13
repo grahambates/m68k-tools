@@ -1,9 +1,9 @@
-import * as lsp from "vscode-languageserver";
+import type * as lsp from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import DocumentProcessor from "../src/DocumentProcessor";
 import DiagnosticProcessor from "../src/diagnostics";
 import TextDocumentSyncProvider from "../src/providers/TextDocumentSyncProvider";
-import { Context } from "../src/context";
+import { type Context } from "../src/context";
 import { createTestContext, range } from "./helpers";
 
 function deferred<T>() {

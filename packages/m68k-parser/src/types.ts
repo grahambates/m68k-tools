@@ -45,10 +45,7 @@ export type ParserResult<T> = {
 };
 
 export type MnemonicNode =
-  | InstructionNode
-  | DirectiveNode
-  | MacroNode
-  | MacroParameterNode;
+  InstructionNode | DirectiveNode | MacroNode | MacroParameterNode;
 
 /**
  * A size qualifier. `UnknownNode` covers a dot that is not followed by a

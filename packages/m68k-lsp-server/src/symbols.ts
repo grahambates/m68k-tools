@@ -6,11 +6,11 @@ import type {
 } from "m68k-parser";
 import { blockAt } from "m68k-parser";
 import * as lsp from "vscode-languageserver";
-import { AstNode, childNodes } from "./ast";
+import { type AstNode, childNodes } from "./ast";
 import { getUnitFilesByDistance } from "./files";
 import { isProcessed } from "./DocumentProcessor";
 import { containsPosition, locationAsRange } from "./geometry";
-import { Context } from "./context";
+import { type Context } from "./context";
 
 export interface NamedSymbol {
   location: lsp.Location;

@@ -1,6 +1,11 @@
 import type { OperandNode } from "m68k-parser";
 import type { Rule } from "../../core/rule.js";
-import { immediateExpressionOperand, instructionSize, isInstruction, operand } from "../../util/ast.js";
+import {
+  immediateExpressionOperand,
+  instructionSize,
+  isInstruction,
+  operand,
+} from "../../util/ast.js";
 import { sourceOperand } from "./helpers.js";
 
 function isTstDestination(op: OperandNode | undefined): boolean {
@@ -84,6 +89,16 @@ export const andAllOnesToTst = makeIdentityRule(
   "ANDI #-1/all-ones",
 );
 
-export const orZeroToTst = makeIdentityRule("optimization/ori-zero-to-tst", "or", 0, "ORI #0");
+export const orZeroToTst = makeIdentityRule(
+  "optimization/ori-zero-to-tst",
+  "or",
+  0,
+  "ORI #0",
+);
 
-export const eorZeroToTst = makeIdentityRule("optimization/eori-zero-to-tst", "eor", 0, "EORI #0");
+export const eorZeroToTst = makeIdentityRule(
+  "optimization/eori-zero-to-tst",
+  "eor",
+  0,
+  "EORI #0",
+);

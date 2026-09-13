@@ -18,7 +18,10 @@ describe("initialize", () => {
 
   it("declares diagnostics and code actions", () => {
     assert.equal(capabilities.textDocumentSync, 2);
-    assert.deepEqual(capabilities.codeActionProvider.codeActionKinds, ["quickfix", "source.fixAll"]);
+    assert.deepEqual(capabilities.codeActionProvider.codeActionKinds, [
+      "quickfix",
+      "source.fixAll",
+    ]);
   });
 
   /**
@@ -39,7 +42,11 @@ describe("initialize", () => {
       "documentSymbolProvider",
       "signatureHelpProvider",
     ]) {
-      assert.equal(capabilities[provider], undefined, `must not declare ${provider}`);
+      assert.equal(
+        capabilities[provider],
+        undefined,
+        `must not declare ${provider}`,
+      );
     }
   });
 });
@@ -75,8 +82,14 @@ describe("diagnostics", () => {
     await client.initialize(fixture("includes"));
     const { diagnostics } = await client.open(fixture("includes/main.s"));
 
-    assert.equal(diagnostics.length, 1, "MYCONST resolves through the workspace index");
-    const notes = diagnostics[0].relatedInformation.map((entry) => entry.message);
+    assert.equal(
+      diagnostics.length,
+      1,
+      "MYCONST resolves through the workspace index",
+    );
+    const notes = diagnostics[0].relatedInformation.map(
+      (entry) => entry.message,
+    );
     assert.ok(
       notes.some((note) => /MYCONST = 1 \(from defs\.i\)/.test(note)),
       `expected a cross-file note, got ${JSON.stringify(notes)}`,
@@ -92,12 +105,22 @@ describe("code actions", () => {
     const actions = await client.codeActions(uri, 1);
 
     const fix = actions.find((action) => action.title.startsWith("Use moveq"));
-    assert.ok(fix, `no quick fix in ${JSON.stringify(actions.map((a) => a.title))}`);
+    assert.ok(
+      fix,
+      `no quick fix in ${JSON.stringify(actions.map((a) => a.title))}`,
+    );
     assert.equal(fix.kind, "quickfix");
-    assert.equal(fix.isPreferred, true, "a safe rewrite is the preferred action");
+    assert.equal(
+      fix.isPreferred,
+      true,
+      "a safe rewrite is the preferred action",
+    );
     assert.deepEqual(editsOf(fix, uri), [
       {
-        range: { start: { line: 1, character: 0 }, end: { line: 2, character: 0 } },
+        range: {
+          start: { line: 1, character: 0 },
+          end: { line: 2, character: 0 },
+        },
         newText: "\tmoveq\t#1,d0\n",
       },
     ]);
@@ -109,18 +132,28 @@ describe("code actions", () => {
     const { uri } = await client.open(fixture("basic/moveq.s"));
     const actions = await client.codeActions(uri, 1);
 
-    const line = actions.find((action) => action.title.endsWith("for this line"));
+    const line = actions.find((action) =>
+      action.title.endsWith("for this line"),
+    );
     assert.deepEqual(editsOf(line, uri), [
       {
-        range: { start: { line: 1, character: 0 }, end: { line: 1, character: 0 } },
+        range: {
+          start: { line: 1, character: 0 },
+          end: { line: 1, character: 0 },
+        },
         newText: "\t; m68k-lint-disable-next-line optimization/prefer-moveq\n",
       },
     ]);
 
-    const file = actions.find((action) => action.title.endsWith("for this file"));
+    const file = actions.find((action) =>
+      action.title.endsWith("for this file"),
+    );
     assert.deepEqual(editsOf(file, uri), [
       {
-        range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } },
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 0, character: 0 },
+        },
         newText: "; m68k-lint-disable optimization/prefer-moveq\n",
       },
     ]);
@@ -135,7 +168,10 @@ describe("code actions", () => {
     const fixAll = actions.find((action) => action.kind === "source.fixAll");
     assert.ok(fixAll, "expected a fix-all action");
     const [edit] = editsOf(fixAll, uri);
-    assert.equal(edit.newText, "start:\n\tmoveq\t#1,d0\n\tmoveq\t#0,d1\n\trts\n");
+    assert.equal(
+      edit.newText,
+      "start:\n\tmoveq\t#1,d0\n\tmoveq\t#0,d1\n\trts\n",
+    );
   });
 
   describe("conditional suggestions", () => {
@@ -151,25 +187,44 @@ describe("code actions", () => {
       const actions = await client.codeActions(uri, 1);
 
       assert.ok(
-        actions.every((action) => action.kind !== "quickfix" || action.title.startsWith("Disable")),
+        actions.every(
+          (action) =>
+            action.kind !== "quickfix" || action.title.startsWith("Disable"),
+        ),
         `expected suppressions only, got ${JSON.stringify(actions.map((a) => a.title))}`,
       );
     });
 
     it("collapse a multi-line span when enabled", async () => {
-      const client = withClient({ settings: settingsWith({ conditional: true }) });
+      const client = withClient({
+        settings: settingsWith({ conditional: true }),
+      });
       await client.initialize(fixture("basic"));
       const { uri } = await client.open(fixture("basic/tailcall.s"));
       const actions = await client.codeActions(uri, 1);
 
       const fix = actions.find((action) => action.title.startsWith("Replace"));
-      assert.ok(fix, `no conditional fix in ${JSON.stringify(actions.map((a) => a.title))}`);
-      assert.match(fix.title, /check the notes/, "the assumption must be visible in the title");
-      assert.equal(fix.isPreferred, false, "a conditional rewrite is not preferred");
+      assert.ok(
+        fix,
+        `no conditional fix in ${JSON.stringify(actions.map((a) => a.title))}`,
+      );
+      assert.match(
+        fix.title,
+        /check the notes/,
+        "the assumption must be visible in the title",
+      );
+      assert.equal(
+        fix.isPreferred,
+        false,
+        "a conditional rewrite is not preferred",
+      );
       assert.deepEqual(editsOf(fix, uri), [
         {
           // Two lines out, one line in.
-          range: { start: { line: 1, character: 0 }, end: { line: 3, character: 0 } },
+          range: {
+            start: { line: 1, character: 0 },
+            end: { line: 3, character: 0 },
+          },
           newText: "\tbra\tsub\n",
         },
       ]);
@@ -212,7 +267,9 @@ describe("client capability handling", () => {
   });
 
   it("reports nothing when disabled", async () => {
-    const client = withClient({ settings: settingsWith({}, { enable: false }) });
+    const client = withClient({
+      settings: settingsWith({}, { enable: false }),
+    });
     await client.initialize(fixture("basic"));
     const { diagnostics } = await client.open(fixture("basic/moveq.s"));
     assert.deepEqual(diagnostics, []);

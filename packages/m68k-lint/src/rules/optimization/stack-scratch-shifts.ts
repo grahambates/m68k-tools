@@ -1,6 +1,11 @@
 import type { Rule } from "../../core/rule.js";
 import type { RuleContext } from "../../core/context.js";
-import { dataRegisterOperand, immediateExpressionOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateExpressionOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { canonicalMnemonic } from "../../semantics/mnemonics.js";
 import { changedFlagsApplicability } from "./helpers.js";
 
@@ -8,18 +13,32 @@ function m68000Only(ctx: RuleContext): boolean {
   return ctx.config.processors.every((cpu) => cpu === "mc68000");
 }
 
-function hasInterveningLabel(ctx: RuleContext, from: number, to: number): boolean {
+function hasInterveningLabel(
+  ctx: RuleContext,
+  from: number,
+  to: number,
+): boolean {
   for (let i = from + 1; i <= to; i++) if (ctx.line(i)?.label) return true;
   return false;
 }
 
-function precedingMoveq(ctx: RuleContext, index: number, register: string, count: number) {
+function precedingMoveq(
+  ctx: RuleContext,
+  index: number,
+  register: string,
+  count: number,
+) {
   const previous = ctx.previousInstruction(index);
-  if (!previous || hasInterveningLabel(ctx, previous.index, index) || !isInstruction(previous.line, "moveq"))
+  if (
+    !previous ||
+    hasInterveningLabel(ctx, previous.index, index) ||
+    !isInstruction(previous.line, "moveq")
+  )
     return undefined;
   const expr = immediateExpressionOperand(previous.line, 0);
   const dst = dataRegisterOperand(previous.line, 1);
-  if (!expr || !dst || dst.register.toLowerCase() !== register) return undefined;
+  if (!expr || !dst || dst.register.toLowerCase() !== register)
+    return undefined;
   const value = ctx.evaluate(expr);
   if (!value.known || value.value !== count) return undefined;
   return previous;
@@ -50,7 +69,11 @@ function canRemoveCountSetup(
  */
 const CLEARS_STACK_BYTE = "clr.b";
 
-function stackNotes(flagSafe: boolean, countNote?: string, replacement?: string) {
+function stackNotes(
+  flagSafe: boolean,
+  countNote?: string,
+  replacement?: string,
+) {
   return [
     ...(countNote ? [{ message: countNote }] : []),
     ...(replacement?.includes(CLEARS_STACK_BYTE)
@@ -65,7 +88,14 @@ function stackNotes(flagSafe: boolean, countNote?: string, replacement?: string)
       message:
         "The replacement uses 2 bytes of stack and restores SP exactly, but a register shift needs no stack at all: SP must already point at writable memory here.",
     },
-    ...(flagSafe ? [] : [{ message: "CCR results differ from the original shift; changed flags must be unobserved." }]),
+    ...(flagSafe
+      ? []
+      : [
+          {
+            message:
+              "CCR results differ from the original shift; changed flags must be unobserved.",
+          },
+        ]),
   ];
 }
 
@@ -75,18 +105,26 @@ export const stackAlignedWordShiftByEight: Rule = {
     id: "optimization/stack-word-shift-eight",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Use the 68000 A7 byte-alignment quirk for a word shift by eight",
+    description:
+      "Use the 68000 A7 byte-alignment quirk for a word shift by eight",
     tags: ["flamewing", "68000", "shift", "stack", "ccr"],
     serves: "speed",
     docs: {
-      source: "Flamewing M68000 Peephole Optimizations / 68000 Tricks and Traps",
+      source:
+        "Flamewing M68000 Peephole Optimizations / 68000 Tricks and Traps",
       note: "Uses two temporary stack bytes and restores SP exactly.",
     },
   },
   checkLine(ctx, line, index) {
     if (!m68000Only(ctx)) return;
     const mnemonic = canonicalMnemonic(line);
-    if (mnemonic !== "lsl" && mnemonic !== "asl" && mnemonic !== "lsr" && mnemonic !== "asr") return;
+    if (
+      mnemonic !== "lsl" &&
+      mnemonic !== "asl" &&
+      mnemonic !== "lsr" &&
+      mnemonic !== "asr"
+    )
+      return;
     if (instructionSize(line) !== "w") return;
 
     const count = immediateExpressionOperand(line, 0);
@@ -105,7 +143,13 @@ export const stackAlignedWordShiftByEight: Rule = {
       replacement = `move.b ${reg},-(sp)\nmove.w (sp)+,${reg}\nclr.b ${reg}`;
     }
 
-    const safety = changedFlagsApplicability(ctx, index, ["X", "N", "Z", "V", "C"]);
+    const safety = changedFlagsApplicability(ctx, index, [
+      "X",
+      "N",
+      "Z",
+      "V",
+      "C",
+    ]);
     ctx.report({
       ruleId: this.meta.id,
       category: this.meta.category,
@@ -114,12 +158,20 @@ export const stackAlignedWordShiftByEight: Rule = {
       message: `${mnemonic.toUpperCase()}.W #8,${reg.toUpperCase()} can use the 68000 stack-alignment byte-lane trick`,
       loc: line.mnemonic!.loc,
       suggestion: {
-        description: "Use A7's two-byte byte-stack adjustment to move the surviving byte into place",
+        description:
+          "Use A7's two-byte byte-stack adjustment to move the surviving byte into place",
         replacement,
         // Stack memory traffic is an observable side effect, but SP scratch itself is allowed.
-        applicability: safety.applicability === "safe" ? "conditional" : safety.applicability,
+        applicability:
+          safety.applicability === "safe"
+            ? "conditional"
+            : safety.applicability,
       },
-      notes: stackNotes(safety.applicability === "safe", undefined, replacement),
+      notes: stackNotes(
+        safety.applicability === "safe",
+        undefined,
+        replacement,
+      ),
       data: {
         provenance: "flamewing",
         stackScratch: true,
@@ -143,7 +195,8 @@ export const stackAlignedKnownRegisterShifts: Rule = {
     id: "optimization/stack-known-register-shift",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Use bounded A7 scratch space for selected known register-count shifts",
+    description:
+      "Use bounded A7 scratch space for selected known register-count shifts",
     tags: ["flamewing", "68000", "shift", "register-count", "stack", "ccr"],
     serves: "speed",
     docs: { source: "Flamewing M68000 Peephole Optimizations" },
@@ -151,7 +204,13 @@ export const stackAlignedKnownRegisterShifts: Rule = {
   checkLine(ctx, line, index) {
     if (!m68000Only(ctx)) return;
     const mnemonic = canonicalMnemonic(line);
-    if (mnemonic !== "lsl" && mnemonic !== "asl" && mnemonic !== "lsr" && mnemonic !== "asr") return;
+    if (
+      mnemonic !== "lsl" &&
+      mnemonic !== "asl" &&
+      mnemonic !== "lsr" &&
+      mnemonic !== "asr"
+    )
+      return;
     const size = instructionSize(line);
     if (size !== "w" && size !== "l") return;
     const countOp = dataRegisterOperand(line, 0);
@@ -164,15 +223,31 @@ export const stackAlignedKnownRegisterShifts: Rule = {
     if (known === undefined) return;
     const count = known & 63;
     const setup = precedingMoveq(ctx, index, countReg, known);
-    if (!setup || !canRemoveCountSetup(ctx, setup.index, index, countReg, known)) return;
+    if (
+      !setup ||
+      !canRemoveCountSetup(ctx, setup.index, index, countReg, known)
+    )
+      return;
 
     const reg = dst.register;
     let replacement: string | undefined;
-    if (size === "w" && (mnemonic === "lsl" || mnemonic === "asl") && count === 9) {
+    if (
+      size === "w" &&
+      (mnemonic === "lsl" || mnemonic === "asl") &&
+      count === 9
+    ) {
       replacement = `move.b ${reg},-(sp)\nmove.w (sp)+,${reg}\nclr.b ${reg}\nadd.w ${reg},${reg}`;
-    } else if (size === "l" && (mnemonic === "lsl" || mnemonic === "asl") && count === 24) {
+    } else if (
+      size === "l" &&
+      (mnemonic === "lsl" || mnemonic === "asl") &&
+      count === 24
+    ) {
       replacement = `move.b ${reg},-(sp)\nmove.w (sp)+,${reg}\nclr.b ${reg}\nswap ${reg}\nclr.w ${reg}`;
-    } else if (size === "l" && (mnemonic === "lsl" || mnemonic === "asl") && count === 25) {
+    } else if (
+      size === "l" &&
+      (mnemonic === "lsl" || mnemonic === "asl") &&
+      count === 25
+    ) {
       replacement = `move.b ${reg},-(sp)\nmove.w (sp)+,${reg}\nclr.b ${reg}\nadd.w ${reg},${reg}\nswap ${reg}\nclr.w ${reg}`;
     } else if (size === "l" && mnemonic === "lsr" && count === 24) {
       replacement = `swap ${reg}\nmove.w ${reg},-(sp)\nmoveq #0,${reg}\nmove.b (sp)+,${reg}`;
@@ -181,7 +256,13 @@ export const stackAlignedKnownRegisterShifts: Rule = {
     }
     if (!replacement) return;
 
-    const safety = changedFlagsApplicability(ctx, index, ["X", "N", "Z", "V", "C"]);
+    const safety = changedFlagsApplicability(ctx, index, [
+      "X",
+      "N",
+      "Z",
+      "V",
+      "C",
+    ]);
     ctx.report({
       ruleId: this.meta.id,
       category: this.meta.category,
@@ -190,9 +271,13 @@ export const stackAlignedKnownRegisterShifts: Rule = {
       message: `${mnemonic.toUpperCase()}.${size.toUpperCase()} uses known count ${count}; a bounded stack-scratch form is faster on 68000`,
       loc: setup.line.mnemonic!.loc,
       suggestion: {
-        description: "Replace the MOVEQ count setup and register-count shift with the A7 scratch sequence",
+        description:
+          "Replace the MOVEQ count setup and register-count shift with the A7 scratch sequence",
         replacement,
-        applicability: safety.applicability === "safe" ? "conditional" : safety.applicability,
+        applicability:
+          safety.applicability === "safe"
+            ? "conditional"
+            : safety.applicability,
       },
       notes: stackNotes(
         safety.applicability === "safe",

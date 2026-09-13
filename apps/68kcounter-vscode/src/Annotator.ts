@@ -2,24 +2,24 @@ import {
   Disposable,
   Range,
   StatusBarAlignment,
-  StatusBarItem,
-  TextDocument,
-  TextDocumentChangeEvent,
-  TextEditor,
-  TextEditorDecorationType,
-  TextEditorSelectionChangeEvent,
+  type StatusBarItem,
+  type TextDocument,
+  type TextDocumentChangeEvent,
+  type TextEditor,
+  type TextEditorDecorationType,
+  type TextEditorSelectionChangeEvent,
   ThemeColor,
   window,
   workspace,
 } from "vscode";
 import parse, {
   formatTiming,
-  Level,
+  type Level,
   Levels,
   timingLevel,
   calculateTotals,
-  Line,
-  Timing,
+  type Line,
+  type Timing,
 } from "68kcounter";
 import debounce from "debounce";
 
@@ -72,17 +72,17 @@ export class Annotator implements Disposable {
     workspace.onDidChangeTextDocument(
       debounce(this.onChange, 100, true),
       this,
-      subscriptions
+      subscriptions,
     );
     window.onDidChangeTextEditorSelection(
       this.onSelection,
       this,
-      subscriptions
+      subscriptions,
     );
     window.onDidChangeActiveTextEditor(
       this.onChangeEditor,
       this,
-      subscriptions
+      subscriptions,
     );
 
     this.disposable = Disposable.from(...subscriptions);
@@ -114,7 +114,7 @@ export class Annotator implements Disposable {
         range: new Range(i, 0, i, 0),
         hoverMessage,
         renderOptions: { before: { contentText: text || " ", color } },
-      }))
+      })),
     );
     this.showTotals();
   }
@@ -173,7 +173,7 @@ export class Annotator implements Disposable {
       ) {
         let calc = formatCalculation(
           calculation.base[0],
-          calculation.multiplier
+          calculation.multiplier,
         );
         if (calculation?.ea && calculation.ea[0] > 0) {
           calc += ` + EA: ${formatTiming(calculation.ea)}`;

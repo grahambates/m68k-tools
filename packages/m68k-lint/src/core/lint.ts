@@ -8,7 +8,11 @@ import { measureDiagnosticImpact } from "../analysis/impact.js";
 import { createInlineSuppression } from "./inline-config.js";
 import type { ExternalSymbols } from "../analysis/symbols.js";
 
-function matchesOptimizationGoal(diagnostic: Diagnostic, rule: Rule | undefined, config: LintConfig): boolean {
+function matchesOptimizationGoal(
+  diagnostic: Diagnostic,
+  rule: Rule | undefined,
+  config: LintConfig,
+): boolean {
   const goal = config.goal ?? "balanced";
   if (goal === "balanced" || !diagnostic.suggestion) return true;
   if (diagnostic.category !== "optimization") return true;
@@ -21,13 +25,16 @@ function matchesOptimizationGoal(diagnostic: Diagnostic, rule: Rule | undefined,
 
   // For speed, only suppress when we have affirmative evidence that the
   // replacement is slower. Unknown timing remains visible.
-  if (impact?.execution?.cpuCycles) return impact.execution.cpuCycles.delta <= 0;
+  if (impact?.execution?.cpuCycles)
+    return impact.execution.cpuCycles.delta <= 0;
   return true;
 }
 
 /** Whether impact figures will be available to decide a goal per diagnostic. */
 function willMeasure(config: LintConfig): boolean {
-  return config.measureImpact !== false && config.processors.includes("mc68000");
+  return (
+    config.measureImpact !== false && config.processors.includes("mc68000")
+  );
 }
 
 /**
@@ -50,10 +57,18 @@ function inversePairs(rules: readonly Rule[]): Set<string> {
 
 let builtInPairs: Set<string> | undefined;
 
-export function effectiveSeverity(rule: Rule, config: LintConfig, paired?: ReadonlySet<string>): Severity | "off" {
+export function effectiveSeverity(
+  rule: Rule,
+  config: LintConfig,
+  paired?: ReadonlySet<string>,
+): Severity | "off" {
   const pairs = paired ?? (builtInPairs ??= inversePairs(defaultRules));
   if (config.categories?.[rule.meta.category] === false) return "off";
-  if (rule.meta.platforms && !rule.meta.platforms.includes(config.platform ?? "generic")) return "off";
+  if (
+    rule.meta.platforms &&
+    !rule.meta.platforms.includes(config.platform ?? "generic")
+  )
+    return "off";
 
   const goal = config.goal ?? "balanced";
   // Balanced runs keep the canonical direction of a pair, which is the rule
@@ -73,7 +88,9 @@ export function effectiveSeverity(rule: Rule, config: LintConfig, paired?: Reado
   if (explicit) return explicit;
 
   if (rule.meta.enabledByDefault === false) {
-    const enabledByPreset = rule.meta.presets?.some((preset) => config.presets?.includes(preset));
+    const enabledByPreset = rule.meta.presets?.some((preset) =>
+      config.presets?.includes(preset),
+    );
     return enabledByPreset ? rule.meta.defaultSeverity : "off";
   }
   return rule.meta.defaultSeverity;
@@ -115,18 +132,36 @@ export function lintParsedFile(
 
   const ruleById = new Map(rules.map((rule) => [rule.meta.id, rule] as const));
   const rawDiagnostics = [...ctx.getDiagnostics()];
-  const suppression = config.inlineConfig === false ? undefined : createInlineSuppression(source);
-  const unsuppressed = suppression ? rawDiagnostics.filter((diagnostic) => !suppression(diagnostic)) : rawDiagnostics;
+  const suppression =
+    config.inlineConfig === false ? undefined : createInlineSuppression(source);
+  const unsuppressed = suppression
+    ? rawDiagnostics.filter((diagnostic) => !suppression(diagnostic))
+    : rawDiagnostics;
   const measured = unsuppressed.map((diagnostic) => {
-    if (config.measureImpact === false || !config.processors.includes("mc68000")) return diagnostic;
-    if (!diagnostic.suggestion || diagnostic.category !== "optimization") return diagnostic;
-    return measureDiagnosticImpact(diagnostic, file, source, ruleById.get(diagnostic.ruleId), (expression) => {
-      const result = ctx.evaluate(expression);
-      return result.known ? result.value : undefined;
-    });
+    if (
+      config.measureImpact === false ||
+      !config.processors.includes("mc68000")
+    )
+      return diagnostic;
+    if (!diagnostic.suggestion || diagnostic.category !== "optimization")
+      return diagnostic;
+    return measureDiagnosticImpact(
+      diagnostic,
+      file,
+      source,
+      ruleById.get(diagnostic.ruleId),
+      (expression) => {
+        const result = ctx.evaluate(expression);
+        return result.known ? result.value : undefined;
+      },
+    );
   });
   const reported = measured.filter((diagnostic) =>
-    matchesOptimizationGoal(diagnostic, ruleById.get(diagnostic.ruleId), config),
+    matchesOptimizationGoal(
+      diagnostic,
+      ruleById.get(diagnostic.ruleId),
+      config,
+    ),
   );
 
   // Rules run in registration order, so without this diagnostics come back

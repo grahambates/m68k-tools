@@ -1,6 +1,6 @@
-import * as lsp from "vscode-languageserver";
-import { Provider } from ".";
-import { Context } from "../context";
+import type * as lsp from "vscode-languageserver";
+import { type Provider } from ".";
+import { type Context } from "../context";
 import { getReferences } from "../symbols";
 
 export default class ReferencesProvider implements Provider {

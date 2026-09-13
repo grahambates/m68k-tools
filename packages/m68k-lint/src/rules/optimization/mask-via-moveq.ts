@@ -6,7 +6,12 @@ import {
   isInstruction,
   operand,
 } from "../../util/ast.js";
-import { changedFlagsApplicability, hasLabelBetween, sourceOperand, valueText } from "./helpers.js";
+import {
+  changedFlagsApplicability,
+  hasLabelBetween,
+  sourceOperand,
+  valueText,
+} from "./helpers.js";
 
 /**
  * A load followed by a masking AND with a MOVEQ-sized constant is shorter the
@@ -22,7 +27,8 @@ export const maskViaMoveq: Rule = {
     id: "optimization/mask-via-moveq",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Seed a MOVEQ mask and AND the source in, rather than loading then masking",
+    description:
+      "Seed a MOVEQ mask and AND the source in, rather than loading then masking",
     tags: ["constant", "ccr"],
     docs: { source: "EAB 68000 code optimisations" },
   },
@@ -45,10 +51,15 @@ export const maskViaMoveq: Rule = {
 
     const next = ctx.nextInstruction(index);
     if (!next || hasLabelBetween(ctx, index, next.index)) return;
-    if (!isInstruction(next.line, "and") || instructionSize(next.line) !== "l") return;
+    if (!isInstruction(next.line, "and") || instructionSize(next.line) !== "l")
+      return;
 
     const target = dataRegisterOperand(next.line, 1);
-    if (!target || target.register.toLowerCase() !== loaded.register.toLowerCase()) return;
+    if (
+      !target ||
+      target.register.toLowerCase() !== loaded.register.toLowerCase()
+    )
+      return;
     const immediate = immediateExpressionOperand(next.line, 0);
     if (!immediate) return;
     const mask = ctx.evaluate(immediate);
@@ -79,7 +90,10 @@ export const maskViaMoveq: Rule = {
         applicability: safety.applicability,
       },
       notes: [
-        { message: "The final value and CCR are the same; only the state between the two instructions differs." },
+        {
+          message:
+            "The final value and CCR are the same; only the state between the two instructions differs.",
+        },
       ],
       data: { mask: mask.value, sourceEndIndex: next.index },
     });

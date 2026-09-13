@@ -12,7 +12,9 @@ describe("CLI file discovery", () => {
     await writeFile(join(root, "sub", "c.i"), " nop\n");
     await writeFile(join(root, "sub", "d.txt"), "ignore\n");
     const files = await discoverFiles([root], { cwd: root });
-    expect(files.map((f) => f.slice(root.length + 1).replace(/\\/g, "/"))).toEqual(["a.s", "sub/b.asm", "sub/c.i"]);
+    expect(
+      files.map((f) => f.slice(root.length + 1).replace(/\\/g, "/")),
+    ).toEqual(["a.s", "sub/b.asm", "sub/c.i"]);
   });
 
   test("explicit files bypass extension filtering", async () => {

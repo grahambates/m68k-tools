@@ -1,13 +1,4 @@
-node_modules
-dist
-.DS_Store
-coverage
-.claude
-
-# Third-party reference material: forum dumps and copyrighted documents.
-# Kept locally for mining, not redistributed.
-sources
-
-# Working notes: research, audits, roadmaps and cross-project bug reports.
-# Kept locally; docs/ holds the documentation shipped to users.
-notes
+# Common build and dependency ignores are inherited from the repository root.
+.claude/
+sources/
+notes/

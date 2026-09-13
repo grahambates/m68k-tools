@@ -3,7 +3,7 @@ import { promises as fsp } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { pathToFileURL } from "url";
-import * as lsp from "vscode-languageserver";
+import type * as lsp from "vscode-languageserver";
 
 import { createContext } from "../src/context";
 import DocumentProcessor from "../src/DocumentProcessor";

@@ -1,5 +1,8 @@
 import { parseFile } from "m68k-parser";
-import { normalizeRuleImpactAuditSource, ruleImpactAuditCases } from "../audit/rule-impact.js";
+import {
+  normalizeRuleImpactAuditSource,
+  ruleImpactAuditCases,
+} from "../audit/rule-impact.js";
 import { lintParsedFile } from "../core/lint.js";
 import { lintSource } from "../core/lint.js";
 import { defaultRules } from "../rules/index.js";
@@ -16,7 +19,11 @@ import { defaultRules } from "../rules/index.js";
 const byId = new Map(defaultRules.map((rule) => [rule.meta.id, rule]));
 
 function suggestionsAcrossTheAuditCorpus() {
-  const found: { ruleId: string; applicability: string; hasReplacement: boolean }[] = [];
+  const found: {
+    ruleId: string;
+    applicability: string;
+    hasReplacement: boolean;
+  }[] = [];
   for (const testCase of ruleImpactAuditCases) {
     if (testCase.exempt || testCase.source === undefined) continue;
     const rule = byId.get(testCase.ruleId);
@@ -57,16 +64,24 @@ describe("applicability matches whether a rewrite is offered", () => {
 
 describe("tail calls offer the rewrite", () => {
   const tail = (lines: string[], ruleId: string) =>
-    lintSource(lines.join("\n"), { processors: ["mc68000"] }).find((d) => d.ruleId === ruleId)?.suggestion;
+    lintSource(lines.join("\n"), { processors: ["mc68000"] }).find(
+      (d) => d.ruleId === ruleId,
+    )?.suggestion;
 
   test("BSR/RTS becomes BRA, conditional on the callee not reading the stack depth", () => {
-    const suggestion = tail(["\tbsr\t.sub", "\trts", ".sub:", "\trts"], "optimization/bsr-rts-tail-call");
+    const suggestion = tail(
+      ["\tbsr\t.sub", "\trts", ".sub:", "\trts"],
+      "optimization/bsr-rts-tail-call",
+    );
     expect(suggestion?.replacement).toBe("\tbra\t.sub");
     expect(suggestion?.applicability).toBe("conditional");
   });
 
   test("JSR/RTS becomes JMP", () => {
-    const suggestion = tail(["\tjsr\t.sub", "\trts", ".sub:", "\trts"], "optimization/jsr-rts-tail-call");
+    const suggestion = tail(
+      ["\tjsr\t.sub", "\trts", ".sub:", "\trts"],
+      "optimization/jsr-rts-tail-call",
+    );
     expect(suggestion?.replacement).toBe("\tjmp\t.sub");
     expect(suggestion?.applicability).toBe("conditional");
   });
@@ -74,7 +89,10 @@ describe("tail calls offer the rewrite", () => {
   // Folding the pair away would take the label with it, and there is no one
   // rewrite that preserves an entry point other code may branch to.
   test("a label on the RTS leaves it a manual judgement with no rewrite", () => {
-    const suggestion = tail(["\tbsr\t.sub", ".ret:", "\trts", ".sub:", "\trts"], "optimization/bsr-rts-tail-call");
+    const suggestion = tail(
+      ["\tbsr\t.sub", ".ret:", "\trts", ".sub:", "\trts"],
+      "optimization/bsr-rts-tail-call",
+    );
     expect(suggestion?.applicability).toBe("manual");
     expect(suggestion?.replacement).toBeUndefined();
   });

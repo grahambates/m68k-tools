@@ -1,5 +1,9 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 
 /** ASP68K: EXT.W Dn + EXT.L Dn -> EXTB.L Dn, available from the 68020 on. */
 export const combineExtByte: Rule = {
@@ -13,15 +17,29 @@ export const combineExtByte: Rule = {
   },
 
   checkLine(ctx, line, index) {
-    if (!ctx.config.processors.every((cpu) => ["mc68020", "mc68030", "mc68040", "mc68060"].includes(cpu))) return;
+    if (
+      !ctx.config.processors.every((cpu) =>
+        ["mc68020", "mc68030", "mc68040", "mc68060"].includes(cpu),
+      )
+    )
+      return;
     if (!isInstruction(line, "ext") || instructionSize(line) !== "w") return;
     const first = dataRegisterOperand(line, 0);
     if (!first) return;
 
     const next = ctx.nextInstruction(index);
-    if (!next || !isInstruction(next.line, "ext") || instructionSize(next.line) !== "l") return;
+    if (
+      !next ||
+      !isInstruction(next.line, "ext") ||
+      instructionSize(next.line) !== "l"
+    )
+      return;
     const second = dataRegisterOperand(next.line, 0);
-    if (!second || second.register.toLowerCase() !== first.register.toLowerCase()) return;
+    if (
+      !second ||
+      second.register.toLowerCase() !== first.register.toLowerCase()
+    )
+      return;
 
     // A label on the second instruction can make it independently reachable.
     if (next.line.label) return;
@@ -38,7 +56,12 @@ export const combineExtByte: Rule = {
         replacement: `extb.l ${first.register}`,
         applicability: "safe",
       },
-      notes: [{ message: "EXTB.L sign-extends byte to long in one instruction, and exists from the 68020." }],
+      notes: [
+        {
+          message:
+            "EXTB.L sign-extends byte to long in one instruction, and exists from the 68020.",
+        },
+      ],
       data: { secondInstructionIndex: next.index },
     });
   },

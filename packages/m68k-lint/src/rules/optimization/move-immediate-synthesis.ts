@@ -1,9 +1,19 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateExpressionOperand, instructionSize, isInstruction } from "../../util/ast.js";
-import { changedFlagsApplicability, containsSymbol, embeddedValueText } from "./helpers.js";
+import {
+  dataRegisterOperand,
+  immediateExpressionOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
+import {
+  changedFlagsApplicability,
+  containsSymbol,
+  embeddedValueText,
+} from "./helpers.js";
 
 function baseMatch(line: Parameters<NonNullable<Rule["checkLine"]>>[1]) {
-  if (!isInstruction(line, "move") || instructionSize(line) !== "l") return undefined;
+  if (!isInstruction(line, "move") || instructionSize(line) !== "l")
+    return undefined;
   const value = immediateExpressionOperand(line, 0);
   const dest = dataRegisterOperand(line, 1);
   if (!value || !dest) return undefined;
@@ -15,7 +25,8 @@ export const moveImmediateBelowMoveq: Rule = {
     id: "optimization/move-immediate-below-moveq",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Construct immediates just below MOVEQ range with MOVEQ plus SUBQ",
+    description:
+      "Construct immediates just below MOVEQ range with MOVEQ plus SUBQ",
     tags: ["asp68k", "constant", "ccr"],
     docs: { source: "ASP68K" },
   },
@@ -36,11 +47,20 @@ export const moveImmediateBelowMoveq: Rule = {
       confidence: safety.confidence,
       message: `${value.value} is just below the MOVEQ immediate range`,
       loc: line.mnemonic!.loc,
-      suggestion: { description: "Use MOVEQ plus SUBQ", replacement, applicability: safety.applicability },
+      suggestion: {
+        description: "Use MOVEQ plus SUBQ",
+        replacement,
+        applicability: safety.applicability,
+      },
       notes: [
         ...(safety.applicability === "safe"
           ? []
-          : [{ message: "SUBQ can leave different X/V/C values from MOVE.L; review later CCR use." }]),
+          : [
+              {
+                message:
+                  "SUBQ can leave different X/V/C values from MOVE.L; review later CCR use.",
+              },
+            ]),
       ],
     });
   },
@@ -74,12 +94,19 @@ export const moveImmediateByteComplement: Rule = {
       confidence: safety.confidence,
       message: `${value.value} can be synthesized with MOVEQ plus NOT.B`,
       loc: line.mnemonic!.loc,
-      suggestion: { description: "Use MOVEQ plus NOT.B", replacement, applicability: safety.applicability },
+      suggestion: {
+        description: "Use MOVEQ plus NOT.B",
+        replacement,
+        applicability: safety.applicability,
+      },
       notes: [
         ...(safety.applicability === "safe"
           ? []
           : [
-              { message: "The replacement leaves different condition-code details from MOVE.L; review later CCR use." },
+              {
+                message:
+                  "The replacement leaves different condition-code details from MOVE.L; review later CCR use.",
+              },
             ]),
       ],
     });
@@ -100,7 +127,9 @@ export const moveImmediateDoubleByte: Rule = {
     if (!match) return;
     const value = ctx.evaluate(match.value);
     if (!value.known || (value.value & 1) !== 0) return;
-    const inRange = (value.value >= 128 && value.value <= 254) || (value.value >= -256 && value.value <= -130);
+    const inRange =
+      (value.value >= 128 && value.value <= 254) ||
+      (value.value >= -256 && value.value <= -130);
     if (!inRange) return;
     const m = value.value / 2;
     if (m < -128 || m > 127) return;
@@ -110,7 +139,9 @@ export const moveImmediateDoubleByte: Rule = {
     // than worked out. Worth doing only when there is a name in it to keep:
     // `#200/2` reads worse than `#100`, but `#SPRITE_BYTES/2` keeps a constant
     // the code would otherwise stop tracking.
-    const half = containsSymbol(match.value) ? `${embeddedValueText(ctx, match.value, value.value)}/2` : String(m);
+    const half = containsSymbol(match.value)
+      ? `${embeddedValueText(ctx, match.value, value.value)}/2`
+      : String(m);
     const replacement = `moveq #${half},${r}\nadd.b ${r},${r}`;
     ctx.report({
       ruleId: this.meta.id,
@@ -119,11 +150,20 @@ export const moveImmediateDoubleByte: Rule = {
       confidence: safety.confidence,
       message: `${value.value} can be synthesized with MOVEQ plus a byte doubling`,
       loc: line.mnemonic!.loc,
-      suggestion: { description: "Use MOVEQ plus ADD.B", replacement, applicability: safety.applicability },
+      suggestion: {
+        description: "Use MOVEQ plus ADD.B",
+        replacement,
+        applicability: safety.applicability,
+      },
       notes: [
         ...(safety.applicability === "safe"
           ? []
-          : [{ message: "ADD.B can leave different X/V/C values from MOVE.L; review later CCR use." }]),
+          : [
+              {
+                message:
+                  "ADD.B can leave different X/V/C values from MOVE.L; review later CCR use.",
+              },
+            ]),
       ],
     });
   },

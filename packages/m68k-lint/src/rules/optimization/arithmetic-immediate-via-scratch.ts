@@ -1,5 +1,9 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateOperand, instructionSize } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateOperand,
+  instructionSize,
+} from "../../util/ast.js";
 import { semanticMnemonic } from "../../semantics/mnemonics.js";
 import { valueText } from "./helpers.js";
 
@@ -19,11 +23,20 @@ import { valueText } from "./helpers.js";
  * value in the MOVEQ range is worth rerouting for them -- confirmed with
  * 68kcounter, which shows the same win at #1 as at #100.
  */
-const SCRATCH_IS_FASTER = ["mc68000", "mc68010", "mc68020", "mc68030", "mc68060", "cpu32"];
+const SCRATCH_IS_FASTER = [
+  "mc68000",
+  "mc68010",
+  "mc68020",
+  "mc68030",
+  "mc68060",
+  "cpu32",
+];
 const MNEMONICS = ["add", "sub", "and", "or", "eor"] as const;
 type ScratchMnemonic = (typeof MNEMONICS)[number];
 
-function isScratchMnemonic(value: string | undefined): value is ScratchMnemonic {
+function isScratchMnemonic(
+  value: string | undefined,
+): value is ScratchMnemonic {
   return !!value && (MNEMONICS as readonly string[]).includes(value);
 }
 
@@ -32,30 +45,41 @@ export const arithmeticImmediateViaScratch: Rule = {
     id: "optimization/arithmetic-immediate-via-scratch",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Materialize a small long immediate with MOVEQ before combining it",
+    description:
+      "Materialize a small long immediate with MOVEQ before combining it",
     tags: ["register-analysis", "scratch-register", "moveq"],
-    docs: { source: "EAB 68000 code optimisations; Optimizing 680x0 Applications" },
+    docs: {
+      source: "EAB 68000 code optimisations; Optimizing 680x0 Applications",
+    },
   },
 
   checkLine(ctx, line, index) {
     const mnemonic = semanticMnemonic(line);
     if (!isScratchMnemonic(mnemonic)) return;
     if (instructionSize(line) !== "l") return;
-    if (!ctx.config.processors.every((cpu) => SCRATCH_IS_FASTER.includes(cpu))) return;
+    if (!ctx.config.processors.every((cpu) => SCRATCH_IS_FASTER.includes(cpu)))
+      return;
 
     const immediate = immediateOperand(line, 0);
     const destination = dataRegisterOperand(line, 1);
-    if (!immediate || immediate.value.type === "string-literal" || !destination) return;
+    if (!immediate || immediate.value.type === "string-literal" || !destination)
+      return;
 
     const value = ctx.evaluate(immediate.value);
     if (!value.known || value.value < -128 || value.value > 127) return;
     // The quick forms already reach 1..8 in one word, and the negated quick
     // forms cover -8..-1, so only the wider range is worth rerouting for
     // ADD/SUB. AND/OR/EOR have no such quick form to defer to.
-    if ((mnemonic === "add" || mnemonic === "sub") && Math.abs(value.value) <= 8) return;
+    if (
+      (mnemonic === "add" || mnemonic === "sub") &&
+      Math.abs(value.value) <= 8
+    )
+      return;
 
     const target = destination.register.toLowerCase();
-    const scratch = ctx.registers.deadDataRegistersAfter(index).find((register) => register.toLowerCase() !== target);
+    const scratch = ctx.registers
+      .deadDataRegistersAfter(index)
+      .find((register) => register.toLowerCase() !== target);
     if (!scratch) return;
 
     const replacement = `moveq #${valueText(ctx, immediate.value, value.value)},${scratch}\n${mnemonic}.l ${scratch},${destination.register}`;

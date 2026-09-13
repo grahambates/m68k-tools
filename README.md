@@ -42,7 +42,9 @@ pnpm package:counter
 
 Build before running the isolated tarball checks. VS Code host tests run separately with `pnpm test:extension-host` and require a graphical display (or Xvfb on Linux). Counter packaging generates `.staging/68kcounter-vscode` and preserves Marketplace identity `gigabates.68kcounter`.
 
-Imported source retains its formatting during migration. Shared tool versions and a common Node ESLint base coexist with package-specific React and type-aware lint rules.
+All active projects use the root Prettier configuration and ESLint rules. React-specific checks and the linter’s existing type-aware checks are scoped in the root ESLint configuration. Package lint entry points delegate to the root. Only the root Husky hook is used.
+
+TypeScript projects extend `tsconfig.base.json`; the assembly project-reference graph uses `tsconfig.project.json` for declaration/build metadata. Tsdown package configs retain only their entry/output differences and inherit `tsdown.base.mts`. Ordinary Node test suites use `vitest.package.config.mts`; the linter adds coverage thresholds and the web app retains its Vite/jsdom setup.
 
 ## Debugging in VS Code
 
@@ -58,4 +60,8 @@ Packages have independent versions. Add a changeset with `pnpm changeset` alongs
 
 Published Node packages target Node 22.15.1 or later; VS Code extensions require 1.101 or later. Development tools require a newer Node 22 minor than the published runtime.
 
-See the [migration record](docs/monorepo-migration.md), [assembly server documentation](docs/assembly-language-server.md), and [formatter documentation](packages/m68k-formatter/README.md).
+See the [migration record](docs/monorepo-migration.md), [assembly server documentation](packages/m68k-lsp-server/README.md), and [formatter documentation](packages/m68k-formatter/README.md).
+
+## Licences
+
+The workspace projects declare MIT licences. Package licence files retain their original copyright notices, including the Eric Amodio notice in the counter extension and typicode notice in the web app. Third-party dependencies and bundled tools retain their own licences.

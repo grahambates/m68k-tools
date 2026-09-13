@@ -13,6 +13,6 @@ The counter extension has workspace name `68kcounter-vscode`; its generated
 shipping manifest preserves `gigabates.68kcounter`.
 
 The release workflow currently creates version PRs only. Registry publication,
-Marketplace publication, repository renaming and Vercel cutover are separate
+Marketplace publication and Vercel cutover are separate
 steps. In particular the formatter and lint language server have not yet been
 published. No generic publish command is wired into CI.

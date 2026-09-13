@@ -1,5 +1,10 @@
 import type { Rule } from "../../core/rule.js";
-import { immediateOperand, instructionSize, isInstruction, operand } from "../../util/ast.js";
+import {
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+  operand,
+} from "../../util/ast.js";
 import { isAdjacentLocation, locationOf } from "./adjacent-location.js";
 import { sourceOperand } from "./helpers.js";
 
@@ -13,7 +18,11 @@ function immediate(
   return result.known ? result.value : undefined;
 }
 
-function hasInterveningLabel(ctx: Parameters<NonNullable<Rule["checkLine"]>>[0], from: number, to: number): boolean {
+function hasInterveningLabel(
+  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
+  from: number,
+  to: number,
+): boolean {
   for (let i = from + 1; i <= to; i++) if (ctx.line(i)?.label) return true;
   return false;
 }
@@ -36,7 +45,8 @@ function movePair(
       docs: { source: "ASP68K" },
     },
     checkLine(ctx, line, index) {
-      if (!isInstruction(line, "move") || instructionSize(line) !== fromSize) return;
+      if (!isInstruction(line, "move") || instructionSize(line) !== fromSize)
+        return;
       const a = locationOf(ctx, operand(line, 1));
       const x = immediate(ctx, line);
       if (a === undefined || x === undefined) return;
@@ -88,5 +98,19 @@ function movePair(
   };
 }
 
-export const combineAdjacentMoveBytes = movePair("b", "w", 1, 0xff, 8, "optimization/combine-adjacent-move-bytes");
-export const combineAdjacentMoveWords = movePair("w", "l", 2, 0xffff, 16, "optimization/combine-adjacent-move-words");
+export const combineAdjacentMoveBytes = movePair(
+  "b",
+  "w",
+  1,
+  0xff,
+  8,
+  "optimization/combine-adjacent-move-bytes",
+);
+export const combineAdjacentMoveWords = movePair(
+  "w",
+  "l",
+  2,
+  0xffff,
+  16,
+  "optimization/combine-adjacent-move-words",
+);

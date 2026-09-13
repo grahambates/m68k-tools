@@ -1,7 +1,7 @@
 import * as lsp from "vscode-languageserver";
-import { Provider } from ".";
-import { Context } from "../context";
-import { DefinitionType, symbolKindMappings } from "../symbols";
+import { type Provider } from ".";
+import { type Context } from "../context";
+import { type DefinitionType, symbolKindMappings } from "../symbols";
 
 export default class DocumentSymbolProvider implements Provider {
   constructor(protected readonly ctx: Context) {}

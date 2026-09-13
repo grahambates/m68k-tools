@@ -1,5 +1,5 @@
 import DocumentFormatter, {
-  FormatterOptions,
+  type FormatterOptions,
 } from "../src/formatter/DocumentFormatter";
 import { applyEdits, formatContext } from "./helpers";
 

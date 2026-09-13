@@ -1,6 +1,7 @@
 import type { Diagnostic } from "./diagnostic.js";
 
-type DirectiveAction = "disable" | "enable" | "disable-next-line" | "disable-line";
+type DirectiveAction =
+  "disable" | "enable" | "disable-next-line" | "disable-line";
 
 interface Directive {
   action: DirectiveAction;
@@ -51,7 +52,9 @@ function commentText(line: string): string | undefined {
 function parseDirective(line: string): Directive | undefined {
   const comment = commentText(line);
   if (comment === undefined) return undefined;
-  const match = comment.match(/^\s*m68k-lint-(disable-next-line|disable-line|disable|enable)\b(.*)$/i);
+  const match = comment.match(
+    /^\s*m68k-lint-(disable-next-line|disable-line|disable|enable)\b(.*)$/i,
+  );
   if (!match) return undefined;
   const action = match[1].toLowerCase() as DirectiveAction;
   const remainder = match[2].replace(/\s+--\s+.*$/, "").trim();
@@ -66,10 +69,15 @@ function parseDirective(line: string): Directive | undefined {
 }
 
 function cloneLineSuppression(value?: LineSuppression): LineSuppression {
-  return value ? { all: value.all, rules: new Set(value.rules) } : { all: false, rules: new Set() };
+  return value
+    ? { all: value.all, rules: new Set(value.rules) }
+    : { all: false, rules: new Set() };
 }
 
-function addLineSuppression(target: LineSuppression, rules: Set<string> | null): void {
+function addLineSuppression(
+  target: LineSuppression,
+  rules: Set<string> | null,
+): void {
   if (rules === null) {
     target.all = true;
     return;
@@ -77,7 +85,10 @@ function addLineSuppression(target: LineSuppression, rules: Set<string> | null):
   for (const rule of rules) target.rules.add(rule);
 }
 
-function applyGlobalDirective(state: GlobalSuppressionState, directive: Directive): void {
+function applyGlobalDirective(
+  state: GlobalSuppressionState,
+  directive: Directive,
+): void {
   const { action, rules } = directive;
   if (action !== "disable" && action !== "enable") return;
   if (action === "disable") {
@@ -108,7 +119,10 @@ function applyGlobalDirective(state: GlobalSuppressionState, directive: Directiv
   }
 }
 
-function isGloballyDisabled(state: GlobalSuppressionState, ruleId: string): boolean {
+function isGloballyDisabled(
+  state: GlobalSuppressionState,
+  ruleId: string,
+): boolean {
   return state.all ? !state.exceptions.has(ruleId) : state.rules.has(ruleId);
 }
 
@@ -117,9 +131,15 @@ function isGloballyDisabled(state: GlobalSuppressionState, ruleId: string): bool
  * Directives are deliberately parsed from raw source comments rather than the AST,
  * so suppression remains independent of assembler/parser comment nodes.
  */
-export function createInlineSuppression(source: string): (diagnostic: Diagnostic) => boolean {
+export function createInlineSuppression(
+  source: string,
+): (diagnostic: Diagnostic) => boolean {
   const lines = source.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-  const state: GlobalSuppressionState = { all: false, rules: new Set(), exceptions: new Set() };
+  const state: GlobalSuppressionState = {
+    all: false,
+    rules: new Set(),
+    exceptions: new Set(),
+  };
   const globalByLine = new Map<number, GlobalSuppressionState>();
   const localByLine = new Map<number, LineSuppression>();
   let pendingNext: LineSuppression | undefined;
@@ -145,7 +165,11 @@ export function createInlineSuppression(source: string): (diagnostic: Diagnostic
       }
     }
 
-    globalByLine.set(lineNo, { all: state.all, rules: new Set(state.rules), exceptions: new Set(state.exceptions) });
+    globalByLine.set(lineNo, {
+      all: state.all,
+      rules: new Set(state.rules),
+      exceptions: new Set(state.exceptions),
+    });
   }
 
   return (diagnostic: Diagnostic): boolean => {

@@ -1,6 +1,6 @@
 import { parseLine } from "m68k-parser";
 import type { OperandNode } from "m68k-parser";
-import { AddressingMode, AddressingModes } from "../syntax";
+import { type AddressingMode, AddressingModes } from "../syntax";
 
 /**
  * Map a parsed m68k-parser operand node to our internal AddressingMode.

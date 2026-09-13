@@ -107,7 +107,7 @@ describe("operandMode", () => {
     expect(operandMode("a0-a4")).toEqual(AddressingModes.RegList);
     expect(operandMode("a0/d0")).toEqual(AddressingModes.RegList);
     expect(operandMode("a0-a4/a6/d0-d3/d5/d7")).toEqual(
-      AddressingModes.RegList
+      AddressingModes.RegList,
     );
   });
 

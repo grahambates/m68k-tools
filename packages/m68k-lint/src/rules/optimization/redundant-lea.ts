@@ -1,5 +1,9 @@
 import type { Rule } from "../../core/rule.js";
-import { addressRegisterOperand, isInstruction, operand } from "../../util/ast.js";
+import {
+  addressRegisterOperand,
+  isInstruction,
+  operand,
+} from "../../util/ast.js";
 import { sourceOperand } from "./helpers.js";
 
 /** The register a bare `(An)` or a zero-displacement `0(An)` dereferences, if it is one of those forms. */
@@ -10,12 +14,16 @@ function dereferencedRegister(
   const source = operand(line, 0);
   if (!source) return undefined;
   if (source.type === "address-register-indirect") {
-    return source.register.type === "address-register" ? source.register.register : undefined;
+    return source.register.type === "address-register"
+      ? source.register.register
+      : undefined;
   }
   if (source.type === "address-register-indirect-displacement") {
     if (source.register.type !== "address-register") return undefined;
     const result = ctx.evaluate(source.displacement);
-    return result.known && result.value === 0 ? source.register.register : undefined;
+    return result.known && result.value === 0
+      ? source.register.register
+      : undefined;
   }
   return undefined;
 }

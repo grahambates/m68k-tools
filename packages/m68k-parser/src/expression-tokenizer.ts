@@ -1,6 +1,6 @@
-import { Location, NumberFormat } from "./types.js";
+import { type Location, type NumberFormat } from "./types.js";
 import {
-  ParseError,
+  type ParseError,
   unknownCharacter,
   unterminatedString,
 } from "./parse-error.js";

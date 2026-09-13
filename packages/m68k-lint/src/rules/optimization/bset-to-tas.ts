@@ -1,12 +1,22 @@
 import type { OperandNode } from "m68k-parser";
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateOperand, instructionSize, isInstruction, operand } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+  operand,
+} from "../../util/ast.js";
 import { changedFlagsApplicability, sourceOperand } from "./helpers.js";
 import { canonicalMnemonic } from "../../semantics/mnemonics.js";
 
 const branchMap: Record<string, string> = { beq: "bpl", bne: "bmi" };
 
-function hasInterveningLabel(ctx: Parameters<NonNullable<Rule["checkLine"]>>[0], from: number, to: number): boolean {
+function hasInterveningLabel(
+  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
+  from: number,
+  to: number,
+): boolean {
   for (let i = from + 1; i <= to; i++) if (ctx.line(i)?.label) return true;
   return false;
 }
@@ -50,7 +60,9 @@ export const bsetToTas: Rule = {
     const size = instructionSize(line);
     if (dataDest ? size !== "l" : !memoryDest || size !== "b") return;
 
-    const allowed = dataDest ? ["mc68000", "mc68010", "mc68030"] : ["mc68000", "mc68010"];
+    const allowed = dataDest
+      ? ["mc68000", "mc68010", "mc68030"]
+      : ["mc68000", "mc68010"];
     if (!ctx.config.processors.every((cpu) => allowed.includes(cpu))) return;
 
     const destText = sourceOperand(ctx, line, 1);
@@ -60,12 +72,21 @@ export const bsetToTas: Rule = {
     const branchName = next ? (canonicalMnemonic(next.line) ?? "") : "";
     const replacementBranch = branchMap[branchName];
 
-    if (next && replacementBranch && !hasInterveningLabel(ctx, index, next.index)) {
+    if (
+      next &&
+      replacementBranch &&
+      !hasInterveningLabel(ctx, index, next.index)
+    ) {
       const target = sourceOperand(ctx, next.line, 0);
       if (!target) return;
       const branchSize = instructionSize(next.line);
       const suffix = branchSize ? `.${branchSize}` : "";
-      const safety = changedFlagsApplicability(ctx, next.index, ["N", "Z", "V", "C"]);
+      const safety = changedFlagsApplicability(ctx, next.index, [
+        "N",
+        "Z",
+        "V",
+        "C",
+      ]);
       ctx.report({
         ruleId: this.meta.id,
         category: this.meta.category,
@@ -80,11 +101,17 @@ export const bsetToTas: Rule = {
         },
         notes: [
           {
-            message: "TAS sets bit 7 and tests the byte in one instruction, but the branch condition changes with it.",
+            message:
+              "TAS sets bit 7 and tests the byte in one instruction, but the branch condition changes with it.",
           },
           ...(safety.applicability === "safe"
             ? []
-            : [{ message: "The replacement leaves different CCR values after the branch; review later flag use." }]),
+            : [
+                {
+                  message:
+                    "The replacement leaves different CCR values after the branch; review later flag use.",
+                },
+              ]),
         ],
         data: { secondInstructionIndex: next.index },
       });
@@ -109,10 +136,18 @@ export const bsetToTas: Rule = {
         applicability: safety.applicability,
       },
       notes: [
-        { message: "The quick form encodes its operand in the instruction word, with no extension word." },
+        {
+          message:
+            "The quick form encodes its operand in the instruction word, with no extension word.",
+        },
         ...(safety.applicability === "safe"
           ? []
-          : [{ message: "BSET and TAS set condition codes differently; review any later CCR use." }]),
+          : [
+              {
+                message:
+                  "BSET and TAS set condition codes differently; review any later CCR use.",
+              },
+            ]),
       ],
     });
   },

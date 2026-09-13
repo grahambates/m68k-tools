@@ -1,5 +1,10 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateExpressionOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateExpressionOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { changedFlagsApplicability, isPowerOfTwo } from "./helpers.js";
 
 function log2Exact(value: number): number | undefined {
@@ -40,7 +45,9 @@ export const divuWordPowerOfTwo: Rule = {
     } else {
       scratch = ctx.registers
         .deadDataRegistersAfter(index)
-        .find((register) => register.toLowerCase() !== dest.register.toLowerCase());
+        .find(
+          (register) => register.toLowerCase() !== dest.register.toLowerCase(),
+        );
       if (!scratch) return;
       replacement = `moveq #${shift},${scratch}\nlsr.l ${scratch},${dest.register}`;
     }
@@ -50,7 +57,10 @@ export const divuWordPowerOfTwo: Rule = {
     const upperUse = ctx.registers.upperWordUseAfter(index, dest.register);
     if (upperUse === "used") return;
 
-    const knownDividend = ctx.registers.knownConstantBefore(index, dest.register);
+    const knownDividend = ctx.registers.knownConstantBefore(
+      index,
+      dest.register,
+    );
     let quotientFits = false;
     let valueNote: string;
     if (knownDividend !== undefined) {
@@ -69,12 +79,24 @@ export const divuWordPowerOfTwo: Rule = {
       valueNote =
         "The upper word of Dn is provably discarded before use, so the packed remainder is irrelevant; quotient-overflow range is still unproven.";
     } else {
-      valueNote = "The analyser cannot prove whether Dn's upper-word remainder is observed after the division.";
+      valueNote =
+        "The analyser cannot prove whether Dn's upper-word remainder is observed after the division.";
     }
-    const flags = changedFlagsApplicability(ctx, index, ["X", "N", "Z", "V", "C"]);
+    const flags = changedFlagsApplicability(ctx, index, [
+      "X",
+      "N",
+      "Z",
+      "V",
+      "C",
+    ]);
     const valueSafe = quotientFits && upperUse === "unused";
-    const applicability = valueSafe && flags.applicability === "safe" ? "safe" : "conditional";
-    const confidence = valueSafe ? flags.confidence : upperUse === "unused" ? "high" : "medium";
+    const applicability =
+      valueSafe && flags.applicability === "safe" ? "safe" : "conditional";
+    const confidence = valueSafe
+      ? flags.confidence
+      : upperUse === "unused"
+        ? "high"
+        : "medium";
 
     ctx.report({
       ruleId: this.meta.id,
@@ -84,7 +106,10 @@ export const divuWordPowerOfTwo: Rule = {
       message: `DIVU.W by ${divisor.value} can use a ${shift}-bit logical right shift if the packed remainder is not required`,
       loc: line.mnemonic!.loc,
       suggestion: {
-        description: shift <= 8 ? "Use an immediate LSR.L" : `Use ${scratch} as a dead shift-count register`,
+        description:
+          shift <= 8
+            ? "Use an immediate LSR.L"
+            : `Use ${scratch} as a dead shift-count register`,
         replacement,
         applicability,
       },
@@ -119,13 +144,19 @@ export const divuLongPowerOfTwo: Rule = {
     id: "optimization/divu-long-power-of-two",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Replace unsigned long division by a power of two with a logical shift",
+    description:
+      "Replace unsigned long division by a power of two with a logical shift",
     tags: ["asp68k", "divide", "shift", "68020+"],
     docs: { source: "ASP68K" },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "divu") || instructionSize(line) !== "l") return;
-    if (ctx.config.processors.some((cpu) => cpu === "mc68000" || cpu === "mc68010")) return;
+    if (
+      ctx.config.processors.some(
+        (cpu) => cpu === "mc68000" || cpu === "mc68010",
+      )
+    )
+      return;
     const immediate = immediateExpressionOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
     if (!immediate || !dest) return;
@@ -142,12 +173,20 @@ export const divuLongPowerOfTwo: Rule = {
     } else {
       scratch = ctx.registers
         .deadDataRegistersAfter(index)
-        .find((register) => register.toLowerCase() !== dest.register.toLowerCase());
+        .find(
+          (register) => register.toLowerCase() !== dest.register.toLowerCase(),
+        );
       if (!scratch) return;
       replacement = `moveq #${shift},${scratch}\nlsr.l ${scratch},${dest.register}`;
     }
 
-    const flags = changedFlagsApplicability(ctx, index, ["X", "N", "Z", "V", "C"]);
+    const flags = changedFlagsApplicability(ctx, index, [
+      "X",
+      "N",
+      "Z",
+      "V",
+      "C",
+    ]);
     ctx.report({
       ruleId: this.meta.id,
       category: this.meta.category,
@@ -156,7 +195,10 @@ export const divuLongPowerOfTwo: Rule = {
       message: `DIVU.L by ${unsignedDivisor} can use a ${shift}-bit logical right shift`,
       loc: line.mnemonic!.loc,
       suggestion: {
-        description: shift <= 8 ? "Use an immediate LSR.L" : `Use ${scratch} as a dead shift-count register`,
+        description:
+          shift <= 8
+            ? "Use an immediate LSR.L"
+            : `Use ${scratch} as a dead shift-count register`,
         replacement,
         applicability: flags.applicability,
       },

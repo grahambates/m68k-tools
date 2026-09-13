@@ -1,5 +1,10 @@
 import { parseFile } from "m68k-parser";
-import type { Applicability, Diagnostic, OptimizationImpact, Severity } from "../core/diagnostic.js";
+import type {
+  Applicability,
+  Diagnostic,
+  OptimizationImpact,
+  Severity,
+} from "../core/diagnostic.js";
 import type { SourceSpan } from "../core/span.js";
 
 export function paint(enabled: boolean, code: number, text: string): string {
@@ -22,23 +27,33 @@ export function saving(delta: number | undefined, color: boolean): string {
  *
  *   saves: 4 bytes, 8(2,0) cycles
  */
-export function formatImpact(impact: OptimizationImpact, color: boolean): string | undefined {
+export function formatImpact(
+  impact: OptimizationImpact,
+  color: boolean,
+): string | undefined {
   const parts: string[] = [];
-  if (impact.sizeBytes) parts.push(`${saving(impact.sizeBytes.delta, color)} bytes`);
+  if (impact.sizeBytes)
+    parts.push(`${saving(impact.sizeBytes.delta, color)} bytes`);
 
   const execution = impact.execution;
   if (execution?.cpuCycles) {
     const reads = saving(execution.readCycles?.delta, color);
     const writes = saving(execution.writeCycles?.delta, color);
-    parts.push(`${saving(execution.cpuCycles.delta, color)}(${reads},${writes}) cycles`);
+    parts.push(
+      `${saving(execution.cpuCycles.delta, color)}(${reads},${writes}) cycles`,
+    );
   }
   if (!parts.length) return undefined;
 
   if (impact.assessment) {
-    if (impact.assessment === "regression") parts.push(paint(color, 31, `(regression)`));
-    if (impact.assessment === "neutral") parts.push(paint(color, 90, `(neutral)`));
-    if (impact.assessment === "improvement") parts.push(paint(color, 32, `(overall improvement)`));
-    if (impact.assessment === "tradeoff") parts.push(paint(color, 33, `(tradeoff)`));
+    if (impact.assessment === "regression")
+      parts.push(paint(color, 31, `(regression)`));
+    if (impact.assessment === "neutral")
+      parts.push(paint(color, 90, `(neutral)`));
+    if (impact.assessment === "improvement")
+      parts.push(paint(color, 32, `(overall improvement)`));
+    if (impact.assessment === "tradeoff")
+      parts.push(paint(color, 33, `(tradeoff)`));
   }
 
   const confidences = [
@@ -83,17 +98,24 @@ export const COLORS = {
 const REGISTER = /^(?:d[0-7]|a[0-7]|sp|usp|ssp|pc|sr|ccr|fp[0-7])$/i;
 
 /** Numbers in every base an assembler accepts, strings, identifiers, punctuation. */
-const OPERAND_TOKEN = /(\$[0-9A-Fa-f]+|%[01]+|@[0-7]+|\d[0-9A-Fa-f]*)|("[^"]*"|'[^']*')|([A-Za-z_.][\w.$]*)|(\s+)|(.)/g;
+const OPERAND_TOKEN =
+  /(\$[0-9A-Fa-f]+|%[01]+|@[0-7]+|\d[0-9A-Fa-f]*)|("[^"]*"|'[^']*')|([A-Za-z_.][\w.$]*)|(\s+)|(.)/g;
 
 /** Colour the registers, numbers and punctuation inside one operand. */
 function highlightOperand(text: string, color: boolean): string {
-  return text.replace(OPERAND_TOKEN, (match: string, num: string, str: string, word: string, space: string) => {
-    if (num || str) return paint(color, COLORS.literal, match);
-    // Symbols are left plain so the names carrying the meaning stay the most
-    // readable thing on the line.
-    if (word) return REGISTER.test(word) ? paint(color, COLORS.register, match) : match;
-    return space ? match : paint(color, COLORS.punctuation, match);
-  });
+  return text.replace(
+    OPERAND_TOKEN,
+    (match: string, num: string, str: string, word: string, space: string) => {
+      if (num || str) return paint(color, COLORS.literal, match);
+      // Symbols are left plain so the names carrying the meaning stay the most
+      // readable thing on the line.
+      if (word)
+        return REGISTER.test(word)
+          ? paint(color, COLORS.register, match)
+          : match;
+      return space ? match : paint(color, COLORS.punctuation, match);
+    },
+  );
 }
 
 interface Span {
@@ -118,9 +140,14 @@ export function highlightAsm(text: string, color: boolean): string {
   if (line.qualifier) {
     // The qualifier covers the size letter alone, so take the dot with it.
     const start = line.qualifier.loc.start;
-    spans.push({ start: text[start - 1] === "." ? start - 1 : start, end: line.qualifier.loc.end, kind: "size" });
+    spans.push({
+      start: text[start - 1] === "." ? start - 1 : start,
+      end: line.qualifier.loc.end,
+      kind: "size",
+    });
   }
-  for (const operand of line.operands ?? []) spans.push({ ...operand.loc, kind: "operand" });
+  for (const operand of line.operands ?? [])
+    spans.push({ ...operand.loc, kind: "operand" });
   if (line.comment) spans.push({ ...line.comment.loc, kind: "comment" });
   spans.sort((a, b) => a.start - b.start);
 
@@ -149,12 +176,21 @@ export function highlightAsm(text: string, color: boolean): string {
  */
 function gap(text: string, afterMnemonic: boolean, color: boolean): string {
   if (!afterMnemonic || !text.trim()) return text;
-  return text.replace(/\S+/g, (match) => paint(color, COLORS.punctuation, match));
+  return text.replace(/\S+/g, (match) =>
+    paint(color, COLORS.punctuation, match),
+  );
 }
 
 /** The severity word, coloured the way the report colours that severity elsewhere. */
 export function severityLabel(severity: Severity, color: boolean): string {
-  const code = severity === "error" ? 31 : severity === "warning" ? 33 : severity === "suggestion" ? 36 : 90;
+  const code =
+    severity === "error"
+      ? 31
+      : severity === "warning"
+        ? 33
+        : severity === "suggestion"
+          ? 36
+          : 90;
   return paint(color, code, severity);
 }
 
@@ -170,7 +206,11 @@ export function severityLabel(severity: Severity, color: boolean): string {
  * already says, and under a multi-line match it marked one line of several as
  * though the others were context.
  */
-export function sourceContext(source: string, span: SourceSpan | undefined, color: boolean): string[] {
+export function sourceContext(
+  source: string,
+  span: SourceSpan | undefined,
+  color: boolean,
+): string[] {
   if (!span) return [];
   const lines = source.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
   const text: string[] = [];
@@ -182,7 +222,10 @@ export function sourceContext(source: string, span: SourceSpan | undefined, colo
   return text;
 }
 
-export function formatApplicability(applicability: Applicability, color: boolean): string {
+export function formatApplicability(
+  applicability: Applicability,
+  color: boolean,
+): string {
   const colors = {
     safe: 32,
     conditional: 33,
@@ -192,18 +235,34 @@ export function formatApplicability(applicability: Applicability, color: boolean
 }
 
 /** One finding, as the pretty reporter prints it: location, header, source, action, notes. */
-export function formatDiagnostic(file: string, source: string, diagnostic: Diagnostic, color: boolean): string {
+export function formatDiagnostic(
+  file: string,
+  source: string,
+  diagnostic: Diagnostic,
+  color: boolean,
+): string {
   const line = diagnostic.loc.line ?? 1;
   const col = diagnostic.loc.start + 1;
   const location = paint(color, 34, `${file}:${line}:${col}`);
   const header = `${severityLabel(diagnostic.severity, color)}  ${diagnostic.message}  ${paint(color, 90, `[${diagnostic.ruleId}]`)}`;
-  const lines = [location, header, ...sourceContext(source, diagnostic.span, color)];
+  const lines = [
+    location,
+    header,
+    ...sourceContext(source, diagnostic.span, color),
+  ];
   if (diagnostic.suggestion) {
     const replacement = diagnostic.suggestion.replacement;
-    const applicability = formatApplicability(diagnostic.suggestion.applicability, color);
-    lines.push(`${paint(color, 90, "action:")} ${diagnostic.suggestion.description} (${applicability})`);
+    const applicability = formatApplicability(
+      diagnostic.suggestion.applicability,
+      color,
+    );
+    lines.push(
+      `${paint(color, 90, "action:")} ${diagnostic.suggestion.description} (${applicability})`,
+    );
     if (replacement) {
-      lines.push(...replacement.split("\n").map((text) => highlightAsm(text, color)));
+      lines.push(
+        ...replacement.split("\n").map((text) => highlightAsm(text, color)),
+      );
     }
     const impact = diagnostic.suggestion.impact;
     if (impact) {
@@ -213,30 +272,54 @@ export function formatDiagnostic(file: string, source: string, diagnostic: Diagn
   }
   const notes = diagnostic.notes ?? [];
   if (notes.length) {
-    lines.push(`${paint(color, 90, "notes:")}`, ...notes.map((n) => " - " + n.message));
+    lines.push(
+      `${paint(color, 90, "notes:")}`,
+      ...notes.map((n) => " - " + n.message),
+    );
   }
   return lines.join("\n");
 }
 
 /** Measured outcomes grouped by rule, worst first, for `--impact-summary`. */
-export function formatImpactSummary(diagnostics: readonly Diagnostic[]): string | undefined {
-  const byRule = new Map<string, Record<"improvement" | "tradeoff" | "neutral" | "regression", number>>();
+export function formatImpactSummary(
+  diagnostics: readonly Diagnostic[],
+): string | undefined {
+  const byRule = new Map<
+    string,
+    Record<"improvement" | "tradeoff" | "neutral" | "regression", number>
+  >();
   for (const d of diagnostics) {
     const assessment = d.suggestion?.impact?.assessment;
     if (!assessment) continue;
-    const counts = byRule.get(d.ruleId) ?? { improvement: 0, tradeoff: 0, neutral: 0, regression: 0 };
+    const counts = byRule.get(d.ruleId) ?? {
+      improvement: 0,
+      tradeoff: 0,
+      neutral: 0,
+      regression: 0,
+    };
     counts[assessment]++;
     byRule.set(d.ruleId, counts);
   }
   if (!byRule.size) return undefined;
 
   const rank = (counts: Record<string, number>) =>
-    counts.regression * 1000 + counts.tradeoff * 100 + counts.neutral * 10 + counts.improvement;
-  const rows = [...byRule.entries()].sort((a, b) => rank(b[1]) - rank(a[1]) || a[0].localeCompare(b[0]));
+    counts.regression * 1000 +
+    counts.tradeoff * 100 +
+    counts.neutral * 10 +
+    counts.improvement;
+  const rows = [...byRule.entries()].sort(
+    (a, b) => rank(b[1]) - rank(a[1]) || a[0].localeCompare(b[0]),
+  );
   const lines = ["68000 impact summary by rule:", "assessment\trule\tcount"];
   for (const [rule, counts] of rows) {
-    for (const assessment of ["regression", "tradeoff", "neutral", "improvement"] as const) {
-      if (counts[assessment]) lines.push(`${assessment}\t${rule}\t${counts[assessment]}`);
+    for (const assessment of [
+      "regression",
+      "tradeoff",
+      "neutral",
+      "improvement",
+    ] as const) {
+      if (counts[assessment])
+        lines.push(`${assessment}\t${rule}\t${counts[assessment]}`);
     }
   }
   return lines.join("\n");

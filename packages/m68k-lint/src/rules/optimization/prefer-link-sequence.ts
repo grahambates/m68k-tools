@@ -1,6 +1,12 @@
 import type { ParsedLine } from "m68k-parser";
 import type { Rule } from "../../core/rule.js";
-import { addressRegisterOperand, immediateOperand, instructionSize, isInstruction, operand } from "../../util/ast.js";
+import {
+  addressRegisterOperand,
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+  operand,
+} from "../../util/ast.js";
 import { changedFlagsApplicability, valueText } from "./helpers.js";
 
 function isSpRegister(line: ParsedLine, operandIndex: number): boolean {
@@ -32,19 +38,34 @@ export const preferLinkSequence: Rule = {
     if (!frame || !isSpPredec(line, 1)) return;
 
     const second = ctx.nextInstruction(index);
-    if (!second || !isInstruction(second.line, "movea") || instructionSize(second.line) !== "l") return;
+    if (
+      !second ||
+      !isInstruction(second.line, "movea") ||
+      instructionSize(second.line) !== "l"
+    )
+      return;
     if (!isSpRegister(second.line, 0)) return;
     const frameDest = addressRegisterOperand(second.line, 1);
-    if (!frameDest || frameDest.register.toLowerCase() !== frame.register.toLowerCase()) return;
+    if (
+      !frameDest ||
+      frameDest.register.toLowerCase() !== frame.register.toLowerCase()
+    )
+      return;
 
     const third = ctx.nextInstruction(second.index);
     if (
       !third ||
-      (!isInstruction(third.line, "add") && !isInstruction(third.line, "adda") && !isInstruction(third.line, "addq"))
+      (!isInstruction(third.line, "add") &&
+        !isInstruction(third.line, "adda") &&
+        !isInstruction(third.line, "addq"))
     )
       return;
     const thirdSize = instructionSize(third.line);
-    if ((thirdSize !== "w" && thirdSize !== "l") || !isSpRegister(third.line, 1)) return;
+    if (
+      (thirdSize !== "w" && thirdSize !== "l") ||
+      !isSpRegister(third.line, 1)
+    )
+      return;
     const imm = immediateOperand(third.line, 0);
     if (!imm || imm.value.type === "string-literal") return;
     const value = ctx.evaluate(imm.value);
@@ -56,7 +77,12 @@ export const preferLinkSequence: Rule = {
     // contribute nothing.) X is preserved either way. So the rewrite is only
     // unconditionally safe where those four are dead; the differential checker
     // caught this claiming `safe` with no check at all.
-    const safety = changedFlagsApplicability(ctx, third.index, ["N", "Z", "V", "C"]);
+    const safety = changedFlagsApplicability(ctx, third.index, [
+      "N",
+      "Z",
+      "V",
+      "C",
+    ]);
 
     const manual = !!second.line.label || !!third.line.label;
     ctx.report({
@@ -68,7 +94,9 @@ export const preferLinkSequence: Rule = {
       loc: line.mnemonic!.loc,
       suggestion: {
         description: `Replace the three instructions with LINK ${frame.register},#${value.value}`,
-        replacement: manual ? undefined : `link ${frame.register},#${valueText(ctx, imm.value, value.value)}`,
+        replacement: manual
+          ? undefined
+          : `link ${frame.register},#${valueText(ctx, imm.value, value.value)}`,
         applicability: manual ? "manual" : safety.applicability,
       },
       notes: [
@@ -76,7 +104,8 @@ export const preferLinkSequence: Rule = {
           ? []
           : [
               {
-                message: "LINK leaves the condition codes untouched where the MOVE sets N and Z; review later CCR use.",
+                message:
+                  "LINK leaves the condition codes untouched where the MOVE sets N and Z; review later CCR use.",
               },
             ]),
         ...(manual
@@ -88,7 +117,10 @@ export const preferLinkSequence: Rule = {
             ]
           : []),
       ],
-      data: { secondInstructionIndex: second.index, thirdInstructionIndex: third.index },
+      data: {
+        secondInstructionIndex: second.index,
+        thirdInstructionIndex: third.index,
+      },
     });
   },
 };

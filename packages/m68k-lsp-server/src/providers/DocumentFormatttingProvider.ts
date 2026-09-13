@@ -1,16 +1,16 @@
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import * as lsp from "vscode-languageserver";
-import { Provider } from ".";
-import { Context } from "../context";
+import type * as lsp from "vscode-languageserver";
+import { type Provider } from ".";
+import { type Context } from "../context";
 import {
   DocumentFormatter,
   findConfig,
   loadConfig,
   mergeOptions,
-  FormatContext,
+  type FormatContext,
 } from "m68k-formatter";
-import { isProcessed, ProcessedDocument } from "../DocumentProcessor";
+import { isProcessed, type ProcessedDocument } from "../DocumentProcessor";
 
 export default class DocumentFormattingProvider implements Provider {
   constructor(protected readonly ctx: Context) {}

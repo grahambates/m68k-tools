@@ -9,7 +9,8 @@ import { lintSource } from "../core/lint.js";
  * label and comments of the lines it replaces, and a rule that cannot offer a
  * faithful rewrite declines instead.
  */
-const lint = (source: string) => lintSource(source, { processors: ["mc68000"] });
+const lint = (source: string) =>
+  lintSource(source, { processors: ["mc68000"] });
 /** Trade-offs are opted into here, since several fixtures below are trade-offs. */
 const fix = (source: string, accept: ("safe" | "conditional")[] = ["safe"]) =>
   applyFixes(source, lint, {
@@ -26,18 +27,26 @@ describe("applying suggestions", () => {
   });
 
   test("applies several independent fixes in one pass", () => {
-    const result = fix("\tmove.l\t#100,d0\n\tmove.l\t#5,d1\n\tlea\t4(a0),a0\n\trts");
-    expect(result.output).toBe("\tmoveq\t#100,d0\n\tmoveq\t#5,d1\n\taddq.w\t#4,a0\n\trts");
+    const result = fix(
+      "\tmove.l\t#100,d0\n\tmove.l\t#5,d1\n\tlea\t4(a0),a0\n\trts",
+    );
+    expect(result.output).toBe(
+      "\tmoveq\t#100,d0\n\tmoveq\t#5,d1\n\taddq.w\t#4,a0\n\trts",
+    );
     expect(result.passes).toBe(1);
   });
 
   test("an empty replacement removes the line rather than blanking it", () => {
-    const result = fix("\tmove.w\t#100,d0\n\tmove.w\t#200,d0\n\tmove.l\td0,(a0)\n\trts");
+    const result = fix(
+      "\tmove.w\t#100,d0\n\tmove.w\t#200,d0\n\tmove.l\td0,(a0)\n\trts",
+    );
     expect(result.output).toBe("\tmove.w\t#200,d0\n\tmove.l\td0,(a0)\n\trts");
   });
 
   test("keeps going while each round exposes more", () => {
-    const result = fix("\tmove.l\t#1,d0\n\tmove.l\t#2,d0\n\tmove.l\td0,(a0)\n\trts");
+    const result = fix(
+      "\tmove.l\t#1,d0\n\tmove.l\t#2,d0\n\tmove.l\td0,(a0)\n\trts",
+    );
     expect(result.output).toBe("\tmoveq\t#2,d0\n\tmove.l\td0,(a0)\n\trts");
     expect(result.passes).toBeGreaterThan(1);
   });
@@ -68,7 +77,10 @@ describe("what it declines to touch", () => {
 
   test("a rewrite that would not parse is rolled back", () => {
     const source = "\tmove.l\t#100,d0\n\trts";
-    const result = applyFixes(source, lint, { accept: ["safe"], verify: () => false });
+    const result = applyFixes(source, lint, {
+      accept: ["safe"],
+      verify: () => false,
+    });
     expect(result.output).toBe(source);
     expect(result.rejected).toBe(true);
   });
@@ -84,10 +96,17 @@ describe("what it declines to touch", () => {
         message: "loop",
         loc: { line: 1, start: 0, end: 1 },
         span: { startLine: 1, endLine: 1 },
-        suggestion: { description: "loop", replacement: `\tnop ; ${text.length}`, applicability: "safe" as const },
+        suggestion: {
+          description: "loop",
+          replacement: `\tnop ; ${text.length}`,
+          applicability: "safe" as const,
+        },
       },
     ];
-    const result = applyFixes("\tnop", forever, { accept: ["safe"], maxPasses: 4 });
+    const result = applyFixes("\tnop", forever, {
+      accept: ["safe"],
+      maxPasses: 4,
+    });
     expect(result.passes).toBe(4);
   });
 });
@@ -132,20 +151,26 @@ describe("keeping the original above an opaque rewrite", () => {
 
   // No expansion here, but SCALE is gone from the result.
   test("a rewrite that drops a name is annotated", () => {
-    const output = annotate("SCALE equ 8\n\tdivu.w\t#SCALE,d0\n\tmove.w\td0,d1\n\tmoveq\t#0,d0\n\trts");
+    const output = annotate(
+      "SCALE equ 8\n\tdivu.w\t#SCALE,d0\n\tmove.w\td0,d1\n\tmoveq\t#0,d0\n\trts",
+    );
     expect(output).toContain("; divu.w\t#SCALE,d0");
     expect(output).toContain("\tlsr.l\t#3,d0");
   });
 
   test("a rewrite that is neither is left plain", () => {
-    expect(annotate("\tmove.l\t#100,d0\n\trts")).toBe("\tmoveq\t#100,d0\n\trts");
+    expect(annotate("\tmove.l\t#100,d0\n\trts")).toBe(
+      "\tmoveq\t#100,d0\n\trts",
+    );
   });
 
   test("it does nothing unless asked", () => {
     const source = "start:\n\tasr.w\t#8,d0\n\tmove.l\td1,d2\n\trts";
     expect(
-      applyFixes(source, lint, { accept: ["safe", "conditional"], acceptAssessments: ["improvement", "tradeoff"] })
-        .output,
+      applyFixes(source, lint, {
+        accept: ["safe", "conditional"],
+        acceptAssessments: ["improvement", "tradeoff"],
+      }).output,
     ).not.toContain("; was:");
   });
 
@@ -170,8 +195,14 @@ describe("keeping the original above an opaque rewrite", () => {
  * measured gain at all.
  */
 describe("what a fix is worth, not just whether it is equivalent", () => {
-  const apply = (source: string, acceptAssessments?: ("improvement" | "tradeoff" | "neutral")[]) =>
-    applyFixes(source, lint, { accept: ["safe"], ...(acceptAssessments ? { acceptAssessments } : {}) }).output;
+  const apply = (
+    source: string,
+    acceptAssessments?: ("improvement" | "tradeoff" | "neutral")[],
+  ) =>
+    applyFixes(source, lint, {
+      accept: ["safe"],
+      ...(acceptAssessments ? { acceptAssessments } : {}),
+    }).output;
 
   // Safe, and still a decision: two bytes for thirty-two cycles.
   const tradeoff = "\tmulu.w\t#1,d0\n\tmove.l\td1,d2\n\trts";
@@ -197,7 +228,9 @@ describe("what a fix is worth, not just whether it is equivalent", () => {
   // A dead write is a defect to remove whatever the timings say, and impact is
   // only measured for optimization rules on a 68000.
   test("a suggestion with no measurement is applied", () => {
-    const result = apply("\tmove.w\t#100,d0\n\tmove.w\t#200,d0\n\tmove.l\td0,(a0)\n\trts");
+    const result = apply(
+      "\tmove.w\t#100,d0\n\tmove.w\t#200,d0\n\tmove.l\td0,(a0)\n\trts",
+    );
     expect(result).toBe("\tmove.w\t#200,d0\n\tmove.l\td0,(a0)\n\trts");
   });
 });

@@ -4,7 +4,7 @@ import { join } from "path";
 import { pathToFileURL } from "url";
 import * as lsp from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { createContext, Context } from "../src/context";
+import { createContext, type Context } from "../src/context";
 import DocumentProcessor, { isProcessed } from "../src/DocumentProcessor";
 import FileOperationsProvider from "../src/providers/FileOperationsProvider";
 import TextDocumentSyncProvider from "../src/providers/TextDocumentSyncProvider";

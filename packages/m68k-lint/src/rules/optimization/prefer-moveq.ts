@@ -1,5 +1,10 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { valueText } from "./helpers.js";
 
 /**
@@ -42,7 +47,10 @@ export const preferMoveq: Rule = {
     // MOVEQ's operand field is a signed byte, and assemblers reject the
     // unsigned spelling of a negative constant there, so the replacement has
     // to give the signed form even where that loses a symbol name.
-    const written = signed === value.value ? valueText(ctx, source.value, value.value) : String(signed);
+    const written =
+      signed === value.value
+        ? valueText(ctx, source.value, value.value)
+        : String(signed);
 
     ctx.report({
       ruleId: this.meta.id,

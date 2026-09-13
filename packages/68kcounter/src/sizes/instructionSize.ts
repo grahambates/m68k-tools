@@ -1,12 +1,12 @@
 import {
   Mnemonics,
   mnemonicGroups,
-  Mnemonic,
+  type Mnemonic,
   AddressingModes,
-  AddressingMode,
+  type AddressingMode,
   Qualifiers,
 } from "../syntax";
-import { InstructionStatement } from "../parse/nodes";
+import { type InstructionStatement } from "../parse/nodes";
 
 const bitOps: Mnemonic[] = [
   Mnemonics.BCHG,

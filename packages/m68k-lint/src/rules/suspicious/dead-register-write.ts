@@ -26,7 +26,11 @@ const CONTROL_FLOW_SAFE = new Set(["none", "fallthrough"]);
 
 /** Operands that are just a register or a literal, with nothing else going on. */
 function isInertOperand(op: OperandNode): boolean {
-  return op.type === "data-register" || op.type === "address-register" || op.type === "immediate";
+  return (
+    op.type === "data-register" ||
+    op.type === "address-register" ||
+    op.type === "immediate"
+  );
 }
 
 /**
@@ -41,7 +45,10 @@ function readsMemory(line: ParsedLine, mnemonic: string): boolean {
 }
 
 /** The bits a narrow write covers, or nothing when the write is full width. */
-function partialWriteMask(line: ParsedLine, isPartial: boolean): number | undefined {
+function partialWriteMask(
+  line: ParsedLine,
+  isPartial: boolean,
+): number | undefined {
   if (!isPartial) return undefined;
   const size = instructionSize(line);
   if (size === "b") return 0xff;
@@ -54,7 +61,8 @@ export const deadRegisterWrite: Rule = {
     id: "suspicious/dead-register-write",
     category: "suspicious",
     defaultSeverity: "warning",
-    description: "Flag a register write whose value is overwritten before it is read",
+    description:
+      "Flag a register write whose value is overwritten before it is read",
     tags: ["dataflow", "register-analysis", "dead-code", "likely-typo"],
     docs: {
       note: "Usually a typo, where the write was meant for a different register, rather than an intentional waste of two bytes. Restricted to instructions that write one register and its flags, both provably unused. A load from memory is reported but never offered as a safe removal, since the address may change state when read.",
@@ -84,10 +92,15 @@ export const deadRegisterWrite: Rule = {
     // writes are read again, and that is the one the rule needs: in
     // `move.w d0,d1 / move.w d2,d1 / move.w d1,(a0)` the first write is dead
     // even though D1 itself is live throughout.
-    const writtenBits = partialWriteMask(line, registers.partialWrites.has(written));
+    const writtenBits = partialWriteMask(
+      line,
+      registers.partialWrites.has(written),
+    );
     const dead =
       ctx.registers.isLiveAfter(index, written) === "dead" ||
-      (writtenBits !== undefined && ctx.registers.registerBitsUseAfter(index, written, writtenBits) === "unused");
+      (writtenBits !== undefined &&
+        ctx.registers.registerBitsUseAfter(index, written, writtenBits) ===
+          "unused");
     if (!dead) return;
     // Removing the instruction removes its flag effects too.
     for (const flag of [...flags.writes, ...flags.undefined]) {
@@ -105,7 +118,8 @@ export const deadRegisterWrite: Rule = {
       loc: line.mnemonic!.loc,
       suggestion: fromMemory
         ? {
-            description: "Remove the instruction, if the load has no side effect",
+            description:
+              "Remove the instruction, if the load has no side effect",
             applicability: "manual",
           }
         : {
@@ -114,8 +128,13 @@ export const deadRegisterWrite: Rule = {
             applicability: "safe",
           },
       notes: [
-        { message: `Nothing reads ${written.toUpperCase()} between this write and the next one.` },
-        { message: "The condition codes it sets are also unused, so removing it changes nothing." },
+        {
+          message: `Nothing reads ${written.toUpperCase()} between this write and the next one.`,
+        },
+        {
+          message:
+            "The condition codes it sets are also unused, so removing it changes nothing.",
+        },
         {
           message:
             "Worth checking the destination is the register you meant: a write nothing reads is often a typo rather than dead weight.",

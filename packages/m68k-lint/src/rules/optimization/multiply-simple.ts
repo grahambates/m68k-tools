@@ -1,13 +1,26 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { changedFlagsApplicability, isPowerOfTwo } from "./helpers.js";
 
-function sourceTimingKnown(ctx: Parameters<NonNullable<Rule["checkLine"]>>[0]): boolean {
-  return ctx.config.processors.every((cpu) => cpu !== "mc68020" && cpu !== "cpu32");
+function sourceTimingKnown(
+  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
+): boolean {
+  return ctx.config.processors.every(
+    (cpu) => cpu !== "mc68020" && cpu !== "cpu32",
+  );
 }
 
-function powerOfTwoTimingUseful(ctx: Parameters<NonNullable<Rule["checkLine"]>>[0]): boolean {
-  return ctx.config.processors.every((cpu) => ["mc68000", "mc68010", "mc68030", "mc68040"].includes(cpu));
+function powerOfTwoTimingUseful(
+  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
+): boolean {
+  return ctx.config.processors.every((cpu) =>
+    ["mc68000", "mc68010", "mc68030", "mc68040"].includes(cpu),
+  );
 }
 
 export const multiplyWordByZero: Rule = {
@@ -36,7 +49,11 @@ export const multiplyWordByZero: Rule = {
       confidence: "certain",
       message: `${line.mnemonic!.type === "instruction" ? line.mnemonic!.instruction.toUpperCase() : "MUL"}.W by zero always produces zero`,
       loc: line.mnemonic!.loc,
-      suggestion: { description: `Use ${replacement.toUpperCase()}`, replacement, applicability: "safe" },
+      suggestion: {
+        description: `Use ${replacement.toUpperCase()}`,
+        replacement,
+        applicability: "safe",
+      },
     });
   },
 };
@@ -51,7 +68,12 @@ export const multiplySignedWordByOne: Rule = {
     docs: { source: "ASP68K" },
   },
   checkLine(ctx, line) {
-    if (!isInstruction(line, "muls") || instructionSize(line) !== "w" || !sourceTimingKnown(ctx)) return;
+    if (
+      !isInstruction(line, "muls") ||
+      instructionSize(line) !== "w" ||
+      !sourceTimingKnown(ctx)
+    )
+      return;
     const imm = immediateOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
     if (!imm || !dest || imm.value.type === "string-literal") return;
@@ -64,9 +86,14 @@ export const multiplySignedWordByOne: Rule = {
       category: this.meta.category,
       severity: this.meta.defaultSeverity,
       confidence: "certain",
-      message: "Signed word multiplication by one is just sign extension to long",
+      message:
+        "Signed word multiplication by one is just sign extension to long",
       loc: line.mnemonic!.loc,
-      suggestion: { description: `Use ${replacement.toUpperCase()}`, replacement, applicability: "safe" },
+      suggestion: {
+        description: `Use ${replacement.toUpperCase()}`,
+        replacement,
+        applicability: "safe",
+      },
     });
   },
 };
@@ -83,7 +110,12 @@ export const multiplyUnsignedWordByOne: Rule = {
   },
   checkLine(ctx, line) {
     if (!isInstruction(line, "mulu") || instructionSize(line) !== "w") return;
-    if (!ctx.config.processors.every((cpu) => ["mc68000", "mc68010", "mc68030", "mc68040"].includes(cpu))) return;
+    if (
+      !ctx.config.processors.every((cpu) =>
+        ["mc68000", "mc68010", "mc68030", "mc68040"].includes(cpu),
+      )
+    )
+      return;
     const imm = immediateOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
     if (!imm || !dest || imm.value.type === "string-literal") return;
@@ -97,9 +129,14 @@ export const multiplyUnsignedWordByOne: Rule = {
       category: this.meta.category,
       severity: this.meta.defaultSeverity,
       confidence: "certain",
-      message: "Unsigned word multiplication by one only zero-extends the low word",
+      message:
+        "Unsigned word multiplication by one only zero-extends the low word",
       loc: line.mnemonic!.loc,
-      suggestion: { description: `Zero-extend ${r.toUpperCase()} without MULU`, replacement, applicability: "safe" },
+      suggestion: {
+        description: `Zero-extend ${r.toUpperCase()} without MULU`,
+        replacement,
+        applicability: "safe",
+      },
     });
   },
 };
@@ -109,17 +146,29 @@ export const multiplySignedWordPowerOfTwo: Rule = {
     id: "optimization/muls-word-power-of-two",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Replace signed word multiply by a small power of two with EXT plus ASL",
+    description:
+      "Replace signed word multiply by a small power of two with EXT plus ASL",
     tags: ["asp68k", "multiply", "constant", "ccr"],
     docs: { source: "ASP68K" },
   },
   checkLine(ctx, line, index) {
-    if (!isInstruction(line, "muls") || instructionSize(line) !== "w" || !powerOfTwoTimingUseful(ctx)) return;
+    if (
+      !isInstruction(line, "muls") ||
+      instructionSize(line) !== "w" ||
+      !powerOfTwoTimingUseful(ctx)
+    )
+      return;
     const imm = immediateOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
     if (!imm || !dest || imm.value.type === "string-literal") return;
     const value = ctx.evaluate(imm.value);
-    if (!value.known || !isPowerOfTwo(value.value) || value.value < 2 || value.value > 256) return;
+    if (
+      !value.known ||
+      !isPowerOfTwo(value.value) ||
+      value.value < 2 ||
+      value.value > 256
+    )
+      return;
     const shift = Math.log2(value.value);
     if (!Number.isInteger(shift) || shift < 1 || shift > 8) return;
 
@@ -135,11 +184,25 @@ export const multiplySignedWordPowerOfTwo: Rule = {
       confidence: safety.confidence,
       message: `MULS.W by ${value.value} can be expressed as sign-extension plus a ${shift}-bit shift`,
       loc: line.mnemonic!.loc,
-      suggestion: { description: `Use EXT.L + ASL.L #${shift}`, replacement, applicability: safety.applicability },
+      suggestion: {
+        description: `Use EXT.L + ASL.L #${shift}`,
+        replacement,
+        applicability: safety.applicability,
+      },
       notes: [
         ...(safety.applicability === "safe"
-          ? [{ message: "The differing X/V/C values are dead after this instruction." }]
-          : [{ message: "ASL can leave different X/V/C values from MULS; review any later flag use." }]),
+          ? [
+              {
+                message:
+                  "The differing X/V/C values are dead after this instruction.",
+              },
+            ]
+          : [
+              {
+                message:
+                  "ASL can leave different X/V/C values from MULS; review any later flag use.",
+              },
+            ]),
       ],
     });
   },
@@ -150,18 +213,30 @@ export const multiplyUnsignedWordPowerOfTwo: Rule = {
     id: "optimization/mulu-word-power-of-two",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Replace unsigned word multiply by a small power of two with zero-extension plus LSL",
+    description:
+      "Replace unsigned word multiply by a small power of two with zero-extension plus LSL",
     tags: ["asp68k", "multiply", "constant", "ccr"],
     serves: "speed",
     docs: { source: "ASP68K" },
   },
   checkLine(ctx, line, index) {
-    if (!isInstruction(line, "mulu") || instructionSize(line) !== "w" || !powerOfTwoTimingUseful(ctx)) return;
+    if (
+      !isInstruction(line, "mulu") ||
+      instructionSize(line) !== "w" ||
+      !powerOfTwoTimingUseful(ctx)
+    )
+      return;
     const imm = immediateOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
     if (!imm || !dest || imm.value.type === "string-literal") return;
     const value = ctx.evaluate(imm.value);
-    if (!value.known || !isPowerOfTwo(value.value) || value.value < 2 || value.value > 256) return;
+    if (
+      !value.known ||
+      !isPowerOfTwo(value.value) ||
+      value.value < 2 ||
+      value.value > 256
+    )
+      return;
     const shift = Math.log2(value.value);
     if (!Number.isInteger(shift) || shift < 1 || shift > 8) return;
 
@@ -175,11 +250,25 @@ export const multiplyUnsignedWordPowerOfTwo: Rule = {
       confidence: safety.confidence,
       message: `MULU.W by ${value.value} can be expressed as zero-extension plus a ${shift}-bit shift`,
       loc: line.mnemonic!.loc,
-      suggestion: { description: `Zero-extend then LSL.L #${shift}`, replacement, applicability: safety.applicability },
+      suggestion: {
+        description: `Zero-extend then LSL.L #${shift}`,
+        replacement,
+        applicability: safety.applicability,
+      },
       notes: [
         ...(safety.applicability === "safe"
-          ? [{ message: "The differing X/V/C values are dead after this instruction." }]
-          : [{ message: "LSL can leave different X/V/C values from MULU; review later flag use." }]),
+          ? [
+              {
+                message:
+                  "The differing X/V/C values are dead after this instruction.",
+              },
+            ]
+          : [
+              {
+                message:
+                  "LSL can leave different X/V/C values from MULU; review later flag use.",
+              },
+            ]),
       ],
     });
   },
@@ -190,18 +279,30 @@ export const multiplySignedWordHighPowerOfTwo: Rule = {
     id: "optimization/muls-word-high-power-of-two",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Replace signed word multiply by a large power of two with SWAP/CLR/ASR",
+    description:
+      "Replace signed word multiply by a large power of two with SWAP/CLR/ASR",
     tags: ["asp68k", "multiply", "constant", "ccr"],
     serves: "speed",
     docs: { source: "ASP68K" },
   },
   checkLine(ctx, line, index) {
-    if (!isInstruction(line, "muls") || instructionSize(line) !== "w" || !powerOfTwoTimingUseful(ctx)) return;
+    if (
+      !isInstruction(line, "muls") ||
+      instructionSize(line) !== "w" ||
+      !powerOfTwoTimingUseful(ctx)
+    )
+      return;
     const imm = immediateOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
     if (!imm || !dest || imm.value.type === "string-literal") return;
     const value = ctx.evaluate(imm.value);
-    if (!value.known || !isPowerOfTwo(value.value) || value.value < 512 || value.value > 32768) return;
+    if (
+      !value.known ||
+      !isPowerOfTwo(value.value) ||
+      value.value < 512 ||
+      value.value > 32768
+    )
+      return;
     const shift = Math.log2(value.value);
     if (!Number.isInteger(shift) || shift < 9 || shift > 15) return;
 
@@ -223,8 +324,18 @@ export const multiplySignedWordHighPowerOfTwo: Rule = {
       },
       notes: [
         ...(safety.applicability === "safe"
-          ? [{ message: "The differing X/V/C values are dead after this instruction." }]
-          : [{ message: "The replacement can leave different X/V/C values from MULS; review later flag use." }]),
+          ? [
+              {
+                message:
+                  "The differing X/V/C values are dead after this instruction.",
+              },
+            ]
+          : [
+              {
+                message:
+                  "The replacement can leave different X/V/C values from MULS; review later flag use.",
+              },
+            ]),
       ],
     });
   },
@@ -235,18 +346,30 @@ export const multiplyUnsignedWordHighPowerOfTwo: Rule = {
     id: "optimization/mulu-word-high-power-of-two",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Replace unsigned word multiply by a large power of two with SWAP/CLR/LSR",
+    description:
+      "Replace unsigned word multiply by a large power of two with SWAP/CLR/LSR",
     tags: ["asp68k", "multiply", "constant", "ccr"],
     serves: "speed",
     docs: { source: "ASP68K" },
   },
   checkLine(ctx, line, index) {
-    if (!isInstruction(line, "mulu") || instructionSize(line) !== "w" || !powerOfTwoTimingUseful(ctx)) return;
+    if (
+      !isInstruction(line, "mulu") ||
+      instructionSize(line) !== "w" ||
+      !powerOfTwoTimingUseful(ctx)
+    )
+      return;
     const imm = immediateOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
     if (!imm || !dest || imm.value.type === "string-literal") return;
     const value = ctx.evaluate(imm.value);
-    if (!value.known || !isPowerOfTwo(value.value) || value.value < 512 || value.value > 32768) return;
+    if (
+      !value.known ||
+      !isPowerOfTwo(value.value) ||
+      value.value < 512 ||
+      value.value > 32768
+    )
+      return;
     const shift = Math.log2(value.value);
     if (!Number.isInteger(shift) || shift < 9 || shift > 15) return;
 
@@ -268,8 +391,18 @@ export const multiplyUnsignedWordHighPowerOfTwo: Rule = {
       },
       notes: [
         ...(safety.applicability === "safe"
-          ? [{ message: "The differing X/V/C values are dead after this instruction." }]
-          : [{ message: "The replacement can leave different X/V/C values from MULU; review later flag use." }]),
+          ? [
+              {
+                message:
+                  "The differing X/V/C values are dead after this instruction.",
+              },
+            ]
+          : [
+              {
+                message:
+                  "The replacement can leave different X/V/C values from MULU; review later flag use.",
+              },
+            ]),
       ],
     });
   },

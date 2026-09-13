@@ -1,5 +1,10 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
 
 /** ASP68K: ADD/SUB #0,Dn can use TST on CPUs where that is a timing/size win.
@@ -16,11 +21,20 @@ export const zeroArithmeticToTst: Rule = {
   },
 
   checkLine(ctx, line, index) {
-    const mnemonic = isInstruction(line, "add") ? "add" : isInstruction(line, "sub") ? "sub" : undefined;
+    const mnemonic = isInstruction(line, "add")
+      ? "add"
+      : isInstruction(line, "sub")
+        ? "sub"
+        : undefined;
     if (!mnemonic) return;
 
     // ASP68K records the win on 000/010/030; 020 is unknown and 040/060 are not wins.
-    if (!ctx.config.processors.every((cpu) => ["mc68000", "mc68010", "mc68030"].includes(cpu))) return;
+    if (
+      !ctx.config.processors.every((cpu) =>
+        ["mc68000", "mc68010", "mc68030"].includes(cpu),
+      )
+    )
+      return;
 
     const imm = immediateOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
@@ -44,8 +58,18 @@ export const zeroArithmeticToTst: Rule = {
       },
       notes: [
         ...(safety.applicability === "safe"
-          ? [{ message: "X is dead after this instruction, so TST preserving X is unobservable." }]
-          : [{ message: "ADD/SUB update X while TST preserves it; review later X/extend-dependent instructions." }]),
+          ? [
+              {
+                message:
+                  "X is dead after this instruction, so TST preserving X is unobservable.",
+              },
+            ]
+          : [
+              {
+                message:
+                  "ADD/SUB update X while TST preserves it; review later X/extend-dependent instructions.",
+              },
+            ]),
       ],
     });
   },

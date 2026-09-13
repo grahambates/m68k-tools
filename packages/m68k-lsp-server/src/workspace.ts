@@ -1,9 +1,9 @@
 import { minimatch } from "minimatch";
 import { URI } from "vscode-uri";
 
-import DocumentProcessor from "./DocumentProcessor";
+import type DocumentProcessor from "./DocumentProcessor";
 import { getAsmFilesInDir } from "./files";
-import { Context } from "./context";
+import { type Context } from "./context";
 
 /**
  * Directories that hold copies of the sources rather than sources.

@@ -1,7 +1,7 @@
 import * as lsp from "vscode-languageserver";
-import { Provider } from ".";
+import { type Provider } from ".";
 import { nodeAtPosition, walkFile } from "../ast";
-import { Context } from "../context";
+import { type Context } from "../context";
 import { isProcessed } from "../DocumentProcessor";
 import { locationAsRange } from "../geometry";
 import { registerName } from "../registerAnalysis";

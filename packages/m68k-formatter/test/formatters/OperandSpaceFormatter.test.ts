@@ -1,5 +1,5 @@
 import OperandSpaceFormatter, {
-  OperandSpaceOptions,
+  type OperandSpaceOptions,
 } from "../../src/formatter/formatters/OperandSpaceFormatter";
 import { applyEdits, formatContext } from "../helpers";
 

@@ -17,7 +17,9 @@ export type ConstantResult =
 export type ConstantResolver = (name: string) => number | undefined;
 
 const known = (value: number): ConstantResult => ({ known: true, value });
-const unknown = (reason: Exclude<ConstantResult, { known: true }>["reason"]): ConstantResult => ({
+const unknown = (
+  reason: Exclude<ConstantResult, { known: true }>["reason"],
+): ConstantResult => ({
   known: false,
   reason,
 });
@@ -37,7 +39,11 @@ function evalUnary(operator: UnaryOp, value: number): number {
   }
 }
 
-function evalBinary(operator: BinaryOp, left: number, right: number): ConstantResult {
+function evalBinary(
+  operator: BinaryOp,
+  left: number,
+  right: number,
+): ConstantResult {
   switch (operator) {
     case "+":
       return known(left + right);
@@ -47,7 +53,9 @@ function evalBinary(operator: BinaryOp, left: number, right: number): ConstantRe
       return known(left * right);
     case "/":
     case "//":
-      return right === 0 ? unknown("division-by-zero") : known(Math.trunc(left / right));
+      return right === 0
+        ? unknown("division-by-zero")
+        : known(Math.trunc(left / right));
     case "%":
       return right === 0 ? unknown("division-by-zero") : known(left % right);
     case "&":
@@ -111,7 +119,9 @@ export function evaluateConstant(
       return evaluateConstant(expr.expression, resolveSymbol);
     case "unary-op": {
       const operand = evaluateConstant(expr.operand, resolveSymbol);
-      return operand.known ? known(evalUnary(expr.operator, operand.value)) : operand;
+      return operand.known
+        ? known(evalUnary(expr.operator, operand.value))
+        : operand;
     }
     case "binary-op": {
       const left = evaluateConstant(expr.left, resolveSymbol);

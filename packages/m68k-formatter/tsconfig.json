@@ -1,13 +1,6 @@
 {
+  "extends": "../../tsconfig.project.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "declaration": true,
-    "composite": true,
     "outDir": ".tsbuild",
     "rootDir": "src",
     "tsBuildInfoFile": ".tsbuild/.tsbuildinfo"

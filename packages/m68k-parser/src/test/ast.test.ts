@@ -764,60 +764,62 @@ describe("parse AST", () => {
         loc: { start: 39, end: 53 },
       });
     });
-  
-  describe("macro arguments and interpolated names", () => {
-    it("keeps a macro argument that is not an expression as text", () => {
-      // `24BITDMA` cannot be an identifier, but a macro argument is
-      // substituted textually, so it does not have to be one.
-      const line = parseLine("  BITDEF  MEM,24BITDMA,9");
-      expect(line.errors).toHaveLength(0);
-      expect(line.value.operands?.[1]).toMatchObject({
-        type: "macro-argument",
-        text: "24BITDMA",
+
+    describe("macro arguments and interpolated names", () => {
+      it("keeps a macro argument that is not an expression as text", () => {
+        // `24BITDMA` cannot be an identifier, but a macro argument is
+        // substituted textually, so it does not have to be one.
+        const line = parseLine("  BITDEF  MEM,24BITDMA,9");
+        expect(line.errors).toHaveLength(0);
+        expect(line.value.operands?.[1]).toMatchObject({
+          type: "macro-argument",
+          text: "24BITDMA",
+        });
       });
-    });
 
-    it("keeps structure for macro arguments that do parse", () => {
-      const line = parseLine("  MyMacro d0,d1");
-      expect(line.value.operands?.map((o) => o.type)).toEqual([
-        "data-register",
-        "data-register",
-      ]);
-    });
-
-    it("does not apply the text fallback to real instructions", () => {
-      const line = parseLine("  move.w d0,d1");
-      expect(line.value.operands?.map((o) => o.type)).toEqual([
-        "data-register",
-        "data-register",
-      ]);
-    });
-
-    it("marks a symbol whose name embeds a placeholder", () => {
-      const line = parseLine("    move.w  BLTEN_\\1,d0");
-      const operand = line.value.operands?.[0] as {
-        address: { name: string; interpolated?: boolean };
-      };
-      expect(operand.address).toMatchObject({
-        name: "BLTEN_\\1",
-        interpolated: true,
+      it("keeps structure for macro arguments that do parse", () => {
+        const line = parseLine("  MyMacro d0,d1");
+        expect(line.value.operands?.map((o) => o.type)).toEqual([
+          "data-register",
+          "data-register",
+        ]);
       });
-    });
 
-    it("marks a label whose name embeds a placeholder", () => {
-      expect(parseLine(".loop\\@:").value.label).toMatchObject({
-        label: ".loop\\@",
-        interpolated: true,
+      it("does not apply the text fallback to real instructions", () => {
+        const line = parseLine("  move.w d0,d1");
+        expect(line.value.operands?.map((o) => o.type)).toEqual([
+          "data-register",
+          "data-register",
+        ]);
       });
-    });
 
-    it("leaves ordinary names unmarked", () => {
-      expect(parseLine("RealLabel:").value.label?.interpolated).toBeUndefined();
-      const operand = parseLine("  move.w Sym,d0").value.operands?.[0] as {
-        address: { interpolated?: boolean };
-      };
-      expect(operand.address.interpolated).toBeUndefined();
+      it("marks a symbol whose name embeds a placeholder", () => {
+        const line = parseLine("    move.w  BLTEN_\\1,d0");
+        const operand = line.value.operands?.[0] as {
+          address: { name: string; interpolated?: boolean };
+        };
+        expect(operand.address).toMatchObject({
+          name: "BLTEN_\\1",
+          interpolated: true,
+        });
+      });
+
+      it("marks a label whose name embeds a placeholder", () => {
+        expect(parseLine(".loop\\@:").value.label).toMatchObject({
+          label: ".loop\\@",
+          interpolated: true,
+        });
+      });
+
+      it("leaves ordinary names unmarked", () => {
+        expect(
+          parseLine("RealLabel:").value.label?.interpolated,
+        ).toBeUndefined();
+        const operand = parseLine("  move.w Sym,d0").value.operands?.[0] as {
+          address: { interpolated?: boolean };
+        };
+        expect(operand.address.interpolated).toBeUndefined();
+      });
     });
   });
-});
 });

@@ -10,12 +10,20 @@ import { lintSource } from "../core/lint.js";
  * cost in bytes was reported as an outright regression.
  */
 const impactOf = (lines: string[], ruleId: string) =>
-  lintSource(lines.join("\n"), { processors: ["mc68000"] }).find((d) => d.ruleId === ruleId)?.suggestion?.impact;
+  lintSource(lines.join("\n"), { processors: ["mc68000"] }).find(
+    (d) => d.ruleId === ruleId,
+  )?.suggestion?.impact;
 
 describe("timing that depends on a proven shift count", () => {
   test("a known register count is measured rather than left a range", () => {
     const impact = impactOf(
-      ["\tmoveq #24,d1", "\tlsr.l d1,d0", "\tmoveq #0,d1", "\tmoveq #0,d7", "\trts"],
+      [
+        "\tmoveq #24,d1",
+        "\tlsr.l d1,d0",
+        "\tmoveq #0,d1",
+        "\tmoveq #0,d7",
+        "\trts",
+      ],
       "optimization/stack-known-register-shift",
     );
     // LSR.L Dn,Dn is 8 + 2n, so 56 for n=24, plus 4 for the MOVEQ it replaces.
@@ -26,7 +34,13 @@ describe("timing that depends on a proven shift count", () => {
 
   test("saving cycles at a cost in bytes reads as a trade-off, not a regression", () => {
     const impact = impactOf(
-      ["\tmoveq #24,d1", "\tlsr.l d1,d0", "\tmoveq #0,d1", "\tmoveq #0,d7", "\trts"],
+      [
+        "\tmoveq #24,d1",
+        "\tlsr.l d1,d0",
+        "\tmoveq #0,d1",
+        "\tmoveq #0,d7",
+        "\trts",
+      ],
       "optimization/stack-known-register-shift",
     );
     expect(impact?.sizeBytes?.delta).toBeGreaterThan(0);
@@ -34,7 +48,10 @@ describe("timing that depends on a proven shift count", () => {
   });
 
   test("a literal count was already measurable and is unchanged", () => {
-    const impact = impactOf(["\tlsl.w #8,d0", "\tmoveq #0,d7", "\trts"], "optimization/stack-word-shift-eight");
+    const impact = impactOf(
+      ["\tlsl.w #8,d0", "\tmoveq #0,d7", "\trts"],
+      "optimization/stack-word-shift-eight",
+    );
     expect(impact?.execution?.cpuCycles?.delta).toBe(-2);
     expect(impact?.assessment).toBe("tradeoff");
   });
@@ -55,9 +72,13 @@ describe("counts recorded under other names", () => {
   // Rotates prove their count exactly as shifts do, but recorded it as
   // `rotateCount`, so the resolver never saw it and the saving never appeared.
   test("a proven rotate count resolves the range", () => {
-    const impact = lintSource(["\tmoveq #12,d1", "\trol.w d1,d0", "\tmoveq #0,d1", "\trts"].join("\n"), {
-      processors: ["mc68000"],
-    }).find((d) => d.ruleId === "optimization/known-register-rotate")?.suggestion?.impact;
+    const impact = lintSource(
+      ["\tmoveq #12,d1", "\trol.w d1,d0", "\tmoveq #0,d1", "\trts"].join("\n"),
+      {
+        processors: ["mc68000"],
+      },
+    ).find((d) => d.ruleId === "optimization/known-register-rotate")?.suggestion
+      ?.impact;
     expect(impact?.execution?.cpuCycles?.confidence).toBe("exact");
     expect(impact?.execution?.cpuCycles?.delta).toBeLessThan(0);
   });
@@ -68,17 +89,21 @@ describe("a redundant size on a bit instruction", () => {
   // does not fix. yacht.txt gives `#<data>,Dn .L` as 10(2/0): two word fetches,
   // four bytes. 68kcounter bills the spelled-out form an extra extension word.
   test("does not cost the measurement two bytes", () => {
-    const impact = lintSource(["\tor.l #8,d0", "\tmoveq #0,d7", "\trts"].join("\n"), { processors: ["mc68000"] }).find(
-      (d) => d.ruleId === "optimization/prefer-bset",
-    )?.suggestion?.impact;
+    const impact = lintSource(
+      ["\tor.l #8,d0", "\tmoveq #0,d7", "\trts"].join("\n"),
+      { processors: ["mc68000"] },
+    ).find((d) => d.ruleId === "optimization/prefer-bset")?.suggestion?.impact;
     expect(impact?.sizeBytes?.after).toBe(4);
     expect(impact?.sizeBytes?.delta).toBe(-2);
   });
 
   test("the suggestion keeps the spelling the rule chose", () => {
-    const suggestion = lintSource(["\tor.l #8,d0", "\tmoveq #0,d7", "\trts"].join("\n"), {
-      processors: ["mc68000"],
-    }).find((d) => d.ruleId === "optimization/prefer-bset")?.suggestion;
+    const suggestion = lintSource(
+      ["\tor.l #8,d0", "\tmoveq #0,d7", "\trts"].join("\n"),
+      {
+        processors: ["mc68000"],
+      },
+    ).find((d) => d.ruleId === "optimization/prefer-bset")?.suggestion;
     expect(suggestion?.replacement).toContain("bset.l");
   });
 });

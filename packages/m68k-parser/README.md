@@ -28,9 +28,9 @@ npm install m68k-parser
 **Parse a single line:**
 
 ```javascript
-import { parseLine } from 'm68k-parser';
+import { parseLine } from "m68k-parser";
 
-const result = parseLine('label:    move.w     #1,d0    ; comment');
+const result = parseLine("label:    move.w     #1,d0    ; comment");
 
 console.log(result.value);
 // {
@@ -47,7 +47,7 @@ console.log(result.errors); // Array of parse errors, if any
 **Parse an entire file:**
 
 ```javascript
-import { parseFile } from 'm68k-parser';
+import { parseFile } from "m68k-parser";
 
 const source = `
   move.w  #$1234,d0
@@ -59,8 +59,8 @@ loop:
 
 const result = parseFile(source);
 
-console.log(result.lines);   // Array of ParsedLine objects
-console.log(result.errors);  // Array of all parse errors
+console.log(result.lines); // Array of ParsedLine objects
+console.log(result.errors); // Array of all parse errors
 ```
 
 ### Command Line Interface
@@ -83,6 +83,7 @@ echo "move.w #1,d0" | m68k-parser -
 Parses a single line of M68k assembly code.
 
 **Returns:** `ParserResult<ParsedLine>`
+
 - `value`: The parsed line structure
 - `errors`: Array of parse errors encountered
 
@@ -91,6 +92,7 @@ Parses a single line of M68k assembly code.
 Parses an entire M68k assembly file.
 
 **Returns:** `ParsedFile`
+
 - `lines`: Array of parsed lines
 - `errors`: Array of all parse errors from the file
 
@@ -107,13 +109,15 @@ import type {
   OperandNode,
   ExpressionNode,
   // ... and many more
-} from 'm68k-parser';
+} from "m68k-parser";
 ```
 
 ## Supported Features
 
 ### Instructions
+
 All standard M68k instructions including:
+
 - Data movement: `move`, `movea`, `movem`, `lea`, etc.
 - Arithmetic: `add`, `sub`, `mul`, `div`, etc.
 - Logic: `and`, `or`, `eor`, `not`, etc.
@@ -122,7 +126,9 @@ All standard M68k instructions including:
 - FPU instructions (68881/68882)
 
 ### Directives
+
 Common assembler directives:
+
 - `dc`, `ds`, `dcb` - data definition
 - `equ`, `set` - symbol definition
 - `section`, `org` - program organization
@@ -131,6 +137,7 @@ Common assembler directives:
 - And many more
 
 ### Addressing Modes
+
 - Immediate: `#100`, `#$FF`
 - Data/Address registers: `d0-d7`, `a0-a7`
 - Register indirect: `(a0)`, `(a0)+`, `-(a0)`
@@ -143,7 +150,9 @@ Common assembler directives:
 - Register pairs (68020+): `d1:d2` for 64-bit `mulu.l`/`divs.l`/`divsl.l` etc., and `(a0):(a1)` for `cas2`
 
 ### Expressions
+
 Full expression support with:
+
 - Binary operators: `+`, `-`, `*`, `/`, `&`, `|`, `^`, `<<`, `>>`, etc.
 - Unary operators: `-`, `~`, `!`
 - Grouping with parentheses
@@ -155,11 +164,13 @@ Full expression support with:
 ## Example Output
 
 Input:
+
 ```asm
 start:  move.w  #$1234,d0
 ```
 
 Output:
+
 ```json
 {
   "label": {
@@ -201,10 +212,10 @@ Output:
 The parser is resilient and will attempt to parse as much as possible, collecting errors along the way:
 
 ```javascript
-const result = parseFile('invalid syntax here\nmove.w d0,d1');
+const result = parseFile("invalid syntax here\nmove.w d0,d1");
 
-result.errors.forEach(error => {
-  console.log(`Line ${error.line}: ${error.message}`);
+result.errors.forEach((error) => {
+  console.log(`Line ${error.loc.line}: ${error.message}`);
 });
 // Still provides parsed output for valid lines
 ```
@@ -219,4 +230,8 @@ Graham Bates
 
 ## Repository
 
-https://github.com/grahambates/m68k-parser
+https://github.com/grahambates/m68k-tools/tree/main/packages/m68k-parser
+
+## Development
+
+Requires Node.js 22.15.1 or later at runtime. Use the root-pinned Node version for development. From the monorepo root, run `pnpm install --frozen-lockfile`, `pnpm --filter m68k-parser build` and `pnpm --filter m68k-parser test`.

@@ -1,5 +1,9 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { changedFlagsApplicability, hasLabelBetween } from "./helpers.js";
 
 /**
@@ -34,19 +38,35 @@ export const addsToShift: Rule = {
 
     const source = dataRegisterOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
-    if (!source || !dest || source.register.toLowerCase() !== dest.register.toLowerCase()) return;
+    if (
+      !source ||
+      !dest ||
+      source.register.toLowerCase() !== dest.register.toLowerCase()
+    )
+      return;
 
     const next = ctx.nextInstruction(index);
     if (!next || hasLabelBetween(ctx, index, next.index)) return;
-    if (!isInstruction(next.line, "add") || instructionSize(next.line) !== size) return;
+    if (!isInstruction(next.line, "add") || instructionSize(next.line) !== size)
+      return;
 
     const nextSource = dataRegisterOperand(next.line, 0);
     const nextDest = dataRegisterOperand(next.line, 1);
     const register = dest.register.toLowerCase();
-    if (nextSource?.register.toLowerCase() !== register || nextDest?.register.toLowerCase() !== register) return;
+    if (
+      nextSource?.register.toLowerCase() !== register ||
+      nextDest?.register.toLowerCase() !== register
+    )
+      return;
 
     const shift = `lsl.${size} #2,${dest.register}`;
-    const safety = changedFlagsApplicability(ctx, next.index, ["X", "N", "Z", "V", "C"]);
+    const safety = changedFlagsApplicability(ctx, next.index, [
+      "X",
+      "N",
+      "Z",
+      "V",
+      "C",
+    ]);
     ctx.report({
       ruleId: this.meta.id,
       category: this.meta.category,
@@ -64,7 +84,8 @@ export const addsToShift: Rule = {
           ? []
           : [
               {
-                message: "Repeated ADD and a multi-bit shift do not leave the same flags; review CCR use.",
+                message:
+                  "Repeated ADD and a multi-bit shift do not leave the same flags; review CCR use.",
               },
             ]),
       ],

@@ -1,8 +1,17 @@
 import type { ParsedLine } from "m68k-parser";
 import type { Rule } from "../../core/rule.js";
 import type { RuleContext } from "../../core/context.js";
-import { instructionSize, isInstruction, operand, postincrementAddressRegister } from "../../util/ast.js";
-import { normalizeRegister, registerOrdinal, type Register } from "../../semantics/registers.js";
+import {
+  instructionSize,
+  isInstruction,
+  operand,
+  postincrementAddressRegister,
+} from "../../util/ast.js";
+import {
+  normalizeRegister,
+  registerOrdinal,
+  type Register,
+} from "../../semantics/registers.js";
 import { formatRegisterList } from "../suspicious/movem-restore-mismatch.js";
 import { changedFlagsApplicability, hasLabelBetween } from "./helpers.js";
 
@@ -13,11 +22,17 @@ interface Load {
 
 /** A `move.l (An)+,Rn` with concrete registers on both sides. */
 function postincrementLoad(line: ParsedLine): Load | undefined {
-  if (!isInstruction(line, "move") && !isInstruction(line, "movea")) return undefined;
+  if (!isInstruction(line, "move") && !isInstruction(line, "movea"))
+    return undefined;
   if (instructionSize(line) !== "l") return undefined;
   const source = postincrementAddressRegister(line, 0);
   const destination = operand(line, 1);
-  if (!source || (destination?.type !== "data-register" && destination?.type !== "address-register")) return undefined;
+  if (
+    !source ||
+    (destination?.type !== "data-register" &&
+      destination?.type !== "address-register")
+  )
+    return undefined;
   const base = normalizeRegister(source.register);
   const register = normalizeRegister(destination.register);
   if (!base || !register) return undefined;
@@ -29,12 +44,21 @@ function postincrementLoad(line: ParsedLine): Load | undefined {
 
 function continues(run: readonly Load[], next: Load): boolean {
   const last = run[run.length - 1];
-  return next.base === last.base && registerOrdinal(next.register) > registerOrdinal(last.register);
+  return (
+    next.base === last.base &&
+    registerOrdinal(next.register) > registerOrdinal(last.register)
+  );
 }
 
-function runStartsHere(ctx: RuleContext, line: ParsedLine, index: number, first: Load): boolean {
+function runStartsHere(
+  ctx: RuleContext,
+  line: ParsedLine,
+  index: number,
+  first: Load,
+): boolean {
   const previous = ctx.previousInstruction(index);
-  if (!previous || hasLabelBetween(ctx, previous.index, index) || line.label) return true;
+  if (!previous || hasLabelBetween(ctx, previous.index, index) || line.label)
+    return true;
   const before = postincrementLoad(previous.line);
   return !before || !continues([before], first);
 }
@@ -43,7 +67,10 @@ function runStartsHere(ctx: RuleContext, line: ParsedLine, index: number, first:
  * Every consumed line's index, under the `*InstructionIndex` keys
  * `computeSourceSpan` reads, so the replacement covers the whole run.
  */
-function memberData(list: string, indices: readonly number[]): Record<string, string | number> {
+function memberData(
+  list: string,
+  indices: readonly number[],
+): Record<string, string | number> {
   const data: Record<string, string | number> = { registers: list };
   indices.slice(1).forEach((index, n) => {
     data[`member${n + 2}InstructionIndex`] = index;
@@ -96,7 +123,8 @@ export const combineLoadsIntoMovem: Rule = {
   },
 
   checkLine(ctx, line, index) {
-    if (!ctx.config.processors.every((cpu) => MEASURED_TARGETS.includes(cpu))) return;
+    if (!ctx.config.processors.every((cpu) => MEASURED_TARGETS.includes(cpu)))
+      return;
     const first = postincrementLoad(line);
     if (!first) return;
     // Report each run once, from its first load.
@@ -122,7 +150,12 @@ export const combineLoadsIntoMovem: Rule = {
     const lastIndex = indices[indices.length - 1];
     // Each MOVE sets N/Z/V/C from the value it loaded; MOVEM sets none at all,
     // so the flags the run would have left behind have to be dead.
-    const safety = changedFlagsApplicability(ctx, lastIndex, ["N", "Z", "V", "C"]);
+    const safety = changedFlagsApplicability(ctx, lastIndex, [
+      "N",
+      "Z",
+      "V",
+      "C",
+    ]);
     const replacement = `movem.l (${first.base})+,${list}`;
 
     ctx.report({

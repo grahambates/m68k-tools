@@ -8,10 +8,6 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "sourceMap": true,
-    "declaration": true,
-    "declarationMap": true,
-    "composite": true
+    "forceConsistentCasingInFileNames": true
   }
 }

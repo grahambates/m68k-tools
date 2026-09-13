@@ -1,7 +1,12 @@
 import type { OperandNode } from "m68k-parser";
 import type { Rule } from "../../core/rule.js";
 import { registersReadByOperand } from "../../semantics/registers.js";
-import { immediateOperand, instructionSize, isInstruction, operand } from "../../util/ast.js";
+import {
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+  operand,
+} from "../../util/ast.js";
 import { sourceOperand, valueText } from "./helpers.js";
 
 function isMemoryDestination(op: OperandNode | undefined): boolean {
@@ -24,7 +29,8 @@ export const moveImmediateViaScratch: Rule = {
     id: "optimization/move-immediate-via-scratch",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Materialize a small long immediate with MOVEQ before storing it",
+    description:
+      "Materialize a small long immediate with MOVEQ before storing it",
     tags: ["asp68k", "register-analysis", "scratch-register", "moveq"],
     docs: { source: "ASP68K" },
   },
@@ -32,13 +38,25 @@ export const moveImmediateViaScratch: Rule = {
     if (!isInstruction(line, "move") || instructionSize(line) !== "l") return;
     const source = immediateOperand(line, 0);
     const dest = operand(line, 1);
-    if (!source || source.value.type === "string-literal" || !isMemoryDestination(dest)) return;
+    if (
+      !source ||
+      source.value.type === "string-literal" ||
+      !isMemoryDestination(dest)
+    )
+      return;
     const value = ctx.evaluate(source.value);
     if (!value.known || value.value < -128 || value.value > 127) return;
-    if (!ctx.config.processors.every((cpu) => ["mc68000", "mc68010", "mc68030"].includes(cpu))) return;
+    if (
+      !ctx.config.processors.every((cpu) =>
+        ["mc68000", "mc68010", "mc68030"].includes(cpu),
+      )
+    )
+      return;
 
     const addressRegisters = registersReadByOperand(dest);
-    const scratch = ctx.registers.deadDataRegistersAfter(index).find((r) => !addressRegisters.has(r));
+    const scratch = ctx.registers
+      .deadDataRegistersAfter(index)
+      .find((r) => !addressRegisters.has(r));
     if (!scratch) return;
     const destText = sourceOperand(ctx, line, 1);
     if (!destText) return;

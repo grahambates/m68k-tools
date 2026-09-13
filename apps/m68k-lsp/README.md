@@ -30,13 +30,15 @@ Adds language support for Motorola 68000 Assembly to Visual Studio Code.
 - Multiple workspaces
 - Rename Symbols
 - Signature Help
-- Problem mathcing for vasm output
+- Problem matching for vasm output
 
 ## Language server
 
-This extension is based on [m68k-lsp](https://github.com/grahambates/m68k-lsp), which provides language features to
+This extension is based on [m68k-lsp-server](https://github.com/grahambates/m68k-tools/tree/main/packages/m68k-lsp-server#readme), which provides language features to
 other LSP supporting editors.
 
 ## Changelog
 
-ChangeLog is located [here](https://github.com/grahambates/m68k-lsp/blob/master/CHANGELOG.md)
+ChangeLog is located [here](https://github.com/grahambates/m68k-tools/blob/main/packages/m68k-lsp-server/CHANGELOG.md)
+
+Requires VS Code 1.101 or later. For local development, open the monorepo root and select **Assembly: Extension** in Run and Debug.

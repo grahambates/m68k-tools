@@ -30,7 +30,7 @@
   "main": "./out/extension.js",
   "scripts": {
     "build": "node ../../scripts/build-lint-lsp.mjs --minify",
-    "vscode:prepublish": "npm run build",
+    "vscode:prepublish": "pnpm run build",
     "package": "vsce package --no-dependencies"
   },
   "activationEvents": [

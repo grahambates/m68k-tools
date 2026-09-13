@@ -1,21 +1,21 @@
-import { InstructionTiming, instructionTimings } from "../timings";
+import { type InstructionTiming, instructionTimings } from "../timings";
 import {
-  CacheModel,
-  Cpu,
+  type CacheModel,
+  type Cpu,
   defaultCacheModel,
   defaultCpu,
   Directives,
-  Directive,
+  type Directive,
   toCpu,
 } from "../syntax";
 import {
-  DirectiveStatement,
-  InstructionStatement,
-  LabelStatement,
-  MacroStatement,
+  type DirectiveStatement,
+  type InstructionStatement,
+  type LabelStatement,
+  type MacroStatement,
   StatementNode,
 } from "./nodes";
-import evaluate, { Variables } from "./evaluate";
+import evaluate, { type Variables } from "./evaluate";
 import statementSize from "../sizes";
 import { calculateTotals } from "../totals";
 
@@ -243,20 +243,18 @@ export default class Parser {
       const args = statement.operands.map((o) => o.text);
       // Each invocation gets a distinct value for `\@` unique labels
       const unique = String(this.uniqueId++);
-      const macroStatements = definition.map(
-        ({ text }): StatementNode => {
-          // Substitute all `\1`..`\n` argument references (handles repeated and
-          // multi-digit references) and `\@` unique markers in a single pass.
-          const expanded = text.replace(/\\(@|\d+)/g, (match, key) => {
-            if (key === "@") {
-              return unique;
-            }
-            const arg = args[Number(key) - 1];
-            return arg !== undefined ? arg : match;
-          });
-          return new StatementNode(expanded);
-        }
-      );
+      const macroStatements = definition.map(({ text }): StatementNode => {
+        // Substitute all `\1`..`\n` argument references (handles repeated and
+        // multi-digit references) and `\@` unique markers in a single pass.
+        const expanded = text.replace(/\\(@|\d+)/g, (match, key) => {
+          if (key === "@") {
+            return unique;
+          }
+          const arg = args[Number(key) - 1];
+          return arg !== undefined ? arg : match;
+        });
+        return new StatementNode(expanded);
+      });
       line.macroLines = this.processStatements(macroStatements);
     }
     return line;

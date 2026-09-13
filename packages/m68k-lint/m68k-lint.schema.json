@@ -13,7 +13,15 @@
       "minItems": 1,
       "uniqueItems": true,
       "items": {
-        "enum": ["mc68000", "mc68010", "mc68020", "mc68030", "mc68040", "mc68060", "cpu32"]
+        "enum": [
+          "mc68000",
+          "mc68010",
+          "mc68020",
+          "mc68030",
+          "mc68040",
+          "mc68060",
+          "cpu32"
+        ]
       }
     },
     "platform": {

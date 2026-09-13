@@ -1,21 +1,20 @@
-import evaluate, { Variables } from "../parse/evaluate";
-import { DirectiveStatement, Node, StringNode } from "../parse/nodes";
-import { Directives, Qualifier, Qualifiers } from "../syntax";
+import evaluate, { type Variables } from "../parse/evaluate";
+import { type DirectiveStatement, type Node, StringNode } from "../parse/nodes";
+import { Directives, type Qualifier, Qualifiers } from "../syntax";
 
 /**
  * Get byte size of directive statement
  */
 export default function directiveSize(
   { opcode: { op, qualifier }, operands }: DirectiveStatement,
-  vars: Variables
+  vars: Variables,
 ): number {
   // DC:
   if (op.name === Directives.DC && qualifier) {
     if (qualifier.name === Qualifiers.B) {
       return operandBytes(operands);
-    } else {
-      return operands.length * qualifierBytes[qualifier.name];
     }
+    return operands.length * qualifierBytes[qualifier.name];
   }
   if (op.name === Directives.DB) {
     return operandBytes(operands);

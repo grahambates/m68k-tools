@@ -7,8 +7,8 @@ import { hideBin } from "yargs/helpers";
 import parse, { calculateTotals } from ".";
 import { CacheModels, Cpus, toCpu } from "./syntax";
 import {
-  Formatter,
-  IncludedElements,
+  type Formatter,
+  type IncludedElements,
   JsonFormatter,
   PlainTextFormatter,
 } from "./formatters";

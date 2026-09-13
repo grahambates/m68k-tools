@@ -11,22 +11,36 @@ import type { Diagnostic } from "../core/diagnostic.js";
  * unconditionally.
  */
 const find = (lines: string[], ruleId: string) =>
-  lintSource(lines.join("\n"), { processors: ["mc68000"] }).find((d) => d.ruleId === ruleId);
+  lintSource(lines.join("\n"), { processors: ["mc68000"] }).find(
+    (d) => d.ruleId === ruleId,
+  );
 
 describe("every diagnostic carries its extent", () => {
   test("a single-line finding spans one line", () => {
-    const found = find(["\tmove.l\t#100,d0", "\trts"], "optimization/prefer-moveq");
+    const found = find(
+      ["\tmove.l\t#100,d0", "\trts"],
+      "optimization/prefer-moveq",
+    );
     expect(found?.span).toEqual({ startLine: 1, endLine: 1 });
   });
 
   test("a two-instruction match spans both lines", () => {
-    const found = find(["\tbsr\t.sub", "\trts", ".sub:", "\trts"], "optimization/bsr-rts-tail-call");
+    const found = find(
+      ["\tbsr\t.sub", "\trts", ".sub:", "\trts"],
+      "optimization/bsr-rts-tail-call",
+    );
     expect(found?.span).toEqual({ startLine: 1, endLine: 2 });
   });
 
   test("a three-instruction match spans all three", () => {
     const found = find(
-      ["\tmove.l\ta6,-(sp)", "\tmove.l\tsp,a6", "\tadd.w\t#-32,sp", "\tmoveq\t#0,d0", "\trts"],
+      [
+        "\tmove.l\ta6,-(sp)",
+        "\tmove.l\tsp,a6",
+        "\tadd.w\t#-32,sp",
+        "\tmoveq\t#0,d0",
+        "\trts",
+      ],
       "optimization/prefer-link-sequence",
     );
     expect(found?.span).toEqual({ startLine: 1, endLine: 3 });
@@ -34,9 +48,10 @@ describe("every diagnostic carries its extent", () => {
 
   test("the span is present without measurement having run", () => {
     const source = ["\tbsr\t.sub", "\trts", ".sub:", "\trts"].join("\n");
-    const found = lintSource(source, { processors: ["mc68000"], measureImpact: false }).find(
-      (d) => d.ruleId === "optimization/bsr-rts-tail-call",
-    );
+    const found = lintSource(source, {
+      processors: ["mc68000"],
+      measureImpact: false,
+    }).find((d) => d.ruleId === "optimization/bsr-rts-tail-call");
     expect(found?.suggestion?.impact).toBeUndefined();
     expect(found?.span).toEqual({ startLine: 1, endLine: 2 });
   });
@@ -52,6 +67,9 @@ describe("every diagnostic carries its extent", () => {
       loc: { line: 1, start: 1, end: 7 },
       data: { secondInstructionIndex: 1 },
     } as unknown as Diagnostic;
-    expect(computeSourceSpan(diagnostic, file)).toEqual({ startLine: 1, endLine: 2 });
+    expect(computeSourceSpan(diagnostic, file)).toEqual({
+      startLine: 1,
+      endLine: 2,
+    });
   });
 });

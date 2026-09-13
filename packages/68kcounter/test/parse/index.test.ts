@@ -1,7 +1,7 @@
 import fs from "fs";
 import parse from "../../src/parse";
 import { calculateTotals } from "../../src/totals";
-import { EffectiveAddressNode } from "../../src/parse/nodes";
+import { type EffectiveAddressNode } from "../../src/parse/nodes";
 import {
   Mnemonics,
   AddressingModes,
@@ -24,12 +24,16 @@ describe("parse()", () => {
       expect(result.statement.opcode.op.name).toEqual(Mnemonics.MOVE);
       expect(result.statement.opcode.qualifier.name).toEqual(Qualifiers.W);
       expect(
-        ((result.statement
-          .operands[0] as EffectiveAddressNode) as EffectiveAddressNode).mode
+        (
+          result.statement
+            .operands[0] as EffectiveAddressNode as EffectiveAddressNode
+        ).mode,
       ).toEqual(AddressingModes.Dn);
       expect(
-        ((result.statement
-          .operands[1] as EffectiveAddressNode) as EffectiveAddressNode).mode
+        (
+          result.statement
+            .operands[1] as EffectiveAddressNode as EffectiveAddressNode
+        ).mode,
       ).toEqual(AddressingModes.AnIndir);
       expect(result.timing).toBeTruthy();
       expect(result.bytes).toBeTruthy();
@@ -40,8 +44,10 @@ describe("parse()", () => {
       expect(result.statement.opcode.op.name).toEqual(Mnemonics.EXT);
       expect(result.statement.opcode.qualifier.name).toEqual(Qualifiers.W);
       expect(
-        ((result.statement
-          .operands[0] as EffectiveAddressNode) as EffectiveAddressNode).mode
+        (
+          result.statement
+            .operands[0] as EffectiveAddressNode as EffectiveAddressNode
+        ).mode,
       ).toEqual(AddressingModes.Dn);
       expect(result.timing).toBeTruthy();
       expect(result.bytes).toBeTruthy();
@@ -56,15 +62,15 @@ describe("parse()", () => {
 
     test("complex expression", () => {
       const [result] = parse(
-        "foo:   move.w      #(CopperE-Copper)/4-1,d0;foo bar baz"
+        "foo:   move.w      #(CopperE-Copper)/4-1,d0;foo bar baz",
       );
       expect(result.statement.opcode.op.name).toEqual(Mnemonics.MOVE);
       expect(result.statement.opcode.qualifier.name).toEqual(Qualifiers.W);
       expect(
-        (result.statement.operands[0] as EffectiveAddressNode).mode
+        (result.statement.operands[0] as EffectiveAddressNode).mode,
       ).toEqual(AddressingModes.Imm);
       expect(
-        (result.statement.operands[1] as EffectiveAddressNode).mode
+        (result.statement.operands[1] as EffectiveAddressNode).mode,
       ).toEqual(AddressingModes.Dn);
       expect(result.timing).toBeTruthy();
       expect(result.bytes).toBeTruthy();
@@ -76,10 +82,10 @@ describe("parse()", () => {
       expect(result.statement.opcode.op.name).toEqual(Mnemonics.MOVE);
       expect(result.statement.opcode.qualifier.name).toEqual(Qualifiers.W);
       expect(
-        (result.statement.operands[0] as EffectiveAddressNode).mode
+        (result.statement.operands[0] as EffectiveAddressNode).mode,
       ).toEqual(AddressingModes.Dn);
       expect(
-        (result.statement.operands[1] as EffectiveAddressNode).mode
+        (result.statement.operands[1] as EffectiveAddressNode).mode,
       ).toEqual(AddressingModes.AnIndir);
       expect(result.timing).toBeTruthy();
       expect(result.bytes).toBeTruthy();
@@ -91,10 +97,10 @@ describe("parse()", () => {
       expect(result.statement.opcode.op.name).toEqual(Mnemonics.MOVE);
       expect(result.statement.opcode.qualifier.name).toEqual(Qualifiers.W);
       expect(
-        (result.statement.operands[0] as EffectiveAddressNode).mode
+        (result.statement.operands[0] as EffectiveAddressNode).mode,
       ).toEqual(AddressingModes.Dn);
       expect(
-        (result.statement.operands[1] as EffectiveAddressNode).mode
+        (result.statement.operands[1] as EffectiveAddressNode).mode,
       ).toEqual(AddressingModes.AnIndir);
       expect(result.timing).toBeTruthy();
       expect(result.bytes).toBeTruthy();
@@ -106,10 +112,10 @@ describe("parse()", () => {
       expect(result.statement.opcode.op.name).toEqual(Mnemonics.MOVE);
       expect(result.statement.opcode.qualifier.name).toEqual(Qualifiers.W);
       expect(
-        (result.statement.operands[0] as EffectiveAddressNode).mode
+        (result.statement.operands[0] as EffectiveAddressNode).mode,
       ).toEqual(AddressingModes.Dn);
       expect(
-        (result.statement.operands[1] as EffectiveAddressNode).mode
+        (result.statement.operands[1] as EffectiveAddressNode).mode,
       ).toEqual(AddressingModes.AnIndir);
       expect(result.timing).toBeTruthy();
       expect(result.bytes).toBeTruthy();
@@ -121,10 +127,10 @@ describe("parse()", () => {
       expect(result.statement.opcode.op.name).toEqual(Mnemonics.MOVE);
       expect(result.statement.opcode.qualifier.name).toEqual(Qualifiers.W);
       expect(
-        (result.statement.operands[0] as EffectiveAddressNode).mode
+        (result.statement.operands[0] as EffectiveAddressNode).mode,
       ).toEqual(AddressingModes.Dn);
       expect(
-        (result.statement.operands[1] as EffectiveAddressNode).mode
+        (result.statement.operands[1] as EffectiveAddressNode).mode,
       ).toEqual(AddressingModes.AnIndir);
       expect(result.timing).toBeTruthy();
       expect(result.bytes).toBeTruthy();
@@ -136,10 +142,10 @@ describe("parse()", () => {
       expect(result.statement.opcode.op.name).toEqual(Mnemonics.MOVE);
       expect(result.statement.opcode.qualifier.name).toEqual(Qualifiers.W);
       expect(
-        (result.statement.operands[0] as EffectiveAddressNode).mode
+        (result.statement.operands[0] as EffectiveAddressNode).mode,
       ).toEqual(AddressingModes.Dn);
       expect(
-        (result.statement.operands[1] as EffectiveAddressNode).mode
+        (result.statement.operands[1] as EffectiveAddressNode).mode,
       ).toEqual(AddressingModes.AnIndir);
       expect(result.timing).toBeTruthy();
       expect(result.bytes).toBeTruthy();
@@ -150,10 +156,10 @@ describe("parse()", () => {
       expect(result.statement.opcode.op.name).toEqual(Mnemonics.MOVE);
       expect(result.statement.opcode.qualifier).toBeFalsy();
       expect(
-        (result.statement.operands[0] as EffectiveAddressNode).mode
+        (result.statement.operands[0] as EffectiveAddressNode).mode,
       ).toEqual(AddressingModes.Dn);
       expect(
-        (result.statement.operands[1] as EffectiveAddressNode).mode
+        (result.statement.operands[1] as EffectiveAddressNode).mode,
       ).toEqual(AddressingModes.AnIndir);
       expect(result.timing).toBeTruthy();
       expect(result.bytes).toBeTruthy();
@@ -164,10 +170,10 @@ describe("parse()", () => {
       expect(result.statement.opcode.op.name).toEqual(Mnemonics.MOVE);
       expect(result.statement.opcode.qualifier.name).toEqual(Qualifiers.W);
       expect(
-        (result.statement.operands[0] as EffectiveAddressNode).mode
+        (result.statement.operands[0] as EffectiveAddressNode).mode,
       ).toEqual(AddressingModes.Dn);
       expect(
-        (result.statement.operands[1] as EffectiveAddressNode).mode
+        (result.statement.operands[1] as EffectiveAddressNode).mode,
       ).toEqual(AddressingModes.AnIndir);
       expect(result.timing).toBeTruthy();
       expect(result.bytes).toBeTruthy();
@@ -180,10 +186,10 @@ describe("parse()", () => {
     expect(result.statement.opcode.op.name).toEqual(Mnemonics.MOVE);
     expect(result.statement.opcode.qualifier.name).toEqual(Qualifiers.W);
     expect((result.statement.operands[0] as EffectiveAddressNode).mode).toEqual(
-      AddressingModes.Dn
+      AddressingModes.Dn,
     );
     expect((result.statement.operands[1] as EffectiveAddressNode).mode).toEqual(
-      AddressingModes.AnIndir
+      AddressingModes.AnIndir,
     );
     expect(result.timing).toBeTruthy();
     expect(result.bytes).toBeTruthy();
@@ -195,7 +201,7 @@ describe("parse()", () => {
       expect(result.statement.label.text).toEqual("foo");
       expect(result.statement.opcode.op.name).toEqual(Directives.EQU);
       expect(
-        (result.statement.operands[0] as EffectiveAddressNode).text
+        (result.statement.operands[0] as EffectiveAddressNode).text,
       ).toEqual("1");
     });
 
@@ -204,7 +210,7 @@ describe("parse()", () => {
       expect(result.statement.label.text).toEqual("foo");
       expect(result.statement.opcode.op.name).toEqual(Directives["="]);
       expect(
-        (result.statement.operands[0] as EffectiveAddressNode).text
+        (result.statement.operands[0] as EffectiveAddressNode).text,
       ).toEqual("1");
     });
 
@@ -213,7 +219,7 @@ describe("parse()", () => {
       expect(result.statement.label.text).toEqual("foo");
       expect(result.statement.opcode.op.name).toEqual(Directives["="]);
       expect(
-        (result.statement.operands[0] as EffectiveAddressNode).text
+        (result.statement.operands[0] as EffectiveAddressNode).text,
       ).toEqual("1");
     });
 
@@ -222,10 +228,10 @@ describe("parse()", () => {
       expect(result.statement.label.text).toEqual("a");
       expect(result.statement.opcode.op.name).toEqual(Directives.DC);
       expect(
-        (result.statement.operands[0] as EffectiveAddressNode).text
+        (result.statement.operands[0] as EffectiveAddressNode).text,
       ).toEqual("1");
       expect(
-        (result.statement.operands[1] as EffectiveAddressNode).text
+        (result.statement.operands[1] as EffectiveAddressNode).text,
       ).toEqual("2");
       expect(result.statement.operands[2].text).toEqual("3");
     });

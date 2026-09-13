@@ -1,6 +1,13 @@
 import type { RuleCategory, Severity } from "./diagnostic.js";
 
-export type Processor = "mc68000" | "mc68010" | "mc68020" | "mc68030" | "mc68040" | "mc68060" | "cpu32";
+export type Processor =
+  | "mc68000"
+  | "mc68010"
+  | "mc68020"
+  | "mc68030"
+  | "mc68040"
+  | "mc68060"
+  | "cpu32";
 
 export type RuleSetting = "off" | Severity;
 export type OptimizationGoal = "balanced" | "speed" | "size";

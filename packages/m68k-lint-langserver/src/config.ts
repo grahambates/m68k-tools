@@ -1,6 +1,10 @@
 import { dirname } from "node:path";
 import { defaultConfig, type LintConfig } from "m68k-lint";
-import { findProjectConfig, loadProjectConfig, lintConfigFromProject } from "m68k-lint/project-config";
+import {
+  findProjectConfig,
+  loadProjectConfig,
+  lintConfigFromProject,
+} from "m68k-lint/project-config";
 
 /**
  * Editor settings, under the `m68kLint` section.
@@ -32,7 +36,9 @@ export const defaultSettings: Settings = {
 
 /** Drops the keys a source left unset, so a spread does not erase what is under it. */
 function defined<T extends object>(value: T): Partial<T> {
-  return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined)) as Partial<T>;
+  return Object.fromEntries(
+    Object.entries(value).filter(([, entry]) => entry !== undefined),
+  ) as Partial<T>;
 }
 
 export interface ResolvedConfig {

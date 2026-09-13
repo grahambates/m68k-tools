@@ -1,11 +1,11 @@
 import { parseFile } from "m68k-parser";
 import { pathToFileURL } from "url";
-import * as lsp from "vscode-languageserver";
+import type * as lsp from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import path from "path";
 
 import { createContext } from "../src/context";
-import { Config } from "../src/config";
+import { type Config } from "../src/config";
 
 export class NullLogger implements lsp.Logger {
   info() {

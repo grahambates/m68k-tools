@@ -10,19 +10,27 @@ import { lintSource } from "../core/lint.js";
 const ID = "suspicious/movea-word-sign-extension";
 
 const fires = (lines: string[]) =>
-  lintSource(lines.join("\n"), { processors: ["mc68000"] }).some((d) => d.ruleId === ID);
+  lintSource(lines.join("\n"), { processors: ["mc68000"] }).some(
+    (d) => d.ruleId === ID,
+  );
 
 describe("the extended half is observed", () => {
   test("dereferenced as an address", () => {
-    expect(fires(["\tmovea.w\td0,a0", "\tmove.l\t(a0),d1", "\trts"])).toBe(true);
+    expect(fires(["\tmovea.w\td0,a0", "\tmove.l\t(a0),d1", "\trts"])).toBe(
+      true,
+    );
   });
 
   test("through a displacement", () => {
-    expect(fires(["\tmovea.w\td0,a0", "\tmove.w\t4(a0),d1", "\trts"])).toBe(true);
+    expect(fires(["\tmovea.w\td0,a0", "\tmove.w\t4(a0),d1", "\trts"])).toBe(
+      true,
+    );
   });
 
   test("through predecrement", () => {
-    expect(fires(["\tmovea.w\td0,a0", "\tmove.b\td1,-(a0)", "\trts"])).toBe(true);
+    expect(fires(["\tmovea.w\td0,a0", "\tmove.b\td1,-(a0)", "\trts"])).toBe(
+      true,
+    );
   });
 
   test("read back at full width", () => {
@@ -36,7 +44,14 @@ describe("the extended half is observed", () => {
   // ADDA keeps the dependence: the upper half of its result comes from the
   // upper half that went in, so an extension is still observable through it.
   test("surviving address arithmetic and then read as a long", () => {
-    expect(fires(["\tmovea.w\td0,a0", "\tadda.w\td2,a0", "\tmove.l\ta0,d1", "\trts"])).toBe(true);
+    expect(
+      fires([
+        "\tmovea.w\td0,a0",
+        "\tadda.w\td2,a0",
+        "\tmove.l\ta0,d1",
+        "\trts",
+      ]),
+    ).toBe(true);
   });
 });
 
@@ -48,11 +63,25 @@ describe("the extended half is not observed", () => {
   // The low half of an ADDA result cannot depend on the half above it, so
   // reading the word back is still unaffected.
   test("word arithmetic, then read back as a word", () => {
-    expect(fires(["\tmovea.w\td0,a0", "\tadda.w\td2,a0", "\tmove.w\ta0,d1", "\trts"])).toBe(false);
+    expect(
+      fires([
+        "\tmovea.w\td0,a0",
+        "\tadda.w\td2,a0",
+        "\tmove.w\ta0,d1",
+        "\trts",
+      ]),
+    ).toBe(false);
   });
 
   test("overwritten in full before any use", () => {
-    expect(fires(["\tmovea.w\td0,a0", "\tmovea.l\td1,a0", "\tmove.l\t(a0),d2", "\trts"])).toBe(false);
+    expect(
+      fires([
+        "\tmovea.w\td0,a0",
+        "\tmovea.l\td1,a0",
+        "\tmove.l\t(a0),d2",
+        "\trts",
+      ]),
+    ).toBe(false);
   });
 
   test("never used again", () => {
@@ -60,6 +89,8 @@ describe("the extended half is not observed", () => {
   });
 
   test("a long load is not a sign extension at all", () => {
-    expect(fires(["\tmove.l\td0,a0", "\tmove.l\t(a0),d1", "\trts"])).toBe(false);
+    expect(fires(["\tmove.l\td0,a0", "\tmove.l\t(a0),d1", "\trts"])).toBe(
+      false,
+    );
   });
 });

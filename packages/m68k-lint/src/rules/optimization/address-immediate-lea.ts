@@ -1,9 +1,17 @@
 import type { Rule } from "../../core/rule.js";
-import { addressRegisterOperand, immediateOperand, instructionSize, isInstructionFamily } from "../../util/ast.js";
+import {
+  addressRegisterOperand,
+  immediateOperand,
+  instructionSize,
+  isInstructionFamily,
+} from "../../util/ast.js";
 import { negatedValueText, valueText } from "./helpers.js";
 
 function makeAddressImmediateLea(mnemonic: "add" | "sub"): Rule {
-  const id = mnemonic === "add" ? "optimization/address-add-to-lea" : "optimization/address-sub-to-lea";
+  const id =
+    mnemonic === "add"
+      ? "optimization/address-add-to-lea"
+      : "optimization/address-sub-to-lea";
   return {
     meta: {
       id,
@@ -23,16 +31,25 @@ function makeAddressImmediateLea(mnemonic: "add" | "sub"): Rule {
       const value = ctx.evaluate(imm.value);
       if (!value.known) return;
       const displacement = mnemonic === "add" ? value.value : -value.value;
-      if (Math.abs(value.value) < 9 || displacement < -32767 || displacement > 32767) return;
+      if (
+        Math.abs(value.value) < 9 ||
+        displacement < -32767 ||
+        displacement > 32767
+      )
+        return;
 
       // ADD carries the immediate across untouched, so the displacement is
       // written exactly as the author wrote it. SUB has to negate it, which can
       // only be done in the text for a bare symbol or number.
       const displacementText =
-        mnemonic === "add" ? valueText(ctx, imm.value, displacement) : negatedValueText(ctx, imm.value, displacement);
+        mnemonic === "add"
+          ? valueText(ctx, imm.value, displacement)
+          : negatedValueText(ctx, imm.value, displacement);
 
       const allowed =
-        mnemonic === "add" ? ["mc68000", "mc68010", "mc68030"] : ["mc68000", "mc68010", "mc68030", "mc68040"];
+        mnemonic === "add"
+          ? ["mc68000", "mc68010", "mc68030"]
+          : ["mc68000", "mc68010", "mc68030", "mc68040"];
       if (!ctx.config.processors.every((cpu) => allowed.includes(cpu))) return;
 
       ctx.report({

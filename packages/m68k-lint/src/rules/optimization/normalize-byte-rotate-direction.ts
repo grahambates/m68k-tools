@@ -1,8 +1,15 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateExpressionOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateExpressionOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
 
-function m68000Only(ctx: Parameters<NonNullable<Rule["checkLine"]>>[0]): boolean {
+function m68000Only(
+  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
+): boolean {
   return ctx.config.processors.every((cpu) => cpu === "mc68000");
 }
 
@@ -17,7 +24,11 @@ export const normalizeByteRotate: Rule = {
   },
   checkLine(ctx, line, index) {
     if (!m68000Only(ctx) || instructionSize(line) !== "b") return;
-    const direction = isInstruction(line, "rol") ? "rol" : isInstruction(line, "ror") ? "ror" : undefined;
+    const direction = isInstruction(line, "rol")
+      ? "rol"
+      : isInstruction(line, "ror")
+        ? "ror"
+        : undefined;
     if (!direction) return;
     const expr = immediateExpressionOperand(line, 0);
     const dst = dataRegisterOperand(line, 1);

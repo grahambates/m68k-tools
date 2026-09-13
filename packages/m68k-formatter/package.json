@@ -20,7 +20,7 @@
   ],
   "scripts": {
     "build": "tsdown",
-    "test": "vitest run",
+    "test": "vitest run --config ../../vitest.package.config.mts",
     "prepack": "pnpm run build",
     "pretest": "pnpm run build"
   },

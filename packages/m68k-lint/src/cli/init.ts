@@ -11,7 +11,11 @@ export const initConfigFileName = "m68k-lint.json";
  * flow can be driven by a test without a terminal.
  */
 export interface Prompt {
-  choice<T extends string>(question: string, choices: readonly T[], fallback: T): Promise<T>;
+  choice<T extends string>(
+    question: string,
+    choices: readonly T[],
+    fallback: T,
+  ): Promise<T>;
   list(question: string, fallback: readonly string[]): Promise<string[]>;
   confirm(question: string, fallback: boolean): Promise<boolean>;
 }
@@ -26,12 +30,31 @@ export interface InitAnswers {
 }
 
 const PLATFORMS: readonly Platform[] = ["generic", "amiga", "atari"];
-const PROCESSORS: readonly Processor[] = ["mc68000", "mc68010", "mc68020", "mc68030", "mc68040", "mc68060", "cpu32"];
+const PROCESSORS: readonly Processor[] = [
+  "mc68000",
+  "mc68010",
+  "mc68020",
+  "mc68030",
+  "mc68040",
+  "mc68060",
+  "cpu32",
+];
 const GOALS: readonly OptimizationGoal[] = ["balanced", "speed", "size"];
 
-const SKIP_DIRECTORIES = new Set(["node_modules", "dist", "build", "out", "obj", "target"]);
+const SKIP_DIRECTORIES = new Set([
+  "node_modules",
+  "dist",
+  "build",
+  "out",
+  "obj",
+  "target",
+]);
 
-async function containsAssembly(directory: string, extensions: readonly string[], depth: number): Promise<boolean> {
+async function containsAssembly(
+  directory: string,
+  extensions: readonly string[],
+  depth: number,
+): Promise<boolean> {
   let entries;
   try {
     entries = await readdir(directory, { withFileTypes: true });
@@ -39,9 +62,25 @@ async function containsAssembly(directory: string, extensions: readonly string[]
     return false;
   }
   for (const entry of entries) {
-    if (entry.isFile() && extensions.some((ext) => entry.name.toLowerCase().endsWith(ext))) return true;
-    if (entry.isDirectory() && depth > 0 && !entry.name.startsWith(".") && !SKIP_DIRECTORIES.has(entry.name)) {
-      if (await containsAssembly(join(directory, entry.name), extensions, depth - 1)) return true;
+    if (
+      entry.isFile() &&
+      extensions.some((ext) => entry.name.toLowerCase().endsWith(ext))
+    )
+      return true;
+    if (
+      entry.isDirectory() &&
+      depth > 0 &&
+      !entry.name.startsWith(".") &&
+      !SKIP_DIRECTORIES.has(entry.name)
+    ) {
+      if (
+        await containsAssembly(
+          join(directory, entry.name),
+          extensions,
+          depth - 1,
+        )
+      )
+        return true;
     }
   }
   return false;
@@ -66,24 +105,37 @@ export async function detectSourceGlobs(
   const directories: string[] = [];
   for (const entry of entries) {
     // Anything in the root means a narrower glob would miss files, so stop.
-    if (entry.isFile() && extensions.some((ext) => entry.name.toLowerCase().endsWith(ext))) return ["**"];
-    if (entry.isDirectory() && !entry.name.startsWith(".") && !SKIP_DIRECTORIES.has(entry.name)) {
+    if (
+      entry.isFile() &&
+      extensions.some((ext) => entry.name.toLowerCase().endsWith(ext))
+    )
+      return ["**"];
+    if (
+      entry.isDirectory() &&
+      !entry.name.startsWith(".") &&
+      !SKIP_DIRECTORIES.has(entry.name)
+    ) {
       directories.push(entry.name);
     }
   }
 
   const withSources: string[] = [];
   for (const name of directories) {
-    if (await containsAssembly(join(root, name), extensions, 6)) withSources.push(`${name}/**`);
+    if (await containsAssembly(join(root, name), extensions, 6))
+      withSources.push(`${name}/**`);
   }
   return withSources.length ? withSources : ["**"];
 }
 
-export async function collectInitAnswers(prompt: Prompt, detectedFiles: readonly string[]): Promise<InitAnswers> {
+export async function collectInitAnswers(
+  prompt: Prompt,
+  detectedFiles: readonly string[],
+): Promise<InitAnswers> {
   const platform = await prompt.choice("Target platform", PLATFORMS, "generic");
-  const processors = (await prompt.list(`Target processor(s), comma separated (${PROCESSORS.join(", ")})`, [
-    "mc68000",
-  ])) as Processor[];
+  const processors = (await prompt.list(
+    `Target processor(s), comma separated (${PROCESSORS.join(", ")})`,
+    ["mc68000"],
+  )) as Processor[];
   const goal = await prompt.choice("Optimization goal", GOALS, "balanced");
   const style = await prompt.confirm("Enable the opt-in style preset?", false);
   const files = await prompt.list("Source globs to lint", detectedFiles);
@@ -93,9 +145,13 @@ export async function collectInitAnswers(prompt: Prompt, detectedFiles: readonly
 }
 
 export function validateProcessors(values: readonly string[]): Processor[] {
-  const unknown = values.filter((value) => !PROCESSORS.includes(value as Processor));
+  const unknown = values.filter(
+    (value) => !PROCESSORS.includes(value as Processor),
+  );
   if (unknown.length)
-    throw new Error(`Unknown processor(s): ${unknown.join(", ")}. Expected: ${PROCESSORS.join(", ")}`);
+    throw new Error(
+      `Unknown processor(s): ${unknown.join(", ")}. Expected: ${PROCESSORS.join(", ")}`,
+    );
   if (!values.length) throw new Error("At least one processor is required");
   return [...values] as Processor[];
 }
@@ -109,7 +165,8 @@ export function renderInitConfig(answers: InitAnswers): string {
     $schema: "./node_modules/m68k-lint/m68k-lint.schema.json",
   };
   if (answers.platform !== "generic") config.platform = answers.platform;
-  if (answers.processors.length !== 1 || answers.processors[0] !== "mc68000") config.processors = answers.processors;
+  if (answers.processors.length !== 1 || answers.processors[0] !== "mc68000")
+    config.processors = answers.processors;
   if (answers.goal !== "balanced") config.goal = answers.goal;
   if (answers.style) config.presets = ["recommended", "style"];
   if (answers.files.length) config.files = answers.files;
@@ -130,26 +187,38 @@ export function describeInitConfig(answers: InitAnswers): string {
 
 /** Ignore globs need a trailing /** to match files inside a directory. */
 export function normalizeIgnoreGlobs(values: readonly string[]): string[] {
-  return values.map((value) => (/[*?[\]]/.test(value) ? value : `${value.replace(/\/+$/, "")}/**`));
+  return values.map((value) =>
+    /[*?[\]]/.test(value) ? value : `${value.replace(/\/+$/, "")}/**`,
+  );
 }
 
 /**
  * Wraps a readline interface as a Prompt. Takes the minimal shape it needs
  * rather than the interface type, so a test can drive it with a fake.
  */
-export function terminalPrompt(rl: { question: (query: string) => Promise<string> }): Prompt {
-  const askLine = async (question: string, shown: string) => (await rl.question(`${question} ${shown}: `)).trim();
+export function terminalPrompt(rl: {
+  question: (query: string) => Promise<string>;
+}): Prompt {
+  const askLine = async (question: string, shown: string) =>
+    (await rl.question(`${question} ${shown}: `)).trim();
   return {
     async choice(question, choices, fallback) {
       for (;;) {
-        const answer = await askLine(`${question} (${choices.join(", ")})`, `[${fallback}]`);
+        const answer = await askLine(
+          `${question} (${choices.join(", ")})`,
+          `[${fallback}]`,
+        );
         if (!answer) return fallback;
-        if ((choices as readonly string[]).includes(answer)) return answer as typeof fallback;
+        if ((choices as readonly string[]).includes(answer))
+          return answer as typeof fallback;
         console.error(`  Expected one of: ${choices.join(", ")}`);
       }
     },
     async list(question, fallback) {
-      const answer = await askLine(question, `[${fallback.join(", ") || "none"}]`);
+      const answer = await askLine(
+        question,
+        `[${fallback.join(", ") || "none"}]`,
+      );
       if (!answer) return [...fallback];
       return answer
         .split(",")
@@ -173,8 +242,12 @@ export function terminalPrompt(rl: { question: (query: string) => Promise<string
  */
 export async function runInit(color: boolean): Promise<number> {
   if (!process.stdin.isTTY) {
-    console.error("m68k-lint: --init needs an interactive terminal. Write m68k-lint.json by hand instead;");
-    console.error("its schema is at node_modules/m68k-lint/m68k-lint.schema.json.");
+    console.error(
+      "m68k-lint: --init needs an interactive terminal. Write m68k-lint.json by hand instead;",
+    );
+    console.error(
+      "its schema is at node_modules/m68k-lint/m68k-lint.schema.json.",
+    );
     return 2;
   }
 
@@ -191,12 +264,21 @@ export async function runInit(color: boolean): Promise<number> {
     }
 
     const prompt = terminalPrompt(rl);
-    if (existing && !(await prompt.confirm(`${initConfigFileName} already exists. Overwrite?`, false))) {
+    if (
+      existing &&
+      !(await prompt.confirm(
+        `${initConfigFileName} already exists. Overwrite?`,
+        false,
+      ))
+    ) {
       console.log("Cancelled; nothing written.");
       return 0;
     }
 
-    const answers = await collectInitAnswers(prompt, await detectSourceGlobs(process.cwd()));
+    const answers = await collectInitAnswers(
+      prompt,
+      await detectSourceGlobs(process.cwd()),
+    );
     answers.processors = validateProcessors(answers.processors);
     answers.ignores = normalizeIgnoreGlobs(answers.ignores);
 
@@ -208,10 +290,14 @@ export async function runInit(color: boolean): Promise<number> {
     }
 
     await writeFile(target, contents, "utf8");
-    console.log(`${paint(color, 32, "Created")} ${initConfigFileName} (${describeInitConfig(answers)})`);
+    console.log(
+      `${paint(color, 32, "Created")} ${initConfigFileName} (${describeInitConfig(answers)})`,
+    );
     return 0;
   } catch (error) {
-    console.error(`m68k-lint: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(
+      `m68k-lint: ${error instanceof Error ? error.message : String(error)}`,
+    );
     return 2;
   } finally {
     rl.close();

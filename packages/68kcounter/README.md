@@ -54,7 +54,7 @@ directive, which overrides the flag for that file.
 
 Available as <a href="https://marketplace.visualstudio.com/items?itemName=gigabates.68kcounter">VS Code extension</a> to provide live annotations and totals.
 
-![Output window screenshot](https://github.com/grahambates/68kcounter-vscode/raw/HEAD/images/demo.gif)
+![Output window screenshot](https://raw.githubusercontent.com/grahambates/m68k-tools/main/apps/68kcounter-vscode/images/demo.gif)
 
 ## Limitations:
 
@@ -65,5 +65,12 @@ Available as <a href="https://marketplace.visualstudio.com/items?itemName=gigaba
 - Where timings are based on an 'n' multiplier from an immediate value, it
   will parse simple expressions but doesn't currently substitute constants
   defined elsewhere.
-- 68020 support is partial: sizes are computed for the instructions the parser
-  handles, but cycle timings are not yet available (see above).
+- FPU and PMMU cycle timings are not modelled. See the 68020 timing assumptions above.
+
+## Development
+
+Requires Node.js 22.15.1 or later at runtime. Use the root-pinned Node version for development. From the monorepo root, run `pnpm install --frozen-lockfile`, `pnpm --filter m68k-parser build`, then `pnpm --filter 68kcounter build` and `pnpm --filter 68kcounter test`.
+
+## License
+
+[MIT](LICENSE).

@@ -19,7 +19,8 @@ import { isInstruction } from "../../util/ast.js";
  */
 function precedesInterruptReturn(ctx: RuleContext, index: number): boolean {
   let next = ctx.nextInstruction(index);
-  while (next && isInstruction(next.line, "nop")) next = ctx.nextInstruction(next.index);
+  while (next && isInstruction(next.line, "nop"))
+    next = ctx.nextInstruction(next.index);
   return next !== undefined && isInstruction(next.line, "rte");
 }
 
@@ -45,7 +46,8 @@ export const suspiciousNop: Rule = {
       category: this.meta.category,
       severity: this.meta.defaultSeverity,
       confidence: "low",
-      message: "NOP may be intentional for timing, patching, alignment, or debugging",
+      message:
+        "NOP may be intentional for timing, patching, alignment, or debugging",
       loc: line.mnemonic!.loc,
       suggestion: {
         description: "Review whether the NOP is still required",

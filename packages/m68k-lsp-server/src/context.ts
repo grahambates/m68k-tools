@@ -1,7 +1,7 @@
-import * as lsp from "vscode-languageserver";
+import type * as lsp from "vscode-languageserver";
 
-import { ProcessedDocumentStore } from "./DocumentProcessor";
-import { Config, mergeConfig, defaultConfig } from "./config";
+import { type ProcessedDocumentStore } from "./DocumentProcessor";
+import { type Config, mergeConfig, defaultConfig } from "./config";
 
 export interface Context {
   store: ProcessedDocumentStore;

@@ -2,8 +2,8 @@ import { IndexChangedNotification } from "@m68k-lsp/protocol";
 import * as lsp from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { Provider } from ".";
-import { Context } from "../context";
+import { type Provider } from ".";
+import { type Context } from "../context";
 import DiagnosticProcessor from "../diagnostics";
 import DocumentProcessor, { isProcessed } from "../DocumentProcessor";
 

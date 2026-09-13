@@ -1,4 +1,7 @@
-import type { AddressRegisterIndirectDisplacementNode, OperandNode } from "m68k-parser";
+import type {
+  AddressRegisterIndirectDisplacementNode,
+  OperandNode,
+} from "m68k-parser";
 import type { RuleContext } from "../../core/context.js";
 import { normalizeRegister } from "../../semantics/registers.js";
 
@@ -18,8 +21,12 @@ export type Location =
   | { kind: "postinc"; register: string }
   | { kind: "predec"; register: string };
 
-function registerKey(register: AddressRegisterIndirectDisplacementNode["register"]): string | undefined {
-  return register.type === "address-register" ? normalizeRegister(register.register) : undefined;
+function registerKey(
+  register: AddressRegisterIndirectDisplacementNode["register"],
+): string | undefined {
+  return register.type === "address-register"
+    ? normalizeRegister(register.register)
+    : undefined;
 }
 
 /**
@@ -31,7 +38,10 @@ function registerKey(register: AddressRegisterIndirectDisplacementNode["register
  * of them name the same register without evaluating them as addresses, which
  * the parser does not offer.
  */
-export function locationOf(ctx: RuleContext, op: OperandNode | undefined): Location | undefined {
+export function locationOf(
+  ctx: RuleContext,
+  op: OperandNode | undefined,
+): Location | undefined {
   if (!op) return undefined;
   if (op.type === "absolute-address") {
     const result = ctx.evaluate(op.address);
@@ -41,11 +51,15 @@ export function locationOf(ctx: RuleContext, op: OperandNode | undefined): Locat
     const register = registerKey(op.register);
     if (!register) return undefined;
     const result = ctx.evaluate(op.displacement);
-    return result.known ? { kind: "register-displacement", register, value: result.value } : undefined;
+    return result.known
+      ? { kind: "register-displacement", register, value: result.value }
+      : undefined;
   }
   if (op.type === "address-register-indirect") {
     const register = registerKey(op.register);
-    return register ? { kind: "register-displacement", register, value: 0 } : undefined;
+    return register
+      ? { kind: "register-displacement", register, value: 0 }
+      : undefined;
   }
   if (op.type === "address-register-indirect-postinc") {
     const register = registerKey(op.register);
@@ -70,14 +84,26 @@ export function locationOf(ctx: RuleContext, op: OperandNode | undefined): Locat
  * and must not be folded into a `.w` access -- unlike every other address
  * register, where a byte postinc/predec genuinely steps by 1.
  */
-export function isAdjacentLocation(first: Location, next: Location, delta: number): boolean {
+export function isAdjacentLocation(
+  first: Location,
+  next: Location,
+  delta: number,
+): boolean {
   if (first.kind !== next.kind) return false;
-  if ((first.kind === "postinc" || first.kind === "predec") && (next.kind === "postinc" || next.kind === "predec")) {
+  if (
+    (first.kind === "postinc" || first.kind === "predec") &&
+    (next.kind === "postinc" || next.kind === "predec")
+  ) {
     if (delta === 1 && first.register === "a7") return false;
     return first.register === next.register;
   }
-  if (first.kind === "register-displacement" && next.kind === "register-displacement") {
+  if (
+    first.kind === "register-displacement" &&
+    next.kind === "register-displacement"
+  ) {
     if (first.register !== next.register) return false;
   }
-  return "value" in next && "value" in first && next.value === first.value + delta;
+  return (
+    "value" in next && "value" in first && next.value === first.value + delta
+  );
 }

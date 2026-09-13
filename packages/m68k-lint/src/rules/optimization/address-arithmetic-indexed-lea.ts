@@ -11,7 +11,11 @@ function sameRegister(a: string, b: string): boolean {
   return a.toLowerCase() === b.toLowerCase();
 }
 
-function hasInterveningLabel(ctx: Parameters<NonNullable<Rule["checkLine"]>>[0], from: number, to: number): boolean {
+function hasInterveningLabel(
+  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
+  from: number,
+  to: number,
+): boolean {
   for (let i = from + 1; i <= to; i++) if (ctx.line(i)?.label) return true;
   return false;
 }
@@ -31,7 +35,8 @@ export const foldAddressArithmeticToIndexedLea: Rule = {
     id: "optimization/address-arithmetic-indexed-lea",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Fold address immediate arithmetic plus indexed addition into LEA",
+    description:
+      "Fold address immediate arithmetic plus indexed addition into LEA",
     tags: ["flamewing", "68000", "address-register", "lea", "sequence"],
     docs: { source: "Flamewing M68000 Peephole Optimizations" },
   },
@@ -50,10 +55,19 @@ export const foldAddressArithmeticToIndexedLea: Rule = {
     if (displacement < -128 || displacement > 127) return;
 
     const next = ctx.nextInstruction(index);
-    if (!next || hasInterveningLabel(ctx, index, next.index) || !isInstruction(next.line, "adda")) return;
+    if (
+      !next ||
+      hasInterveningLabel(ctx, index, next.index) ||
+      !isInstruction(next.line, "adda")
+    )
+      return;
     const nextDest = addressRegisterOperand(next.line, 1);
     const indexSize = instructionSize(next.line);
-    if (!nextDest || !sameRegister(nextDest.register, dest.register) || (indexSize !== "w" && indexSize !== "l"))
+    if (
+      !nextDest ||
+      !sameRegister(nextDest.register, dest.register) ||
+      (indexSize !== "w" && indexSize !== "l")
+    )
       return;
 
     const dataIndex = dataRegisterOperand(next.line, 0);
@@ -68,14 +82,20 @@ export const foldAddressArithmeticToIndexedLea: Rule = {
       category: this.meta.category,
       severity: this.meta.defaultSeverity,
       confidence: "certain",
-      message: "This address immediate adjustment and indexed addition can be folded into one LEA",
+      message:
+        "This address immediate adjustment and indexed addition can be folded into one LEA",
       loc: line.mnemonic!.loc,
       suggestion: {
         description: "Use one indexed LEA",
         replacement,
         applicability: "safe",
       },
-      notes: [{ message: "The signed displacement fits the 68000 brief indexed addressing range (-128..127)." }],
+      notes: [
+        {
+          message:
+            "The signed displacement fits the 68000 brief indexed addressing range (-128..127).",
+        },
+      ],
       data: { secondInstructionIndex: next.index },
     });
   },

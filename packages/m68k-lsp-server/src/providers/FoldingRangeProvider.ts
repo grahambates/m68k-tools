@@ -1,9 +1,9 @@
 import type { Block, BlockStructure } from "m68k-parser";
 import * as lsp from "vscode-languageserver";
-import { Provider } from ".";
-import { Context } from "../context";
+import { type Provider } from ".";
+import { type Context } from "../context";
 import { isProcessed } from "../DocumentProcessor";
-import { Definition, DefinitionType } from "../symbols";
+import { type Definition, DefinitionType } from "../symbols";
 
 /**
  * Fold ranges for macro, repeat and conditional blocks.

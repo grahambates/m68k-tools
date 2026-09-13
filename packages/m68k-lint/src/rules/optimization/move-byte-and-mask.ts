@@ -1,13 +1,27 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateExpressionOperand, instructionSize, isInstruction } from "../../util/ast.js";
-import { registersReadByOperand, normalizeRegister } from "../../semantics/registers.js";
+import {
+  dataRegisterOperand,
+  immediateExpressionOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
+import {
+  registersReadByOperand,
+  normalizeRegister,
+} from "../../semantics/registers.js";
 import { sourceOperand } from "./helpers.js";
 
-function m68000Only(ctx: Parameters<NonNullable<Rule["checkLine"]>>[0]): boolean {
+function m68000Only(
+  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
+): boolean {
   return ctx.config.processors.every((cpu) => cpu === "mc68000");
 }
 
-function hasInterveningLabel(ctx: Parameters<NonNullable<Rule["checkLine"]>>[0], from: number, to: number): boolean {
+function hasInterveningLabel(
+  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
+  from: number,
+  to: number,
+): boolean {
   for (let i = from + 1; i <= to; i++) if (ctx.line(i)?.label) return true;
   return false;
 }
@@ -22,12 +36,18 @@ export const moveByteAndMaskViaMoveq: Rule = {
     id: "optimization/move-byte-and-mask",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Replace MOVE.B + ANDI.B with MOVEQ + AND when upper bits are dead",
+    description:
+      "Replace MOVE.B + ANDI.B with MOVEQ + AND when upper bits are dead",
     tags: ["flamewing", "68000", "partial-register", "mask"],
     docs: { source: "Flamewing M68000 Peephole Optimizations" },
   },
   checkLine(ctx, line, index) {
-    if (!m68000Only(ctx) || !isInstruction(line, "and") || instructionSize(line) !== "b") return;
+    if (
+      !m68000Only(ctx) ||
+      !isInstruction(line, "and") ||
+      instructionSize(line) !== "b"
+    )
+      return;
     const maskExpr = immediateExpressionOperand(line, 0);
     const dst = dataRegisterOperand(line, 1);
     if (!maskExpr || !dst) return;
@@ -43,7 +63,11 @@ export const moveByteAndMaskViaMoveq: Rule = {
     )
       return;
     const previousDst = dataRegisterOperand(previous.line, 1);
-    if (!previousDst || previousDst.register.toLowerCase() !== dst.register.toLowerCase()) return;
+    if (
+      !previousDst ||
+      previousDst.register.toLowerCase() !== dst.register.toLowerCase()
+    )
+      return;
     const source = previous.line.operands?.[0];
     if (!source) return;
 
@@ -53,7 +77,11 @@ export const moveByteAndMaskViaMoveq: Rule = {
     // example as an index register, or MOVE.B Dn,Dn), the address/value changes.
     if (registersReadByOperand(source).has(destRegister)) return;
 
-    const upperUse = ctx.registers.registerBitsUseAfter(index, dst.register, 0xffffff00);
+    const upperUse = ctx.registers.registerBitsUseAfter(
+      index,
+      dst.register,
+      0xffffff00,
+    );
     if (upperUse !== "unused") return;
     const ea = sourceOperand(ctx, previous.line, 0);
     if (!ea) return;
@@ -72,9 +100,15 @@ export const moveByteAndMaskViaMoveq: Rule = {
         applicability: "safe",
       },
       notes: [
-        { message: `The analyser proves bits 8-31 of ${dst.register.toUpperCase()} are discarded before any read.` },
+        {
+          message: `The analyser proves bits 8-31 of ${dst.register.toUpperCase()} are discarded before any read.`,
+        },
       ],
-      data: { secondInstructionIndex: index, differingBits: "8-31", provenance: "flamewing" },
+      data: {
+        secondInstructionIndex: index,
+        differingBits: "8-31",
+        provenance: "flamewing",
+      },
     });
   },
 };

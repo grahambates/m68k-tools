@@ -19,7 +19,10 @@ export function isInstruction(line: ParsedLine, mnemonic: string): boolean {
 }
 
 /** Match a broader semantic family, e.g. ADD/ADDI/ADDA when the rule explicitly supports it. */
-export function isInstructionFamily(line: ParsedLine, mnemonic: string): boolean {
+export function isInstructionFamily(
+  line: ParsedLine,
+  mnemonic: string,
+): boolean {
   return instructionFamily(line) === instructionFamilyName(mnemonic);
 }
 
@@ -27,46 +30,74 @@ export function instructionSize(line: ParsedLine): Size | undefined {
   return line.qualifier?.type === "size" ? line.qualifier.size : undefined;
 }
 
-export function operand(line: ParsedLine, index: number): OperandNode | undefined {
+export function operand(
+  line: ParsedLine,
+  index: number,
+): OperandNode | undefined {
   return line.operands?.[index];
 }
 
-export function immediateOperand(line: ParsedLine, index: number): ImmediateNode | undefined {
+export function immediateOperand(
+  line: ParsedLine,
+  index: number,
+): ImmediateNode | undefined {
   const value = operand(line, index);
   return value?.type === "immediate" ? value : undefined;
 }
 
-export function dataRegisterOperand(line: ParsedLine, index: number): DataRegisterNode | undefined {
+export function dataRegisterOperand(
+  line: ParsedLine,
+  index: number,
+): DataRegisterNode | undefined {
   const value = operand(line, index);
   return value?.type === "data-register" ? value : undefined;
 }
 
-export function addressRegisterOperand(line: ParsedLine, index: number): AddressRegisterNode | undefined {
+export function addressRegisterOperand(
+  line: ParsedLine,
+  index: number,
+): AddressRegisterNode | undefined {
   const value = operand(line, index);
   return value?.type === "address-register" ? value : undefined;
 }
 
-export function immediateExpressionOperand(line: ParsedLine, index: number): ExpressionNode | undefined {
+export function immediateExpressionOperand(
+  line: ParsedLine,
+  index: number,
+): ExpressionNode | undefined {
   const immediate = immediateOperand(line, index);
   if (!immediate || immediate.value.type === "string-literal") return undefined;
   return immediate.value;
 }
 
 /** A -(An) operand with a concrete address register, not a symbol/macro placeholder. */
-export function predecrementAddressRegister(line: ParsedLine, index: number): AddressRegisterNode | undefined {
+export function predecrementAddressRegister(
+  line: ParsedLine,
+  index: number,
+): AddressRegisterNode | undefined {
   const value = operand(line, index);
   if (value?.type !== "address-register-indirect-predec") return undefined;
-  return value.register.type === "address-register" ? value.register : undefined;
+  return value.register.type === "address-register"
+    ? value.register
+    : undefined;
 }
 
 /** A (An)+ operand with a concrete address register, not a symbol/macro placeholder. */
-export function postincrementAddressRegister(line: ParsedLine, index: number): AddressRegisterNode | undefined {
+export function postincrementAddressRegister(
+  line: ParsedLine,
+  index: number,
+): AddressRegisterNode | undefined {
   const value = operand(line, index);
   if (value?.type !== "address-register-indirect-postinc") return undefined;
-  return value.register.type === "address-register" ? value.register : undefined;
+  return value.register.type === "address-register"
+    ? value.register
+    : undefined;
 }
 
-export function isAddqDestination(value: OperandNode | undefined, size?: Size): boolean {
+export function isAddqDestination(
+  value: OperandNode | undefined,
+  size?: Size,
+): boolean {
   if (!value) return false;
 
   switch (value.type) {

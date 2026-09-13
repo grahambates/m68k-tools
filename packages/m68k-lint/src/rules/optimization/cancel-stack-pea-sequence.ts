@@ -1,8 +1,18 @@
 import type { OperandNode, ParsedLine } from "m68k-parser";
 import type { Rule } from "../../core/rule.js";
-import { addressRegisterOperand, immediateOperand, instructionSize, isInstruction, operand } from "../../util/ast.js";
+import {
+  addressRegisterOperand,
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+  operand,
+} from "../../util/ast.js";
 import { registersReadByOperand } from "../../semantics/registers.js";
-import { changedFlagsApplicability, hasLabelBetween, sourceOperand } from "./helpers.js";
+import {
+  changedFlagsApplicability,
+  hasLabelBetween,
+  sourceOperand,
+} from "./helpers.js";
 
 function isSpRegisterName(name: string): boolean {
   return ["sp", "a7"].includes(name.toLowerCase());
@@ -31,7 +41,9 @@ function peaAddressRegister(line: ParsedLine): string | undefined {
   return op.register.register;
 }
 
-function movePredecSp(line: ParsedLine): { size: "w" | "l"; source: OperandNode } | undefined {
+function movePredecSp(
+  line: ParsedLine,
+): { size: "w" | "l"; source: OperandNode } | undefined {
   if (!isInstruction(line, "move")) return undefined;
   const size = instructionSize(line);
   if (size !== "w" && size !== "l") return undefined;
@@ -45,8 +57,12 @@ function movePredecSp(line: ParsedLine): { size: "w" | "l"; source: OperandNode 
   return { size, source };
 }
 
-function quickAmount(ctx: Parameters<NonNullable<Rule["checkLine"]>>[0], line: ParsedLine): number | undefined {
-  if (!isInstruction(line, "addq") || !isSpAddressRegister(line, 1)) return undefined;
+function quickAmount(
+  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
+  line: ParsedLine,
+): number | undefined {
+  if (!isInstruction(line, "addq") || !isSpAddressRegister(line, 1))
+    return undefined;
   const size = instructionSize(line);
   if (size !== "w" && size !== "l") return undefined;
   const imm = immediateOperand(line, 0);
@@ -60,7 +76,8 @@ export const cancelStackPeaSequence: Rule = {
     id: "optimization/cancel-stack-pea-sequence",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Cancel stack ADDQ/PEA/predecrement sequences into fixed-offset stores",
+    description:
+      "Cancel stack ADDQ/PEA/predecrement sequences into fixed-offset stores",
     tags: ["asp68k", "stack", "pea", "sequence"],
     docs: { source: "ASP68K" },
   },
@@ -76,13 +93,19 @@ export const cancelStackPeaSequence: Rule = {
     if (amount === 4) {
       const ar = peaAddressRegister(first.line);
       if (!ar) return;
-      const ccr = changedFlagsApplicability(ctx, first.index, ["N", "Z", "V", "C"]);
+      const ccr = changedFlagsApplicability(ctx, first.index, [
+        "N",
+        "Z",
+        "V",
+        "C",
+      ]);
       ctx.report({
         ruleId: this.meta.id,
         category: this.meta.category,
         severity: this.meta.defaultSeverity,
         confidence: ccr.confidence,
-        message: "ADDQ #4,SP followed by PEA can be replaced by a direct longword store",
+        message:
+          "ADDQ #4,SP followed by PEA can be replaced by a direct longword store",
         loc: line.mnemonic!.loc,
         suggestion: {
           description: `Replace the pair with MOVE.L ${ar},(SP)`,
@@ -92,7 +115,12 @@ export const cancelStackPeaSequence: Rule = {
         notes: [
           ...(ccr.applicability === "safe"
             ? []
-            : [{ message: "PEA preserves CCR, whereas the replacement MOVE.L writes N/Z/V/C." }]),
+            : [
+                {
+                  message:
+                    "PEA preserves CCR, whereas the replacement MOVE.L writes N/Z/V/C.",
+                },
+              ]),
         ],
         data: { secondInstructionIndex: first.index },
       });
@@ -111,21 +139,31 @@ export const cancelStackPeaSequence: Rule = {
     if (amount === 6 && firstMove?.size === "w" && secondPea) {
       const src = sourceOperand(ctx, first.line, 0);
       if (!src) return;
-      const ccr = changedFlagsApplicability(ctx, second.index, ["N", "Z", "V", "C"]);
+      const ccr = changedFlagsApplicability(ctx, second.index, [
+        "N",
+        "Z",
+        "V",
+        "C",
+      ]);
       ctx.report({
         ruleId: this.meta.id,
         category: this.meta.category,
         severity: this.meta.defaultSeverity,
         confidence: ccr.confidence,
-        message: "The stack adjustment is cancelled by a word predecrement and PEA",
+        message:
+          "The stack adjustment is cancelled by a word predecrement and PEA",
         loc: line.mnemonic!.loc,
         suggestion: {
-          description: "Use fixed SP displacements instead of cancelling stack updates",
+          description:
+            "Use fixed SP displacements instead of cancelling stack updates",
           replacement: `move.w ${src},4(sp)\nmove.l ${secondPea},(sp)`,
           applicability: ccr.applicability,
         },
         notes: [
-          { message: "The source operand is independent of SP, so its effective address is unchanged." },
+          {
+            message:
+              "The source operand is independent of SP, so its effective address is unchanged.",
+          },
           ...(ccr.applicability === "safe"
             ? []
             : [
@@ -135,7 +173,10 @@ export const cancelStackPeaSequence: Rule = {
                 },
               ]),
         ],
-        data: { secondInstructionIndex: first.index, thirdInstructionIndex: second.index },
+        data: {
+          secondInstructionIndex: first.index,
+          thirdInstructionIndex: second.index,
+        },
       });
       return;
     }
@@ -149,10 +190,12 @@ export const cancelStackPeaSequence: Rule = {
         category: this.meta.category,
         severity: this.meta.defaultSeverity,
         confidence: "certain",
-        message: "The stack adjustment is cancelled by PEA and a word predecrement",
+        message:
+          "The stack adjustment is cancelled by PEA and a word predecrement",
         loc: line.mnemonic!.loc,
         suggestion: {
-          description: "Use fixed SP displacements instead of cancelling stack updates",
+          description:
+            "Use fixed SP displacements instead of cancelling stack updates",
           replacement: `move.l ${firstPea},2(sp)\nmove.w ${src},(sp)`,
           applicability: "safe",
         },
@@ -162,7 +205,10 @@ export const cancelStackPeaSequence: Rule = {
               "The final MOVE.W sets the same condition codes as the original final MOVE.W, and the source is independent of SP.",
           },
         ],
-        data: { secondInstructionIndex: first.index, thirdInstructionIndex: second.index },
+        data: {
+          secondInstructionIndex: first.index,
+          thirdInstructionIndex: second.index,
+        },
       });
       return;
     }
@@ -171,21 +217,31 @@ export const cancelStackPeaSequence: Rule = {
     if (amount === 8 && firstMove?.size === "l" && secondPea) {
       const src = sourceOperand(ctx, first.line, 0);
       if (!src) return;
-      const ccr = changedFlagsApplicability(ctx, second.index, ["N", "Z", "V", "C"]);
+      const ccr = changedFlagsApplicability(ctx, second.index, [
+        "N",
+        "Z",
+        "V",
+        "C",
+      ]);
       ctx.report({
         ruleId: this.meta.id,
         category: this.meta.category,
         severity: this.meta.defaultSeverity,
         confidence: ccr.confidence,
-        message: "The stack adjustment is cancelled by a longword predecrement and PEA",
+        message:
+          "The stack adjustment is cancelled by a longword predecrement and PEA",
         loc: line.mnemonic!.loc,
         suggestion: {
-          description: "Use fixed SP displacements instead of cancelling stack updates",
+          description:
+            "Use fixed SP displacements instead of cancelling stack updates",
           replacement: `move.l ${src},4(sp)\nmove.l ${secondPea},(sp)`,
           applicability: ccr.applicability,
         },
         notes: [
-          { message: "The source operand is independent of SP, so its effective address is unchanged." },
+          {
+            message:
+              "The source operand is independent of SP, so its effective address is unchanged.",
+          },
           ...(ccr.applicability === "safe"
             ? []
             : [
@@ -195,7 +251,10 @@ export const cancelStackPeaSequence: Rule = {
                 },
               ]),
         ],
-        data: { secondInstructionIndex: first.index, thirdInstructionIndex: second.index },
+        data: {
+          secondInstructionIndex: first.index,
+          thirdInstructionIndex: second.index,
+        },
       });
       return;
     }
@@ -209,10 +268,12 @@ export const cancelStackPeaSequence: Rule = {
         category: this.meta.category,
         severity: this.meta.defaultSeverity,
         confidence: "certain",
-        message: "The stack adjustment is cancelled by PEA and a longword predecrement",
+        message:
+          "The stack adjustment is cancelled by PEA and a longword predecrement",
         loc: line.mnemonic!.loc,
         suggestion: {
-          description: "Use fixed SP displacements instead of cancelling stack updates",
+          description:
+            "Use fixed SP displacements instead of cancelling stack updates",
           replacement: `move.l ${firstPea},4(sp)\nmove.l ${src},(sp)`,
           applicability: "safe",
         },
@@ -222,20 +283,29 @@ export const cancelStackPeaSequence: Rule = {
               "The final MOVE.L sets the same condition codes as the original final MOVE.L, and the source is independent of SP.",
           },
         ],
-        data: { secondInstructionIndex: first.index, thirdInstructionIndex: second.index },
+        data: {
+          secondInstructionIndex: first.index,
+          thirdInstructionIndex: second.index,
+        },
       });
       return;
     }
 
     // ADDQ #8,SP ; PEA (An) ; PEA (Am)
     if (amount === 8 && firstPea && secondPea) {
-      const ccr = changedFlagsApplicability(ctx, second.index, ["N", "Z", "V", "C"]);
+      const ccr = changedFlagsApplicability(ctx, second.index, [
+        "N",
+        "Z",
+        "V",
+        "C",
+      ]);
       ctx.report({
         ruleId: this.meta.id,
         category: this.meta.category,
         severity: this.meta.defaultSeverity,
         confidence: ccr.confidence,
-        message: "The stack adjustment is cancelled by two following PEA instructions",
+        message:
+          "The stack adjustment is cancelled by two following PEA instructions",
         loc: line.mnemonic!.loc,
         suggestion: {
           description: "Use direct longword stores at fixed SP offsets",
@@ -252,7 +322,10 @@ export const cancelStackPeaSequence: Rule = {
                 },
               ]),
         ],
-        data: { secondInstructionIndex: first.index, thirdInstructionIndex: second.index },
+        data: {
+          secondInstructionIndex: first.index,
+          thirdInstructionIndex: second.index,
+        },
       });
     }
   },

@@ -7,7 +7,8 @@ import { lintSource } from "../core/lint.js";
  * reads while fixing their code: they have no way to check what ASP68K said,
  * and a claim we repeat is a claim we own.
  */
-const SOURCES = /\bASP68K\b|\bFlamewing\b|Tricks and Traps\b|\b68kcounter\b|\bEAB\b|Hardware Reference/i;
+const SOURCES =
+  /\bASP68K\b|\bFlamewing\b|Tricks and Traps\b|\b68kcounter\b|\bEAB\b|Hardware Reference/i;
 
 describe("diagnostic voice", () => {
   test("rule metadata records provenance", () => {
@@ -17,7 +18,9 @@ describe("diagnostic voice", () => {
   });
 
   test("no rule description names a source", () => {
-    const named = defaultRules.filter((rule) => SOURCES.test(rule.meta.description)).map((rule) => rule.meta.id);
+    const named = defaultRules
+      .filter((rule) => SOURCES.test(rule.meta.description))
+      .map((rule) => rule.meta.id);
     expect(named).toEqual([]);
   });
 
@@ -39,14 +42,17 @@ describe("diagnostic voice", () => {
     ];
     const offenders: string[] = [];
     for (const source of sources) {
-      for (const diagnostic of lintSource(source, { processors: ["mc68000"] })) {
+      for (const diagnostic of lintSource(source, {
+        processors: ["mc68000"],
+      })) {
         const texts = [
           diagnostic.message,
           diagnostic.suggestion?.description,
           ...(diagnostic.notes ?? []).map((note) => note.message),
         ].filter((text): text is string => text !== undefined);
         for (const text of texts) {
-          if (SOURCES.test(text)) offenders.push(`${diagnostic.ruleId}: ${text}`);
+          if (SOURCES.test(text))
+            offenders.push(`${diagnostic.ruleId}: ${text}`);
         }
       }
     }

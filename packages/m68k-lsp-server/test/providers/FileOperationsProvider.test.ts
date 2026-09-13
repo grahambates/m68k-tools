@@ -5,10 +5,10 @@ import { pathToFileURL } from "url";
 import { createContext } from "../../src/context";
 import RenameProvider from "../../src/providers/RenameProvider";
 import { isProcessed } from "../../src/DocumentProcessor";
-import * as lsp from "vscode-languageserver";
+import type * as lsp from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { Context } from "../../src/context";
+import { type Context } from "../../src/context";
 import DocumentProcessor from "../../src/DocumentProcessor";
 import FileOperationsProvider from "../../src/providers/FileOperationsProvider";
 import { createTestContext, NullLogger } from "../helpers";

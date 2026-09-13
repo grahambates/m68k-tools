@@ -1,5 +1,11 @@
 import type { Rule } from "../../core/rule.js";
-import { immediateOperand, instructionSize, isAddqDestination, isInstructionFamily, operand } from "../../util/ast.js";
+import {
+  immediateOperand,
+  instructionSize,
+  isAddqDestination,
+  isInstructionFamily,
+  operand,
+} from "../../util/ast.js";
 import { valueText } from "./helpers.js";
 
 export const preferAddq: Rule = {
@@ -26,7 +32,9 @@ export const preferAddq: Rule = {
 
     const suffix = size ? `.${size}` : "";
     const originalDestination = destination
-      ? ctx.sourceLine((line.lineNumber ?? 1) - 1)?.slice(destination.loc.start, destination.loc.end)
+      ? ctx
+          .sourceLine((line.lineNumber ?? 1) - 1)
+          ?.slice(destination.loc.start, destination.loc.end)
       : undefined;
 
     const written = valueText(ctx, immediate.value, value.value);
@@ -40,7 +48,9 @@ export const preferAddq: Rule = {
       loc: line.mnemonic!.loc,
       suggestion: {
         description: "Use ADDQ",
-        replacement: originalDestination ? `addq${suffix} #${written},${originalDestination}` : undefined,
+        replacement: originalDestination
+          ? `addq${suffix} #${written},${originalDestination}`
+          : undefined,
         applicability: "safe",
       },
     });

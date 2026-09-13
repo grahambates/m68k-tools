@@ -16,17 +16,29 @@ import { initConfigFileName } from "./init.js";
  * that anything already there, including keys this version does not know about,
  * survives.
  */
-export async function disableRulesInConfig(configPath: string, ruleIds: readonly string[]): Promise<void> {
+export async function disableRulesInConfig(
+  configPath: string,
+  ruleIds: readonly string[],
+): Promise<void> {
   let existing: Record<string, unknown> = {};
   try {
-    existing = JSON.parse(await readFile(configPath, "utf8")) as Record<string, unknown>;
+    existing = JSON.parse(await readFile(configPath, "utf8")) as Record<
+      string,
+      unknown
+    >;
   } catch {
     // No config yet, or one we cannot read; start from an empty object rather
     // than refusing, since the rules still have to go somewhere.
   }
-  const rules = { ...((existing.rules as Record<string, string> | undefined) ?? {}) };
+  const rules = {
+    ...((existing.rules as Record<string, string> | undefined) ?? {}),
+  };
   for (const ruleId of ruleIds) rules[ruleId] = "off";
-  await writeFile(configPath, `${JSON.stringify({ ...existing, rules }, null, 2)}\n`, "utf8");
+  await writeFile(
+    configPath,
+    `${JSON.stringify({ ...existing, rules }, null, 2)}\n`,
+    "utf8",
+  );
 }
 
 /**
@@ -50,14 +62,22 @@ export async function reviewFile(
     const choices = fixable ? "y/Y/n/N/a/d/q/?" : "n/N/a/d/q/?";
     for (;;) {
       // Case matters here, so the answer is not folded to lower case.
-      const answer = (await ask(`  ${fixable ? "apply" : "no rewrite available"} [${choices}] `)).trim();
+      const answer = (
+        await ask(
+          `  ${fixable ? "apply" : "no rewrite available"} [${choices}] `,
+        )
+      ).trim();
       if (answer === "?" || answer === "h") {
         if (fixable) {
           console.log("  y  apply the rewrite");
-          console.log(`  Y  apply every remaining ${diagnostic.ruleId} without asking`);
+          console.log(
+            `  Y  apply every remaining ${diagnostic.ruleId} without asking`,
+          );
         }
         console.log("  n  skip, and report it again next time");
-        console.log(`  N  skip every remaining ${diagnostic.ruleId} in this run`);
+        console.log(
+          `  N  skip every remaining ${diagnostic.ruleId} in this run`,
+        );
         console.log("  a  allow here, adding a directive beside this code");
         console.log(`  d  disable ${diagnostic.ruleId} for the whole project`);
         console.log("  q  stop; what has been decided still stands");
@@ -112,8 +132,15 @@ export async function runInteractiveFixes(
       for (const ruleId of disabled) active.rules[ruleId] = "off";
       const diagnostics = lintParsedFile(parseFile(source), source, active);
       if (diagnostics.length === 0) continue;
-      const result = await reviewFile(file, source, diagnostics, (query) => rl.question(query), session.color);
-      if (result.output !== source) await writeFile(file, result.output, "utf8");
+      const result = await reviewFile(
+        file,
+        source,
+        diagnostics,
+        (query) => rl.question(query),
+        session.color,
+      );
+      if (result.output !== source)
+        await writeFile(file, result.output, "utf8");
       applied += result.applied.length;
       suppressed += result.suppressed.length;
       for (const ruleId of result.disabledRules) disabled.add(ruleId);
@@ -124,9 +151,13 @@ export async function runInteractiveFixes(
   }
 
   if (disabled.size) {
-    const target = session.projectConfigPath ?? resolve(session.projectRoot, initConfigFileName);
+    const target =
+      session.projectConfigPath ??
+      resolve(session.projectRoot, initConfigFileName);
     await disableRulesInConfig(target, [...disabled]);
-    console.log(`\nturned off in ${relative(process.cwd(), target) || target}: ${[...disabled].join(", ")}`);
+    console.log(
+      `\nturned off in ${relative(process.cwd(), target) || target}: ${[...disabled].join(", ")}`,
+    );
   }
   console.log(`${applied} applied, ${suppressed} allowed in place.`);
   return 0;

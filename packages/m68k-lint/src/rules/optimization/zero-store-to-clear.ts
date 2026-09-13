@@ -1,5 +1,10 @@
 import type { Rule } from "../../core/rule.js";
-import { immediateOperand, instructionSize, isInstruction, operand } from "../../util/ast.js";
+import {
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+  operand,
+} from "../../util/ast.js";
 import { sourceOperand } from "./helpers.js";
 
 /** Destinations CLR can reach: memory only. A data register is prefer-moveq-zero's business. */

@@ -25,7 +25,9 @@ function sharedFlagDefinition(ctx: RuleContext, index: number): boolean {
   if (carry.length !== 1 || extend.length !== 1) return false;
   const [c] = carry;
   const [x] = extend;
-  return c.kind === "instruction" && x.kind === "instruction" && c.index === x.index;
+  return (
+    c.kind === "instruction" && x.kind === "instruction" && c.index === x.index
+  );
 }
 
 export const carryToMaskViaSubx: Rule = {
@@ -47,13 +49,23 @@ export const carryToMaskViaSubx: Rule = {
     // SCS produces a byte, so it takes both extensions to reach a full long.
     const word = ctx.nextInstruction(index);
     if (!word || hasLabelBetween(ctx, index, word.index)) return;
-    if (semanticMnemonic(word.line) !== "ext" || instructionSize(word.line) !== "w") return;
-    if (dataRegisterOperand(word.line, 0)?.register.toLowerCase() !== name) return;
+    if (
+      semanticMnemonic(word.line) !== "ext" ||
+      instructionSize(word.line) !== "w"
+    )
+      return;
+    if (dataRegisterOperand(word.line, 0)?.register.toLowerCase() !== name)
+      return;
 
     const long = ctx.nextInstruction(word.index);
     if (!long || hasLabelBetween(ctx, word.index, long.index)) return;
-    if (semanticMnemonic(long.line) !== "ext" || instructionSize(long.line) !== "l") return;
-    if (dataRegisterOperand(long.line, 0)?.register.toLowerCase() !== name) return;
+    if (
+      semanticMnemonic(long.line) !== "ext" ||
+      instructionSize(long.line) !== "l"
+    )
+      return;
+    if (dataRegisterOperand(long.line, 0)?.register.toLowerCase() !== name)
+      return;
 
     if (!sharedFlagDefinition(ctx, index)) return;
 
@@ -74,7 +86,10 @@ export const carryToMaskViaSubx: Rule = {
           message:
             "SCS reads C while SUBX reads X, and those differ after a CMP, which leaves X untouched. Here one instruction sets both, so they agree.",
         },
-        { message: "SUBX also updates the condition codes, where SCC and EXT leave X alone and set N and Z." },
+        {
+          message:
+            "SUBX also updates the condition codes, where SCC and EXT leave X alone and set N and Z.",
+        },
       ],
       data: { register: register.register, sourceEndIndex: long.index },
     });

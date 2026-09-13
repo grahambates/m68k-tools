@@ -1,14 +1,27 @@
 import type { ExpressionNode, ParsedLine } from "m68k-parser";
 import type { Rule } from "../../core/rule.js";
 import type { RuleContext } from "../../core/context.js";
-import { dataRegisterOperand, immediateExpressionOperand, isInstruction } from "../../util/ast.js";
-import { changedFlagsApplicability, containsSymbol, embeddedValueText, hasLabelBetween } from "./helpers.js";
+import {
+  dataRegisterOperand,
+  immediateExpressionOperand,
+  isInstruction,
+} from "../../util/ast.js";
+import {
+  changedFlagsApplicability,
+  containsSymbol,
+  embeddedValueText,
+  hasLabelBetween,
+} from "./helpers.js";
 
 type BitKind = "bset" | "bclr" | "bchg";
 const KINDS: readonly BitKind[] = ["bset", "bclr", "bchg"];
 
 /** The masked operation each bit instruction becomes once several are merged. */
-const MERGED: Readonly<Record<BitKind, "or" | "and" | "eor">> = { bset: "or", bclr: "and", bchg: "eor" };
+const MERGED: Readonly<Record<BitKind, "or" | "and" | "eor">> = {
+  bset: "or",
+  bclr: "and",
+  bchg: "eor",
+};
 
 interface BitOp {
   kind: BitKind;
@@ -17,7 +30,10 @@ interface BitOp {
   bit: number;
 }
 
-function bitOp(ctx: RuleContext, line: ParsedLine | undefined): BitOp | undefined {
+function bitOp(
+  ctx: RuleContext,
+  line: ParsedLine | undefined,
+): BitOp | undefined {
   if (!line) return undefined;
   const kind = KINDS.find((k) => isInstruction(line, k));
   if (!kind) return undefined;
@@ -28,7 +44,12 @@ function bitOp(ctx: RuleContext, line: ParsedLine | undefined): BitOp | undefine
   if (!dest || !expression) return undefined;
   const value = ctx.evaluate(expression);
   if (!value.known || value.value < 0 || value.value > 31) return undefined;
-  return { kind, register: dest.register.toLowerCase(), expression, bit: value.value };
+  return {
+    kind,
+    register: dest.register.toLowerCase(),
+    expression,
+    bit: value.value,
+  };
 }
 
 function sameTarget(a: BitOp, b: BitOp): boolean {
@@ -53,7 +74,8 @@ export const combineConsecutiveBitOps: Rule = {
     id: "optimization/combine-consecutive-bit-ops",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Combine consecutive single-bit operations on one register into one masked operation",
+    description:
+      "Combine consecutive single-bit operations on one register into one masked operation",
     tags: ["peephole", "bit", "ccr", "native"],
     docs: {
       note: "Found by mining a corpus of real Amiga assembly, where BCLR chains clearing several bits of one register are common in hardware setup code.",
@@ -104,16 +126,31 @@ export const combineConsecutiveBitOps: Rule = {
     // an opaque mask that no longer tracks the constant it came from.
     // `& limit` works on a signed 32-bit value, so the unsigned coercion has to
     // come after it or a mask reaching bit 31 renders as a negative number.
-    const hex = (value: number) => `$${((value & limit) >>> 0).toString(16).padStart(width, "0")}`;
+    const hex = (value: number) =>
+      `$${((value & limit) >>> 0).toString(16).padStart(width, "0")}`;
     const symbolic = members.some((m) => containsSymbol(m.op.expression));
     // Each shift is parenthesised so the mask does not depend on the assembler
     // agreeing with C about how `<<` and `|` bind.
-    const bits = members.map((m) => `(1<<${embeddedValueText(ctx, m.op.expression, m.op.bit)})`).join("|");
-    const maskText = first.kind === "bclr" ? (symbolic ? `~(${bits})` : hex(~mask)) : symbolic ? bits : hex(mask);
+    const bits = members
+      .map((m) => `(1<<${embeddedValueText(ctx, m.op.expression, m.op.bit)})`)
+      .join("|");
+    const maskText =
+      first.kind === "bclr"
+        ? symbolic
+          ? `~(${bits})`
+          : hex(~mask)
+        : symbolic
+          ? bits
+          : hex(mask);
 
     const operation = MERGED[first.kind];
     const last = members[members.length - 1];
-    const safety = changedFlagsApplicability(ctx, last.index, ["N", "Z", "V", "C"]);
+    const safety = changedFlagsApplicability(ctx, last.index, [
+      "N",
+      "Z",
+      "V",
+      "C",
+    ]);
     const replacement = `${operation}.${size} #${maskText},${first.register}`;
 
     ctx.report({
@@ -139,7 +176,9 @@ export const combineConsecutiveBitOps: Rule = {
       ],
       data: Object.fromEntries([
         ["mask", mask >>> 0],
-        ...members.slice(1).map((m, i) => [`member${i + 2}InstructionIndex`, m.index] as const),
+        ...members
+          .slice(1)
+          .map((m, i) => [`member${i + 2}InstructionIndex`, m.index] as const),
       ]),
     });
   },

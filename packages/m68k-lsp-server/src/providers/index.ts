@@ -1,9 +1,9 @@
 import {
-  ClientCapabilities,
-  Connection,
-  ServerCapabilities,
+  type ClientCapabilities,
+  type Connection,
+  type ServerCapabilities,
 } from "vscode-languageserver";
-import { Context } from "../context";
+import { type Context } from "../context";
 
 import CompletionProvider from "./CompletionProvider";
 import ConfiguratonProvider from "./ConfigurationProvider";

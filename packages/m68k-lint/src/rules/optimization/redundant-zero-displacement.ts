@@ -36,7 +36,11 @@ export const redundantZeroDisplacement: Rule = {
         confidence: "certain",
         message: `Zero displacement ${original ?? `0(${op.register.register})`} can use ${operandText}`,
         loc: op.loc,
-        suggestion: { description: `Use ${operandText}`, replacement, applicability: "safe" },
+        suggestion: {
+          description: `Use ${operandText}`,
+          replacement,
+          applicability: "safe",
+        },
         notes: [
           {
             message:

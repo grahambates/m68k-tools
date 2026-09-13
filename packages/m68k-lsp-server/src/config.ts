@@ -1,7 +1,7 @@
-import { Processor } from "./docs";
-import { FormatterOptions, defaultOptions } from "m68k-formatter";
+import { type Processor } from "./docs";
+import { type FormatterOptions, defaultOptions } from "m68k-formatter";
 import * as os from "os";
-import { VasmOptions } from "./diagnostics";
+import { type VasmOptions } from "./diagnostics";
 
 export interface Config {
   format: FormatterOptions;

@@ -5,7 +5,7 @@ import { extname, resolve } from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 
-import { Context } from "./context";
+import { type Context } from "./context";
 
 const { readFile, access } = fsp;
 

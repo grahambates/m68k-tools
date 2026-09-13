@@ -12,7 +12,9 @@ const blocks = (src: string) => parseBlocks(parseFile(src));
 describe("parseBlocks", () => {
   describe("pairing", () => {
     it("pairs a macro with its endm and takes the name from the label", () => {
-      const { blocks: found, errors } = blocks("Foo macro\n move d0,d1\n endm\n");
+      const { blocks: found, errors } = blocks(
+        "Foo macro\n move d0,d1\n endm\n",
+      );
       expect(errors).toHaveLength(0);
       expect(found).toHaveLength(1);
       expect(found[0]).toMatchObject({
@@ -84,9 +86,7 @@ describe("parseBlocks", () => {
     });
 
     it("keeps sibling blocks separate", () => {
-      const { blocks: found } = blocks(
-        "A macro\n endm\nB macro\n endm\n",
-      );
+      const { blocks: found } = blocks("A macro\n endm\nB macro\n endm\n");
       expect(found.map((b) => b.name)).toEqual(["A", "B"]);
     });
   });
@@ -142,9 +142,7 @@ describe("parseBlocks", () => {
   });
 
   describe("lookup", () => {
-    const structure = blocks(
-      "M macro\n ifeq 1\n nop\n endc\n endm\n nop\n",
-    );
+    const structure = blocks("M macro\n ifeq 1\n nop\n endc\n endm\n nop\n");
 
     it("finds the innermost block at a line", () => {
       expect(blockAt(structure, 2)).toMatchObject({ kind: "conditional" });

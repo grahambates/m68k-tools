@@ -1,5 +1,5 @@
-import Parser, { Line } from "./Parser";
-import { CacheModel, Cpu } from "../syntax";
+import Parser, { type Line } from "./Parser";
+import { type CacheModel, type Cpu } from "../syntax";
 
 export * from "./Parser";
 export * from "./nodes";
@@ -16,7 +16,7 @@ export interface ParseOptions {
  */
 export default function parse(
   input: string,
-  options: ParseOptions = {}
+  options: ParseOptions = {},
 ): Line[] {
   const parser = new Parser(options);
   return parser.parse(input);

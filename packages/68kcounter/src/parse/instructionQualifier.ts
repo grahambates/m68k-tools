@@ -1,12 +1,12 @@
 import {
   AddressingModes,
-  Mnemonic,
+  type Mnemonic,
   mnemonicGroups,
   Mnemonics,
-  Qualifier,
+  type Qualifier,
   Qualifiers,
 } from "../syntax";
-import { InstructionStatement } from "./nodes";
+import { type InstructionStatement } from "./nodes";
 
 /**
  * Gets the size qualifier of an instruction, applying defaults where not specified

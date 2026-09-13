@@ -5,7 +5,7 @@
 import fs from "fs";
 import parse from "../../src/parse";
 import evaluate from "../../src/parse/evaluate";
-import { Timing } from "../../src/timings";
+import { type Timing } from "../../src/timings";
 
 const instructions = fs
   .readFileSync(__dirname + "/../examples/instructions.s")
@@ -16,7 +16,7 @@ const instructions = fs
  */
 function parseComment(
   comment: string,
-  m?: number
+  m?: number,
 ): { total: Timing; index: number } {
   let index = 0;
   const [timings, caseText] = comment
@@ -42,12 +42,11 @@ function parseComment(
   if (timings.includes("=")) {
     const total = parseTime(timings.split("=").pop().trim(), m);
     return { total, index };
-  } else {
-    return {
-      total: parseTime(timings, m),
-      index,
-    };
   }
+  return {
+    total: parseTime(timings, m),
+    index,
+  };
 }
 
 /**

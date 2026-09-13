@@ -39,7 +39,10 @@ function classify(name: string): ConstantUse | undefined {
   };
 }
 
-function collectConstants(expr: ExpressionNode, found: ConstantUse[] = []): ConstantUse[] {
+function collectConstants(
+  expr: ExpressionNode,
+  found: ConstantUse[] = [],
+): ConstantUse[] {
   switch (expr.type) {
     case "symbol": {
       const use = classify(expr.name);
@@ -77,9 +80,14 @@ const REGISTER_FAMILY = new Map<number, { name: string; family: Family }>([
  */
 function targetRegister(ctx: RuleContext, line: ParsedLine, index: number) {
   for (const operandIndex of [1, 0]) {
-    const address = amigaEffectiveAddress(ctx, operand(line, operandIndex), index);
+    const address = amigaEffectiveAddress(
+      ctx,
+      operand(line, operandIndex),
+      index,
+    );
     if (address === undefined) continue;
-    const register = REGISTER_FAMILY.get(address) ?? REGISTER_FAMILY.get(address - 1);
+    const register =
+      REGISTER_FAMILY.get(address) ?? REGISTER_FAMILY.get(address - 1);
     if (register) return register;
   }
   return undefined;
@@ -87,7 +95,10 @@ function targetRegister(ctx: RuleContext, line: ParsedLine, index: number) {
 
 function rename(text: string, from: ConstantUse, to: Kind): string {
   const wanted = PREFIX[from.family][to];
-  return text.replace(new RegExp(`\\b${from.name}\\b`, "g"), wanted + from.name.slice(from.name.indexOf("_") + 1));
+  return text.replace(
+    new RegExp(`\\b${from.name}\\b`, "g"),
+    wanted + from.name.slice(from.name.indexOf("_") + 1),
+  );
 }
 
 export const amigaBitMaskConstants: Rule = {
@@ -96,7 +107,8 @@ export const amigaBitMaskConstants: Rule = {
     category: "correctness",
     defaultSeverity: "warning",
     platforms: ["amiga"],
-    description: "Flag DMAB_/INTB_ bit numbers used where DMAF_/INTF_ masks are required, and the reverse",
+    description:
+      "Flag DMAB_/INTB_ bit numbers used where DMAF_/INTF_ masks are required, and the reverse",
     tags: ["amiga", "dmacon", "intena", "constants", "likely-typo"],
     docs: {
       note: "DMAB_*/INTB_* are bit numbers for BTST/BSET/BCLR/BCHG; DMAF_*/INTF_* are the masks written to DMACON, INTENA and INTREQ. The names differ by one letter, so the wrong one is easy to complete and produces a silently wrong value.",
@@ -109,7 +121,8 @@ export const amigaBitMaskConstants: Rule = {
 
     for (let i = 0; i < (line.operands?.length ?? 0); i++) {
       const op = operand(line, i);
-      if (op?.type !== "immediate" || op.value.type === "string-literal") continue;
+      if (op?.type !== "immediate" || op.value.type === "string-literal")
+        continue;
       const uses = collectConstants(op.value);
       if (!uses.length) continue;
 
@@ -124,25 +137,33 @@ export const amigaBitMaskConstants: Rule = {
       else if (register) expectedKind = "mask";
       else {
         const masks = uses.filter((use) => use.kind === "mask").length;
-        if (masks !== 0 && masks !== uses.length) expectedKind = masks * 2 > uses.length ? "mask" : "bit";
+        if (masks !== 0 && masks !== uses.length)
+          expectedKind = masks * 2 > uses.length ? "mask" : "bit";
       }
       if (!expectedKind) continue;
 
       const expectedFamily = register?.family;
       const wrong = uses.filter(
-        (use) => use.kind !== expectedKind || (expectedFamily !== undefined && use.family !== expectedFamily),
+        (use) =>
+          use.kind !== expectedKind ||
+          (expectedFamily !== undefined && use.family !== expectedFamily),
       );
       if (!wrong.length) continue;
 
       // Only offer a rewrite when every wrong constant just has the wrong
       // letter. A cross-family mistake has no mechanical correction: there is no
       // DMA equivalent of an interrupt name.
-      const original = ctx.sourceLine((line.lineNumber ?? 1) - 1)?.slice(op.loc.start, op.loc.end);
-      const renameable = expectedFamily === undefined || wrong.every((use) => use.family === expectedFamily);
+      const original = ctx
+        .sourceLine((line.lineNumber ?? 1) - 1)
+        ?.slice(op.loc.start, op.loc.end);
+      const renameable =
+        expectedFamily === undefined ||
+        wrong.every((use) => use.family === expectedFamily);
       let replacement: string | undefined;
       if (original !== undefined && renameable) {
         let corrected = original;
-        for (const use of wrong) corrected = rename(corrected, use, expectedKind);
+        for (const use of wrong)
+          corrected = rename(corrected, use, expectedKind);
         replacement = replaceOperandInLine(ctx, line, i, corrected);
       }
 

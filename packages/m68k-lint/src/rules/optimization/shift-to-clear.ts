@@ -1,5 +1,9 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateOperand, instructionSize } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateOperand,
+  instructionSize,
+} from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
 import { canonicalMnemonic } from "../../semantics/mnemonics.js";
 
@@ -24,8 +28,17 @@ export const shiftToClear: Rule = {
     if (!v.known) return;
     const width = size === "b" ? 8 : size === "w" ? 16 : 32;
     if (v.value < width) return;
-    const safety = changedFlagsApplicability(ctx, index, ["X", "N", "Z", "V", "C"]);
-    const replacement = size === "l" ? `moveq #0,${dest.register}` : `clr.${size} ${dest.register}`;
+    const safety = changedFlagsApplicability(ctx, index, [
+      "X",
+      "N",
+      "Z",
+      "V",
+      "C",
+    ]);
+    const replacement =
+      size === "l"
+        ? `moveq #0,${dest.register}`
+        : `clr.${size} ${dest.register}`;
     ctx.report({
       ruleId: this.meta.id,
       category: this.meta.category,
@@ -39,10 +52,18 @@ export const shiftToClear: Rule = {
         applicability: safety.applicability,
       },
       notes: [
-        { message: "A shift at least as wide as the operand always produces zero, but the resulting flags differ." },
+        {
+          message:
+            "A shift at least as wide as the operand always produces zero, but the resulting flags differ.",
+        },
         ...(safety.applicability === "safe"
           ? [{ message: "All condition-code differences are dead here." }]
-          : [{ message: "Condition-code values may be observable after this instruction." }]),
+          : [
+              {
+                message:
+                  "Condition-code values may be observable after this instruction.",
+              },
+            ]),
       ],
     });
   },

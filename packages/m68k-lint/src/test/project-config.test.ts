@@ -9,15 +9,26 @@ describe("project config", () => {
     // substitutions in `optimization`. Erroring beats silently ignoring it.
     const root = await mkdtemp(join(tmpdir(), "m68k-lint-config-perf-"));
     const config = join(root, "m68k-lint.json");
-    await writeFile(config, JSON.stringify({ categories: { performance: false } }));
-    await expect(loadProjectConfig(config)).rejects.toThrow(/Unknown category 'performance'/);
+    await writeFile(
+      config,
+      JSON.stringify({ categories: { performance: false } }),
+    );
+    await expect(loadProjectConfig(config)).rejects.toThrow(
+      /Unknown category 'performance'/,
+    );
   });
 
   test("still accepts the surviving categories", async () => {
     const root = await mkdtemp(join(tmpdir(), "m68k-lint-config-cats-"));
     const config = join(root, "m68k-lint.json");
-    await writeFile(config, JSON.stringify({ categories: { portability: true, style: false } }));
-    expect((await loadProjectConfig(config)).categories).toEqual({ portability: true, style: false });
+    await writeFile(
+      config,
+      JSON.stringify({ categories: { portability: true, style: false } }),
+    );
+    expect((await loadProjectConfig(config)).categories).toEqual({
+      portability: true,
+      style: false,
+    });
   });
 
   test("finds config walking upward", async () => {

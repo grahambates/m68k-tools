@@ -8,23 +8,23 @@ import type {
   StringLiteralNode,
 } from "m68k-parser";
 import * as lsp from "vscode-languageserver";
-import { TextDocument } from "vscode-languageserver-textdocument";
-import { Provider } from ".";
-import { AstNode, nodeAtPosition } from "../ast";
+import { type TextDocument } from "vscode-languageserver-textdocument";
+import { type Provider } from ".";
+import { type AstNode, nodeAtPosition } from "../ast";
 import { locationAsRange } from "../geometry";
 import { resolveInclude } from "../files";
 import { DefinitionType, getDefinitions } from "../symbols";
 import { mnemonicDocs, registerDocs, sizeDocs } from "../docs/index";
 import type { Size } from "m68k-parser";
-import { RegisterName } from "../syntax";
-import { Context } from "../context";
+import { type RegisterName } from "../syntax";
+import { type Context } from "../context";
 import { isProcessed } from "../DocumentProcessor";
 import {
   formatDeclaration,
   formatMnemonicDoc,
   formatNumeric,
 } from "../formatting";
-import { MarkupContent } from "vscode-languageserver";
+import { type MarkupContent } from "vscode-languageserver";
 
 export default class HoverProvider implements Provider {
   constructor(protected readonly ctx: Context) {}

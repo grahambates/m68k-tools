@@ -6,7 +6,10 @@ import {
   instructionSize,
   isInstruction,
 } from "../../util/ast.js";
-import { normalizeRegister, registersReadByOperand } from "../../semantics/registers.js";
+import {
+  normalizeRegister,
+  registersReadByOperand,
+} from "../../semantics/registers.js";
 import { hasLabelBetween, sourceOperand } from "./helpers.js";
 
 /**
@@ -25,7 +28,8 @@ export const cancelSubqPostincrementMove: Rule = {
     id: "optimization/cancel-subq-postincrement-move",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Cancel SUBQ address adjustment against an immediately following postincrement MOVE",
+    description:
+      "Cancel SUBQ address adjustment against an immediately following postincrement MOVE",
     tags: ["asp68k", "sequence", "address-register"],
     docs: { source: "ASP68K" },
   },
@@ -40,7 +44,12 @@ export const cancelSubqPostincrementMove: Rule = {
     if (!q.known) return;
 
     const next = ctx.nextInstruction(index);
-    if (!next || hasLabelBetween(ctx, index, next.index) || !isInstruction(next.line, "move")) return;
+    if (
+      !next ||
+      hasLabelBetween(ctx, index, next.index) ||
+      !isInstruction(next.line, "move")
+    )
+      return;
     const moveSize = instructionSize(next.line);
     if (moveSize !== "w" && moveSize !== "l") return;
     const width = moveSize === "w" ? 2 : 4;

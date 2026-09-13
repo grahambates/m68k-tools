@@ -24,7 +24,12 @@ import { formatImpact, spanRange } from "./diagnostics.js";
  * silently because the rewrite trades bytes for cycles just looks broken. The
  * trade-off is in the action's title instead, so the choice is informed.
  */
-const ALL_ASSESSMENTS: OptimizationAssessment[] = ["improvement", "tradeoff", "neutral", "regression"];
+const ALL_ASSESSMENTS: OptimizationAssessment[] = [
+  "improvement",
+  "tradeoff",
+  "neutral",
+  "regression",
+];
 
 /** What `--fix` would take unattended, used for fix-all. */
 const FIX_ALL_ASSESSMENTS: OptimizationAssessment[] = ["improvement"];
@@ -49,28 +54,48 @@ export function singleFixEdit(
   annotate: boolean,
 ): { span: SourceSpan; newText: string } | undefined {
   const before = source.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-  const result = applyOnce(source, [diagnostic], accept, annotate, ALL_ASSESSMENTS);
+  const result = applyOnce(
+    source,
+    [diagnostic],
+    accept,
+    annotate,
+    ALL_ASSESSMENTS,
+  );
   const [applied] = result.applied;
   if (!applied) return undefined;
 
   const after = result.output.split("\n");
   const replacedCount = applied.endLine - applied.startLine + 1;
   const insertedCount = after.length - before.length + replacedCount;
-  const lines = after.slice(applied.startLine - 1, applied.startLine - 1 + insertedCount);
+  const lines = after.slice(
+    applied.startLine - 1,
+    applied.startLine - 1 + insertedCount,
+  );
   // Removals leave no lines; the trailing newline goes with them.
   const newText = insertedCount === 0 ? "" : lines.join("\n") + "\n";
-  return { span: { startLine: applied.startLine, endLine: applied.endLine }, newText };
+  return {
+    span: { startLine: applied.startLine, endLine: applied.endLine },
+    newText,
+  };
 }
 
-function edit(document: TextDocument, range: Range, newText: string): CodeAction["edit"] {
-  return { changes: { [document.uri]: [{ range, newText } satisfies TextEdit] } };
+function edit(
+  document: TextDocument,
+  range: Range,
+  newText: string,
+): CodeAction["edit"] {
+  return {
+    changes: { [document.uri]: [{ range, newText } satisfies TextEdit] },
+  };
 }
 
 function fixTitle(diagnostic: Diagnostic): string {
   const description = diagnostic.suggestion?.description ?? "Apply suggestion";
   const impact = formatImpact(diagnostic.suggestion?.impact);
   const conditional = diagnostic.suggestion?.applicability === "conditional";
-  const tail = [impact, conditional ? "check the notes" : undefined].filter(Boolean).join(", ");
+  const tail = [impact, conditional ? "check the notes" : undefined]
+    .filter(Boolean)
+    .join(", ");
   return tail ? `${description} (${tail})` : description;
 }
 
@@ -117,7 +142,11 @@ export function codeActionsFor(
     actions.push(disableInFile(document, diagnostic));
   }
 
-  if (diagnostics.some((diagnostic) => diagnostic.suggestion?.replacement !== undefined)) {
+  if (
+    diagnostics.some(
+      (diagnostic) => diagnostic.suggestion?.replacement !== undefined,
+    )
+  ) {
     const all = fixAll(document, source, options);
     if (all) actions.push(all);
   }
@@ -131,7 +160,11 @@ export function codeActionsFor(
  * this action fires from "fix all" and on save, where nothing is reviewing each
  * trade-off individually.
  */
-export function fixAll(document: TextDocument, source: string, options: ActionOptions): CodeAction | undefined {
+export function fixAll(
+  document: TextDocument,
+  source: string,
+  options: ActionOptions,
+): CodeAction | undefined {
   const accept = acceptedApplicabilities(options.conditional);
   const result = applyFixes(source, (text) => options.lint(text), {
     accept,
@@ -163,7 +196,10 @@ function lineText(document: TextDocument, line: number): string {
   });
 }
 
-function disableOnLine(document: TextDocument, diagnostic: Diagnostic): CodeAction {
+function disableOnLine(
+  document: TextDocument,
+  diagnostic: Diagnostic,
+): CodeAction {
   const line = (diagnostic.span?.startLine ?? diagnostic.loc.line ?? 1) - 1;
   const indent = indentOf(lineText(document, line));
   return {
@@ -178,7 +214,10 @@ function disableOnLine(document: TextDocument, diagnostic: Diagnostic): CodeActi
   };
 }
 
-function disableInFile(document: TextDocument, diagnostic: Diagnostic): CodeAction {
+function disableInFile(
+  document: TextDocument,
+  diagnostic: Diagnostic,
+): CodeAction {
   return {
     title: `Disable ${diagnostic.ruleId} for this file`,
     kind: CodeActionKind.QuickFix,

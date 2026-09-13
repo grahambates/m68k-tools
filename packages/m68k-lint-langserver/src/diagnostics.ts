@@ -4,11 +4,17 @@ import {
   type Range,
 } from "vscode-languageserver";
 import type { TextDocument } from "vscode-languageserver-textdocument";
-import type { Diagnostic, OptimizationImpact, Severity, SourceSpan } from "m68k-lint";
+import type {
+  Diagnostic,
+  OptimizationImpact,
+  Severity,
+  SourceSpan,
+} from "m68k-lint";
 
 export const DIAGNOSTIC_SOURCE = "m68k-lint";
 
-const RULES_DOC = "https://github.com/grahambates/m68k-lint/blob/main/docs/rules.md";
+const RULES_DOC =
+  "https://github.com/grahambates/m68k-lint/blob/main/docs/rules.md";
 
 /**
  * `suggestion` lands on Information rather than Hint deliberately. Hint renders
@@ -30,13 +36,22 @@ const SEVERITIES: Record<Severity, DiagnosticSeverity> = {
  * alone. The span is what a fix replaces, and underlining five lines of a
  * matched idiom buries the one instruction the reader needs to look at.
  */
-export function diagnosticRange(diagnostic: Diagnostic, document: TextDocument): Range {
+export function diagnosticRange(
+  diagnostic: Diagnostic,
+  document: TextDocument,
+): Range {
   const line = (diagnostic.loc.line ?? 1) - 1;
   const start = { line, character: diagnostic.loc.start };
-  const end = { line, character: Math.max(diagnostic.loc.end, diagnostic.loc.start) };
+  const end = {
+    line,
+    character: Math.max(diagnostic.loc.end, diagnostic.loc.start),
+  };
   // Clamp through the document so a stale or out-of-range loc cannot produce a
   // range the client will reject.
-  return { start: document.positionAt(document.offsetAt(start)), end: document.positionAt(document.offsetAt(end)) };
+  return {
+    start: document.positionAt(document.offsetAt(start)),
+    end: document.positionAt(document.offsetAt(end)),
+  };
 }
 
 /** The full extent a fix would replace, as a range. */
@@ -45,7 +60,9 @@ export function spanRange(span: SourceSpan, document: TextDocument): Range {
   const endLine = span.endLine - 1;
   return {
     start: { line: startLine, character: 0 },
-    end: document.positionAt(document.offsetAt({ line: endLine + 1, character: 0 })),
+    end: document.positionAt(
+      document.offsetAt({ line: endLine + 1, character: 0 }),
+    ),
   };
 }
 
@@ -55,7 +72,9 @@ function metric(value: number | undefined, unit: string): string | undefined {
 }
 
 /** A short "−2 bytes, −4 cycles" tail for action titles and hovers. */
-export function formatImpact(impact: OptimizationImpact | undefined): string | undefined {
+export function formatImpact(
+  impact: OptimizationImpact | undefined,
+): string | undefined {
   if (!impact) return undefined;
   const parts = [
     metric(impact.sizeBytes?.delta, "bytes"),
@@ -64,7 +83,10 @@ export function formatImpact(impact: OptimizationImpact | undefined): string | u
   return parts.length ? parts.join(", ") : undefined;
 }
 
-export function toLspDiagnostic(diagnostic: Diagnostic, document: TextDocument): LspDiagnostic {
+export function toLspDiagnostic(
+  diagnostic: Diagnostic,
+  document: TextDocument,
+): LspDiagnostic {
   const impact = formatImpact(diagnostic.suggestion?.impact);
   const lsp: LspDiagnostic = {
     range: diagnosticRange(diagnostic, document),

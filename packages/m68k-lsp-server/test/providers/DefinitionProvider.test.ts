@@ -1,7 +1,7 @@
 import * as lsp from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { Context } from "../../src/context";
+import { type Context } from "../../src/context";
 import DocumentProcessor from "../../src/DocumentProcessor";
 import DefinitionProvider from "../../src/providers/DefinitionProvider";
 import { createTestContext, range } from "../helpers";

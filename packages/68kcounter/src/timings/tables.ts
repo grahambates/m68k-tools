@@ -4,11 +4,11 @@ import {
   AddressingModes as O,
   addressingModeGroups as OG,
   Qualifiers,
-  Mnemonic,
-  Qualifier,
-  AddressingMode,
+  type Mnemonic,
+  type Qualifier,
+  type AddressingMode,
 } from "../syntax";
-import { Timing } from ".";
+import { type Timing } from ".";
 
 const { BCC, DBCC, SCC, SHIFT } = mnemonicGroups;
 const { B, W, L } = Qualifiers;
@@ -19,7 +19,7 @@ export type TimingTable = [
   (Qualifier | null)[],
   (AddressingMode | AddressingMode[])[],
   Timing[],
-  Timing?
+  Timing?,
 ][];
 
 // Effective Address Calculation Times:

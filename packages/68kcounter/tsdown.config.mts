@@ -1,2 +1,4 @@
-import { defineConfig } from 'tsdown';
-export default defineConfig({ entry: {"cli": "src/cli.ts", "formatters": "src/formatters.ts", "index": "src/index.ts", "levels": "src/levels.ts", "syntax": "src/syntax.ts", "totals": "src/totals.ts", "parse/Parser": "src/parse/Parser.ts", "parse/evaluate": "src/parse/evaluate.ts", "parse/index": "src/parse/index.ts", "parse/instructionQualifier": "src/parse/instructionQualifier.ts", "parse/nodes": "src/parse/nodes.ts", "parse/operandMode": "src/parse/operandMode.ts", "sizes/directiveSize": "src/sizes/directiveSize.ts", "sizes/index": "src/sizes/index.ts", "sizes/instructionSize": "src/sizes/instructionSize.ts", "timings/index": "src/timings/index.ts", "timings/tables": "src/timings/tables.ts", "timings/tables68020": "src/timings/tables68020.ts"}, outDir: 'dist', format: 'cjs', platform: 'node', target: 'es2022', fixedExtension: false, dts: true, unbundle: true });
+import { defineConfig } from "tsdown";
+import { unbundledDefaults } from "../../tsdown.base.mts";
+
+export default defineConfig({ ...unbundledDefaults, format: "cjs" });

@@ -1,8 +1,16 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
 
-function targetsAre(ctx: Parameters<NonNullable<Rule["checkLine"]>>[0], allowed: readonly string[]): boolean {
+function targetsAre(
+  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
+  allowed: readonly string[],
+): boolean {
   return ctx.config.processors.every((cpu) => allowed.includes(cpu));
 }
 
@@ -15,13 +23,16 @@ export const longShiftSequence: Rule = {
     id: "optimization/long-shift-sequence",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Replace selected 16..31-bit long shifts with word/SWAP sequences",
+    description:
+      "Replace selected 16..31-bit long shifts with word/SWAP sequences",
     tags: ["asp68k", "shift", "sequence", "ccr", "68000", "68010"],
     serves: "speed",
     docs: { source: "ASP68K" },
   },
   checkLine(ctx, line, index) {
-    const kind = ["asl", "asr", "lsl", "lsr"].find((name) => isInstruction(line, name));
+    const kind = ["asl", "asr", "lsl", "lsr"].find((name) =>
+      isInstruction(line, name),
+    );
     if (!kind || instructionSize(line) !== "l") return;
 
     const imm = immediateOperand(line, 0);
@@ -32,7 +43,10 @@ export const longShiftSequence: Rule = {
 
     // ASP68K only records these as wins on the following targets. 68020 is
     // deliberately excluded because the source has no timing data for it.
-    const allowed = kind === "lsr" && amount.value === 16 ? ["mc68000", "mc68010", "mc68030"] : ["mc68000", "mc68010"];
+    const allowed =
+      kind === "lsr" && amount.value === 16
+        ? ["mc68000", "mc68010", "mc68030"]
+        : ["mc68000", "mc68010"];
     if (!targetsAre(ctx, allowed)) return;
 
     const r = dest.register;
@@ -51,7 +65,13 @@ export const longShiftSequence: Rule = {
       replacement = `clr.w ${r}\nswap ${r}\nlsr.w #${amount.value - 16},${r}`;
     }
 
-    const safety = changedFlagsApplicability(ctx, index, ["X", "N", "Z", "V", "C"]);
+    const safety = changedFlagsApplicability(ctx, index, [
+      "X",
+      "N",
+      "Z",
+      "V",
+      "C",
+    ]);
     ctx.report({
       ruleId: this.meta.id,
       category: this.meta.category,
@@ -66,11 +86,22 @@ export const longShiftSequence: Rule = {
       },
       notes: [
         {
-          message: "The replacement is faster on the selected targets, but the condition codes differ.",
+          message:
+            "The replacement is faster on the selected targets, but the condition codes differ.",
         },
         ...(safety.applicability === "safe"
-          ? [{ message: "All differing condition-code values are proven dead here." }]
-          : [{ message: "Review later condition-code use before applying this replacement." }]),
+          ? [
+              {
+                message:
+                  "All differing condition-code values are proven dead here.",
+              },
+            ]
+          : [
+              {
+                message:
+                  "Review later condition-code use before applying this replacement.",
+              },
+            ]),
       ],
     });
   },

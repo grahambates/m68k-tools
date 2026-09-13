@@ -1,5 +1,10 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
 
 function powerOfTwoExponent(value: number): number | undefined {
@@ -8,10 +13,14 @@ function powerOfTwoExponent(value: number): number | undefined {
   return Number.isInteger(exponent) ? exponent : undefined;
 }
 
-function supportsLongMultiply(ctx: Parameters<NonNullable<Rule["checkLine"]>>[0]): boolean {
+function supportsLongMultiply(
+  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
+): boolean {
   return (
     ctx.config.processors.length > 0 &&
-    ctx.config.processors.every((cpu) => ["mc68020", "mc68030", "mc68040", "mc68060"].includes(cpu))
+    ctx.config.processors.every((cpu) =>
+      ["mc68020", "mc68030", "mc68040", "mc68060"].includes(cpu),
+    )
   );
 }
 
@@ -20,7 +29,8 @@ export const vasmNegativeSignedMultiply: Rule = {
     id: "optimization/negative-signed-multiply",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Replace signed multiplication by -1 or a negative power of two with NEG/shift operations",
+    description:
+      "Replace signed multiplication by -1 or a negative power of two with NEG/shift operations",
     tags: ["vasm", "multiply"],
     serves: "speed",
     docs: { source: "vasm m68k optimizer" },
@@ -72,7 +82,9 @@ export const vasmNegativeSignedMultiply: Rule = {
       },
       notes: [
         { message: note },
-        ...(safety.applicability === "safe" ? [] : [{ message: "X/V/C may differ; review later CCR use." }]),
+        ...(safety.applicability === "safe"
+          ? []
+          : [{ message: "X/V/C may differ; review later CCR use." }]),
       ],
       data: { factor: evaluated.value, provenance: "vasm" },
     });

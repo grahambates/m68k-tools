@@ -1,12 +1,22 @@
 import type { OperandNode } from "m68k-parser";
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateOperand, instructionSize, isInstruction, operand } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+  operand,
+} from "../../util/ast.js";
 import { changedFlagsApplicability, sourceOperand } from "./helpers.js";
 import { canonicalMnemonic } from "../../semantics/mnemonics.js";
 
 const branchMap: Record<string, string> = { beq: "bpl", bne: "bmi" };
 
-function hasInterveningLabel(ctx: Parameters<NonNullable<Rule["checkLine"]>>[0], from: number, to: number): boolean {
+function hasInterveningLabel(
+  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
+  from: number,
+  to: number,
+): boolean {
   for (let i = from + 1; i <= to; i++) if (ctx.line(i)?.label) return true;
   return false;
 }
@@ -69,7 +79,12 @@ export const btstSignBranch: Rule = {
 
     const branchSize = instructionSize(next.line);
     const suffix = branchSize ? `.${branchSize}` : "";
-    const safety = changedFlagsApplicability(ctx, next.index, ["N", "Z", "V", "C"]);
+    const safety = changedFlagsApplicability(ctx, next.index, [
+      "N",
+      "Z",
+      "V",
+      "C",
+    ]);
 
     ctx.report({
       ruleId: this.meta.id,

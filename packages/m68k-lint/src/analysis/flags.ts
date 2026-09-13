@@ -5,9 +5,15 @@ import { isExecutableLine } from "../util/ast.js";
 
 export type FlagLiveness = "dead" | "live" | "unknown";
 
-export type FlagDefinition = { kind: "instruction"; index: number } | { kind: "entry" } | { kind: "unknown" };
+export type FlagDefinition =
+  | { kind: "instruction"; index: number }
+  | { kind: "entry" }
+  | { kind: "unknown" };
 
-function equalDefinitions(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
+function equalDefinitions(
+  a: ReadonlySet<string>,
+  b: ReadonlySet<string>,
+): boolean {
   if (a.size !== b.size) return false;
   for (const value of a) if (!b.has(value)) return false;
   return true;
@@ -19,7 +25,11 @@ function mergeLiveness(a: FlagLiveness, b: FlagLiveness): FlagLiveness {
   return "dead";
 }
 
-function transferLiveness(after: FlagLiveness, reads: boolean, writesOrUndefines: boolean): FlagLiveness {
+function transferLiveness(
+  after: FlagLiveness,
+  reads: boolean,
+  writesOrUndefines: boolean,
+): FlagLiveness {
   if (reads) return "live";
   if (writesOrUndefines) return "dead";
   return after;
@@ -28,8 +38,14 @@ function transferLiveness(after: FlagLiveness, reads: boolean, writesOrUndefines
 export interface FlagAnalysis {
   readonly cfg: ControlFlowGraph;
   isLiveAfter(index: number, flag: Flag): FlagLiveness;
-  reachingDefinitionsBefore(index: number, flag: Flag): readonly FlagDefinition[];
-  reachingDefinitionsAfter(index: number, flag: Flag): readonly FlagDefinition[];
+  reachingDefinitionsBefore(
+    index: number,
+    flag: Flag,
+  ): readonly FlagDefinition[];
+  reachingDefinitionsAfter(
+    index: number,
+    flag: Flag,
+  ): readonly FlagDefinition[];
 }
 
 export function analyzeFlags(file: ParsedFile): FlagAnalysis {
@@ -81,7 +97,8 @@ export function analyzeFlags(file: ParsedFile): FlagAnalysis {
   const beforeDefs = file.lines.map(() => new Map<Flag, Set<string>>());
   const afterDefs = file.lines.map(() => new Map<Flag, Set<string>>());
   for (const maps of [beforeDefs, afterDefs]) {
-    for (const map of maps) for (const flag of FLAGS) map.set(flag, new Set<string>());
+    for (const map of maps)
+      for (const flag of FLAGS) map.set(flag, new Set<string>());
   }
 
   changed = true;

@@ -1,6 +1,11 @@
 import type { OperandNode } from "m68k-parser";
 import type { Rule } from "../../core/rule.js";
-import { immediateOperand, instructionSize, isInstruction, operand } from "../../util/ast.js";
+import {
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+  operand,
+} from "../../util/ast.js";
 import { changedFlagsApplicability, sourceOperand } from "./helpers.js";
 
 function isStDestination(op: OperandNode | undefined): boolean {
@@ -33,7 +38,8 @@ export const preferStMinusOne: Rule = {
     if (!isInstruction(line, "move") || instructionSize(line) !== "b") return;
     const imm = immediateOperand(line, 0);
     const dest = operand(line, 1);
-    if (!imm || imm.value.type === "string-literal" || !isStDestination(dest)) return;
+    if (!imm || imm.value.type === "string-literal" || !isStDestination(dest))
+      return;
     const value = ctx.evaluate(imm.value);
     if (!value.known || value.value !== -1) return;
 
@@ -56,7 +62,12 @@ export const preferStMinusOne: Rule = {
       notes: [
         ...(safety.applicability === "safe"
           ? []
-          : [{ message: "ST preserves CCR while MOVE.B writes N/Z/V/C; review subsequent flag use." }]),
+          : [
+              {
+                message:
+                  "ST preserves CCR while MOVE.B writes N/Z/V/C; review subsequent flag use.",
+              },
+            ]),
       ],
     });
   },

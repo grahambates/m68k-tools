@@ -1,4 +1,10 @@
-import type { OptimizationGoal, Platform, Processor, RulePreset, RuleSetting } from "../core/config.js";
+import type {
+  OptimizationGoal,
+  Platform,
+  Processor,
+  RulePreset,
+  RuleSetting,
+} from "../core/config.js";
 import type { RuleCategory, Severity } from "../core/diagnostic.js";
 import { normalizeExtensions } from "./file-discovery.js";
 import { VERSION } from "./version.js";
@@ -19,12 +25,23 @@ export const categories: readonly RuleCategory[] = [
   "portability",
   "style",
 ];
-export const settings: readonly RuleSetting[] = ["off", "error", "warning", "suggestion", "info"];
+export const settings: readonly RuleSetting[] = [
+  "off",
+  "error",
+  "warning",
+  "suggestion",
+  "info",
+];
 export const goals: readonly OptimizationGoal[] = ["balanced", "speed", "size"];
 export const platforms: readonly Platform[] = ["generic", "amiga", "atari"];
 export const presets: readonly RulePreset[] = ["recommended", "style"];
 
-export const severityRank: Record<Severity, number> = { error: 0, warning: 1, suggestion: 2, info: 3 };
+export const severityRank: Record<Severity, number> = {
+  error: 0,
+  warning: 1,
+  suggestion: 2,
+  info: 3,
+};
 
 export type OutputFormat = "pretty" | "json";
 
@@ -111,18 +128,25 @@ Examples:
 
 function requireValue(argv: string[], index: number, option: string): string {
   const value = argv[index + 1];
-  if (!value || value.startsWith("--")) throw new Error(`${option} requires a value`);
+  if (!value || value.startsWith("--"))
+    throw new Error(`${option} requires a value`);
   return value;
 }
 
-function parseCsv<T extends string>(value: string, allowed: readonly T[], option: string): T[] {
+function parseCsv<T extends string>(
+  value: string,
+  allowed: readonly T[],
+  option: string,
+): T[] {
   const values = value
     .split(",")
     .map((v) => v.trim())
     .filter(Boolean);
   for (const item of values) {
     if (!allowed.includes(item as T)) {
-      throw new Error(`${option}: unknown value '${item}'. Expected one of: ${allowed.join(", ")}`);
+      throw new Error(
+        `${option}: unknown value '${item}'. Expected one of: ${allowed.join(", ")}`,
+      );
     }
   }
   return values as T[];
@@ -135,7 +159,10 @@ function parseCsv<T extends string>(value: string, allowed: readonly T[], option
  * does with them stays in one place and the parse itself can be tested without
  * capturing output.
  */
-export function parseArgs(argv: string[], isTTY = process.stdout.isTTY): CliOptions | "help" | "version" {
+export function parseArgs(
+  argv: string[],
+  isTTY = process.stdout.isTTY,
+): CliOptions | "help" | "version" {
   const options: CliOptions = {
     files: [],
     useConfig: true,
@@ -250,49 +277,67 @@ export function parseArgs(argv: string[], isTTY = process.stdout.isTTY): CliOpti
       continue;
     }
     if (arg === "--cpu") {
-      options.processors = parseCsv(requireValue(argv, i, arg), processors, arg);
+      options.processors = parseCsv(
+        requireValue(argv, i, arg),
+        processors,
+        arg,
+      );
       i++;
       continue;
     }
     if (arg === "--platform") {
       const value = requireValue(argv, i, arg) as Platform;
-      if (!platforms.includes(value)) throw new Error(`--platform must be one of: ${platforms.join(", ")}`);
+      if (!platforms.includes(value))
+        throw new Error(`--platform must be one of: ${platforms.join(", ")}`);
       options.platform = value;
       i++;
       continue;
     }
     if (arg === "--preset") {
-      options.presets.push(...parseCsv(requireValue(argv, i, arg), presets, arg));
+      options.presets.push(
+        ...parseCsv(requireValue(argv, i, arg), presets, arg),
+      );
       i++;
       continue;
     }
     if (arg === "--goal") {
       const value = requireValue(argv, i, arg) as OptimizationGoal;
-      if (!goals.includes(value)) throw new Error("--goal must be balanced, speed, or size");
+      if (!goals.includes(value))
+        throw new Error("--goal must be balanced, speed, or size");
       options.goal = value;
       i++;
       continue;
     }
     if (arg === "--only") {
-      options.onlyCategories = parseCsv(requireValue(argv, i, arg), categories, arg);
+      options.onlyCategories = parseCsv(
+        requireValue(argv, i, arg),
+        categories,
+        arg,
+      );
       i++;
       continue;
     }
     if (arg === "--disable-category") {
-      options.disabledCategories.push(...parseCsv(requireValue(argv, i, arg), categories, arg));
+      options.disabledCategories.push(
+        ...parseCsv(requireValue(argv, i, arg), categories, arg),
+      );
       i++;
       continue;
     }
     if (arg === "--format") {
       const value = requireValue(argv, i, arg);
-      if (value !== "pretty" && value !== "json") throw new Error("--format must be 'pretty' or 'json'");
+      if (value !== "pretty" && value !== "json")
+        throw new Error("--format must be 'pretty' or 'json'");
       options.format = value;
       i++;
       continue;
     }
     if (arg === "--fail-on") {
       const value = requireValue(argv, i, arg) as Severity;
-      if (!(value in severityRank)) throw new Error("--fail-on must be error, warning, suggestion, or info");
+      if (!(value in severityRank))
+        throw new Error(
+          "--fail-on must be error, warning, suggestion, or info",
+        );
       options.failOn = value;
       i++;
       continue;
@@ -303,7 +348,8 @@ export function parseArgs(argv: string[], isTTY = process.stdout.isTTY): CliOpti
       if (split <= 0) throw new Error("--rule expects <rule-id>=<setting>");
       const id = value.slice(0, split);
       const setting = value.slice(split + 1) as RuleSetting;
-      if (!settings.includes(setting)) throw new Error(`Unknown rule setting '${setting}'`);
+      if (!settings.includes(setting))
+        throw new Error(`Unknown rule setting '${setting}'`);
       options.rules[id] = setting;
       i++;
       continue;

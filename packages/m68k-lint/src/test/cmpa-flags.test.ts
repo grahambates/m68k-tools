@@ -9,9 +9,13 @@ import { lintSource } from "../core/lint.js";
  * alone, made an ordinary compare-and-branch look like a branch reading a
  * condition nothing had set.
  */
-const writes = (source: string) => [...getFlagSemantics(parseFile(source).lines[0]).writes].sort().join("");
+const writes = (source: string) =>
+  [...getFlagSemantics(parseFile(source).lines[0]).writes].sort().join("");
 
-const ids = (lines: string[]) => lintSource(lines.join("\n"), { processors: ["mc68000"] }).map((d) => d.ruleId);
+const ids = (lines: string[]) =>
+  lintSource(lines.join("\n"), { processors: ["mc68000"] }).map(
+    (d) => d.ruleId,
+  );
 
 describe("CMPA sets the condition codes", () => {
   test("both sizes write N, Z, V and C", () => {
@@ -25,13 +29,23 @@ describe("CMPA sets the condition codes", () => {
 
   // These really do leave CCR alone, and must stay that way.
   test("the address forms that preserve CCR still preserve it", () => {
-    for (const source of ["\tmovea.l a2,a0", "\tadda.l d2,a0", "\tsuba.l d2,a0", "\tlea 4(a0),a0"]) {
+    for (const source of [
+      "\tmovea.l a2,a0",
+      "\tadda.l d2,a0",
+      "\tsuba.l d2,a0",
+      "\tlea 4(a0),a0",
+    ]) {
       expect(writes(source)).toBe("");
     }
   });
 
   test("PEA, EXG, LINK and UNLK still preserve it", () => {
-    for (const source of ["\tpea 4(a0)", "\texg d0,d1", "\tlink a6,#-4", "\tunlk a6"]) {
+    for (const source of [
+      "\tpea 4(a0)",
+      "\texg d0,d1",
+      "\tlink a6,#-4",
+      "\tunlk a6",
+    ]) {
       expect(writes(source)).toBe("");
     }
   });
@@ -39,8 +53,16 @@ describe("CMPA sets the condition codes", () => {
 
 describe("branching on a CMPA result", () => {
   test("a compare and branch is not a preserved-CCR branch", () => {
-    const source = ["\tmove.l\t#CopBlitEnd,d1", "\tcmpa.l\ta2,a0", "\tbeq.s\t.noFaces", ".noFaces:", "\trts"];
-    expect(ids(source)).not.toContain("suspicious/condition-after-preserved-ccr");
+    const source = [
+      "\tmove.l\t#CopBlitEnd,d1",
+      "\tcmpa.l\ta2,a0",
+      "\tbeq.s\t.noFaces",
+      ".noFaces:",
+      "\trts",
+    ];
+    expect(ids(source)).not.toContain(
+      "suspicious/condition-after-preserved-ccr",
+    );
     expect(ids(source)).not.toContain("suspicious/stale-condition-code");
   });
 

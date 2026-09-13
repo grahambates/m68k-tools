@@ -1,5 +1,9 @@
-import { FC } from "react";
-import { formatTiming, Timing as TimingType, timingLevel } from "68kcounter";
+import { type FC } from "react";
+import {
+  formatTiming,
+  type Timing as TimingType,
+  timingLevel,
+} from "68kcounter";
 
 export interface TimingProps {
   timing: TimingType;

@@ -1,8 +1,16 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { hasLabelBetween } from "./helpers.js";
 
-function makeRule(id: string, secondMnemonic: "add" | "sub", replacementMnemonic: "sub" | "add"): Rule {
+function makeRule(
+  id: string,
+  secondMnemonic: "add" | "sub",
+  replacementMnemonic: "sub" | "add",
+): Rule {
   return {
     meta: {
       id,
@@ -21,23 +29,41 @@ function makeRule(id: string, secondMnemonic: "add" | "sub", replacementMnemonic
 
       const next = ctx.nextInstruction(index);
       if (!next || hasLabelBetween(ctx, index, next.index)) return;
-      if (!isInstruction(next.line, secondMnemonic) || instructionSize(next.line) !== size) return;
+      if (
+        !isInstruction(next.line, secondMnemonic) ||
+        instructionSize(next.line) !== size
+      )
+        return;
       const source = dataRegisterOperand(next.line, 0);
       const dest = dataRegisterOperand(next.line, 1);
-      if (!source || !dest || source.register.toLowerCase() !== negated.register.toLowerCase()) return;
+      if (
+        !source ||
+        !dest ||
+        source.register.toLowerCase() !== negated.register.toLowerCase()
+      )
+        return;
 
       // Removing NEG changes the final value left in the source register. ASP68K
       // explicitly requires that register to be disposable ("dx is trashed").
-      if (ctx.registers.isLiveAfter(next.index, negated.register) !== "dead") return;
+      if (ctx.registers.isLiveAfter(next.index, negated.register) !== "dead")
+        return;
 
       // ADD x,y and SUB -x,y (or vice versa) agree on the arithmetic result in y,
       // but carry/borrow/overflow details are subtle. Only call this safe when no
       // condition code from the final arithmetic operation is observable.
-      const flagStates = (["X", "N", "Z", "V", "C"] as const).map((flag) => ctx.flags.isLiveAfter(next.index, flag));
+      const flagStates = (["X", "N", "Z", "V", "C"] as const).map((flag) =>
+        ctx.flags.isLiveAfter(next.index, flag),
+      );
       const flagsDead = flagStates.every((state) => state === "dead");
       const flagsLive = flagStates.some((state) => state === "live");
-      const applicability = flagsDead ? ("safe" as const) : ("conditional" as const);
-      const confidence = flagsDead ? ("certain" as const) : flagsLive ? ("high" as const) : ("medium" as const);
+      const applicability = flagsDead
+        ? ("safe" as const)
+        : ("conditional" as const);
+      const confidence = flagsDead
+        ? ("certain" as const)
+        : flagsLive
+          ? ("high" as const)
+          : ("medium" as const);
 
       const r = negated.register;
       const d = dest.register;
@@ -60,7 +86,12 @@ function makeRule(id: string, secondMnemonic: "add" | "sub", replacementMnemonic
           },
           ...(flagsDead
             ? []
-            : [{ message: "The replacement may leave different condition-code details; review later CCR use." }]),
+            : [
+                {
+                  message:
+                    "The replacement may leave different condition-code details; review later CCR use.",
+                },
+              ]),
         ],
         data: { sourceEndIndex: next.index },
       });
@@ -68,9 +99,17 @@ function makeRule(id: string, secondMnemonic: "add" | "sub", replacementMnemonic
   };
 }
 
-export const negateThenSubToAdd = makeRule("optimization/negate-sub-to-add", "sub", "add");
+export const negateThenSubToAdd = makeRule(
+  "optimization/negate-sub-to-add",
+  "sub",
+  "add",
+);
 
-export const negateThenAddToSub = makeRule("optimization/negate-add-to-sub", "add", "sub");
+export const negateThenAddToSub = makeRule(
+  "optimization/negate-add-to-sub",
+  "add",
+  "sub",
+);
 
 export const negateAddMaskToEor: Rule = {
   meta: {
@@ -93,7 +132,8 @@ export const negateAddMaskToEor: Rule = {
 
     const next = ctx.nextInstruction(index);
     if (!next || hasLabelBetween(ctx, index, next.index)) return;
-    if (!isInstruction(next.line, "add") || instructionSize(next.line) !== size) return;
+    if (!isInstruction(next.line, "add") || instructionSize(next.line) !== size)
+      return;
     const imm = next.line.operands?.[0];
     const dest = dataRegisterOperand(next.line, 1);
     if (
@@ -115,11 +155,19 @@ export const negateAddMaskToEor: Rule = {
 
     // EOR and NEG+ADD do not have equivalent arithmetic flags, so only mark safe if
     // all condition-code outputs are provably dead.
-    const flagStates = (["X", "N", "Z", "V", "C"] as const).map((flag) => ctx.flags.isLiveAfter(next.index, flag));
+    const flagStates = (["X", "N", "Z", "V", "C"] as const).map((flag) =>
+      ctx.flags.isLiveAfter(next.index, flag),
+    );
     const flagsDead = flagStates.every((state) => state === "dead");
     const flagsLive = flagStates.some((state) => state === "live");
-    const applicability = flagsDead ? ("safe" as const) : ("conditional" as const);
-    const confidence = flagsDead ? ("certain" as const) : flagsLive ? ("high" as const) : ("medium" as const);
+    const applicability = flagsDead
+      ? ("safe" as const)
+      : ("conditional" as const);
+    const confidence = flagsDead
+      ? ("certain" as const)
+      : flagsLive
+        ? ("high" as const)
+        : ("medium" as const);
     const replacement = `eor.${size} #${mask},${reg.register}`;
     ctx.report({
       ruleId: this.meta.id,
@@ -134,10 +182,17 @@ export const negateAddMaskToEor: Rule = {
         applicability,
       },
       notes: [
-        { message: `m must be a low-bit mask with dx <= m; both hold here (${prior}<=${mask}).` },
+        {
+          message: `m must be a low-bit mask with dx <= m; both hold here (${prior}<=${mask}).`,
+        },
         ...(flagsDead
           ? []
-          : [{ message: "EOR leaves different arithmetic condition codes from NEG+ADD; review later CCR use." }]),
+          : [
+              {
+                message:
+                  "EOR leaves different arithmetic condition codes from NEG+ADD; review later CCR use.",
+              },
+            ]),
       ],
       data: { sourceEndIndex: next.index },
     });

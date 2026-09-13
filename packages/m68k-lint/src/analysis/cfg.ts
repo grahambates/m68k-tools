@@ -48,13 +48,17 @@ export function buildControlFlowGraph(file: ParsedFile): ControlFlowGraph {
       head ??= i;
       tail = i;
     }
-    if (head !== undefined && tail !== undefined && head !== tail) repeats.push({ first: head, last: tail });
+    if (head !== undefined && tail !== undefined && head !== tail)
+      repeats.push({ first: head, last: tail });
   }
 
-  const conditionalStartingAt = new Map(conditionals.map((block) => [block.start, block]));
+  const conditionalStartingAt = new Map(
+    conditionals.map((block) => [block.start, block]),
+  );
   const conditionalArmEndingAt = new Map<number, ConditionalBlock>();
   for (const block of conditionals) {
-    for (const alternative of block.alternatives) conditionalArmEndingAt.set(alternative, block);
+    for (const alternative of block.alternatives)
+      conditionalArmEndingAt.set(alternative, block);
     conditionalArmEndingAt.set(block.end, block);
   }
 
@@ -71,7 +75,10 @@ export function buildControlFlowGraph(file: ParsedFile): ControlFlowGraph {
    * macro definition occupies source without emitting code. A line inside a
    * definition finds nothing past ENDM, which is what ends that region's flow.
    */
-  const fallthroughTargets = (index: number, seen = new Set<number>()): number[] => {
+  const fallthroughTargets = (
+    index: number,
+    seen = new Set<number>(),
+  ): number[] => {
     if (seen.has(index)) return [];
     seen.add(index);
     for (let i = index + 1; i < file.lines.length; i++) {
@@ -79,10 +86,13 @@ export function buildControlFlowGraph(file: ParsedFile): ControlFlowGraph {
 
       const opened = conditionalStartingAt.get(i);
       if (opened) {
-        const targets = [opened.start, ...opened.alternatives].flatMap((arm) => fallthroughTargets(arm, seen));
+        const targets = [opened.start, ...opened.alternatives].flatMap((arm) =>
+          fallthroughTargets(arm, seen),
+        );
         // With no ELSE the condition may simply be false, so the code below the
         // block is reachable without running the arm at all.
-        if (opened.alternatives.length === 0) targets.push(...fallthroughTargets(opened.end, seen));
+        if (opened.alternatives.length === 0)
+          targets.push(...fallthroughTargets(opened.end, seen));
         return [...new Set(targets)];
       }
 
@@ -96,7 +106,8 @@ export function buildControlFlowGraph(file: ParsedFile): ControlFlowGraph {
     return [];
   };
 
-  const nextExecutableIndex = (index: number): number | undefined => fallthroughTargets(index)[0];
+  const nextExecutableIndex = (index: number): number | undefined =>
+    fallthroughTargets(index)[0];
 
   // Labels are resolved within a region, so a branch inside a macro body cannot
   // land in the file and vice versa.
@@ -105,7 +116,8 @@ export function buildControlFlowGraph(file: ParsedFile): ControlFlowGraph {
     const label = file.lines[i]?.label?.label;
     if (!label) continue;
     const target = isExecutable(file.lines[i]) ? i : nextExecutableIndex(i);
-    if (target !== undefined) labels.set(`${region[i]}:${label.toLowerCase()}`, target);
+    if (target !== undefined)
+      labels.set(`${region[i]}:${label.toLowerCase()}`, target);
   }
 
   const successors: Set<number>[] = file.lines.map(() => new Set<number>());
@@ -118,7 +130,9 @@ export function buildControlFlowGraph(file: ParsedFile): ControlFlowGraph {
     const semantics = getFlagSemantics(line);
     const fallthrough = fallthroughTargets(i);
     const targetName = branchTarget(line);
-    const target = targetName ? labels.get(`${region[i]}:${targetName}`) : undefined;
+    const target = targetName
+      ? labels.get(`${region[i]}:${targetName}`)
+      : undefined;
 
     switch (semantics.controlFlow) {
       case "return":
@@ -134,7 +148,8 @@ export function buildControlFlowGraph(file: ParsedFile): ControlFlowGraph {
       case "call":
         // We do not have an interprocedural summary yet. The call itself is an
         // unknown CCR boundary, but execution can return to the fallthrough.
-        if (fallthrough.length) for (const next of fallthrough) successors[i].add(next);
+        if (fallthrough.length)
+          for (const next of fallthrough) successors[i].add(next);
         else escapes[i] = true;
         break;
       case "unconditional-branch":
@@ -144,11 +159,13 @@ export function buildControlFlowGraph(file: ParsedFile): ControlFlowGraph {
       case "conditional-branch":
         if (target !== undefined) successors[i].add(target);
         else escapes[i] = true;
-        if (fallthrough.length) for (const next of fallthrough) successors[i].add(next);
+        if (fallthrough.length)
+          for (const next of fallthrough) successors[i].add(next);
         else escapes[i] = true;
         break;
       case "fallthrough":
-        if (fallthrough.length) for (const next of fallthrough) successors[i].add(next);
+        if (fallthrough.length)
+          for (const next of fallthrough) successors[i].add(next);
         else escapes[i] = true;
         break;
     }

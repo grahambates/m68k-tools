@@ -55,7 +55,9 @@ function expressionOperand(line: ParsedLine): ExpressionNode | undefined {
   }
 }
 
-export function constantDefinition(line: ParsedLine): { name: string; expression: ExpressionNode } | undefined {
+export function constantDefinition(
+  line: ParsedLine,
+): { name: string; expression: ExpressionNode } | undefined {
   if (!line.label || line.mnemonic?.type !== "directive") return undefined;
 
   const directive = line.mnemonic.directive.toLowerCase();
@@ -76,7 +78,9 @@ export function constantDefinition(line: ParsedLine): { name: string; expression
  * without a guard) is not treated as a conflict.
  */
 function sameExpression(a: ExpressionNode, b: ExpressionNode): boolean {
-  return JSON.stringify(stripLocations(a)) === JSON.stringify(stripLocations(b));
+  return (
+    JSON.stringify(stripLocations(a)) === JSON.stringify(stripLocations(b))
+  );
 }
 
 function stripLocations(value: unknown): unknown {
@@ -114,7 +118,10 @@ export class DefaultSymbolTable implements SymbolTable {
 
       const normalizedName = normalizeSymbol(definition.name);
       const existing = this.constants.get(normalizedName);
-      if (existing && !sameExpression(existing.expression, definition.expression)) {
+      if (
+        existing &&
+        !sameExpression(existing.expression, definition.expression)
+      ) {
         // Two different definitions of one name. Which is in force depends on
         // assembly order and conditional arms we cannot evaluate, so the honest
         // answer is that we do not know rather than whichever came last.
@@ -133,7 +140,9 @@ export class DefaultSymbolTable implements SymbolTable {
 
   getConstant(name: string): ConstantSymbol | undefined {
     const normalized = normalizeSymbol(name);
-    return this.conflicted.has(normalized) ? undefined : this.constants.get(normalized);
+    return this.conflicted.has(normalized)
+      ? undefined
+      : this.constants.get(normalized);
   }
 
   evaluate(name: string): ConstantResult {
@@ -141,7 +150,9 @@ export class DefaultSymbolTable implements SymbolTable {
   }
 
   entries(): readonly ConstantSymbol[] {
-    return [...this.constants.values()].filter((symbol) => !this.conflicted.has(symbol.normalizedName));
+    return [...this.constants.values()].filter(
+      (symbol) => !this.conflicted.has(symbol.normalizedName),
+    );
   }
 
   originOf(name: string): string | undefined {
@@ -159,7 +170,8 @@ export class DefaultSymbolTable implements SymbolTable {
 
   private evaluateInternal(name: string, stack: Set<string>): ConstantResult {
     const normalizedName = normalizeSymbol(name);
-    if (this.conflicted.has(normalizedName)) return { known: false, reason: "unknown-symbol" };
+    if (this.conflicted.has(normalizedName))
+      return { known: false, reason: "unknown-symbol" };
     const symbol = this.constants.get(normalizedName);
     if (!symbol) {
       // Nothing in this file defines it, so fall back to the rest of the
@@ -167,7 +179,11 @@ export class DefaultSymbolTable implements SymbolTable {
       const found = this.external?.lookup(normalizedName);
       if (found) {
         this.origins.set(normalizedName, found.origin);
-        this.used.set(normalizedName, { name, value: found.value, origin: found.origin });
+        this.used.set(normalizedName, {
+          name,
+          value: found.value,
+          origin: found.origin,
+        });
         return { known: true, value: found.value };
       }
       return { known: false, reason: "unknown-symbol" };

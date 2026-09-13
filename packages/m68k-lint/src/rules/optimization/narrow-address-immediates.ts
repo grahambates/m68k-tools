@@ -1,8 +1,15 @@
 import type { Rule } from "../../core/rule.js";
-import { addressRegisterOperand, immediateExpressionOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  addressRegisterOperand,
+  immediateExpressionOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { valueText } from "./helpers.js";
 
-function m68000Only(ctx: Parameters<NonNullable<Rule["checkLine"]>>[0]): boolean {
+function m68000Only(
+  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
+): boolean {
   return ctx.config.processors.every((cpu) => cpu === "mc68000");
 }
 
@@ -15,12 +22,18 @@ export const narrowMoveaImmediate: Rule = {
     id: "optimization/narrow-movea-immediate-word",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Use MOVEA.W for signed 16-bit immediate address loads on 68000",
+    description:
+      "Use MOVEA.W for signed 16-bit immediate address loads on 68000",
     tags: ["flamewing", "68000", "address-register"],
     docs: { source: "Flamewing M68000 Peephole Optimizations" },
   },
   checkLine(ctx, line) {
-    if (!m68000Only(ctx) || !isInstruction(line, "movea") || instructionSize(line) !== "l") return;
+    if (
+      !m68000Only(ctx) ||
+      !isInstruction(line, "movea") ||
+      instructionSize(line) !== "l"
+    )
+      return;
     const expr = immediateExpressionOperand(line, 0);
     const dst = addressRegisterOperand(line, 1);
     if (!expr || !dst) return;
@@ -49,7 +62,8 @@ export const narrowAddaSubaImmediate: Rule = {
     id: "optimization/narrow-address-immediate-word",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Use word-sized ADDA/SUBA immediates when the constant fits signed 16 bits",
+    description:
+      "Use word-sized ADDA/SUBA immediates when the constant fits signed 16 bits",
     tags: ["flamewing", "68000", "address-register"],
     docs: {
       source: "Flamewing M68000 Peephole Optimizations",
@@ -58,7 +72,11 @@ export const narrowAddaSubaImmediate: Rule = {
   },
   checkLine(ctx, line) {
     if (!m68000Only(ctx) || instructionSize(line) !== "l") return;
-    const op = isInstruction(line, "adda") ? "adda" : isInstruction(line, "suba") ? "suba" : undefined;
+    const op = isInstruction(line, "adda")
+      ? "adda"
+      : isInstruction(line, "suba")
+        ? "suba"
+        : undefined;
     if (!op) return;
     const expr = immediateExpressionOperand(line, 0);
     const dst = addressRegisterOperand(line, 1);

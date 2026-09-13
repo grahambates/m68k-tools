@@ -2,7 +2,7 @@
  * Utility functions for handling macro parameters
  */
 
-import { Location, MacroParameterNode } from "./types.js";
+import { type Location, type MacroParameterNode } from "./types.js";
 
 /**
  * Parse a macro parameter and return a MacroParameterNode

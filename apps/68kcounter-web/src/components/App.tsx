@@ -1,13 +1,13 @@
-import { FC, useCallback, useEffect, useMemo, useState } from "react";
+import { type FC, useCallback, useEffect, useMemo, useState } from "react";
 import {
-  CacheModel,
+  type CacheModel,
   calculateTotals,
-  Cpu,
+  type Cpu,
   Cpus,
   defaultCacheModel,
   defaultCpu,
-  Line as LineType,
-  Totals as TotalsType,
+  type Line as LineType,
+  type Totals as TotalsType,
 } from "68kcounter";
 import { parse } from "../parse";
 import "./App.css";

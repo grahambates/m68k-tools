@@ -1,5 +1,10 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
 
 function u32(n: number): number {
@@ -25,9 +30,13 @@ function isMoveqValue(v: number): boolean {
   return u <= 0x7f || u >= 0xffffff80;
 }
 
-function findMoveqSeed(target: number, transform: (v: number) => number): number | undefined {
+function findMoveqSeed(
+  target: number,
+  transform: (v: number) => number,
+): number | undefined {
   const wanted = u32(target);
-  for (let m = -128; m <= 127; m++) if (transform(moveqValue(m)) === wanted) return m;
+  for (let m = -128; m <= 127; m++)
+    if (transform(moveqValue(m)) === wanted) return m;
   return undefined;
 }
 
@@ -52,13 +61,20 @@ function synthesisRule(
       const dest = dataRegisterOperand(line, 1);
       if (!imm || imm.value.type === "string-literal" || !dest) return;
       const value = ctx.evaluate(imm.value);
-      if (!value.known || !ctx.config.processors.every((cpu) => allowed.includes(cpu))) return;
+      if (
+        !value.known ||
+        !ctx.config.processors.every((cpu) => allowed.includes(cpu))
+      )
+        return;
       // e.g. SWAP on MOVEQ #-1 or #0 is a no-op: optimization/prefer-moveq covers these.
       if (isMoveqValue(value.value)) return;
       const seed = findMoveqSeed(value.value, transform);
       if (seed === undefined) return;
 
-      const changed = transformName === "not.w" ? (["N", "Z", "V", "C"] as const) : (["N", "Z", "V", "C"] as const);
+      const changed =
+        transformName === "not.w"
+          ? (["N", "Z", "V", "C"] as const)
+          : (["N", "Z", "V", "C"] as const);
       const safety = changedFlagsApplicability(ctx, index, changed);
       const replacement = `moveq #${seed},${dest.register}\n${transformName} ${dest.register}`;
       ctx.report({
@@ -78,7 +94,8 @@ function synthesisRule(
             ? []
             : [
                 {
-                  message: "The sequence can leave different condition-code values from MOVE.L; review later CCR use.",
+                  message:
+                    "The sequence can leave different condition-code values from MOVE.L; review later CCR use.",
                 },
               ]),
         ],
@@ -94,7 +111,9 @@ export const moveImmediateWordComplement = synthesisRule(
   ["mc68000", "mc68010", "mc68030"],
 );
 
-export const moveImmediateSwap = synthesisRule("optimization/move-immediate-swap", "swap", swapWord, [
-  "mc68000",
-  "mc68010",
-]);
+export const moveImmediateSwap = synthesisRule(
+  "optimization/move-immediate-swap",
+  "swap",
+  swapWord,
+  ["mc68000", "mc68010"],
+);

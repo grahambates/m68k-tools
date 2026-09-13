@@ -30,7 +30,9 @@ export function canonicalMnemonicName(name: string): string {
 
 /** Canonical source spelling, before operand-sensitive instruction selection. */
 export function canonicalMnemonic(line: ParsedLine): string | undefined {
-  return line.mnemonic?.type === "instruction" ? canonicalMnemonicName(line.mnemonic.instruction) : undefined;
+  return line.mnemonic?.type === "instruction"
+    ? canonicalMnemonicName(line.mnemonic.instruction)
+    : undefined;
 }
 
 function hasAddressRegisterDestination(line: ParsedLine): boolean {

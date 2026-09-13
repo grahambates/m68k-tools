@@ -1,5 +1,5 @@
 import QuotesFormatter, {
-  QuotesOptions,
+  type QuotesOptions,
 } from "../../src/formatter/formatters/QuotesFormatter";
 import { applyEdits, formatContext } from "../helpers";
 

@@ -3,14 +3,25 @@ import type { Rule } from "../../core/rule.js";
 import { isInstructionFamily, operand } from "../../util/ast.js";
 import { semanticMnemonic } from "../../semantics/mnemonics.js";
 
-function sameRegister(a: OperandNode | undefined, b: OperandNode | undefined): string | undefined {
+function sameRegister(
+  a: OperandNode | undefined,
+  b: OperandNode | undefined,
+): string | undefined {
   if (!a || !b || a.type !== b.type) return undefined;
 
-  if (a.type === "data-register" && b.type === "data-register" && a.register === b.register) {
+  if (
+    a.type === "data-register" &&
+    b.type === "data-register" &&
+    a.register === b.register
+  ) {
     return a.register;
   }
 
-  if (a.type === "address-register" && b.type === "address-register" && a.register === b.register) {
+  if (
+    a.type === "address-register" &&
+    b.type === "address-register" &&
+    a.register === b.register
+  ) {
     return a.register;
   }
 
@@ -22,7 +33,8 @@ export const selfMove: Rule = {
     id: "suspicious/self-move",
     category: "suspicious",
     defaultSeverity: "warning",
-    description: "Flag MOVE operations whose source and destination are the same register",
+    description:
+      "Flag MOVE operations whose source and destination are the same register",
     tags: ["likely-typo", "registers", "ccr"],
   },
 
@@ -54,7 +66,12 @@ export const selfMove: Rule = {
             },
       notes:
         semantic === "movea"
-          ? [{ message: "MOVEA preserves CCR, so a direct address-register self-move has no architectural effect." }]
+          ? [
+              {
+                message:
+                  "MOVEA preserves CCR, so a direct address-register self-move has no architectural effect.",
+              },
+            ]
           : [
               {
                 message:

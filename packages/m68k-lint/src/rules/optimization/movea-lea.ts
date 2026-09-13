@@ -1,5 +1,10 @@
 import type { Rule } from "../../core/rule.js";
-import { addressRegisterOperand, immediateOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  addressRegisterOperand,
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { sourceOperand, valueText } from "./helpers.js";
 
 function stripImmediate(text: string): string {
@@ -12,7 +17,13 @@ export const moveImmediateAddressToLea: Rule = {
     category: "optimization",
     defaultSeverity: "suggestion",
     description: "Use LEA for a non-zero immediate address-register load",
-    tags: ["asp68k", "address-register", "addressing", "assembler-relaxation", "clarity"],
+    tags: [
+      "asp68k",
+      "address-register",
+      "addressing",
+      "assembler-relaxation",
+      "clarity",
+    ],
     docs: {
       source: "ASP68K",
       note: "ASP68K claims a 68000/68010 speed win, which exact auditing does not bear out: the two forms measure identically. The real gain is clarity, and that LEA lets the assembler relax the operand to PC-relative, which a long immediate MOVEA can never be.",
@@ -37,7 +48,9 @@ export const moveImmediateAddressToLea: Rule = {
     // turn #$8000 into $00008000 rather than $FFFF8000. MOVEA.L has no such
     // constraint, so it is left bare for the assembler to relax.
     const replacement =
-      size === "w" ? `lea ${stripImmediate(text)}.w,${dest.register}` : `lea ${stripImmediate(text)},${dest.register}`;
+      size === "w"
+        ? `lea ${stripImmediate(text)}.w,${dest.register}`
+        : `lea ${stripImmediate(text)},${dest.register}`;
     ctx.report({
       ruleId: this.meta.id,
       category: this.meta.category,
@@ -45,7 +58,11 @@ export const moveImmediateAddressToLea: Rule = {
       confidence: "certain",
       message: `This MOVEA.${size} immediate is an address load and is clearer as LEA`,
       loc: line.mnemonic!.loc,
-      suggestion: { description: "Use LEA", replacement, applicability: "safe" },
+      suggestion: {
+        description: "Use LEA",
+        replacement,
+        applicability: "safe",
+      },
       notes: [
         {
           message:
@@ -76,7 +93,12 @@ export const moveAddressThenAddToLea: Rule = {
     if (!source || !dest) return;
 
     const next = ctx.nextInstruction(index);
-    if (!next || next.line.label || (!isInstruction(next.line, "adda") && !isInstruction(next.line, "addq"))) return;
+    if (
+      !next ||
+      next.line.label ||
+      (!isInstruction(next.line, "adda") && !isInstruction(next.line, "addq"))
+    )
+      return;
     const addSize = instructionSize(next.line);
     if (addSize !== "w" && addSize !== "l") return;
     const imm = immediateOperand(next.line, 0);
@@ -97,9 +119,14 @@ export const moveAddressThenAddToLea: Rule = {
       category: this.meta.category,
       severity: this.meta.defaultSeverity,
       confidence: "certain",
-      message: "MOVEA plus an immediate address adjustment can be folded into one LEA",
+      message:
+        "MOVEA plus an immediate address adjustment can be folded into one LEA",
       loc: line.mnemonic!.loc,
-      suggestion: { description: "Fold the address copy and adjustment into LEA", replacement, applicability: "safe" },
+      suggestion: {
+        description: "Fold the address copy and adjustment into LEA",
+        replacement,
+        applicability: "safe",
+      },
       data: { secondInstructionIndex: next.index },
     });
   },

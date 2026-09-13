@@ -1,5 +1,10 @@
 import type { Rule } from "../../core/rule.js";
-import { addressRegisterOperand, immediateOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  addressRegisterOperand,
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 
 export const zeroAddressRegister: Rule = {
   meta: {
@@ -25,7 +30,8 @@ export const zeroAddressRegister: Rule = {
       category: this.meta.category,
       severity: this.meta.defaultSeverity,
       confidence: "certain",
-      message: "Zero address-register immediate can be replaced by self-subtraction",
+      message:
+        "Zero address-register immediate can be replaced by self-subtraction",
       loc: line.mnemonic!.loc,
       suggestion: {
         description: `Use SUBA.L ${dest.register},${dest.register}`,

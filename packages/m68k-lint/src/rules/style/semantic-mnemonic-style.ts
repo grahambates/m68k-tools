@@ -3,10 +3,16 @@ import type { Rule } from "../../core/rule.js";
 import { semanticMnemonic } from "../../semantics/mnemonics.js";
 
 function sourceMnemonic(line: ParsedLine): string | undefined {
-  return line.mnemonic?.type === "instruction" ? line.mnemonic.instruction.toLowerCase() : undefined;
+  return line.mnemonic?.type === "instruction"
+    ? line.mnemonic.instruction.toLowerCase()
+    : undefined;
 }
 
-function replaceMnemonic(sourceLine: string, from: string, to: string): string | undefined {
+function replaceMnemonic(
+  sourceLine: string,
+  from: string,
+  to: string,
+): string | undefined {
   const escaped = from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const pattern = new RegExp(`\\b${escaped}\\b`, "i");
   return pattern.test(sourceLine) ? sourceLine.replace(pattern, to) : undefined;
@@ -41,7 +47,11 @@ export const preferAddressRegisterMnemonics: Rule = {
     // assembler-specific enough that we leave them to their own style choices.
     if (!new Set(["move", "add", "sub", "cmp"]).has(source)) return;
 
-    const replacement = replaceMnemonic(ctx.sourceLine(index) ?? "", line.mnemonic.instruction, replacementMnemonic);
+    const replacement = replaceMnemonic(
+      ctx.sourceLine(index) ?? "",
+      line.mnemonic.instruction,
+      replacementMnemonic,
+    );
     ctx.report({
       ruleId: this.meta.id,
       category: this.meta.category,
@@ -66,7 +76,11 @@ export const preferAddressRegisterMnemonics: Rule = {
   },
 };
 
-function aliasRule(id: string, description: string, aliases: Readonly<Record<string, string>>): Rule {
+function aliasRule(
+  id: string,
+  description: string,
+  aliases: Readonly<Record<string, string>>,
+): Rule {
   return {
     meta: {
       id,
@@ -82,7 +96,11 @@ function aliasRule(id: string, description: string, aliases: Readonly<Record<str
       if (!source) return;
       const target = aliases[source];
       if (!target) return;
-      const replacement = replaceMnemonic(ctx.sourceLine(index) ?? "", line.mnemonic.instruction, target);
+      const replacement = replaceMnemonic(
+        ctx.sourceLine(index) ?? "",
+        line.mnemonic.instruction,
+        target,
+      );
       ctx.report({
         ruleId: this.meta.id,
         category: this.meta.category,
@@ -102,13 +120,21 @@ function aliasRule(id: string, description: string, aliases: Readonly<Record<str
   };
 }
 
-export const preferDbraAlias = aliasRule("style/prefer-dbra", "Prefer DBRA spelling over the equivalent DBF alias", {
-  dbf: "dbra",
-});
+export const preferDbraAlias = aliasRule(
+  "style/prefer-dbra",
+  "Prefer DBRA spelling over the equivalent DBF alias",
+  {
+    dbf: "dbra",
+  },
+);
 
-export const preferDbfAlias = aliasRule("style/prefer-dbf", "Prefer DBF spelling over the equivalent DBRA alias", {
-  dbra: "dbf",
-});
+export const preferDbfAlias = aliasRule(
+  "style/prefer-dbf",
+  "Prefer DBF spelling over the equivalent DBRA alias",
+  {
+    dbra: "dbf",
+  },
+);
 
 export const preferUnsignedConditionAliases = aliasRule(
   "style/prefer-unsigned-condition-aliases",

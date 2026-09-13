@@ -1,6 +1,9 @@
 import type { Rule } from "../../core/rule.js";
 import { semanticMnemonic } from "../../semantics/mnemonics.js";
-import { getRegisterSemantics, type Register } from "../../semantics/registers.js";
+import {
+  getRegisterSemantics,
+  type Register,
+} from "../../semantics/registers.js";
 import type { RuleContext } from "../../core/context.js";
 import { dataRegisterOperand, instructionSize } from "../../util/ast.js";
 
@@ -12,7 +15,10 @@ import { dataRegisterOperand, instructionSize } from "../../util/ast.js";
  * one. Anything above the first global label, or below the last, is bounded by
  * the file.
  */
-function enclosingBlock(ctx: RuleContext, index: number): { start: number; end: number } {
+function enclosingBlock(
+  ctx: RuleContext,
+  index: number,
+): { start: number; end: number } {
   let start = 0;
   for (let i = index; i >= 0; i--) {
     if (ctx.line(i)?.label?.scope === "global") {
@@ -51,16 +57,24 @@ function enclosingBlock(ctx: RuleContext, index: number): { start: number; end: 
  * halves on purpose: `move.w` / `swap` / `move.w` defines all 32 bits, the
  * unknown half having been rotated down and overwritten.
  */
-function establishedBitsInBlock(ctx: RuleContext, register: Register, block: { start: number; end: number }): number {
+function establishedBitsInBlock(
+  ctx: RuleContext,
+  register: Register,
+  block: { start: number; end: number },
+): number {
   let established = 0;
   for (let i = block.start; i < block.end; i++) {
     const line = ctx.line(i);
     if (!line || line.mnemonic?.type !== "instruction") continue;
-    if (semanticMnemonic(line) === "swap" && dataRegisterOperand(line, 0)?.register.toLowerCase() === register) {
+    if (
+      semanticMnemonic(line) === "swap" &&
+      dataRegisterOperand(line, 0)?.register.toLowerCase() === register
+    ) {
       return 0xffffffff;
     }
     const semantics = getRegisterSemantics(line);
-    if (semantics.reads.has(register) || !semantics.writes.has(register)) continue;
+    if (semantics.reads.has(register) || !semantics.writes.has(register))
+      continue;
     if (!semantics.partialWrites.has(register)) return 0xffffffff;
     const size = instructionSize(line);
     established |= size === "b" ? 0xff : size === "w" ? 0xffff : 0;
@@ -73,7 +87,8 @@ export const partialRegisterWrite: Rule = {
     id: "suspicious/partial-register-write",
     category: "suspicious",
     defaultSeverity: "warning",
-    description: "Flag byte/word MOVE writes whose preserved upper bits are subsequently used",
+    description:
+      "Flag byte/word MOVE writes whose preserved upper bits are subsequently used",
     docs: {
       note: "Only reported where the routine never writes the register whole. Building a long from its halves, or seeding one with a known value first, accounts for the preserved bits; this is for the case where they are whatever happened to be there on entry.",
     },
@@ -96,22 +111,38 @@ export const partialRegisterWrite: Rule = {
     // The preserved bits are the point, not an oversight. Constant propagation
     // supplies the value, so the seed does not have to be the previous
     // instruction, and CLR works as well as MOVEQ.
-    if (ctx.registers.knownConstantBefore(index, destination.register) !== undefined) return;
+    if (
+      ctx.registers.knownConstantBefore(index, destination.register) !==
+      undefined
+    )
+      return;
 
     // Narrow the question to the bits nothing in the routine ever writes.
     // Populating a register across several narrow writes is construction, so
     // only what is left effectively undefined is worth asking about.
     const register = destination.register.toLowerCase() as Register;
-    const established = establishedBitsInBlock(ctx, register, enclosingBlock(ctx, index));
+    const established = establishedBitsInBlock(
+      ctx,
+      register,
+      enclosingBlock(ctx, index),
+    );
     const upperMask = size === "b" ? 0xffffff00 : 0xffff0000;
     const undefinedBits = (upperMask & ~established) >>> 0;
     if (undefinedBits === 0) return;
 
-    const use = ctx.registers.registerBitsUseAfter(index, destination.register, undefinedBits);
+    const use = ctx.registers.registerBitsUseAfter(
+      index,
+      destination.register,
+      undefinedBits,
+    );
     if (use !== "used") return;
 
     const preserved =
-      undefinedBits === 0xffffff00 ? "upper 24 bits" : undefinedBits === 0xffff0000 ? "upper 16 bits" : "upper bits";
+      undefinedBits === 0xffffff00
+        ? "upper 24 bits"
+        : undefinedBits === 0xffff0000
+          ? "upper 16 bits"
+          : "upper bits";
     ctx.report({
       ruleId: this.meta.id,
       category: this.meta.category,

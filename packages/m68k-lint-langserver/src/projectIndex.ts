@@ -10,11 +10,22 @@ import { buildProjectSymbols, type ProjectSymbols } from "m68k-lint";
  */
 
 const EXTENSIONS = new Set([".s", ".asm", ".a68", ".i", ".inc", ".h"]);
-const SKIP_DIRS = new Set(["node_modules", ".git", "out", "dist", "build", ".vscode"]);
+const SKIP_DIRS = new Set([
+  "node_modules",
+  ".git",
+  "out",
+  "dist",
+  "build",
+  ".vscode",
+]);
 /** A guard against indexing a home directory someone opened by accident. */
 const MAX_FILES = 4000;
 
-async function collect(root: string, dir: string, found: string[]): Promise<void> {
+async function collect(
+  root: string,
+  dir: string,
+  found: string[],
+): Promise<void> {
   if (found.length >= MAX_FILES) return;
   let entries;
   try {
@@ -29,7 +40,10 @@ async function collect(root: string, dir: string, found: string[]): Promise<void
     if (entry.isDirectory()) {
       if (SKIP_DIRS.has(entry.name)) continue;
       await collect(root, path, found);
-    } else if (entry.isFile() && EXTENSIONS.has(extname(entry.name).toLowerCase())) {
+    } else if (
+      entry.isFile() &&
+      EXTENSIONS.has(extname(entry.name).toLowerCase())
+    ) {
       found.push(path);
     }
   }
@@ -57,7 +71,10 @@ export async function buildIndex(
       continue;
     }
     try {
-      files.push({ path: relative(root, path) || path, source: await readFile(path, "utf8") });
+      files.push({
+        path: relative(root, path) || path,
+        source: await readFile(path, "utf8"),
+      });
     } catch {
       // Unreadable files simply contribute nothing to the index.
     }
@@ -76,7 +93,10 @@ export async function buildIndex(
 export class ProjectIndexCache {
   private cache = new Map<string, Promise<ProjectSymbols | undefined>>();
 
-  get(root: string, overrides: ReadonlyMap<string, string>): Promise<ProjectSymbols | undefined> {
+  get(
+    root: string,
+    overrides: ReadonlyMap<string, string>,
+  ): Promise<ProjectSymbols | undefined> {
     let index = this.cache.get(root);
     if (!index) {
       index = buildIndex(root, overrides);

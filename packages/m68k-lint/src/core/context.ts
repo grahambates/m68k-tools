@@ -1,9 +1,20 @@
 import { parseFile } from "m68k-parser";
 import type { ExpressionNode, ParsedFile, ParsedLine } from "m68k-parser";
-import { evaluateConstant, type ConstantResult } from "../analysis/constants.js";
-import { DefaultSymbolTable, type ExternalSymbols, type ExternalUse, type SymbolTable } from "../analysis/symbols.js";
+import {
+  evaluateConstant,
+  type ConstantResult,
+} from "../analysis/constants.js";
+import {
+  DefaultSymbolTable,
+  type ExternalSymbols,
+  type ExternalUse,
+  type SymbolTable,
+} from "../analysis/symbols.js";
 import { analyzeFlags, type FlagAnalysis } from "../analysis/flags.js";
-import { analyzeRegisters, type RegisterAnalysis } from "../analysis/registers.js";
+import {
+  analyzeRegisters,
+  type RegisterAnalysis,
+} from "../analysis/registers.js";
 import type { LintConfig } from "./config.js";
 import type { Diagnostic } from "./diagnostic.js";
 import { isMacroInvocation } from "../util/ast.js";
@@ -23,9 +34,15 @@ export interface RuleContext {
   line(index: number): ParsedLine | undefined;
   sourceLine(index: number): string | undefined;
   /** The exact source text of a parsed node, so replacements can keep what the author wrote. */
-  sourceTextOf(node: { loc?: { line?: number; start: number; end: number } } | undefined): string | undefined;
-  previousInstruction(index: number): { line: ParsedLine; index: number } | undefined;
-  nextInstruction(index: number): { line: ParsedLine; index: number } | undefined;
+  sourceTextOf(
+    node: { loc?: { line?: number; start: number; end: number } } | undefined,
+  ): string | undefined;
+  previousInstruction(
+    index: number,
+  ): { line: ParsedLine; index: number } | undefined;
+  nextInstruction(
+    index: number,
+  ): { line: ParsedLine; index: number } | undefined;
 }
 
 /**
@@ -36,10 +53,18 @@ export interface RuleContext {
  * it came from turns a confident and otherwise inexplicable diagnostic into one
  * the reader can check.
  */
-function withProvenance(diagnostic: Diagnostic, used: readonly ExternalUse[]): Diagnostic["notes"] {
+function withProvenance(
+  diagnostic: Diagnostic,
+  used: readonly ExternalUse[],
+): Diagnostic["notes"] {
   if (used.length === 0) return diagnostic.notes;
-  const listed = used.map(({ name, value, origin }) => `${name} = ${value} (from ${origin})`).join(", ");
-  return [...(diagnostic.notes ?? []), { message: `Resolved from outside this file: ${listed}.` }];
+  const listed = used
+    .map(({ name, value, origin }) => `${name} = ${value} (from ${origin})`)
+    .join(", ");
+  return [
+    ...(diagnostic.notes ?? []),
+    { message: `Resolved from outside this file: ${listed}.` },
+  ];
 }
 
 /**
@@ -60,7 +85,11 @@ function indentOf(sourceLine: string | undefined): string {
 function indentBlock(text: string, indent: string): string {
   return text
     .split("\n")
-    .map((line) => (line.trim().length === 0 || /^[ \t]/.test(line) ? line : `${indent}${line}`))
+    .map((line) =>
+      line.trim().length === 0 || /^[ \t]/.test(line)
+        ? line
+        : `${indent}${line}`,
+    )
     .join("\n");
 }
 
@@ -75,7 +104,11 @@ const TAB_WIDTH = 8;
 
 function columnOf(text: string): number {
   let column = 0;
-  for (const char of text) column = char === "\t" ? (Math.floor(column / TAB_WIDTH) + 1) * TAB_WIDTH : column + 1;
+  for (const char of text)
+    column =
+      char === "\t"
+        ? (Math.floor(column / TAB_WIDTH) + 1) * TAB_WIDTH
+        : column + 1;
   return column;
 }
 
@@ -99,7 +132,12 @@ function operandAlignmentOf(
 ): OperandAlignment | undefined {
   const operandStart = line?.operands?.[0]?.loc.start;
   const mnemonicEnd = line?.qualifier?.loc.end ?? line?.mnemonic?.loc.end;
-  if (sourceLine === undefined || operandStart === undefined || mnemonicEnd === undefined) return undefined;
+  if (
+    sourceLine === undefined ||
+    operandStart === undefined ||
+    mnemonicEnd === undefined
+  )
+    return undefined;
   if (operandStart <= mnemonicEnd) return undefined;
 
   const separator = sourceLine.slice(mnemonicEnd, operandStart);
@@ -108,7 +146,10 @@ function operandAlignmentOf(
   // would pad a shorter mnemonic out to it and produce `moveq  #100,d0` from
   // source that never lined anything up.
   if (separator === " ") return undefined;
-  return { column: columnOf(sourceLine.slice(0, operandStart)), tabs: separator.includes("\t") };
+  return {
+    column: columnOf(sourceLine.slice(0, operandStart)),
+    tabs: separator.includes("\t"),
+  };
 }
 
 /**
@@ -132,7 +173,11 @@ function alignOperands(text: string, alignment: OperandAlignment): string {
       if (alignment.tabs) {
         // Tabs only land on stops, so this reaches the source's column exactly
         // when that column is one, and otherwise the first stop past it.
-        for (let column = from; column < alignment.column; column = columnOf(`${" ".repeat(column)}\t`)) {
+        for (
+          let column = from;
+          column < alignment.column;
+          column = columnOf(`${" ".repeat(column)}\t`)
+        ) {
           separator += "\t";
         }
       } else {
@@ -153,13 +198,15 @@ function collectSymbols(lines: readonly ParsedLine[], into: Set<string>): void {
   const walk = (node: unknown): void => {
     if (!node || typeof node !== "object") return;
     const candidate = node as { type?: string; name?: string };
-    if (candidate.type === "symbol" && typeof candidate.name === "string") into.add(candidate.name.toLowerCase());
+    if (candidate.type === "symbol" && typeof candidate.name === "string")
+      into.add(candidate.name.toLowerCase());
     for (const value of Object.values(node)) {
       if (Array.isArray(value)) value.forEach(walk);
       else if (value && typeof value === "object") walk(value);
     }
   };
-  for (const line of lines) for (const operand of line.operands ?? []) walk(operand);
+  for (const line of lines)
+    for (const operand of line.operands ?? []) walk(operand);
 }
 
 /**
@@ -175,7 +222,10 @@ function collectSymbols(lines: readonly ParsedLine[], into: Set<string>): void {
  * A replacement that deletes the code drops every name by design and is not
  * reported.
  */
-function symbolsLostBy(original: readonly ParsedLine[], replacement: string): string[] {
+function symbolsLostBy(
+  original: readonly ParsedLine[],
+  replacement: string,
+): string[] {
   if (!replacement.trim()) return [];
   const before = new Set<string>();
   collectSymbols(original, before);
@@ -195,7 +245,10 @@ function symbolsLostBy(original: readonly ParsedLine[], replacement: string): st
  * `start:` and the whitespace after it. Only a label sharing the line matters:
  * one on its own line sits outside the span and is never touched.
  */
-function labelPrefixOf(line: ParsedLine | undefined, sourceLine: string | undefined): string | undefined {
+function labelPrefixOf(
+  line: ParsedLine | undefined,
+  sourceLine: string | undefined,
+): string | undefined {
   if (!line?.label || sourceLine === undefined) return undefined;
   const start = line.mnemonic?.loc.start;
   if (start === undefined || start <= 0) return undefined;
@@ -219,7 +272,10 @@ function attachLabel(replacement: string, label: string): string {
  * chose, and where a replacement is the same width as what it replaces the
  * comment stays in its column.
  */
-function trailingCommentOf(line: ParsedLine | undefined, sourceLine: string | undefined): string | undefined {
+function trailingCommentOf(
+  line: ParsedLine | undefined,
+  sourceLine: string | undefined,
+): string | undefined {
   const start = line?.comment?.loc.start;
   if (start === undefined || sourceLine === undefined) return undefined;
   const gap = /[ \t]*$/.exec(sourceLine.slice(0, start))?.[0] ?? "";
@@ -278,10 +334,14 @@ export class DefaultRuleContext implements RuleContext {
   report(diagnostic: Diagnostic): void {
     const span = computeSourceSpan(diagnostic, this.file);
     const suggestion = this.placeSuggestion(diagnostic, span);
-    const replacement = suggestion?.replacement ?? diagnostic.suggestion?.replacement;
+    const replacement =
+      suggestion?.replacement ?? diagnostic.suggestion?.replacement;
     const lost =
       span && replacement !== undefined
-        ? symbolsLostBy(this.file.lines.slice(span.startLine - 1, span.endLine), replacement)
+        ? symbolsLostBy(
+            this.file.lines.slice(span.startLine - 1, span.endLine),
+            replacement,
+          )
         : [];
 
     let notes = withProvenance(diagnostic, this.symbols.externalUses());
@@ -296,8 +356,16 @@ export class DefaultRuleContext implements RuleContext {
     }
     // Also recorded rather than only described, so anything acting on the
     // suggestion can see it without reading the prose back.
-    const data = lost.length ? { ...(diagnostic.data ?? {}), symbolsLost: lost } : diagnostic.data;
-    this.diagnostics.push({ ...diagnostic, notes, span, data, ...(suggestion ? { suggestion } : {}) });
+    const data = lost.length
+      ? { ...(diagnostic.data ?? {}), symbolsLost: lost }
+      : diagnostic.data;
+    this.diagnostics.push({
+      ...diagnostic,
+      notes,
+      span,
+      data,
+      ...(suggestion ? { suggestion } : {}),
+    });
   }
 
   /**
@@ -325,9 +393,13 @@ export class DefaultRuleContext implements RuleContext {
    * finding becomes a manual one. Done here rather than in each rule so that no
    * rule can forget.
    */
-  private placeSuggestion(diagnostic: Diagnostic, span: SourceSpan | undefined): Diagnostic["suggestion"] {
+  private placeSuggestion(
+    diagnostic: Diagnostic,
+    span: SourceSpan | undefined,
+  ): Diagnostic["suggestion"] {
     const suggestion = diagnostic.suggestion;
-    if (!suggestion || suggestion.replacement === undefined || !span) return undefined;
+    if (!suggestion || suggestion.replacement === undefined || !span)
+      return undefined;
 
     const matched = this.file.lines.slice(span.startLine - 1, span.endLine);
     // A directive inside the match is structure, not code to be rewritten.
@@ -335,7 +407,11 @@ export class DefaultRuleContext implements RuleContext {
     // stop assembling, so there is no rewrite to offer. Rules should not match
     // across one in the first place; this is the backstop for any that build a
     // span some other way.
-    if (matched.some((line) => isBlockBoundary(line) || line?.mnemonic?.type === "directive")) {
+    if (
+      matched.some(
+        (line) => isBlockBoundary(line) || line?.mnemonic?.type === "directive",
+      )
+    ) {
       return { ...suggestion, replacement: undefined, applicability: "manual" };
     }
     if (matched.slice(1).some((line) => line?.label)) {
@@ -359,10 +435,17 @@ export class DefaultRuleContext implements RuleContext {
     const firstComment = trailingCommentOf(first, sourceLine);
     const laterComments = matched
       .slice(1)
-      .map((line, offset) => trailingCommentOf(line, this.sourceLines[span.startLine + offset]))
+      .map((line, offset) =>
+        trailingCommentOf(line, this.sourceLines[span.startLine + offset]),
+      )
       .filter((comment): comment is string => comment !== undefined);
     if (firstComment || laterComments.length) {
-      replacement = attachComments(replacement, firstComment, laterComments, indentOf(sourceLine));
+      replacement = attachComments(
+        replacement,
+        firstComment,
+        laterComments,
+        indentOf(sourceLine),
+      );
     }
 
     return { ...suggestion, replacement };
@@ -398,10 +481,14 @@ export class DefaultRuleContext implements RuleContext {
    * says what the value means, and freezes a number that was meant to follow
    * the constant when it changes.
    */
-  sourceTextOf(node: { loc?: { line?: number; start: number; end: number } } | undefined): string | undefined {
+  sourceTextOf(
+    node: { loc?: { line?: number; start: number; end: number } } | undefined,
+  ): string | undefined {
     const loc = node?.loc;
     if (!loc || loc.line === undefined) return undefined;
-    const text = this.sourceLines[loc.line - 1]?.slice(loc.start, loc.end).trim();
+    const text = this.sourceLines[loc.line - 1]
+      ?.slice(loc.start, loc.end)
+      .trim();
     return text ? text : undefined;
   }
 
@@ -421,7 +508,9 @@ export class DefaultRuleContext implements RuleContext {
    * file stops assembling -- and if the RTS is in the ELSE arm instead, the two
    * never even run together.
    */
-  previousInstruction(index: number): { line: ParsedLine; index: number } | undefined {
+  previousInstruction(
+    index: number,
+  ): { line: ParsedLine; index: number } | undefined {
     for (let i = index - 1; i >= 0; i--) {
       const line = this.file.lines[i];
       if (isMacroInvocation(line) || isBlockBoundary(line)) return undefined;
@@ -430,7 +519,9 @@ export class DefaultRuleContext implements RuleContext {
     return undefined;
   }
 
-  nextInstruction(index: number): { line: ParsedLine; index: number } | undefined {
+  nextInstruction(
+    index: number,
+  ): { line: ParsedLine; index: number } | undefined {
     for (let i = index + 1; i < this.file.lines.length; i++) {
       const line = this.file.lines[i];
       if (isMacroInvocation(line) || isBlockBoundary(line)) return undefined;

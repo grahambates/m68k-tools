@@ -1,14 +1,26 @@
 import type { Rule } from "../../core/rule.js";
 import { DATA_REGISTERS } from "../../semantics/registers.js";
-import { addressRegisterOperand, immediateOperand, instructionSize, isInstructionFamily } from "../../util/ast.js";
+import {
+  addressRegisterOperand,
+  immediateOperand,
+  instructionSize,
+  isInstructionFamily,
+} from "../../util/ast.js";
 
 export const cmpZeroAddressViaScratch: Rule = {
   meta: {
     id: "optimization/cmp-zero-address-via-scratch",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Compare an address register with zero via a dead data register on early CPUs",
-    tags: ["asp68k", "register-analysis", "scratch-register", "cmp", "address-register"],
+    description:
+      "Compare an address register with zero via a dead data register on early CPUs",
+    tags: [
+      "asp68k",
+      "register-analysis",
+      "scratch-register",
+      "cmp",
+      "address-register",
+    ],
     docs: { source: "ASP68K" },
   },
   checkLine(ctx, line, index) {
@@ -19,9 +31,16 @@ export const cmpZeroAddressViaScratch: Rule = {
     if (!source || source.value.type === "string-literal" || !dest) return;
     const value = ctx.evaluate(source.value);
     if (!value.known || value.value !== 0) return;
-    if (!ctx.config.processors.every((cpu) => ["mc68000", "mc68010", "mc68030"].includes(cpu))) return;
+    if (
+      !ctx.config.processors.every((cpu) =>
+        ["mc68000", "mc68010", "mc68030"].includes(cpu),
+      )
+    )
+      return;
 
-    const scratch = DATA_REGISTERS.find((r) => ctx.registers.isLiveAfter(index, r) === "dead");
+    const scratch = DATA_REGISTERS.find(
+      (r) => ctx.registers.isLiveAfter(index, r) === "dead",
+    );
     if (!scratch) return;
     const replacement = `move.l ${dest.register},${scratch}`;
 

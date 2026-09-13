@@ -54,29 +54,24 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint .",
+    "lint": "pnpm --dir ../.. exec eslint packages/m68k-lint",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format": "pnpm --dir ../.. run format",
+    "format:check": "pnpm --dir ../.. run format:check",
     "cli": "node ./dist/cli/main.js",
     "audit:impact": "node ./dist/cli/main.js --audit-rule-impact",
-    "verify:semantics": "npm run build && node --experimental-wasm-modules ./scripts/verify-semantics.mjs",
-    "docs:rules": "npm run build && node ./scripts/generate-rules-doc.mjs",
-    "prepublishOnly": "npm run typecheck && npm run lint && npm test && npm run build && npm run audit:impact"
+    "verify:semantics": "pnpm run build && node --experimental-wasm-modules ./scripts/verify-semantics.mjs",
+    "docs:rules": "pnpm run build && node ./scripts/generate-rules-doc.mjs",
+    "prepublishOnly": "pnpm run typecheck && pnpm run lint && pnpm test && pnpm run build && pnpm run audit:impact"
   },
   "dependencies": {
     "68kcounter": "workspace:^",
     "m68k-parser": "workspace:^"
   },
   "devDependencies": {
-    "@eslint/js": "9.39.5",
     "@specy/s68k": "^1.4.0",
     "@types/node": "22.18.0",
-    "eslint": "9.39.5",
-    "eslint-config-prettier": "^10.1.8",
-    "prettier": "3.9.6",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.70.0",
     "vitest": "5.0.0",
     "@vitest/coverage-v8": "5.0.0",
     "tsdown": "0.23.0"

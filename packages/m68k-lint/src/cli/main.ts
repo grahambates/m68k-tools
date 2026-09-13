@@ -7,6 +7,8 @@ run(process.argv.slice(2))
     process.exitCode = code;
   })
   .catch((error: unknown) => {
-    console.error(`m68k-lint: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`);
+    console.error(
+      `m68k-lint: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`,
+    );
     process.exitCode = 2;
   });

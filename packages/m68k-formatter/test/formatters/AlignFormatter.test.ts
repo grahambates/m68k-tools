@@ -1,5 +1,5 @@
 import AlignFormatter, {
-  AlignOptions,
+  type AlignOptions,
 } from "../../src/formatter/formatters/AlignFormatter";
 import { applyEdits, formatContext } from "../helpers";
 

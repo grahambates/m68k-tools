@@ -15,7 +15,9 @@
     "cli.js",
     "out",
     "wasm",
-    "README.md"
+    "README.md",
+    "LICENSE.md",
+    "CHANGELOG.md"
   ],
   "repository": {
     "type": "git",

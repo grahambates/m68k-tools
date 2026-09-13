@@ -1,5 +1,5 @@
 import { runInNewContext } from "vm";
-import { WebviewView } from "vscode";
+import { type WebviewView } from "vscode";
 import { RegisterRemappingView } from "../src/RegisterRemappingView";
 
 class Element {

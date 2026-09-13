@@ -1,9 +1,16 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateExpressionOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateExpressionOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
 import { DATA_REGISTERS } from "../../semantics/registers.js";
 
-function m68000Only(ctx: Parameters<NonNullable<Rule["checkLine"]>>[0]): boolean {
+function m68000Only(
+  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
+): boolean {
   return ctx.config.processors.every((cpu) => cpu === "mc68000");
 }
 
@@ -24,8 +31,13 @@ function deadScratch(
   mask?: number,
 ): string | undefined {
   const skip = dest.toLowerCase();
-  if (mask === undefined) return ctx.registers.deadDataRegistersAfter(index).find((r) => r !== skip);
-  return DATA_REGISTERS.find((r) => r !== skip && ctx.registers.registerBitsUseAfter(index, r, mask) === "unused");
+  if (mask === undefined)
+    return ctx.registers.deadDataRegistersAfter(index).find((r) => r !== skip);
+  return DATA_REGISTERS.find(
+    (r) =>
+      r !== skip &&
+      ctx.registers.registerBitsUseAfter(index, r, mask) === "unused",
+  );
 }
 
 /**
@@ -34,28 +46,45 @@ function deadScratch(
  * Each recipe was independently checked as an integer coefficient identity
  * after the initial EXT.L sign extension.
  */
-const fullResultRecipes: Readonly<Record<number, (d: string, s: string) => string>> = {
-  11: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nadd.l ${s},${d}\nadd.l ${s},${d}\nasl.l #2,${d}\nsub.l ${s},${d}`,
-  13: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nadd.l ${s},${d}\nadd.l ${s},${d}\nasl.l #2,${d}\nadd.l ${s},${d}`,
-  14: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nasl.l #3,${d}\nsub.l ${s},${d}\nadd.l ${d},${d}`,
+const fullResultRecipes: Readonly<
+  Record<number, (d: string, s: string) => string>
+> = {
+  11: (d, s) =>
+    `ext.l ${d}\nmove.l ${d},${s}\nadd.l ${s},${d}\nadd.l ${s},${d}\nasl.l #2,${d}\nsub.l ${s},${d}`,
+  13: (d, s) =>
+    `ext.l ${d}\nmove.l ${d},${s}\nadd.l ${s},${d}\nadd.l ${s},${d}\nasl.l #2,${d}\nadd.l ${s},${d}`,
+  14: (d, s) =>
+    `ext.l ${d}\nmove.l ${d},${s}\nasl.l #3,${d}\nsub.l ${s},${d}\nadd.l ${d},${d}`,
   15: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nasl.l #4,${d}\nsub.l ${s},${d}`,
   17: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nasl.l #4,${d}\nadd.l ${s},${d}`,
-  18: (d, s) => `ext.l ${d}\nadd.l ${d},${d}\nmove.l ${d},${s}\nasl.l #3,${d}\nadd.l ${s},${d}`,
-  19: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nasl.l #3,${d}\nadd.l ${s},${d}\nadd.l ${d},${d}\nadd.l ${s},${d}`,
-  20: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nasl.l #2,${d}\nadd.l ${s},${d}\nasl.l #2,${d}`,
-  21: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nasl.l #2,${d}\nadd.l ${s},${d}\nasl.l #2,${d}\nadd.l ${s},${d}`,
+  18: (d, s) =>
+    `ext.l ${d}\nadd.l ${d},${d}\nmove.l ${d},${s}\nasl.l #3,${d}\nadd.l ${s},${d}`,
+  19: (d, s) =>
+    `ext.l ${d}\nmove.l ${d},${s}\nasl.l #3,${d}\nadd.l ${s},${d}\nadd.l ${d},${d}\nadd.l ${s},${d}`,
+  20: (d, s) =>
+    `ext.l ${d}\nmove.l ${d},${s}\nasl.l #2,${d}\nadd.l ${s},${d}\nasl.l #2,${d}`,
+  21: (d, s) =>
+    `ext.l ${d}\nmove.l ${d},${s}\nasl.l #2,${d}\nadd.l ${s},${d}\nasl.l #2,${d}\nadd.l ${s},${d}`,
   22: (d, s) =>
     `ext.l ${d}\nadd.l ${d},${d}\nmove.l ${d},${s}\nadd.l ${s},${d}\nadd.l ${s},${d}\nasl.l #2,${d}\nsub.l ${s},${d}`,
-  23: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nadd.l ${s},${d}\nadd.l ${s},${d}\nasl.l #3,${d}\nsub.l ${s},${d}`,
-  24: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nadd.l ${s},${d}\nadd.l ${s},${d}\nasl.l #3,${d}`,
-  25: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nadd.l ${s},${d}\nadd.l ${s},${d}\nasl.l #3,${d}\nadd.l ${s},${d}`,
-  26: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nadd.l ${s},${s}\nadd.l ${s},${d}\nasl.l #3,${d}\nadd.l ${s},${d}`,
-  29: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nasl.l #5,${d}\nsub.l ${s},${d}\nsub.l ${s},${d}\nsub.l ${s},${d}`,
-  30: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nasl.l #5,${d}\nsub.l ${s},${d}\nsub.l ${s},${d}`,
+  23: (d, s) =>
+    `ext.l ${d}\nmove.l ${d},${s}\nadd.l ${s},${d}\nadd.l ${s},${d}\nasl.l #3,${d}\nsub.l ${s},${d}`,
+  24: (d, s) =>
+    `ext.l ${d}\nmove.l ${d},${s}\nadd.l ${s},${d}\nadd.l ${s},${d}\nasl.l #3,${d}`,
+  25: (d, s) =>
+    `ext.l ${d}\nmove.l ${d},${s}\nadd.l ${s},${d}\nadd.l ${s},${d}\nasl.l #3,${d}\nadd.l ${s},${d}`,
+  26: (d, s) =>
+    `ext.l ${d}\nmove.l ${d},${s}\nadd.l ${s},${s}\nadd.l ${s},${d}\nasl.l #3,${d}\nadd.l ${s},${d}`,
+  29: (d, s) =>
+    `ext.l ${d}\nmove.l ${d},${s}\nasl.l #5,${d}\nsub.l ${s},${d}\nsub.l ${s},${d}\nsub.l ${s},${d}`,
+  30: (d, s) =>
+    `ext.l ${d}\nmove.l ${d},${s}\nasl.l #5,${d}\nsub.l ${s},${d}\nsub.l ${s},${d}`,
   31: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nasl.l #5,${d}\nsub.l ${s},${d}`,
   33: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nasl.l #5,${d}\nadd.l ${s},${d}`,
-  34: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nasl.l #5,${d}\nadd.l ${s},${d}\nadd.l ${s},${d}`,
-  35: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nasl.l #5,${d}\nadd.l ${s},${d}\nadd.l ${s},${d}\nadd.l ${s},${d}`,
+  34: (d, s) =>
+    `ext.l ${d}\nmove.l ${d},${s}\nasl.l #5,${d}\nadd.l ${s},${d}\nadd.l ${s},${d}`,
+  35: (d, s) =>
+    `ext.l ${d}\nmove.l ${d},${s}\nasl.l #5,${d}\nadd.l ${s},${d}\nadd.l ${s},${d}\nadd.l ${s},${d}`,
 };
 
 export const flamewingMulsWordFullResultConstants: Rule = {
@@ -63,13 +92,19 @@ export const flamewingMulsWordFullResultConstants: Rule = {
     id: "optimization/muls-word-full-result-constants",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Replace additional MULS.W constants with verified 68000 shift/add sequences",
+    description:
+      "Replace additional MULS.W constants with verified 68000 shift/add sequences",
     tags: ["flamewing", "68000", "multiply", "constant", "scratch", "ccr"],
     serves: "speed",
     docs: { source: "Flamewing M68000 Peephole Optimizations" },
   },
   checkLine(ctx, line, index) {
-    if (!m68000Only(ctx) || !isInstruction(line, "muls") || instructionSize(line) !== "w") return;
+    if (
+      !m68000Only(ctx) ||
+      !isInstruction(line, "muls") ||
+      instructionSize(line) !== "w"
+    )
+      return;
     const expr = immediateExpressionOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
     if (!expr || !dest) return;
@@ -77,7 +112,10 @@ export const flamewingMulsWordFullResultConstants: Rule = {
     if (!value.known) return;
     const recipe = fullResultRecipes[value.value];
     if (!recipe) return;
-    if ([15, 17, 31].includes(value.value) && ctx.registers.upperWordUseAfter(index, dest.register) === "unused")
+    if (
+      [15, 17, 31].includes(value.value) &&
+      ctx.registers.upperWordUseAfter(index, dest.register) === "unused"
+    )
       return;
 
     const scratch = deadScratch(ctx, index, dest.register);
@@ -98,10 +136,17 @@ export const flamewingMulsWordFullResultConstants: Rule = {
         applicability: safety.applicability,
       },
       notes: [
-        { message: `${scratch.toUpperCase()} is proven dead after the original multiply and may be clobbered.` },
+        {
+          message: `${scratch.toUpperCase()} is proven dead after the original multiply and may be clobbered.`,
+        },
         ...(safety.applicability === "safe"
           ? []
-          : [{ message: "X/V/C can differ from MULS.W and must not be observed." }]),
+          : [
+              {
+                message:
+                  "X/V/C can differ from MULS.W and must not be observed.",
+              },
+            ]),
       ],
       data: { factor: value.value, scratch, provenance: "flamewing" },
     });
@@ -113,9 +158,12 @@ export const flamewingMulsWordFullResultConstants: Rule = {
  * high word of Dn is irrelevant.  Our existing upper-word use analysis is
  * sufficient to prove that precondition for a useful initial subset.
  */
-const lowWordRecipes: Readonly<Record<number, (d: string, s: string) => string>> = {
+const lowWordRecipes: Readonly<
+  Record<number, (d: string, s: string) => string>
+> = {
   3: (d, s) => `move.w ${d},${s}\nadd.w ${d},${d}\nadd.w ${s},${d}`,
-  5: (d, s) => `move.w ${d},${s}\nadd.w ${d},${d}\nadd.w ${d},${d}\nadd.w ${s},${d}`,
+  5: (d, s) =>
+    `move.w ${d},${s}\nadd.w ${d},${d}\nadd.w ${d},${d}\nadd.w ${s},${d}`,
   7: (d, s) => `move.w ${d},${s}\nasl.w #3,${d}\nsub.w ${s},${d}`,
   9: (d, s) => `move.w ${d},${s}\nasl.w #3,${d}\nadd.w ${s},${d}`,
   15: (d, s) => `move.w ${d},${s}\nasl.w #4,${d}\nsub.w ${s},${d}`,
@@ -128,13 +176,27 @@ export const flamewingMulsWordLowWordOnly: Rule = {
     id: "optimization/muls-word-low-word-only",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Use shorter MULS.W recipes when the result's upper word is unobserved",
-    tags: ["flamewing", "68000", "multiply", "constant", "partial-register", "scratch", "ccr"],
+    description:
+      "Use shorter MULS.W recipes when the result's upper word is unobserved",
+    tags: [
+      "flamewing",
+      "68000",
+      "multiply",
+      "constant",
+      "partial-register",
+      "scratch",
+      "ccr",
+    ],
     serves: "speed",
     docs: { source: "Flamewing M68000 Peephole Optimizations" },
   },
   checkLine(ctx, line, index) {
-    if (!m68000Only(ctx) || !isInstruction(line, "muls") || instructionSize(line) !== "w") return;
+    if (
+      !m68000Only(ctx) ||
+      !isInstruction(line, "muls") ||
+      instructionSize(line) !== "w"
+    )
+      return;
     const expr = immediateExpressionOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
     if (!expr || !dest) return;
@@ -147,7 +209,13 @@ export const flamewingMulsWordLowWordOnly: Rule = {
     if (upperWordUse !== "unused") return;
     const scratch = deadScratch(ctx, index, dest.register, 0xffff);
     if (!scratch) return;
-    const safety = changedFlagsApplicability(ctx, index, ["X", "N", "Z", "V", "C"]);
+    const safety = changedFlagsApplicability(ctx, index, [
+      "X",
+      "N",
+      "Z",
+      "V",
+      "C",
+    ]);
     ctx.report({
       ruleId: this.meta.id,
       category: this.meta.category,
@@ -164,12 +232,24 @@ export const flamewingMulsWordLowWordOnly: Rule = {
         {
           message: `The analyser proves the old upper word of ${dest.register.toUpperCase()} is discarded before it is read.`,
         },
-        { message: `${scratch.toUpperCase()} is proven dead and can be used as scratch.` },
+        {
+          message: `${scratch.toUpperCase()} is proven dead and can be used as scratch.`,
+        },
         ...(safety.applicability === "safe"
           ? []
-          : [{ message: "The word-only arithmetic sequence has different CCR behaviour from MULS.W." }]),
+          : [
+              {
+                message:
+                  "The word-only arithmetic sequence has different CCR behaviour from MULS.W.",
+              },
+            ]),
       ],
-      data: { factor: value.value, scratch, upperWordUse, provenance: "flamewing" },
+      data: {
+        factor: value.value,
+        scratch,
+        upperWordUse,
+        provenance: "flamewing",
+      },
     });
   },
 };
@@ -180,12 +260,15 @@ export const flamewingMulsWordLowWordOnly: Rule = {
  * 32-bit result.  They are therefore only valid when bits 16..31 of Dn are
  * proven unobserved before a definite overwrite.
  */
-const muluLowWordRecipes: Readonly<Record<number, (d: string, s?: string) => string>> = {
+const muluLowWordRecipes: Readonly<
+  Record<number, (d: string, s?: string) => string>
+> = {
   1: () => "",
   2: (d) => `add.w ${d},${d}`,
   3: (d, s) => `move.w ${d},${s}\nadd.w ${d},${d}\nadd.w ${s},${d}`,
   4: (d) => `add.w ${d},${d}\nadd.w ${d},${d}`,
-  5: (d, s) => `move.w ${d},${s}\nadd.w ${d},${d}\nadd.w ${d},${d}\nadd.w ${s},${d}`,
+  5: (d, s) =>
+    `move.w ${d},${s}\nadd.w ${d},${d}\nadd.w ${d},${d}\nadd.w ${s},${d}`,
   7: (d, s) => `move.w ${d},${s}\nlsl.w #3,${d}\nsub.w ${s},${d}`,
   8: (d) => `lsl.w #3,${d}`,
   9: (d, s) => `move.w ${d},${s}\nlsl.w #3,${d}\nadd.w ${s},${d}`,
@@ -201,13 +284,26 @@ export const flamewingMuluWordLowWordOnly: Rule = {
     id: "optimization/mulu-word-low-word-only",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Use shorter MULU.W recipes when only the low word is observed",
-    tags: ["flamewing", "68000", "multiply", "constant", "partial-register", "ccr"],
+    description:
+      "Use shorter MULU.W recipes when only the low word is observed",
+    tags: [
+      "flamewing",
+      "68000",
+      "multiply",
+      "constant",
+      "partial-register",
+      "ccr",
+    ],
     serves: "speed",
     docs: { source: "Flamewing M68000 Peephole Optimizations" },
   },
   checkLine(ctx, line, index) {
-    if (!m68000Only(ctx) || !isInstruction(line, "mulu") || instructionSize(line) !== "w") return;
+    if (
+      !m68000Only(ctx) ||
+      !isInstruction(line, "mulu") ||
+      instructionSize(line) !== "w"
+    )
+      return;
     const expr = immediateExpressionOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
     if (!expr || !dest) return;
@@ -216,16 +312,28 @@ export const flamewingMuluWordLowWordOnly: Rule = {
     const recipe = muluLowWordRecipes[value.value];
     if (!recipe) return;
 
-    if (ctx.registers.registerBitsUseAfter(index, dest.register, 0xffff0000) !== "unused") return;
+    if (
+      ctx.registers.registerBitsUseAfter(index, dest.register, 0xffff0000) !==
+      "unused"
+    )
+      return;
 
     const needsScratch = ![1, 2, 4, 8, 16, 32].includes(value.value);
-    const scratch = needsScratch ? deadScratch(ctx, index, dest.register, 0xffff) : undefined;
+    const scratch = needsScratch
+      ? deadScratch(ctx, index, dest.register, 0xffff)
+      : undefined;
     if (needsScratch && !scratch) return;
 
     // MULU.W writes a 32-bit result and sets N/Z from that long result while
     // clearing V/C and preserving X.  A word-only sequence has different CCR
     // semantics even though its low 16-bit product is identical.
-    const safety = changedFlagsApplicability(ctx, index, ["X", "N", "Z", "V", "C"]);
+    const safety = changedFlagsApplicability(ctx, index, [
+      "X",
+      "N",
+      "Z",
+      "V",
+      "C",
+    ]);
     const replacement = recipe(dest.register, scratch);
     ctx.report({
       ruleId: this.meta.id,
@@ -235,18 +343,39 @@ export const flamewingMuluWordLowWordOnly: Rule = {
       message: `Only the low word of ${dest.register.toUpperCase()} is observed after MULU.W #${value.value}; a shorter word-only form suffices`,
       loc: line.mnemonic!.loc,
       suggestion: {
-        description: value.value === 1 ? "Remove the multiply" : `Replace MULU.W #${value.value} with word arithmetic`,
+        description:
+          value.value === 1
+            ? "Remove the multiply"
+            : `Replace MULU.W #${value.value} with word arithmetic`,
         replacement,
         applicability: safety.applicability,
       },
       notes: [
-        { message: `The analyser proves bits 16-31 of ${dest.register.toUpperCase()} are discarded before any read.` },
-        ...(scratch ? [{ message: `${scratch.toUpperCase()} is proven dead and may be clobbered.` }] : []),
+        {
+          message: `The analyser proves bits 16-31 of ${dest.register.toUpperCase()} are discarded before any read.`,
+        },
+        ...(scratch
+          ? [
+              {
+                message: `${scratch.toUpperCase()} is proven dead and may be clobbered.`,
+              },
+            ]
+          : []),
         ...(safety.applicability === "safe"
           ? []
-          : [{ message: "The word-only replacement has different CCR behaviour from MULU.W." }]),
+          : [
+              {
+                message:
+                  "The word-only replacement has different CCR behaviour from MULU.W.",
+              },
+            ]),
       ],
-      data: { factor: value.value, scratch, differingBits: "16-31", provenance: "flamewing" },
+      data: {
+        factor: value.value,
+        scratch,
+        differingBits: "16-31",
+        provenance: "flamewing",
+      },
     });
   },
 };

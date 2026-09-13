@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { pathToFileURL } from "url";
-import * as lsp from "vscode-languageserver";
+import type * as lsp from "vscode-languageserver";
 import { createContext } from "../../src/context";
 import { defaultConfig } from "../../src/config";
 import ConfigurationProvider from "../../src/providers/ConfigurationProvider";

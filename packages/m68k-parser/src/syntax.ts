@@ -776,10 +776,7 @@ export function isFPURegister(reg: string): reg is FPURegister {
 }
 
 export type Register =
-  | DataRegister
-  | AddressRegister
-  | SpecialRegister
-  | FPURegister;
+  DataRegister | AddressRegister | SpecialRegister | FPURegister;
 
 export function isRegister(reg: string): reg is Register {
   return (

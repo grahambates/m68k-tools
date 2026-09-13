@@ -5,7 +5,8 @@
     "declaration": false,
     "rootDir": ".",
     "noEmit": true,
-    "types": ["node", "vitest/globals"]
+    "types": ["node", "vitest/globals"],
+    "declarationMap": false
   },
   "include": ["src", "test"]
 }

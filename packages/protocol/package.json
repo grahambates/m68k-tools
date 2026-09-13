@@ -9,5 +9,6 @@
     "vscode-languageserver-protocol": "^3.17.5"
   },
   "scripts": {},
-  "devDependencies": {}
+  "devDependencies": {},
+  "license": "MIT"
 }

@@ -90,19 +90,31 @@ async function walkFiles(root: string): Promise<string[]> {
   return result;
 }
 
-function matchesExtension(path: string, extensions: readonly string[]): boolean {
+function matchesExtension(
+  path: string,
+  extensions: readonly string[],
+): boolean {
   const lower = path.toLowerCase();
   return extensions.some((ext) => lower.endsWith(ext));
 }
 
-function ignored(path: string, cwd: string, ignoreRegexes: readonly RegExp[]): boolean {
+function ignored(
+  path: string,
+  cwd: string,
+  ignoreRegexes: readonly RegExp[],
+): boolean {
   const rel = slash(relative(cwd, path));
   return ignoreRegexes.some((regex) => regex.test(rel));
 }
 
-export async function discoverFiles(inputs: readonly string[], options: FileDiscoveryOptions = {}): Promise<string[]> {
+export async function discoverFiles(
+  inputs: readonly string[],
+  options: FileDiscoveryOptions = {},
+): Promise<string[]> {
   const cwd = resolve(options.cwd ?? process.cwd());
-  const extensions = normalizeExtensions(options.extensions ?? defaultAssemblyExtensions);
+  const extensions = normalizeExtensions(
+    options.extensions ?? defaultAssemblyExtensions,
+  );
   const ignoreRegexes = (options.ignorePatterns ?? []).map(globToRegExp);
   const found = new Set<string>();
 

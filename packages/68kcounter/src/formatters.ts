@@ -2,12 +2,12 @@
  * Formatter implementations for CLI output
  */
 
-import chalk, { Color } from "chalk";
+import chalk, { type Color } from "chalk";
 
-import { formatTiming, Level, Levels, timingLevel } from ".";
-import { Timing } from "./timings";
-import { Line } from "./parse";
-import { Totals } from "./totals";
+import { formatTiming, type Level, Levels, timingLevel } from ".";
+import { type Timing } from "./timings";
+import { type Line } from "./parse";
+import { type Totals } from "./totals";
 
 export interface IncludedElements {
   text: boolean;
@@ -101,15 +101,15 @@ export class PlainTextFormatter implements Formatter {
       output.push("\nTotals:");
       if (totals.isRange) {
         output.push(
-          formatTiming(totals.min) + " - " + formatTiming(totals.max)
+          formatTiming(totals.min) + " - " + formatTiming(totals.max),
         );
       } else {
         output.push(formatTiming(totals.min));
       }
       output.push(
         `${this.formatNumber(totals.bytes)} bytes (${this.formatNumber(
-          totals.objectBytes
-        )} object, ${this.formatNumber(totals.bssBytes)} BSS)`
+          totals.objectBytes,
+        )} object, ${this.formatNumber(totals.bssBytes)} BSS)`,
       );
     }
 

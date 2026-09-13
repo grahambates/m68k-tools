@@ -1,20 +1,20 @@
 import { isInterpolated } from "./tokenizer-utils.js";
 import {
-  ParsedLine,
-  LabelNode,
-  MnemonicNode,
-  QualifierNode,
-  OperandNode,
-  CommentNode,
-  InstructionNode,
-  DirectiveNode,
-  Size,
-  Instruction,
-  Directive,
-  ParserResult,
-  MacroNode,
+  type ParsedLine,
+  type LabelNode,
+  type MnemonicNode,
+  type QualifierNode,
+  type OperandNode,
+  type CommentNode,
+  type InstructionNode,
+  type DirectiveNode,
+  type Size,
+  type Instruction,
+  type Directive,
+  type ParserResult,
+  type MacroNode,
 } from "./types.js";
-import { ParseError } from "./parse-error.js";
+import { type ParseError } from "./parse-error.js";
 import { parseOperand } from "./operand-parser.js";
 import { parseExpression } from "./expression-parser.js";
 import { isDirective, isInstruction, isSize, noOperand } from "./syntax.js";
@@ -455,13 +455,12 @@ function parseMnemonic(state: ParserState): MnemonicNode | null {
       loc: { start, end, line: state.line },
       directive: lcMnemonic,
     };
-  } else {
-    return {
-      type: "macro",
-      loc: { start, end, line: state.line },
-      macro: mnemonic,
-    };
   }
+  return {
+    type: "macro",
+    loc: { start, end, line: state.line },
+    macro: mnemonic,
+  };
 }
 
 /**

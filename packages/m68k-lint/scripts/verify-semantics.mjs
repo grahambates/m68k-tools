@@ -52,7 +52,10 @@ function adapt(line) {
   return line
     .replace(/^eor(\.[bwl])?(\s+#)/i, "eori$1$2")
     .replace(/^(muls|mulu|divs|divu|bset|bclr|btst|bchg)\.[bwl]\b/i, "$1")
-    .replace(/^(add|sub|move|cmp)(\.[wl])?(\s+.*,\s*(?:a[0-7]|sp))$/i, "$1a$2$3");
+    .replace(
+      /^(add|sub|move|cmp)(\.[wl])?(\s+.*,\s*(?:a[0-7]|sp))$/i,
+      "$1a$2$3",
+    );
 }
 
 function assemble(lines) {
@@ -64,7 +67,8 @@ function assemble(lines) {
     .join("\n");
   const source = `ORG $1000\n${body}\n`;
   const errors = S68k.semanticCheck(source);
-  if (errors.length) return { error: errors.map((e) => e.getMessage()).join("; ") };
+  if (errors.length)
+    return { error: errors.map((e) => e.getMessage()).join("; ") };
   return { source };
 }
 
@@ -81,10 +85,13 @@ function execute(lines, seed) {
     // completion would fall off the end into unmapped memory. Step instead, and
     // stop at the last instruction.
     let steps = 0;
-    while (!interpreter.hasReachedBottom() && steps++ < LIMIT) interpreter.step();
+    while (!interpreter.hasReachedBottom() && steps++ < LIMIT)
+      interpreter.step();
     if (steps >= LIMIT) return { error: "did not terminate" };
   } catch (e) {
-    return { error: `execution failed: ${String(e).split("\n")[0].slice(0, 80)}` };
+    return {
+      error: `execution failed: ${String(e).split("\n")[0].slice(0, 80)}`,
+    };
   }
   const flags = interpreter.getFlagsAsArray();
   return {
@@ -115,9 +122,15 @@ function calibrate() {
     const wantFlags = sortFlags(c.flags);
     const d0 = result.registers[0];
     if (d0 !== c.d0 >>> 0) {
-      failures.push({ name: c.name, detail: `d0 ${hex(d0)}, documented ${hex(c.d0)}` });
+      failures.push({
+        name: c.name,
+        detail: `d0 ${hex(d0)}, documented ${hex(c.d0)}`,
+      });
     } else if (actualFlags !== wantFlags) {
-      failures.push({ name: c.name, detail: `flags ${actualFlags || "none"}, documented ${wantFlags || "none"}` });
+      failures.push({
+        name: c.name,
+        detail: `flags ${actualFlags || "none"}, documented ${wantFlags || "none"}`,
+      });
     }
   }
   return failures;
@@ -129,8 +142,8 @@ function calibrate() {
 
 /** Deterministic values, chosen for the edges where sign and overflow bugs live. */
 const SEEDS = [
-  0x00000000, 0x00000001, 0xffffffff, 0x00007fff, 0x00008000, 0x0000ffff, 0x7fffffff, 0x80000000, 0x12345678,
-  0x0000000f, 0x000000ff, 0xdeadbeef,
+  0x00000000, 0x00000001, 0xffffffff, 0x00007fff, 0x00008000, 0x0000ffff,
+  0x7fffffff, 0x80000000, 0x12345678, 0x0000000f, 0x000000ff, 0xdeadbeef,
 ];
 
 function seedFor(round) {
@@ -138,7 +151,8 @@ function seedFor(round) {
   const seed = [];
   for (let d = 0; d < 8; d++) seed.push([{ type: "Data", value: d }, pick(d)]);
   // Address registers point into a safe scratch area rather than anywhere.
-  for (let a = 0; a < 6; a++) seed.push([{ type: "Address", value: a }, 0x3000 + a * 0x40]);
+  for (let a = 0; a < 6; a++)
+    seed.push([{ type: "Address", value: a }, 0x3000 + a * 0x40]);
   return seed;
 }
 
@@ -146,7 +160,10 @@ function splice(lines, start, end, replacement) {
   // Replacements carry the indentation of the code they replace. The source
   // lines here are already trimmed, and several checks downstream are anchored
   // patterns, so normalise on the way in rather than at each use.
-  const inserted = replacement === "" ? [] : replacement.split("\n").map((line) => line.trim());
+  const inserted =
+    replacement === ""
+      ? []
+      : replacement.split("\n").map((line) => line.trim());
   return [...lines.slice(0, start), ...inserted, ...lines.slice(end + 1)];
 }
 
@@ -159,10 +176,16 @@ function splice(lines, start, end, replacement) {
  */
 function compare(before, after) {
   const registers = [];
-  for (let i = 0; i < Math.max(before.registers.length, after.registers.length); i++) {
+  for (
+    let i = 0;
+    i < Math.max(before.registers.length, after.registers.length);
+    i++
+  ) {
     if (before.registers[i] !== after.registers[i]) {
       const name = i < 8 ? `d${i}` : `a${i - 8}`;
-      registers.push(`${name} ${hex(before.registers[i])} vs ${hex(after.registers[i])}`);
+      registers.push(
+        `${name} ${hex(before.registers[i])} vs ${hex(after.registers[i])}`,
+      );
     }
   }
   const flags =
@@ -179,13 +202,21 @@ export { adapt, assemble, execute, calibrate, splice, compare, seedFor, hex };
 /* ------------------------------------------------------------------ */
 
 async function runShard(from, to) {
-  const { ruleImpactAuditCases, normalizeRuleImpactAuditSource } = await import("../dist/audit/rule-impact.js");
+  const { ruleImpactAuditCases, normalizeRuleImpactAuditSource } =
+    await import("../dist/audit/rule-impact.js");
   const { lintParsedFile } = await import("../dist/core/lint.js");
   const { defaultRules } = await import("../dist/rules/index.js");
 
   const byId = new Map(defaultRules.map((r) => [r.meta.id, r]));
-  const report = { checked: 0, agreed: 0, disagreed: [], declared: [], skipped: new Map() };
-  const skip = (why, id) => report.skipped.set(why, [...(report.skipped.get(why) ?? []), id]);
+  const report = {
+    checked: 0,
+    agreed: 0,
+    disagreed: [],
+    declared: [],
+    skipped: new Map(),
+  };
+  const skip = (why, id) =>
+    report.skipped.set(why, [...(report.skipped.get(why) ?? []), id]);
 
   for (const testCase of ruleImpactAuditCases.slice(from, to)) {
     const rule = byId.get(testCase.ruleId);
@@ -229,26 +260,42 @@ async function runShard(from, to) {
     // a label address reports a register difference that is purely an artifact
     // of the splice. Only cases whose size actually changed are affected.
     if (lines.some((l) => /^\S+:/.test(l)) && after.length !== lines.length) {
-      skip("fixture loads a label address that moves when the code shrinks", testCase.ruleId);
+      skip(
+        "fixture loads a label address that moves when the code shrinks",
+        testCase.ruleId,
+      );
       continue;
     }
     // s68k adjusts A7 by one on a byte push, where a 68000 adjusts by two to
     // keep the stack even. Anything pushing or popping a byte via SP lands on
     // that divergence, so its stack pointer cannot be compared. See
     // KNOWN_DIVERGENCES in conformance.mjs.
-    if ([...lines, ...after].some((l) => /^move\.b\s.*(-\(sp\)|\(sp\)\+)/i.test(l))) {
-      skip("byte push via SP, where the interpreter is known to diverge", testCase.ruleId);
+    if (
+      [...lines, ...after].some((l) =>
+        /^move\.b\s.*(-\(sp\)|\(sp\)\+)/i.test(l),
+      )
+    ) {
+      skip(
+        "byte push via SP, where the interpreter is known to diverge",
+        testCase.ruleId,
+      );
       continue;
     }
 
     const probe = execute(lines);
     if (probe.error) {
-      skip(`interpreter cannot run the original (${probe.error.slice(0, 40)})`, testCase.ruleId);
+      skip(
+        `interpreter cannot run the original (${probe.error.slice(0, 40)})`,
+        testCase.ruleId,
+      );
       continue;
     }
     const probeAfter = execute(after);
     if (probeAfter.error) {
-      skip(`interpreter cannot run the replacement (${probeAfter.error.slice(0, 40)})`, testCase.ruleId);
+      skip(
+        `interpreter cannot run the replacement (${probeAfter.error.slice(0, 40)})`,
+        testCase.ruleId,
+      );
       continue;
     }
 
@@ -268,7 +315,12 @@ async function runShard(from, to) {
       report.agreed++;
     } else if (found.registers.length === 0 && applicability !== "safe") {
       // Flags only, from a rule that declares it changes them. Documented, not wrong.
-      report.declared.push({ id: testCase.ruleId, caseId: testCase.caseId, applicability, ...found });
+      report.declared.push({
+        id: testCase.ruleId,
+        caseId: testCase.caseId,
+        applicability,
+        ...found,
+      });
     } else {
       report.disagreed.push({
         id: testCase.ruleId,
@@ -315,23 +367,36 @@ async function main() {
 
   // Fan the cases out so no child exceeds the interpreter's ceiling.
   const { execFileSync } = await import("node:child_process");
-  const total = { checked: 0, agreed: 0, disagreed: [], declared: [], skipped: new Map() };
+  const total = {
+    checked: 0,
+    agreed: 0,
+    disagreed: [],
+    declared: [],
+    skipped: new Map(),
+  };
   for (let from = 0; from < ruleImpactAuditCases.length; from += SHARD_SIZE) {
     const to = Math.min(from + SHARD_SIZE, ruleImpactAuditCases.length);
     const out = execFileSync(
       process.execPath,
       ["--experimental-wasm-modules", process.argv[1], `--shard=${from}:${to}`],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], maxBuffer: 1 << 24 },
+      {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+        maxBuffer: 1 << 24,
+      },
     );
     const shard = JSON.parse(out);
     total.checked += shard.checked;
     total.agreed += shard.agreed;
     total.disagreed.push(...shard.disagreed);
     total.declared.push(...shard.declared);
-    for (const [why, n] of shard.skipped) total.skipped.set(why, (total.skipped.get(why) ?? 0) + n);
+    for (const [why, n] of shard.skipped)
+      total.skipped.set(why, (total.skipped.get(why) ?? 0) + n);
   }
 
-  console.log(`Checked ${total.checked} replacements against their originals, ${ROUNDS} seeded states each.`);
+  console.log(
+    `Checked ${total.checked} replacements against their originals, ${ROUNDS} seeded states each.`,
+  );
   console.log(`  identical everywhere:        ${total.agreed}`);
   console.log(`  differ only in declared flags: ${total.declared.length}`);
   console.log(`  unexplained differences:     ${total.disagreed.length}`);
@@ -340,22 +405,36 @@ async function main() {
   }
 
   if (total.declared.length) {
-    console.log("\nDeclared. These rules say they change the condition codes and fire only");
-    console.log("where the codes are dead, so a flag difference is the rule working as");
+    console.log(
+      "\nDeclared. These rules say they change the condition codes and fire only",
+    );
+    console.log(
+      "where the codes are dead, so a flag difference is the rule working as",
+    );
     console.log("documented. Registers match.\n");
     for (const f of total.declared) {
-      console.log(`  ${f.id}${f.caseId ? ` [${f.caseId}]` : ""} (${f.applicability}): ${f.flags}`);
+      console.log(
+        `  ${f.id}${f.caseId ? ` [${f.caseId}]` : ""} (${f.applicability}): ${f.flags}`,
+      );
     }
   }
 
   if (total.disagreed.length) {
-    console.log("\nUnexplained. Either a register differs, which no applicability excuses,");
-    console.log("or a rule claiming `safe` changed a flag. A human decides whether the rule");
+    console.log(
+      "\nUnexplained. Either a register differs, which no applicability excuses,",
+    );
+    console.log(
+      "or a rule claiming `safe` changed a flag. A human decides whether the rule",
+    );
     console.log("or the interpreter is wrong.\n");
     for (const f of total.disagreed) {
-      console.log(`  ${f.id}${f.caseId ? ` [${f.caseId}]` : ""}  (${f.applicability})`);
+      console.log(
+        `  ${f.id}${f.caseId ? ` [${f.caseId}]` : ""}  (${f.applicability})`,
+      );
       console.log(`      replacement: ${JSON.stringify(f.replacement)}`);
-      console.log(`      differs at:  ${[...f.registers, f.flags].filter(Boolean).join(", ")}`);
+      console.log(
+        `      differs at:  ${[...f.registers, f.flags].filter(Boolean).join(", ")}`,
+      );
     }
   }
   return 0;

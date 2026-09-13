@@ -1,5 +1,10 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
 
 export const multiplyLongByOne: Rule = {
@@ -12,8 +17,16 @@ export const multiplyLongByOne: Rule = {
     docs: { source: "ASP68K" },
   },
   checkLine(ctx, line, index) {
-    if (ctx.config.processors.length === 0 || !ctx.config.processors.every((cpu) => cpu === "mc68060")) return;
-    if ((!isInstruction(line, "muls") && !isInstruction(line, "mulu")) || instructionSize(line) !== "l") return;
+    if (
+      ctx.config.processors.length === 0 ||
+      !ctx.config.processors.every((cpu) => cpu === "mc68060")
+    )
+      return;
+    if (
+      (!isInstruction(line, "muls") && !isInstruction(line, "mulu")) ||
+      instructionSize(line) !== "l"
+    )
+      return;
     const imm = immediateOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
     if (!imm || !dest || imm.value.type === "string-literal") return;
@@ -34,10 +47,18 @@ export const multiplyLongByOne: Rule = {
         applicability: ccr.applicability,
       },
       notes: [
-        { message: "The replacement encodes in fewer words and avoids the multiply entirely." },
+        {
+          message:
+            "The replacement encodes in fewer words and avoids the multiply entirely.",
+        },
         ...(ccr.applicability === "safe"
           ? []
-          : [{ message: "Removing MUL preserves the previous CCR instead of writing the multiply result flags." }]),
+          : [
+              {
+                message:
+                  "Removing MUL preserves the previous CCR instead of writing the multiply result flags.",
+              },
+            ]),
       ],
     });
   },

@@ -5,8 +5,10 @@ import { changedFlagsApplicability, sourceOperand } from "./helpers.js";
 
 function singleRegister(op: OperandNode | undefined): string | undefined {
   if (!op) return undefined;
-  if (op.type === "data-register" || op.type === "address-register") return op.register;
-  if (op.type === "register-list" && op.registers.length === 1) return op.registers[0];
+  if (op.type === "data-register" || op.type === "address-register")
+    return op.register;
+  if (op.type === "register-list" && op.registers.length === 1)
+    return op.registers[0];
   return undefined;
 }
 
@@ -27,7 +29,12 @@ export const singleRegisterMovem: Rule = {
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "movem")) return;
-    if (!ctx.config.processors.every((cpu) => ["mc68000", "mc68010", "mc68030", "mc68040"].includes(cpu))) return;
+    if (
+      !ctx.config.processors.every((cpu) =>
+        ["mc68000", "mc68010", "mc68030", "mc68040"].includes(cpu),
+      )
+    )
+      return;
     const size = instructionSize(line) ?? "l";
     const left = operand(line, 0);
     const right = operand(line, 1);
@@ -37,7 +44,12 @@ export const singleRegisterMovem: Rule = {
 
     const register = leftReg ?? rightReg!;
     const registerIsDest = !!rightReg;
-    if (registerIsDest && size === "w" && register.toLowerCase().startsWith("d")) return; // MOVEM.W sign-extends into Dn
+    if (
+      registerIsDest &&
+      size === "w" &&
+      register.toLowerCase().startsWith("d")
+    )
+      return; // MOVEM.W sign-extends into Dn
 
     const sourceText = sourceOperand(ctx, line, 0);
     const destText = sourceOperand(ctx, line, 1);
@@ -46,7 +58,9 @@ export const singleRegisterMovem: Rule = {
 
     // MOVEM preserves CCR. MOVE to Dn/memory writes NZVC; MOVE to An is MOVEA-like and preserves CCR.
     const replacementPreservesFlags =
-      registerIsDest && (register.toLowerCase().startsWith("a") || register.toLowerCase() === "sp");
+      registerIsDest &&
+      (register.toLowerCase().startsWith("a") ||
+        register.toLowerCase() === "sp");
     const safety = replacementPreservesFlags
       ? { applicability: "safe" as const, confidence: "certain" as const }
       : changedFlagsApplicability(ctx, index, ["N", "Z", "V", "C"]);
@@ -58,11 +72,20 @@ export const singleRegisterMovem: Rule = {
       confidence: safety.confidence,
       message: "MOVEM with one register can use MOVE",
       loc: line.mnemonic!.loc,
-      suggestion: { description: `Use ${replacement.toUpperCase()}`, replacement, applicability: safety.applicability },
+      suggestion: {
+        description: `Use ${replacement.toUpperCase()}`,
+        replacement,
+        applicability: safety.applicability,
+      },
       notes: [
         ...(safety.applicability === "safe"
           ? []
-          : [{ message: "MOVEM preserves CCR while the MOVE replacement may update N/Z/V/C; review flag use." }]),
+          : [
+              {
+                message:
+                  "MOVEM preserves CCR while the MOVE replacement may update N/Z/V/C; review flag use.",
+              },
+            ]),
       ],
     });
   },

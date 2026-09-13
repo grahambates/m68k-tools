@@ -1,27 +1,44 @@
 import type { Rule } from "../../core/rule.js";
 import type { RuleContext } from "../../core/context.js";
-import { dataRegisterOperand, immediateExpressionOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateExpressionOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
 
 function m68000Only(ctx: RuleContext): boolean {
   return ctx.config.processors.every((cpu) => cpu === "mc68000");
 }
 
-function hasInterveningLabel(ctx: RuleContext, from: number, to: number): boolean {
+function hasInterveningLabel(
+  ctx: RuleContext,
+  from: number,
+  to: number,
+): boolean {
   for (let i = from + 1; i <= to; i++) if (ctx.line(i)?.label) return true;
   return false;
 }
 
 function knownMoveqBefore(ctx: RuleContext, index: number) {
   const previous = ctx.previousInstruction(index);
-  if (!previous || hasInterveningLabel(ctx, previous.index, index) || !isInstruction(previous.line, "moveq"))
+  if (
+    !previous ||
+    hasInterveningLabel(ctx, previous.index, index) ||
+    !isInstruction(previous.line, "moveq")
+  )
     return undefined;
   const expr = immediateExpressionOperand(previous.line, 0);
   const dst = dataRegisterOperand(previous.line, 1);
   if (!expr || !dst) return undefined;
   const value = ctx.evaluate(expr);
   if (!value.known) return undefined;
-  return { ...previous, register: dst.register.toLowerCase(), count: value.value };
+  return {
+    ...previous,
+    register: dst.register.toLowerCase(),
+    count: value.value,
+  };
 }
 
 function countRegisterCanLoseMoveq(
@@ -44,24 +61,37 @@ export const simplifyKnownRegisterRotate: Rule = {
     id: "optimization/known-register-rotate",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Replace a known register-count rotate with a shorter immediate rotate sequence",
+    description:
+      "Replace a known register-count rotate with a shorter immediate rotate sequence",
     tags: ["flamewing", "68000", "rotate", "sequence", "ccr"],
     docs: { source: "Flamewing M68000 Peephole Optimizations" },
   },
   checkLine(ctx, line, index) {
     if (!m68000Only(ctx)) return;
-    const direction = isInstruction(line, "rol") ? "rol" : isInstruction(line, "ror") ? "ror" : undefined;
+    const direction = isInstruction(line, "rol")
+      ? "rol"
+      : isInstruction(line, "ror")
+        ? "ror"
+        : undefined;
     if (!direction) return;
     const size = instructionSize(line);
     if (size !== "w" && size !== "l") return;
     const countReg = dataRegisterOperand(line, 0);
     const valueReg = dataRegisterOperand(line, 1);
-    if (!countReg || !valueReg || countReg.register.toLowerCase() === valueReg.register.toLowerCase()) return;
+    if (
+      !countReg ||
+      !valueReg ||
+      countReg.register.toLowerCase() === valueReg.register.toLowerCase()
+    )
+      return;
 
     const moveq = knownMoveqBefore(ctx, index);
     if (!moveq || moveq.register !== countReg.register.toLowerCase()) return;
     const count = moveq.count;
-    if (!countRegisterCanLoseMoveq(ctx, moveq.index, index, moveq.register, count)) return;
+    if (
+      !countRegisterCanLoseMoveq(ctx, moveq.index, index, moveq.register, count)
+    )
+      return;
 
     const opposite = direction === "rol" ? "ror" : "rol";
     let replacement: string | undefined;
@@ -103,9 +133,18 @@ export const simplifyKnownRegisterRotate: Rule = {
         },
         ...(safety.applicability === "safe"
           ? []
-          : [{ message: "The equivalent opposite-direction form can leave a different C flag." }]),
+          : [
+              {
+                message:
+                  "The equivalent opposite-direction form can leave a different C flag.",
+              },
+            ]),
       ],
-      data: { secondInstructionIndex: index, countRegister: moveq.register, rotateCount: count },
+      data: {
+        secondInstructionIndex: index,
+        countRegister: moveq.register,
+        rotateCount: count,
+      },
     });
   },
 };
@@ -115,7 +154,8 @@ export const roxlToAddx: Rule = {
     id: "optimization/roxl-to-addx",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Use ADDX for small rotate-through-extend-left counts on 68000",
+    description:
+      "Use ADDX for small rotate-through-extend-left counts on 68000",
     tags: ["flamewing", "68000", "rotate", "addx", "ccr"],
     docs: { source: "Flamewing M68000 Peephole Optimizations" },
   },
@@ -130,9 +170,10 @@ export const roxlToAddx: Rule = {
     if (!value.known || (value.value !== 1 && value.value !== 2)) return;
     if (size === "l" && value.value !== 1) return;
 
-    const replacement = Array.from({ length: value.value }, () => `addx.${size} ${dst.register},${dst.register}`).join(
-      "\n",
-    );
+    const replacement = Array.from(
+      { length: value.value },
+      () => `addx.${size} ${dst.register},${dst.register}`,
+    ).join("\n");
     // ADDX implements the same rotate-through-X data path and final X/C/N;
     // its overflow and cumulative-Z semantics differ from ROXL.
     const safety = changedFlagsApplicability(ctx, index, ["Z", "V"]);
@@ -151,7 +192,12 @@ export const roxlToAddx: Rule = {
       notes:
         safety.applicability === "safe"
           ? undefined
-          : [{ message: "ADDX has different V and cumulative-Z flag semantics from ROXL." }],
+          : [
+              {
+                message:
+                  "ADDX has different V and cumulative-Z flag semantics from ROXL.",
+              },
+            ],
     });
   },
 };
@@ -167,7 +213,12 @@ export const lslByteSeven: Rule = {
     docs: { source: "Flamewing M68000 Peephole Optimizations" },
   },
   checkLine(ctx, line, index) {
-    if (!m68000Only(ctx) || !isInstruction(line, "lsl") || instructionSize(line) !== "b") return;
+    if (
+      !m68000Only(ctx) ||
+      !isInstruction(line, "lsl") ||
+      instructionSize(line) !== "b"
+    )
+      return;
     const expr = immediateExpressionOperand(line, 0);
     const dst = dataRegisterOperand(line, 1);
     if (!expr || !dst) return;
@@ -191,7 +242,12 @@ export const lslByteSeven: Rule = {
       notes: [
         ...(safety.applicability === "safe"
           ? []
-          : [{ message: "X/C differ from the original LSL and must not be observed." }]),
+          : [
+              {
+                message:
+                  "X/C differ from the original LSL and must not be observed.",
+              },
+            ]),
       ],
     });
   },
@@ -216,7 +272,12 @@ export const aslByteSeven: Rule = {
     docs: { source: "Flamewing M68000 Peephole Optimizations" },
   },
   checkLine(ctx, line, index) {
-    if (!m68000Only(ctx) || !isInstruction(line, "asl") || instructionSize(line) !== "b") return;
+    if (
+      !m68000Only(ctx) ||
+      !isInstruction(line, "asl") ||
+      instructionSize(line) !== "b"
+    )
+      return;
     const expr = immediateExpressionOperand(line, 0);
     const dst = dataRegisterOperand(line, 1);
     if (!expr || !dst) return;
@@ -241,7 +302,12 @@ export const aslByteSeven: Rule = {
       notes: [
         ...(safety.applicability === "safe"
           ? []
-          : [{ message: "X/V/C differ from the original ASL and must not be observed." }]),
+          : [
+              {
+                message:
+                  "X/V/C differ from the original ASL and must not be observed.",
+              },
+            ]),
       ],
     });
   },

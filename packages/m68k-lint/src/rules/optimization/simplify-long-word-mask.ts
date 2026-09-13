@@ -1,8 +1,15 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateExpressionOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateExpressionOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
 
-function m68000Only(ctx: Parameters<NonNullable<Rule["checkLine"]>>[0]): boolean {
+function m68000Only(
+  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
+): boolean {
   return ctx.config.processors.every((cpu) => cpu === "mc68000");
 }
 
@@ -16,7 +23,12 @@ export const simplifyLongWordMasks: Rule = {
     docs: { source: "Flamewing M68000 Peephole Optimizations" },
   },
   checkLine(ctx, line, index) {
-    if (!m68000Only(ctx) || !isInstruction(line, "and") || instructionSize(line) !== "l") return;
+    if (
+      !m68000Only(ctx) ||
+      !isInstruction(line, "and") ||
+      instructionSize(line) !== "l"
+    )
+      return;
     const expr = immediateExpressionOperand(line, 0);
     const dst = dataRegisterOperand(line, 1);
     if (!expr || !dst) return;
@@ -51,7 +63,12 @@ export const simplifyLongWordMasks: Rule = {
       notes: [
         ...(safety.applicability === "safe"
           ? []
-          : [{ message: "The condition codes differ from the original; review CCR use before applying." }]),
+          : [
+              {
+                message:
+                  "The condition codes differ from the original; review CCR use before applying.",
+              },
+            ]),
       ],
     });
   },

@@ -2,10 +2,16 @@ import type { ExpressionNode, ParsedLine } from "m68k-parser";
 import type { RuleContext } from "../../core/context.js";
 import type { Flag } from "../../semantics/flags.js";
 
-export function sourceOperand(ctx: RuleContext, line: ParsedLine, operandIndex: number): string | undefined {
+export function sourceOperand(
+  ctx: RuleContext,
+  line: ParsedLine,
+  operandIndex: number,
+): string | undefined {
   const op = line.operands?.[operandIndex];
   if (!op) return undefined;
-  return ctx.sourceLine((line.lineNumber ?? 1) - 1)?.slice(op.loc.start, op.loc.end);
+  return ctx
+    .sourceLine((line.lineNumber ?? 1) - 1)
+    ?.slice(op.loc.start, op.loc.end);
 }
 
 /**
@@ -33,18 +39,32 @@ export function replaceOperandInLine(
  * Whether a label sits between two instructions. A label means control can
  * arrive without passing the first, so a fold spanning the pair is unsafe.
  */
-export function hasLabelBetween(ctx: RuleContext, from: number, to: number): boolean {
+export function hasLabelBetween(
+  ctx: RuleContext,
+  from: number,
+  to: number,
+): boolean {
   for (let i = from + 1; i <= to; i++) if (ctx.line(i)?.label) return true;
   return false;
 }
 
-export function changedFlagsApplicability(ctx: RuleContext, index: number, flags: readonly Flag[]) {
+export function changedFlagsApplicability(
+  ctx: RuleContext,
+  index: number,
+  flags: readonly Flag[],
+) {
   const states = flags.map((flag) => ctx.flags.isLiveAfter(index, flag));
   if (states.every((state) => state === "dead"))
     return { applicability: "safe" as const, confidence: "certain" as const };
   if (states.some((state) => state === "live"))
-    return { applicability: "conditional" as const, confidence: "high" as const };
-  return { applicability: "conditional" as const, confidence: "medium" as const };
+    return {
+      applicability: "conditional" as const,
+      confidence: "high" as const,
+    };
+  return {
+    applicability: "conditional" as const,
+    confidence: "medium" as const,
+  };
 }
 
 export function isPowerOfTwo(value: number): boolean {
@@ -65,7 +85,11 @@ export function isPowerOfTwo(value: number): boolean {
  * The number is used only when the text cannot be recovered, which happens for
  * a value the rule derived rather than copied.
  */
-export function valueText(ctx: RuleContext, expression: ExpressionNode | undefined, evaluated: number): string {
+export function valueText(
+  ctx: RuleContext,
+  expression: ExpressionNode | undefined,
+  evaluated: number,
+): string {
   return operandText(ctx, expression) ?? String(evaluated);
 }
 
@@ -81,7 +105,10 @@ export function valueText(ctx: RuleContext, expression: ExpressionNode | undefin
  * expression syntax has no token in which a space is significant, once string
  * literals are excluded, which every caller already does.
  */
-function operandText(ctx: RuleContext, expression: ExpressionNode | undefined): string | undefined {
+function operandText(
+  ctx: RuleContext,
+  expression: ExpressionNode | undefined,
+): string | undefined {
   let node = expression;
   while (node?.type === "group") node = node.expression;
   const text = ctx.sourceTextOf(node)?.replace(/\s+/g, "");
@@ -96,7 +123,11 @@ function operandText(ctx: RuleContext, expression: ExpressionNode | undefined): 
  * inside it and `-SCREEN_BW/2` is not the negation of `SCREEN_BW/2`. Negating
  * an existing minus cancels instead of stacking, so `-SMALL` gives `SMALL`.
  */
-export function negatedValueText(ctx: RuleContext, expression: ExpressionNode | undefined, negated: number): string {
+export function negatedValueText(
+  ctx: RuleContext,
+  expression: ExpressionNode | undefined,
+  negated: number,
+): string {
   if (expression?.type === "unary-op" && expression.operator === "-") {
     const inner = operandText(ctx, expression.operand);
     if (inner) return inner;
@@ -107,7 +138,9 @@ export function negatedValueText(ctx: RuleContext, expression: ExpressionNode | 
 }
 
 function isAtom(expression: ExpressionNode | undefined): boolean {
-  return expression?.type === "symbol" || expression?.type === "numeric-literal";
+  return (
+    expression?.type === "symbol" || expression?.type === "numeric-literal"
+  );
 }
 
 /**
@@ -117,7 +150,11 @@ function isAtom(expression: ExpressionNode | undefined): boolean {
  * operator may bind tighter than something inside it: `1<<BASE+1` relies on the
  * assembler agreeing with C about precedence, where `1<<(BASE+1)` does not.
  */
-export function embeddedValueText(ctx: RuleContext, expression: ExpressionNode | undefined, evaluated: number): string {
+export function embeddedValueText(
+  ctx: RuleContext,
+  expression: ExpressionNode | undefined,
+  evaluated: number,
+): string {
   const text = valueText(ctx, expression, evaluated);
   return isAtom(expression) || text === String(evaluated) ? text : `(${text})`;
 }
@@ -130,7 +167,9 @@ export function embeddedValueText(ctx: RuleContext, expression: ExpressionNode |
  * `#5`. So the derived form is only worth writing when there is a name in it to
  * save.
  */
-export function containsSymbol(expression: ExpressionNode | undefined): boolean {
+export function containsSymbol(
+  expression: ExpressionNode | undefined,
+): boolean {
   if (!expression || typeof expression !== "object") return false;
   if (expression.type === "symbol") return true;
   return Object.values(expression).some((value) =>

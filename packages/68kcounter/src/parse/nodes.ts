@@ -1,13 +1,13 @@
 import { parseLine } from "m68k-parser";
 import {
-  AddressingMode,
+  type AddressingMode,
   aliases,
-  Directive,
+  type Directive,
   isDirective,
   isMnemonic,
   isQualifier,
-  Mnemonic,
-  Qualifier,
+  type Mnemonic,
+  type Qualifier,
   Qualifiers,
 } from "../syntax";
 import { nodeAddressingMode } from "./operandMode";
@@ -181,7 +181,7 @@ export class StatementNode extends Node {
         }
       } else {
         this.operands.push(
-          new EffectiveAddressNode(start, opText, nodeAddressingMode(operand))
+          new EffectiveAddressNode(start, opText, nodeAddressingMode(operand)),
         );
       }
     }

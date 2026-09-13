@@ -1,4 +1,9 @@
-import type { ExpressionNode, OperandNode, ParsedFile, ParsedLine } from "m68k-parser";
+import type {
+  ExpressionNode,
+  OperandNode,
+  ParsedFile,
+  ParsedLine,
+} from "m68k-parser";
 import { buildControlFlowGraph, type ControlFlowGraph } from "./cfg.js";
 import { evaluateConstant } from "./constants.js";
 import {
@@ -12,7 +17,8 @@ import { instructionSize, isExecutableLine } from "../util/ast.js";
 import { semanticMnemonic } from "../semantics/mnemonics.js";
 
 export type RegisterLiveness = "dead" | "live" | "unknown";
-export type RegisterValue = { kind: "constant"; value: number } | { kind: "unknown" };
+export type RegisterValue =
+  { kind: "constant"; value: number } | { kind: "unknown" };
 const UNKNOWN: RegisterValue = { kind: "unknown" };
 
 function mergeLive(a: RegisterLiveness, b: RegisterLiveness): RegisterLiveness {
@@ -21,7 +27,10 @@ function mergeLive(a: RegisterLiveness, b: RegisterLiveness): RegisterLiveness {
   return "dead";
 }
 function sameValue(a: RegisterValue, b: RegisterValue): boolean {
-  return a.kind === b.kind && (a.kind === "unknown" || (b.kind === "constant" && a.value === b.value));
+  return (
+    a.kind === b.kind &&
+    (a.kind === "unknown" || (b.kind === "constant" && a.value === b.value))
+  );
 }
 function normalize32(n: number): number {
   return n | 0;
@@ -29,7 +38,11 @@ function normalize32(n: number): number {
 function signExtend(value: number, bits: 8 | 16): number {
   return bits === 8 ? (value << 24) >> 24 : (value << 16) >> 16;
 }
-function applyShift(kind: string, value: number, count: number): number | undefined {
+function applyShift(
+  kind: string,
+  value: number,
+  count: number,
+): number | undefined {
   const n = count & 63;
   switch (kind) {
     case "lsl":
@@ -43,13 +56,19 @@ function applyShift(kind: string, value: number, count: number): number | undefi
       return undefined;
   }
 }
-function immediateExpr(line: ParsedLine, index: number): ExpressionNode | undefined {
+function immediateExpr(
+  line: ParsedLine,
+  index: number,
+): ExpressionNode | undefined {
   const op = line.operands?.[index];
-  return op?.type === "immediate" && op.value.type !== "string-literal" ? op.value : undefined;
+  return op?.type === "immediate" && op.value.type !== "string-literal"
+    ? op.value
+    : undefined;
 }
 function directRegister(line: ParsedLine, index: number): Register | undefined {
   const op = line.operands?.[index];
-  if (op?.type !== "data-register" && op?.type !== "address-register") return undefined;
+  if (op?.type !== "data-register" && op?.type !== "address-register")
+    return undefined;
   return normalizeRegister(op.register);
 }
 
@@ -67,12 +86,17 @@ const BASE_ADDRESS_OPERANDS = new Set([
 ]);
 
 function baseRegisterOf(op: OperandNode): Register | undefined {
-  const base = (op as { register?: { type?: string; register?: string } }).register;
-  if (!base || base.type !== "address-register" || !base.register) return undefined;
+  const base = (op as { register?: { type?: string; register?: string } })
+    .register;
+  if (!base || base.type !== "address-register" || !base.register)
+    return undefined;
   return normalizeRegister(base.register);
 }
 
-function isFullDataRegisterOverwriteWithoutUpperRead(line: ParsedLine, register: Register): boolean {
+function isFullDataRegisterOverwriteWithoutUpperRead(
+  line: ParsedLine,
+  register: Register,
+): boolean {
   if (!register.startsWith("d")) return false;
   const mnemonic = semanticMnemonic(line);
   const size = instructionSize(line);
@@ -81,7 +105,11 @@ function isFullDataRegisterOverwriteWithoutUpperRead(line: ParsedLine, register:
   if (mnemonic === "moveq" && dst1 === register) return true;
   if (mnemonic === "move" && size === "l" && dst1 === register) return true;
   if (mnemonic === "clr" && size === "l" && dst0 === register) return true;
-  if (((mnemonic === "ext" && size === "l") || mnemonic === "extb") && dst0 === register) return true;
+  if (
+    ((mnemonic === "ext" && size === "l") || mnemonic === "extb") &&
+    dst0 === register
+  )
+    return true;
   return false;
 }
 
@@ -103,7 +131,10 @@ export interface RegisterAnalysis {
   isLiveAfter(index: number, register: RegisterLike): RegisterLiveness;
   valueBefore(index: number, register: RegisterLike): RegisterValue;
   valueAfter(index: number, register: RegisterLike): RegisterValue;
-  knownConstantBefore(index: number, register: RegisterLike): number | undefined;
+  knownConstantBefore(
+    index: number,
+    register: RegisterLike,
+  ): number | undefined;
   deadDataRegistersAfter(index: number): readonly Register[];
   /**
    * Whether any of `mask`'s bits are read before being overwritten.
@@ -112,7 +143,11 @@ export interface RegisterAnalysis {
    * base address reads all 32 bits of it, which is how a sign-extended upper
    * half becomes observable.
    */
-  registerBitsUseAfter(index: number, register: RegisterLike, mask: number): RegisterBitsUse;
+  registerBitsUseAfter(
+    index: number,
+    register: RegisterLike,
+    mask: number,
+  ): RegisterBitsUse;
   upperWordUseAfter(index: number, register: RegisterLike): UpperWordUse;
 }
 
@@ -124,7 +159,8 @@ export function analyzeRegisters(
   const registerBitsUseMemo = new Map<string, RegisterBitsUse>();
   const liveIn = file.lines.map(() => new Map<Register, RegisterLiveness>());
   const liveOut = file.lines.map(() => new Map<Register, RegisterLiveness>());
-  for (const maps of [liveIn, liveOut]) for (const map of maps) for (const r of REGISTERS) map.set(r, "dead");
+  for (const maps of [liveIn, liveOut])
+    for (const map of maps) for (const r of REGISTERS) map.set(r, "dead");
 
   let changed = true;
   while (changed) {
@@ -135,7 +171,8 @@ export function analyzeRegisters(
       const sem = getRegisterSemantics(line);
       for (const r of REGISTERS) {
         let out: RegisterLiveness = cfg.escapes[i] ? "unknown" : "dead";
-        for (const succ of cfg.successors[i]) out = mergeLive(out, liveIn[succ].get(r) ?? "dead");
+        for (const succ of cfg.successors[i])
+          out = mergeLive(out, liveIn[succ].get(r) ?? "dead");
         let before: RegisterLiveness;
         if (sem.reads.has(r)) before = "live";
         // A byte or word write to a data register leaves the bits above it in
@@ -209,14 +246,25 @@ export function analyzeRegisters(
 
         // Definite full-register values. Partial Dn writes are deliberately left unknown.
         if (dst1 === r && mnemonic === "moveq" && immediate !== undefined)
-          outgoing = { kind: "constant", value: normalize32((immediate << 24) >> 24) };
+          outgoing = {
+            kind: "constant",
+            value: normalize32((immediate << 24) >> 24),
+          };
         else if (dst1 === r && ["move", "movea"].includes(mnemonic)) {
           const src = directRegister(line, 0);
-          if (immediate !== undefined && (size === "l" || dst1.startsWith("a"))) {
-            const value = size === "w" && dst1.startsWith("a") ? (immediate << 16) >> 16 : normalize32(immediate);
+          if (
+            immediate !== undefined &&
+            (size === "l" || dst1.startsWith("a"))
+          ) {
+            const value =
+              size === "w" && dst1.startsWith("a")
+                ? (immediate << 16) >> 16
+                : normalize32(immediate);
             outgoing = { kind: "constant", value };
-          } else if (src && (size === "l" || dst1.startsWith("a"))) outgoing = beforeValues[i].get(src) ?? UNKNOWN;
-        } else if (dst0 === r && mnemonic === "clr" && size === "l") outgoing = { kind: "constant", value: 0 };
+          } else if (src && (size === "l" || dst1.startsWith("a")))
+            outgoing = beforeValues[i].get(src) ?? UNKNOWN;
+        } else if (dst0 === r && mnemonic === "clr" && size === "l")
+          outgoing = { kind: "constant", value: 0 };
         else if (
           dst1 === r &&
           ["sub", "suba"].includes(mnemonic) &&
@@ -228,30 +276,60 @@ export function analyzeRegisters(
           const source = line.operands?.[0];
           if (source?.type === "absolute-address") {
             const value = evalExpr(source.address);
-            if (value !== undefined) outgoing = { kind: "constant", value: normalize32(value) };
+            if (value !== undefined)
+              outgoing = { kind: "constant", value: normalize32(value) };
           }
-        } else if (dst1 === r && ["addq", "subq"].includes(mnemonic) && immediate !== undefined) {
+        } else if (
+          dst1 === r &&
+          ["addq", "subq"].includes(mnemonic) &&
+          immediate !== undefined
+        ) {
           const prior = beforeValues[i].get(r) ?? UNKNOWN;
-          if (prior.kind === "constant" && (size === "l" || r.startsWith("a"))) {
+          if (
+            prior.kind === "constant" &&
+            (size === "l" || r.startsWith("a"))
+          ) {
             outgoing = {
               kind: "constant",
-              value: normalize32(prior.value + (mnemonic === "addq" ? immediate : -immediate)),
+              value: normalize32(
+                prior.value + (mnemonic === "addq" ? immediate : -immediate),
+              ),
             };
           }
-        } else if (dst1 === r && ["add", "sub"].includes(mnemonic) && immediate !== undefined) {
+        } else if (
+          dst1 === r &&
+          ["add", "sub"].includes(mnemonic) &&
+          immediate !== undefined
+        ) {
           const prior = beforeValues[i].get(r) ?? UNKNOWN;
           if (prior.kind === "constant" && size === "l") {
             const delta = mnemonic.startsWith("sub") ? -immediate : immediate;
-            outgoing = { kind: "constant", value: normalize32(prior.value + delta) };
+            outgoing = {
+              kind: "constant",
+              value: normalize32(prior.value + delta),
+            };
           }
-        } else if (dst1 === r && ["adda", "suba"].includes(mnemonic) && immediate !== undefined) {
+        } else if (
+          dst1 === r &&
+          ["adda", "suba"].includes(mnemonic) &&
+          immediate !== undefined
+        ) {
           const prior = beforeValues[i].get(r) ?? UNKNOWN;
           if (prior.kind === "constant") {
-            const src = size === "w" ? signExtend(immediate, 16) : normalize32(immediate);
+            const src =
+              size === "w" ? signExtend(immediate, 16) : normalize32(immediate);
             const delta = mnemonic === "suba" ? -src : src;
-            outgoing = { kind: "constant", value: normalize32(prior.value + delta) };
+            outgoing = {
+              kind: "constant",
+              value: normalize32(prior.value + delta),
+            };
           }
-        } else if (dst1 === r && ["and", "or", "eor"].includes(mnemonic) && immediate !== undefined && size === "l") {
+        } else if (
+          dst1 === r &&
+          ["and", "or", "eor"].includes(mnemonic) &&
+          immediate !== undefined &&
+          size === "l"
+        ) {
           const prior = beforeValues[i].get(r) ?? UNKNOWN;
           if (prior.kind === "constant") {
             const imm = normalize32(immediate);
@@ -263,32 +341,55 @@ export function analyzeRegisters(
           }
         } else if (dst0 === r && mnemonic === "not" && size === "l") {
           const prior = beforeValues[i].get(r) ?? UNKNOWN;
-          if (prior.kind === "constant") outgoing = { kind: "constant", value: normalize32(~prior.value) };
+          if (prior.kind === "constant")
+            outgoing = { kind: "constant", value: normalize32(~prior.value) };
         } else if (dst0 === r && mnemonic === "neg" && size === "l") {
           const prior = beforeValues[i].get(r) ?? UNKNOWN;
-          if (prior.kind === "constant") outgoing = { kind: "constant", value: normalize32(-prior.value) };
+          if (prior.kind === "constant")
+            outgoing = { kind: "constant", value: normalize32(-prior.value) };
         } else if (dst0 === r && mnemonic === "swap") {
           const prior = beforeValues[i].get(r) ?? UNKNOWN;
           if (prior.kind === "constant") {
             const u = prior.value >>> 0;
-            outgoing = { kind: "constant", value: normalize32(((u & 0xffff) << 16) | (u >>> 16)) };
+            outgoing = {
+              kind: "constant",
+              value: normalize32(((u & 0xffff) << 16) | (u >>> 16)),
+            };
           }
         } else if (dst0 === r && ["ext", "extb"].includes(mnemonic)) {
           const prior = beforeValues[i].get(r) ?? UNKNOWN;
           if (prior.kind === "constant") {
-            if (mnemonic === "extb") outgoing = { kind: "constant", value: signExtend(prior.value & 0xff, 8) };
+            if (mnemonic === "extb")
+              outgoing = {
+                kind: "constant",
+                value: signExtend(prior.value & 0xff, 8),
+              };
             else if (size === "w") {
               const low = signExtend(prior.value & 0xff, 8) & 0xffff;
-              outgoing = { kind: "constant", value: normalize32((prior.value & ~0xffff) | low) };
-            } else if (size === "l") outgoing = { kind: "constant", value: signExtend(prior.value & 0xffff, 16) };
+              outgoing = {
+                kind: "constant",
+                value: normalize32((prior.value & ~0xffff) | low),
+              };
+            } else if (size === "l")
+              outgoing = {
+                kind: "constant",
+                value: signExtend(prior.value & 0xffff, 16),
+              };
           }
-        } else if (dst1 === r && ["muls", "mulu"].includes(mnemonic) && immediate !== undefined && size === "w") {
+        } else if (
+          dst1 === r &&
+          ["muls", "mulu"].includes(mnemonic) &&
+          immediate !== undefined &&
+          size === "w"
+        ) {
           const prior = beforeValues[i].get(r) ?? UNKNOWN;
           if (prior.kind === "constant") {
             const lhsUnsigned = prior.value & 0xffff;
             const rhsUnsigned = immediate & 0xffff;
-            const lhs = mnemonic === "muls" ? signExtend(lhsUnsigned, 16) : lhsUnsigned;
-            const rhs = mnemonic === "muls" ? signExtend(rhsUnsigned, 16) : rhsUnsigned;
+            const lhs =
+              mnemonic === "muls" ? signExtend(lhsUnsigned, 16) : lhsUnsigned;
+            const rhs =
+              mnemonic === "muls" ? signExtend(rhsUnsigned, 16) : rhsUnsigned;
             outgoing = { kind: "constant", value: normalize32(lhs * rhs) };
           }
         } else if (
@@ -300,7 +401,8 @@ export function analyzeRegisters(
           const prior = beforeValues[i].get(r) ?? UNKNOWN;
           if (prior.kind === "constant") {
             const shifted = applyShift(mnemonic, prior.value, immediate);
-            if (shifted !== undefined) outgoing = { kind: "constant", value: shifted };
+            if (shifted !== undefined)
+              outgoing = { kind: "constant", value: shifted };
           }
         }
 
@@ -312,8 +414,13 @@ export function analyzeRegisters(
     }
   }
 
-  const reg = (value: RegisterLike) => normalizeRegister(value) ?? (value as Register);
-  const registerBitsUseAfter = (index: number, register: RegisterLike, differingMask: number): RegisterBitsUse => {
+  const reg = (value: RegisterLike) =>
+    normalizeRegister(value) ?? (value as Register);
+  const registerBitsUseAfter = (
+    index: number,
+    register: RegisterLike,
+    differingMask: number,
+  ): RegisterBitsUse => {
     const target = reg(register);
     const mask = differingMask >>> 0;
     if (mask === 0) return "unused";
@@ -335,30 +442,49 @@ export function analyzeRegisters(
       // ordinary `move.b (a0)+,d0 / ext.w d0` sign-extension as a partial
       // write whose preserved bits are used.
       const extendedSourceMask =
-        mnemonic === "extb" ? 0xff : mnemonic === "ext" ? (size === "l" ? 0xffff : 0xff) : undefined;
+        mnemonic === "extb"
+          ? 0xff
+          : mnemonic === "ext"
+            ? size === "l"
+              ? 0xffff
+              : 0xff
+            : undefined;
       let readMask = 0;
       let saw = false;
       for (const [position, op] of (line.operands ?? []).entries()) {
-        if (op.type === "data-register" && normalizeRegister(op.register) === target) {
+        if (
+          op.type === "data-register" &&
+          normalizeRegister(op.register) === target
+        ) {
           saw = true;
           if (longDividend && position === 1) readMask = 0xffffffff;
-          else if (extendedSourceMask !== undefined) readMask |= extendedSourceMask;
+          else if (extendedSourceMask !== undefined)
+            readMask |= extendedSourceMask;
           else if (size === "b") readMask |= 0xff;
           else if (size === "w") readMask |= 0xffff;
           else if (size === "l") readMask = 0xffffffff;
           else return undefined;
-        } else if (op.type === "register-list" && op.registers.some((r: string) => normalizeRegister(r) === target)) {
+        } else if (
+          op.type === "register-list" &&
+          op.registers.some((r: string) => normalizeRegister(r) === target)
+        ) {
           saw = true;
           if (size === "w") readMask |= 0xffff;
           else if (size === "l") readMask = 0xffffffff;
           else return undefined;
-        } else if (op.type === "address-register" && normalizeRegister(op.register) === target) {
+        } else if (
+          op.type === "address-register" &&
+          normalizeRegister(op.register) === target
+        ) {
           saw = true;
           // Read as a value rather than an address: only the operand's width.
           if (size === "w") readMask |= 0xffff;
           else if (size === "l") readMask = 0xffffffff;
           else return undefined;
-        } else if (BASE_ADDRESS_OPERANDS.has(op.type) && baseRegisterOf(op) === target) {
+        } else if (
+          BASE_ADDRESS_OPERANDS.has(op.type) &&
+          baseRegisterOf(op) === target
+        ) {
           // Used as an address. The whole register forms it, whatever the
           // operand's size, so a sign-extended upper half is observed here.
           saw = true;
@@ -369,9 +495,13 @@ export function analyzeRegisters(
           op.type === "memory-indirect"
         ) {
           const idx = op.indexRegister;
-          if (idx?.type === "data-register" && normalizeRegister(idx.register) === target) {
+          if (
+            idx?.type === "data-register" &&
+            normalizeRegister(idx.register) === target
+          ) {
             saw = true;
-            const idxSize = op.indexSize?.type === "size" ? op.indexSize.size : undefined;
+            const idxSize =
+              op.indexSize?.type === "size" ? op.indexSize.size : undefined;
             if (idxSize === "w") readMask |= 0xffff;
             else if (idxSize === "l") readMask = 0xffffffff;
             else return undefined;
@@ -389,9 +519,14 @@ export function analyzeRegisters(
     const swappedTarget = (line: ParsedLine): boolean => {
       if (semanticMnemonic(line) !== "swap") return false;
       const ops = line.operands ?? [];
-      return ops.length === 1 && ops[0].type === "data-register" && normalizeRegister(ops[0].register) === target;
+      return (
+        ops.length === 1 &&
+        ops[0].type === "data-register" &&
+        normalizeRegister(ops[0].register) === target
+      );
     };
-    const rotateHalves = (mask: number): number => ((mask << 16) | (mask >>> 16)) >>> 0;
+    const rotateHalves = (mask: number): number =>
+      ((mask << 16) | (mask >>> 16)) >>> 0;
 
     /** Bits this instruction writes into the target data register, if knowable. */
     const directWriteMask = (line: ParsedLine): number | undefined => {
@@ -402,7 +537,8 @@ export function analyzeRegisters(
       // A register list, or an operand shape not handled here, is not.
       const direct = (line.operands ?? []).some(
         (op) =>
-          (op.type === "data-register" || op.type === "address-register") && normalizeRegister(op.register) === target,
+          (op.type === "data-register" || op.type === "address-register") &&
+          normalizeRegister(op.register) === target,
       );
       if (!direct) return undefined;
       // Arithmetic that reads an address register and writes it back keeps the
@@ -464,11 +600,18 @@ export function analyzeRegisters(
         if (frame.successors) {
           if (frame.childResult) {
             if (frame.childResult === "used") frame.aggregate = "used";
-            else if (frame.childResult === "unknown" && frame.aggregate !== "used") frame.aggregate = "unknown";
+            else if (
+              frame.childResult === "unknown" &&
+              frame.aggregate !== "used"
+            )
+              frame.aggregate = "unknown";
             frame.childResult = undefined;
             frame.nextSuccessor!++;
           }
-          if (frame.aggregate === "used" || frame.nextSuccessor === frame.successors.length) {
+          if (
+            frame.aggregate === "used" ||
+            frame.nextSuccessor === frame.successors.length
+          ) {
             finish(frame.aggregate!);
             continue;
           }
@@ -517,7 +660,10 @@ export function analyzeRegisters(
         const successors = [...cfg.successors[frame.i]];
         frame.successors = successors;
         frame.nextSuccessor = 0;
-        frame.aggregate = cfg.escapes[frame.i] || successors.length === 0 ? "unknown" : "unused";
+        frame.aggregate =
+          cfg.escapes[frame.i] || successors.length === 0
+            ? "unknown"
+            : "unused";
       }
       return result!;
     };
@@ -548,7 +694,9 @@ export function analyzeRegisters(
       return v.kind === "constant" ? v.value : undefined;
     },
     deadDataRegistersAfter(index) {
-      return DATA_REGISTERS.filter((r) => (liveOut[index]?.get(r) ?? "unknown") === "dead");
+      return DATA_REGISTERS.filter(
+        (r) => (liveOut[index]?.get(r) ?? "unknown") === "dead",
+      );
     },
     registerBitsUseAfter(index, register, mask) {
       return registerBitsUseAfter(index, register, mask);

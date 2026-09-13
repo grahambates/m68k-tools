@@ -15,11 +15,11 @@ import type {
 import * as path from "path";
 import {
   DecorationRangeBehavior,
-  ExtensionContext,
-  QuickPickItem,
+  type ExtensionContext,
+  type QuickPickItem,
   QuickPickItemKind,
   Range,
-  TextEditor,
+  type TextEditor,
   commands,
   window,
   workspace,
@@ -27,13 +27,13 @@ import {
 
 import {
   LanguageClient,
-  LanguageClientOptions,
-  ServerOptions,
+  type LanguageClientOptions,
+  type ServerOptions,
   TransportKind,
 } from "vscode-languageclient/node";
 import {
-  RegisterRemappingModel,
-  RegisterRemappingResult,
+  type RegisterRemappingModel,
+  type RegisterRemappingResult,
   RegisterRemappingView,
 } from "./RegisterRemappingView";
 

@@ -1,8 +1,8 @@
 import * as lsp from "vscode-languageserver";
 import type { ParsedLine } from "m68k-parser";
-import { Provider } from ".";
-import { AstNode, nodeAtPosition } from "../ast";
-import { Context } from "../context";
+import { type Provider } from ".";
+import { type AstNode, nodeAtPosition } from "../ast";
+import { type Context } from "../context";
 import { isProcessed } from "../DocumentProcessor";
 import { locationAsRange } from "../geometry";
 import { getDefinitions } from "../symbols";

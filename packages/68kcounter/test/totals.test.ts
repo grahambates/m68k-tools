@@ -1,4 +1,4 @@
-import { Line, StatementNode } from "../src/parse";
+import { type Line, StatementNode } from "../src/parse";
 import { calculateTotals } from "../src/totals";
 
 describe("calculateTotals", () => {

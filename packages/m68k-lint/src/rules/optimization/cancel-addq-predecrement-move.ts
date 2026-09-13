@@ -6,7 +6,10 @@ import {
   instructionSize,
   isInstruction,
 } from "../../util/ast.js";
-import { normalizeRegister, registersReadByOperand } from "../../semantics/registers.js";
+import {
+  normalizeRegister,
+  registersReadByOperand,
+} from "../../semantics/registers.js";
 import { hasLabelBetween } from "./helpers.js";
 
 export const cancelAddqPredecrementMove: Rule = {
@@ -14,7 +17,8 @@ export const cancelAddqPredecrementMove: Rule = {
     id: "optimization/cancel-addq-predecrement-move",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Cancel ADDQ address adjustment against an immediately following predecrement MOVE",
+    description:
+      "Cancel ADDQ address adjustment against an immediately following predecrement MOVE",
     tags: ["asp68k", "sequence", "address-register"],
     docs: { source: "ASP68K" },
   },
@@ -29,7 +33,12 @@ export const cancelAddqPredecrementMove: Rule = {
     if (!q.known) return;
 
     const next = ctx.nextInstruction(index);
-    if (!next || hasLabelBetween(ctx, index, next.index) || !isInstruction(next.line, "move")) return;
+    if (
+      !next ||
+      hasLabelBetween(ctx, index, next.index) ||
+      !isInstruction(next.line, "move")
+    )
+      return;
     const moveSize = instructionSize(next.line);
     if (moveSize !== "w" && moveSize !== "l") return;
     const width = moveSize === "w" ? 2 : 4;
@@ -53,7 +62,8 @@ export const cancelAddqPredecrementMove: Rule = {
       const body = sourceText.replace(/;.*$/, "");
       const comma = body.lastIndexOf(",");
       const mnemonicEnd = body.search(/\s/);
-      if (comma > mnemonicEnd && mnemonicEnd >= 0) srcText = body.slice(mnemonicEnd, comma).trim();
+      if (comma > mnemonicEnd && mnemonicEnd >= 0)
+        srcText = body.slice(mnemonicEnd, comma).trim();
     }
     if (!srcText) return;
 

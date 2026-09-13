@@ -1,5 +1,10 @@
 import type { Rule } from "../../core/rule.js";
-import { immediateOperand, instructionSize, isInstruction, operand } from "../../util/ast.js";
+import {
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+  operand,
+} from "../../util/ast.js";
 import { sourceOperand } from "./helpers.js";
 export const preferTstZero: Rule = {
   meta: {
@@ -41,7 +46,11 @@ export const preferTstZero: Rule = {
       confidence: "certain",
       message: "Comparison with zero can use TST",
       loc: line.mnemonic!.loc,
-      suggestion: { description: "Use TST", replacement: d ? `tst${suffix} ${d}` : undefined, applicability: "safe" },
+      suggestion: {
+        description: "Use TST",
+        replacement: d ? `tst${suffix} ${d}` : undefined,
+        applicability: "safe",
+      },
     });
   },
 };

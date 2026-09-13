@@ -1,5 +1,10 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateExpressionOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateExpressionOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { normalizeRegister } from "../../semantics/registers.js";
 import { valueText } from "./helpers.js";
 
@@ -8,7 +13,8 @@ export const compareLongImmediateViaMoveq: Rule = {
     id: "optimization/compare-long-immediate-via-moveq",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Compare a small long immediate via MOVEQ and a dead scratch register",
+    description:
+      "Compare a small long immediate via MOVEQ and a dead scratch register",
     tags: ["tricks-and-traps", "68000", "compare"],
     docs: { source: "Mike Morton, 68000 Tricks and Traps (BYTE, Sep 1986)" },
   },
@@ -21,7 +27,9 @@ export const compareLongImmediateViaMoveq: Rule = {
     if (!value.known || value.value < -128 || value.value > 127) return;
     const target = normalizeRegister(dst.register);
     if (!target) return;
-    const scratch = ctx.registers.deadDataRegistersAfter(index).find((r) => r !== target);
+    const scratch = ctx.registers
+      .deadDataRegistersAfter(index)
+      .find((r) => r !== target);
     if (!scratch) return;
 
     ctx.report({

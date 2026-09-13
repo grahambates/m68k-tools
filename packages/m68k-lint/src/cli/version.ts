@@ -11,7 +11,9 @@ import { readFileSync } from "node:fs";
  * one relative URL resolves to the same manifest from the sources and from the
  * build.
  */
-const manifest = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")) as {
+const manifest = JSON.parse(
+  readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
+) as {
   version: string;
 };
 

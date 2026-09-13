@@ -1,12 +1,12 @@
 # m68k-lint
 
 Extensible static analysis and linting for Motorola 68k assembly, built on
-[`m68k-parser`](https://github.com/grahambates/m68k-parser).
+[`m68k-parser`](https://github.com/grahambates/m68k-tools/tree/main/packages/m68k-parser).
 
-132 built-in rules across correctness, suspicious-construct, optimization and
+142 built-in rules across correctness, suspicious-construct, optimization and
 style checks, backed by condition-code liveness, register liveness and constant
 propagation. Optimization suggestions on `mc68000` carry **exact** measured
-size and cycle deltas from [`68kcounter`](https://github.com/grahambates/68kcounter),
+size and cycle deltas from [`68kcounter`](https://github.com/grahambates/m68k-tools/tree/main/packages/68kcounter),
 so a claimed improvement is a measured one.
 
 ```
@@ -34,7 +34,7 @@ highlighted.
 npm install -g m68k-lint
 ```
 
-Requires Node 20 or newer.
+Requires Node 22.15.1 or newer.
 
 ## Command line
 
@@ -87,7 +87,9 @@ not fail the run — see [Syntax errors](#syntax-errors).
 ```ts
 import { lintSource } from "m68k-lint";
 
-const diagnostics = lintSource(["\tmovea.l d0,a0", "\tbeq     .null", ".null:", "\trts"].join("\n"));
+const diagnostics = lintSource(
+  ["\tmovea.l d0,a0", "\tbeq     .null", ".null:", "\trts"].join("\n"),
+);
 ```
 
 `lintSource` returns a `Diagnostic[]` sorted by source position. `lintParsedFile`
@@ -105,7 +107,9 @@ import { parseFile } from "m68k-parser";
 import { DefaultRuleContext } from "m68k-lint";
 
 const source = "\tadd.l  d0,d1\n\tmove.l d2,d3\n\trts\n";
-const ctx = new DefaultRuleContext(parseFile(source), source, { processors: ["mc68000"] });
+const ctx = new DefaultRuleContext(parseFile(source), source, {
+  processors: ["mc68000"],
+});
 
 ctx.flags.isLiveAfter(0, "Z"); // "dead"  - MOVE overwrites it
 ctx.flags.isLiveAfter(0, "X"); // "unknown" - MOVE preserves X, RTS escapes
@@ -418,7 +422,7 @@ benefit does not hold for the source forms a project actually contains.
 ### Rule impact audit
 
 ```sh
-npm run audit:impact   # or: m68k-lint --audit-rule-impact
+pnpm run audit:impact   # or: m68k-lint --audit-rule-impact
 ```
 
 Runs one representative example for every optimization rule.
@@ -498,20 +502,20 @@ are working notes, kept in an untracked `notes/` directory.
 ## Development
 
 ```sh
-npm ci
-npm run typecheck     # tsc over src and src/test
-npm run lint          # eslint
-npm run format        # prettier --write
-npm test
-npm run build
-npm run audit:impact
-npm run docs:rules    # regenerate docs/rules.md
+pnpm install --frozen-lockfile
+pnpm run typecheck     # tsc over src and src/test
+pnpm run lint          # eslint
+pnpm run format        # prettier --write
+pnpm test
+pnpm run build
+pnpm run audit:impact
+pnpm run docs:rules    # regenerate docs/rules.md
 ```
 
-CI runs all of these. `npm run lint:fix` and `npm run format:check` are also
+Run these commands from `packages/m68k-lint` after installing from the repository root. Build workspace dependencies first with `pnpm --dir ../.. build`. Root CI runs the checks; regenerate rule documentation when rules change. `pnpm run lint:fix` and `pnpm run format:check` are also
 available.
 
-`npm run verify:semantics` is separate and not part of CI. It runs suggested
+`pnpm run verify:semantics` is separate and not part of CI. It runs suggested
 replacements and the code they replace through an emulator and compares
 registers, memory and CCR, which catches a rewrite that is wrong rather than
 merely unprofitable. It is sharded across child processes because the

@@ -30,16 +30,6 @@ if (mode === "build") {
   pkg("68kcounter-vscode", "compile");
 } else if (mode === "lint") {
   run("exec", "eslint", ".");
-  for (const name of [
-    "m68k-parser",
-    "68kcounter",
-    "m68k-lint",
-    "68kcounter-web",
-    "68kcounter-vscode",
-  ])
-    pkg(name, "lint");
-  for (const name of ["m68k-lint-langserver", "m68k-lint-vscode"])
-    run("--filter", name, "exec", "eslint", ".");
 } else {
   throw new Error(`Unknown workspace task: ${mode}`);
 }

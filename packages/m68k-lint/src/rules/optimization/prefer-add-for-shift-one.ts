@@ -1,5 +1,10 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
 
 export const preferAddForShiftOne: Rule = {
@@ -12,7 +17,11 @@ export const preferAddForShiftOne: Rule = {
     docs: { source: "ASP68K" },
   },
   checkLine(ctx, line, index) {
-    const shift = isInstruction(line, "asl") ? "ASL" : isInstruction(line, "lsl") ? "LSL" : undefined;
+    const shift = isInstruction(line, "asl")
+      ? "ASL"
+      : isInstruction(line, "lsl")
+        ? "LSL"
+        : undefined;
     if (!shift) return;
     const size = instructionSize(line);
     if (!size) return;
@@ -23,11 +32,22 @@ export const preferAddForShiftOne: Rule = {
     if (!value.known || value.value !== 1) return;
 
     // ASP68K marks 060 as no win and leaves 020 unknown.
-    if (!ctx.config.processors.every((cpu) => ["mc68000", "mc68010", "mc68030", "mc68040"].includes(cpu))) return;
+    if (
+      !ctx.config.processors.every((cpu) =>
+        ["mc68000", "mc68010", "mc68030", "mc68040"].includes(cpu),
+      )
+    )
+      return;
 
     // Be deliberately conservative about subtle flag differences between shift
     // and arithmetic forms: only call it safe when all flags are dead.
-    const safety = changedFlagsApplicability(ctx, index, ["X", "N", "Z", "V", "C"]);
+    const safety = changedFlagsApplicability(ctx, index, [
+      "X",
+      "N",
+      "Z",
+      "V",
+      "C",
+    ]);
     ctx.report({
       ruleId: this.meta.id,
       category: this.meta.category,
@@ -43,7 +63,12 @@ export const preferAddForShiftOne: Rule = {
       notes: [
         ...(safety.applicability === "safe"
           ? []
-          : [{ message: "Flag equivalence is not assumed here; review CCR use before applying." }]),
+          : [
+              {
+                message:
+                  "Flag equivalence is not assumed here; review CCR use before applying.",
+              },
+            ]),
       ],
     });
   },

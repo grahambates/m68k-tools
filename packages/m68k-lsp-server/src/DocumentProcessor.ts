@@ -1,10 +1,10 @@
 import { parseBlocks, parseFile } from "m68k-parser";
 import type { Block, BlockStructure, ParsedFile } from "m68k-parser";
-import { TextDocument } from "vscode-languageserver-textdocument";
+import { type TextDocument } from "vscode-languageserver-textdocument";
 
 import { readDocumentFromUri, resolveReferencedUris } from "./files";
-import { processSymbols, Symbols } from "./symbols";
-import { Context } from "./context";
+import { processSymbols, type Symbols } from "./symbols";
+import { type Context } from "./context";
 
 /**
  * What every file in the workspace contributes to resolution.

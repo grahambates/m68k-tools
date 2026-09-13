@@ -1,4 +1,8 @@
-import type { Applicability, Diagnostic, OptimizationAssessment } from "./diagnostic.js";
+import type {
+  Applicability,
+  Diagnostic,
+  OptimizationAssessment,
+} from "./diagnostic.js";
 
 /**
  * Applying suggestions to source.
@@ -72,7 +76,11 @@ const DEFAULT_MAX_PASSES = 10;
 function obscures(diagnostic: Diagnostic, replacement: string): boolean {
   const span = diagnostic.span;
   if (!span || !replacement.trim()) return false;
-  if (Array.isArray(diagnostic.data?.symbolsLost) && diagnostic.data.symbolsLost.length > 0) return true;
+  if (
+    Array.isArray(diagnostic.data?.symbolsLost) &&
+    diagnostic.data.symbolsLost.length > 0
+  )
+    return true;
   const produced = replacement.split("\n").filter((line) => line.trim()).length;
   return produced > span.endLine - span.startLine + 1;
 }
@@ -94,7 +102,11 @@ function indentOf(sourceLine: string): string {
  * `;` rather than `*`, because the block is indented to match the code and a
  * `*` comment is only a comment in column zero.
  */
-function annotated(original: readonly string[], replacement: string, indent: string): string {
+function annotated(
+  original: readonly string[],
+  replacement: string,
+  indent: string,
+): string {
   const commented = original.map((line) => `${indent}; ${line.trim()}`);
   return [
     `${indent}; was:`,
@@ -113,7 +125,12 @@ function eligible(
   assessments: readonly OptimizationAssessment[],
 ): boolean {
   const suggestion = diagnostic.suggestion;
-  if (suggestion === undefined || suggestion.replacement === undefined || diagnostic.span === undefined) return false;
+  if (
+    suggestion === undefined ||
+    suggestion.replacement === undefined ||
+    diagnostic.span === undefined
+  )
+    return false;
   if (!accept.includes(suggestion.applicability)) return false;
   const assessment = suggestion.impact?.assessment;
   return assessment === undefined || assessments.includes(assessment);

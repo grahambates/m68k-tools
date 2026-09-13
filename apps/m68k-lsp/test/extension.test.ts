@@ -1,5 +1,5 @@
 import { activate } from "../src/extension";
-import { ExtensionContext, window } from "vscode";
+import { type ExtensionContext, window } from "vscode";
 import type {
   RegisterRemappingModel,
   RegisterRemappingResult,

@@ -1,4 +1,4 @@
-import { CodeLens, CodeLensProvider, Command, Range } from "vscode";
+import { CodeLens, type CodeLensProvider, type Command, Range } from "vscode";
 
 export default class AnnotateCodeLensProvider implements CodeLensProvider {
   async provideCodeLenses(): Promise<CodeLens[]> {

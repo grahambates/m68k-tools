@@ -1,6 +1,6 @@
 import * as lsp from "vscode-languageserver";
-import { Provider } from ".";
-import { Context } from "../context";
+import { type Provider } from ".";
+import { type Context } from "../context";
 import { symbolKindMappings } from "../symbols";
 
 export default class WorkspaceSymbolProvider implements Provider {

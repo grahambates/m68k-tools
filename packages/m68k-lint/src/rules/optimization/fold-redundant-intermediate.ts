@@ -1,10 +1,23 @@
 import type { OperandNode, ParsedLine } from "m68k-parser";
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, instructionSize, isInstruction, operand } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  instructionSize,
+  isInstruction,
+  operand,
+} from "../../util/ast.js";
 import { isAddressRegisterWriteWithoutCCR } from "../../semantics/flags.js";
 import { semanticMnemonic } from "../../semantics/mnemonics.js";
-import { normalizeRegister, registersReadByOperand, type Register } from "../../semantics/registers.js";
-import { changedFlagsApplicability, hasLabelBetween, sourceOperand } from "./helpers.js";
+import {
+  normalizeRegister,
+  registersReadByOperand,
+  type Register,
+} from "../../semantics/registers.js";
+import {
+  changedFlagsApplicability,
+  hasLabelBetween,
+  sourceOperand,
+} from "./helpers.js";
 
 /**
  * Consumers that can take the folded value as a source operand.
@@ -14,7 +27,18 @@ import { changedFlagsApplicability, hasLabelBetween, sourceOperand } from "./hel
  * instruction the assembler will reject, which is why this cannot simply be
  * "any operation taking a source EA".
  */
-const FOLDABLE = new Set(["add", "adda", "sub", "suba", "and", "or", "cmp", "cmpa", "move", "movea"]);
+const FOLDABLE = new Set([
+  "add",
+  "adda",
+  "sub",
+  "suba",
+  "and",
+  "or",
+  "cmp",
+  "cmpa",
+  "move",
+  "movea",
+]);
 
 /**
  * Sources that read the same value at the consumer's position as they did at
@@ -71,14 +95,16 @@ function immediateWorthFolding(
 ): boolean {
   if (isInstruction(line, "moveq")) return false;
   if (size !== "l") return true;
-  if (source.type !== "immediate" || source.value.type === "string-literal") return false;
+  if (source.type !== "immediate" || source.value.type === "string-literal")
+    return false;
   const value = ctx.evaluate(source.value);
   return !value.known || value.value < -128 || value.value > 127;
 }
 
 function destinationRegister(line: ParsedLine): Register | undefined {
   const op = operand(line, 1);
-  if (op?.type === "data-register" || op?.type === "address-register") return normalizeRegister(op.register);
+  if (op?.type === "data-register" || op?.type === "address-register")
+    return normalizeRegister(op.register);
   return undefined;
 }
 
@@ -103,7 +129,8 @@ export const foldRedundantIntermediate: Rule = {
     id: "optimization/fold-redundant-intermediate",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Drop an intermediate register that only carries a value into the next instruction",
+    description:
+      "Drop an intermediate register that only carries a value into the next instruction",
     tags: ["peephole", "register-analysis", "scratch-register", "native"],
     docs: {
       note: "Found by mining a corpus of real Amiga assembly for values staged through a register that is used exactly once, then verified with 68kcounter.",
@@ -120,7 +147,11 @@ export const foldRedundantIntermediate: Rule = {
     const source = operand(line, 0);
     const scratchOperand = dataRegisterOperand(line, 1);
     if (!source || !foldableSource(source) || !scratchOperand) return;
-    if (source.type === "immediate" && !immediateWorthFolding(ctx, line, source, size)) return;
+    if (
+      source.type === "immediate" &&
+      !immediateWorthFolding(ctx, line, source, size)
+    )
+      return;
     const scratch = normalizeRegister(scratchOperand.register);
     if (!scratch) return;
 
@@ -144,7 +175,11 @@ export const foldRedundantIntermediate: Rule = {
     // memory-to-memory move comes from.
     if (
       !destination &&
-      !(mnemonic === "move" && destinationOperand && ALTERABLE_DESTINATION.includes(destinationOperand.type))
+      !(
+        mnemonic === "move" &&
+        destinationOperand &&
+        ALTERABLE_DESTINATION.includes(destinationOperand.type)
+      )
     )
       return;
 
@@ -159,7 +194,8 @@ export const foldRedundantIntermediate: Rule = {
     // A memory destination is evaluated after the load in the original pair, so
     // it may currently be reading the intermediate register's new value. Folded,
     // it would see the old one instead.
-    if (!destination && registersReadByOperand(destinationOperand).has(scratch)) return;
+    if (!destination && registersReadByOperand(destinationOperand).has(scratch))
+      return;
 
     // Nothing else may need the staged value.
     if (ctx.registers.isLiveAfter(next.index, scratch) !== "dead") return;
@@ -167,7 +203,9 @@ export const foldRedundantIntermediate: Rule = {
     const sourceText = sourceOperand(ctx, line, 0);
     const destinationText = sourceOperand(ctx, next.line, 1);
     const written =
-      next.line.mnemonic?.type === "instruction" ? next.line.mnemonic.instruction.toLowerCase() : undefined;
+      next.line.mnemonic?.type === "instruction"
+        ? next.line.mnemonic.instruction.toLowerCase()
+        : undefined;
     if (!sourceText || !destinationText || !written) return;
 
     // ADDA/SUBA/MOVEA leave the condition codes alone, so the MOVE's N/Z/V/C

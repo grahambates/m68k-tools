@@ -4,7 +4,10 @@ import { preferAddq } from "./optimization/prefer-addq.js";
 import { preferMoveq } from "./optimization/prefer-moveq.js";
 import { redundantLea } from "./optimization/redundant-lea.js";
 import { preferSubq } from "./optimization/prefer-subq.js";
-import { preferSubqForNegativeAdd, preferAddqForNegativeSub } from "./optimization/quick-negative.js";
+import {
+  preferSubqForNegativeAdd,
+  preferAddqForNegativeSub,
+} from "./optimization/quick-negative.js";
 import { preferNot } from "./optimization/prefer-not.js";
 import { preferTstZero } from "./optimization/prefer-tst-zero.js";
 import { preferBset, preferBclr } from "./optimization/prefer-bit-op.js";
@@ -18,7 +21,10 @@ import { moveaWordSignExtension } from "./suspicious/movea-word-sign-extension.j
 import { bitNumberWraparound } from "./suspicious/bit-number-wraparound.js";
 import { partialRegisterWrite } from "./suspicious/partial-register-write.js";
 import { unexpectedAbsoluteAddress } from "./suspicious/unexpected-absolute-address.js";
-import { requireInstructionSize, omitRedundantInstructionSize } from "./style/instruction-size-style.js";
+import {
+  requireInstructionSize,
+  omitRedundantInstructionSize,
+} from "./style/instruction-size-style.js";
 import {
   preferAddressRegisterMnemonics,
   preferDbraAlias,
@@ -37,14 +43,30 @@ import { zeroAddressRegister } from "./optimization/zero-address-register.js";
 import { preferUnlkSequence } from "./optimization/prefer-unlk-sequence.js";
 import { preferLinkSequence } from "./optimization/prefer-link-sequence.js";
 import { btstSignBranch } from "./optimization/btst-sign-branch.js";
-import { combineAdjacentClrBytes, combineAdjacentClrWords } from "./optimization/adjacent-clear.js";
-import { combineAdjacentMoveBytes, combineAdjacentMoveWords } from "./optimization/adjacent-immediate-move.js";
-import { combineAdjacentCopyBytes, combineAdjacentCopyWords } from "./optimization/adjacent-copy.js";
+import {
+  combineAdjacentClrBytes,
+  combineAdjacentClrWords,
+} from "./optimization/adjacent-clear.js";
+import {
+  combineAdjacentMoveBytes,
+  combineAdjacentMoveWords,
+} from "./optimization/adjacent-immediate-move.js";
+import {
+  combineAdjacentCopyBytes,
+  combineAdjacentCopyWords,
+} from "./optimization/adjacent-copy.js";
 import { redundantZeroDisplacement } from "./optimization/redundant-zero-displacement.js";
-import { addressAddToLea, addressSubToLea } from "./optimization/address-immediate-lea.js";
+import {
+  addressAddToLea,
+  addressSubToLea,
+} from "./optimization/address-immediate-lea.js";
 import { pushImmediatePea } from "./optimization/push-immediate-pea.js";
 import { singleRegisterMovem } from "./optimization/single-register-movem.js";
-import { bsetLowWordMask, bclrLowWordMask, bchgLowWordMask } from "./optimization/bit-op-low-word.js";
+import {
+  bsetLowWordMask,
+  bclrLowWordMask,
+  bchgLowWordMask,
+} from "./optimization/bit-op-low-word.js";
 import { shiftTwoAdds } from "./optimization/shift-two-adds.js";
 import { addsToShift } from "./optimization/adds-to-shift.js";
 
@@ -65,7 +87,11 @@ import {
   multiplySignedWordHighPowerOfTwo,
   multiplyUnsignedWordHighPowerOfTwo,
 } from "./optimization/multiply-simple.js";
-import { negateThenSubToAdd, negateThenAddToSub, negateAddMaskToEor } from "./optimization/negate-arithmetic-pair.js";
+import {
+  negateThenSubToAdd,
+  negateThenAddToSub,
+  negateAddMaskToEor,
+} from "./optimization/negate-arithmetic-pair.js";
 import {
   moveImmediateBelowMoveq,
   moveImmediateByteComplement,
@@ -79,9 +105,15 @@ import { combineExtByte } from "./optimization/combine-ext-byte.js";
 import { redundantTst } from "./optimization/redundant-tst.js";
 import { bsetToTas } from "./optimization/bset-to-tas.js";
 import { leaZeroAddress } from "./optimization/lea-zero-address.js";
-import { moveImmediateWordComplement, moveImmediateSwap } from "./optimization/move-immediate-word-synthesis.js";
+import {
+  moveImmediateWordComplement,
+  moveImmediateSwap,
+} from "./optimization/move-immediate-word-synthesis.js";
 import { longShiftSequence } from "./optimization/long-shift-sequence.js";
-import { moveImmediateAddressToLea, moveAddressThenAddToLea } from "./optimization/movea-lea.js";
+import {
+  moveImmediateAddressToLea,
+  moveAddressThenAddToLea,
+} from "./optimization/movea-lea.js";
 import { atariTrapStackCleanup } from "./suspicious/atari/trap-stack-cleanup.js";
 import { amigaBitMaskConstants } from "./correctness/amiga/bit-mask-constant.js";
 import { movemRestoreMismatch } from "./suspicious/movem-restore-mismatch.js";
@@ -103,7 +135,10 @@ import {
 import { cmpaZeroToTst030 } from "./optimization/cmpa-zero-to-tst-030.js";
 import { multiplySignedWordSelectedConstants } from "./optimization/muls-word-selected-constants.js";
 import { foldAddressExpressionToLea } from "./optimization/address-expression-to-lea.js";
-import { divuWordPowerOfTwo, divuLongPowerOfTwo } from "./optimization/divu-power-of-two.js";
+import {
+  divuWordPowerOfTwo,
+  divuLongPowerOfTwo,
+} from "./optimization/divu-power-of-two.js";
 import {
   narrowMoveaImmediate,
   narrowAddaSubaImmediate,
@@ -133,11 +168,18 @@ import {
   flamewingMuluWordLowWordOnly,
 } from "./optimization/multiply-word-recipes.js";
 import { moveByteAndMaskViaMoveq } from "./optimization/move-byte-and-mask.js";
-import { andAllOnesToTst, orZeroToTst, eorZeroToTst } from "./optimization/logical-identity-to-tst.js";
+import {
+  andAllOnesToTst,
+  orZeroToTst,
+  eorZeroToTst,
+} from "./optimization/logical-identity-to-tst.js";
 import { compareLongImmediateViaMoveq } from "./optimization/compare-long-immediate-via-moveq.js";
 import { destructiveSmallCompareBranch } from "./optimization/destructive-small-compare-branch.js";
 import { jsrJmpDispatch } from "./optimization/jsr-jmp-tail-dispatch.js";
-import { stackAlignedWordShiftByEight, stackAlignedKnownRegisterShifts } from "./optimization/stack-scratch-shifts.js";
+import {
+  stackAlignedWordShiftByEight,
+  stackAlignedKnownRegisterShifts,
+} from "./optimization/stack-scratch-shifts.js";
 import { vasmNegativeSignedMultiply } from "./optimization/negative-signed-multiply.js";
 import { amigaTasUnsupported } from "./correctness/amiga/tas-unsupported.js";
 import { amigaCustomRegisterAccess } from "./correctness/amiga/custom-register-access.js";

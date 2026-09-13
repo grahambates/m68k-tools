@@ -23,6 +23,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run check
+      - name: Check generated rule documentation
+        run: |
+          pnpm --filter m68k-lint exec node scripts/generate-rules-doc.mjs
+          git diff --exit-code -- packages/m68k-lint/docs/rules.md
       - run: pnpm run check:packages
       - run: pnpm package
       - run: pnpm --filter m68k-lint-vscode package

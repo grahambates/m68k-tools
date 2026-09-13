@@ -1461,7 +1461,7 @@ describe("parse", () => {
       expect(line.errors?.[0].code).toBe("UNKNOWN_CHARACTER");
       expect(line.errors?.[0].got).toBe(",");
     });
-  
+
     it("treats a C style comment as a comment, not division", () => {
       // The NDK headers document constants this way. Motorola syntax ends the
       // operand field at whitespace, so the whole `/* ... */` is a comment.
@@ -1480,5 +1480,5 @@ describe("parse", () => {
       expect(tight.comment).toBeUndefined();
       expect(tight.operands).toHaveLength(1);
     });
-});
+  });
 });

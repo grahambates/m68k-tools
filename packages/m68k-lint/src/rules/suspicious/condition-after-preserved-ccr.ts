@@ -1,5 +1,9 @@
 import type { Rule } from "../../core/rule.js";
-import { flagsReadByCondition, getFlagSemantics, type Flag } from "../../semantics/flags.js";
+import {
+  flagsReadByCondition,
+  getFlagSemantics,
+  type Flag,
+} from "../../semantics/flags.js";
 import { semanticMnemonic } from "../../semantics/mnemonics.js";
 
 export const conditionAfterPreservedCcr: Rule = {
@@ -7,7 +11,8 @@ export const conditionAfterPreservedCcr: Rule = {
     id: "suspicious/condition-after-preserved-ccr",
     category: "suspicious",
     defaultSeverity: "warning",
-    description: "Flag conditional instructions that deliberately rely on CCR across a flag-preserving instruction",
+    description:
+      "Flag conditional instructions that deliberately rely on CCR across a flag-preserving instruction",
     tags: ["ccr", "control-flow", "implicit-state"],
   },
 
@@ -38,20 +43,33 @@ export const conditionAfterPreservedCcr: Rule = {
 
     const previousSemantics = getFlagSemantics(previous.line);
     if (previousSemantics.controlFlow !== "fallthrough") return;
-    if (previousSemantics.writes.size !== 0 || previousSemantics.undefined.size !== 0) return;
+    if (
+      previousSemantics.writes.size !== 0 ||
+      previousSemantics.undefined.size !== 0
+    )
+      return;
 
     // suspicious/stale-condition-code owns cases where the condition reaches
     // entry/unknown state. This rule is the complementary suspicious case:
     // the old flags are well-defined, but their preservation across the
     // intervening instruction is easy to miss while reading or editing code.
-    const definitions = readFlags.flatMap((flag) => ctx.flags.reachingDefinitionsBefore(index, flag));
-    if (definitions.length === 0 || definitions.some((definition) => definition.kind !== "instruction")) return;
+    const definitions = readFlags.flatMap((flag) =>
+      ctx.flags.reachingDefinitionsBefore(index, flag),
+    );
+    if (
+      definitions.length === 0 ||
+      definitions.some((definition) => definition.kind !== "instruction")
+    )
+      return;
 
     const producerIndexes = [
       ...new Set(
         definitions
           .filter(
-            (definition): definition is { kind: "instruction"; index: number } => definition.kind === "instruction",
+            (
+              definition,
+            ): definition is { kind: "instruction"; index: number } =>
+              definition.kind === "instruction",
           )
           .map((definition) => definition.index),
       ),
@@ -60,7 +78,10 @@ export const conditionAfterPreservedCcr: Rule = {
 
     const producers = producerIndexes
       .map((producerIndex) => ctx.line(producerIndex))
-      .filter((producerLine): producerLine is NonNullable<typeof producerLine> => Boolean(producerLine))
+      .filter(
+        (producerLine): producerLine is NonNullable<typeof producerLine> =>
+          Boolean(producerLine),
+      )
       .map((producerLine) => semanticMnemonic(producerLine))
       .filter((producer): producer is string => Boolean(producer))
       .map((producer) => producer.toUpperCase());
@@ -73,7 +94,8 @@ export const conditionAfterPreservedCcr: Rule = {
       message: `${name.toUpperCase()} relies on CCR preserved across ${previousName.toUpperCase()}`,
       loc: line.mnemonic!.loc,
       suggestion: {
-        description: "Review whether preserving the earlier condition codes here is intentional",
+        description:
+          "Review whether preserving the earlier condition codes here is intentional",
         applicability: "manual",
       },
       notes: [

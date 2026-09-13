@@ -1,5 +1,5 @@
 import type { Location, ParsedFile, ParsedLine } from "m68k-parser";
-import * as lsp from "vscode-languageserver";
+import type * as lsp from "vscode-languageserver";
 
 /**
  * Any node in an m68k-parser syntax tree.

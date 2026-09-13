@@ -1,25 +1,43 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { semanticMnemonic } from "../../semantics/mnemonics.js";
 
-function hasInterveningLabel(ctx: Parameters<NonNullable<Rule["checkLine"]>>[0], from: number, to: number): boolean {
+function hasInterveningLabel(
+  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
+  from: number,
+  to: number,
+): boolean {
   for (let i = from + 1; i <= to; i++) if (ctx.line(i)?.label) return true;
   return false;
 }
 
-type ProducerInfo = { register: string; size: "b" | "w" | "l"; exactTstFlags: boolean };
+type ProducerInfo = {
+  register: string;
+  size: "b" | "w" | "l";
+  exactTstFlags: boolean;
+};
 
-function producerInfo(line: Parameters<NonNullable<Rule["checkLine"]>>[1]): ProducerInfo | undefined {
+function producerInfo(
+  line: Parameters<NonNullable<Rule["checkLine"]>>[1],
+): ProducerInfo | undefined {
   const mnemonic = semanticMnemonic(line) ?? "";
 
   if (mnemonic === "moveq") {
     const dest = dataRegisterOperand(line, 1);
-    return dest ? { register: dest.register, size: "l", exactTstFlags: true } : undefined;
+    return dest
+      ? { register: dest.register, size: "l", exactTstFlags: true }
+      : undefined;
   }
 
   if (mnemonic === "swap") {
     const dest = dataRegisterOperand(line, 0);
-    return dest ? { register: dest.register, size: "l", exactTstFlags: true } : undefined;
+    return dest
+      ? { register: dest.register, size: "l", exactTstFlags: true }
+      : undefined;
   }
 
   const size = instructionSize(line);
@@ -28,15 +46,38 @@ function producerInfo(line: Parameters<NonNullable<Rule["checkLine"]>>[1]): Prod
   const unaryExact = ["clr", "not", "ext", "extb"];
   const binaryExact = ["move", "and", "or", "eor"];
   const unaryResult = ["neg"];
-  const binaryResult = ["add", "addq", "sub", "subq", "asl", "asr", "lsl", "lsr", "rol", "ror"];
+  const binaryResult = [
+    "add",
+    "addq",
+    "sub",
+    "subq",
+    "asl",
+    "asr",
+    "lsl",
+    "lsr",
+    "rol",
+    "ror",
+  ];
 
   if (unaryExact.includes(mnemonic) || unaryResult.includes(mnemonic)) {
     const dest = dataRegisterOperand(line, 0);
-    return dest ? { register: dest.register, size, exactTstFlags: unaryExact.includes(mnemonic) } : undefined;
+    return dest
+      ? {
+          register: dest.register,
+          size,
+          exactTstFlags: unaryExact.includes(mnemonic),
+        }
+      : undefined;
   }
   if (binaryExact.includes(mnemonic) || binaryResult.includes(mnemonic)) {
     const dest = dataRegisterOperand(line, 1);
-    return dest ? { register: dest.register, size, exactTstFlags: binaryExact.includes(mnemonic) } : undefined;
+    return dest
+      ? {
+          register: dest.register,
+          size,
+          exactTstFlags: binaryExact.includes(mnemonic),
+        }
+      : undefined;
   }
 
   return undefined;
@@ -52,7 +93,8 @@ export const redundantTst: Rule = {
     id: "optimization/redundant-tst",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Remove a TST when the previous instruction already established the required flags",
+    description:
+      "Remove a TST when the previous instruction already established the required flags",
     tags: ["peephole", "ccr", "native"],
     docs: { note: "m68k-lint native rule; not derived from ASP68K." },
   },
@@ -65,14 +107,22 @@ export const redundantTst: Rule = {
     const previous = ctx.previousInstruction(index);
     if (!previous || hasInterveningLabel(ctx, previous.index, index)) return;
     const producer = producerInfo(previous.line);
-    if (!producer || producer.register.toLowerCase() !== tested.register.toLowerCase() || producer.size !== tstSize)
+    if (
+      !producer ||
+      producer.register.toLowerCase() !== tested.register.toLowerCase() ||
+      producer.size !== tstSize
+    )
       return;
 
     // MOVE/logical/CLR/NOT/EXT/SWAP produce the same N/Z/V/C values TST
     // would produce for the result. Arithmetic and shifts agree on N/Z, but
     // TST clears V/C, so those flags must be dead for the TST to be removable.
     if (!producer.exactTstFlags) {
-      if (ctx.flags.isLiveAfter(index, "V") !== "dead" || ctx.flags.isLiveAfter(index, "C") !== "dead") return;
+      if (
+        ctx.flags.isLiveAfter(index, "V") !== "dead" ||
+        ctx.flags.isLiveAfter(index, "C") !== "dead"
+      )
+        return;
     }
 
     ctx.report({

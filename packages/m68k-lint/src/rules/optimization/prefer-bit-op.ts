@@ -1,9 +1,15 @@
 import type { Rule } from "../../core/rule.js";
-import { dataRegisterOperand, immediateOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  dataRegisterOperand,
+  immediateOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 import { changedFlagsApplicability, isPowerOfTwo } from "./helpers.js";
 
 function bitRule(kind: "or" | "and"): Rule {
-  const id = kind === "or" ? "optimization/prefer-bset" : "optimization/prefer-bclr";
+  const id =
+    kind === "or" ? "optimization/prefer-bset" : "optimization/prefer-bclr";
   return {
     meta: {
       id,
@@ -20,7 +26,10 @@ function bitRule(kind: "or" | "and"): Rule {
       if (!imm || !dest || imm.value.type === "string-literal") return;
       const raw = ctx.evaluate(imm.value);
       if (!raw.known) return;
-      const allowed = kind === "or" ? ["mc68000", "mc68010", "mc68030"] : ["mc68000", "mc68010"];
+      const allowed =
+        kind === "or"
+          ? ["mc68000", "mc68010", "mc68030"]
+          : ["mc68000", "mc68010"];
       if (!ctx.config.processors.every((cpu) => allowed.includes(cpu))) return;
       const mask = kind === "or" ? raw.value >>> 0 : ~raw.value >>> 0;
       if (!isPowerOfTwo(mask)) return;
@@ -40,8 +49,18 @@ function bitRule(kind: "or" | "and"): Rule {
         },
         notes: [
           ...(safety.applicability === "safe"
-            ? [{ message: "N/V/C are dead after this instruction, so the differing flag effects are unobservable." }]
-            : [{ message: "Replacement has different condition-code effects; review subsequent flag use." }]),
+            ? [
+                {
+                  message:
+                    "N/V/C are dead after this instruction, so the differing flag effects are unobservable.",
+                },
+              ]
+            : [
+                {
+                  message:
+                    "Replacement has different condition-code effects; review subsequent flag use.",
+                },
+              ]),
         ],
       });
     },

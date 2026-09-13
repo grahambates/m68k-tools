@@ -1,16 +1,11 @@
-import {
-  unexpectedBlockTerminator,
-  unterminatedBlock,
-} from "./parse-error.js";
-import {
-  blockAlternatives,
-  blockOpeners,
-  blockTerminators,
-} from "./syntax.js";
+import { unexpectedBlockTerminator, unterminatedBlock } from "./parse-error.js";
+import { blockAlternatives, blockOpeners, blockTerminators } from "./syntax.js";
 import type { Block, BlockStructure, ParsedFile, ParsedLine } from "./types.js";
 
 /** The directive a line uses, lowercased, if it uses one. */
-export function directiveName(line: ParsedLine | undefined): string | undefined {
+export function directiveName(
+  line: ParsedLine | undefined,
+): string | undefined {
   return line?.mnemonic?.type === "directive"
     ? line.mnemonic.directive.toLowerCase()
     : undefined;
@@ -82,7 +77,8 @@ export function parseBlocks(file: ParsedFile): BlockStructure {
 
   const close = (open: OpenBlock, end: number | undefined) => {
     // Discard the bookkeeping fields so the result is plain block data.
-    const block = open as Block & Partial<Pick<OpenBlock, "closers" | "opener">>;
+    const block = open as Block &
+      Partial<Pick<OpenBlock, "closers" | "opener">>;
     if (end !== undefined) {
       block.end = end;
     } else {

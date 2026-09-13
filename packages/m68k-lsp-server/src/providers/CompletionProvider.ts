@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import { memoryTypes, sizes } from "m68k-parser";
 import type { Size } from "m68k-parser";
 
-import { Provider } from ".";
+import { type Provider } from ".";
 import * as syntax from "../syntax";
 import {
   directiveDocs,
@@ -21,16 +21,16 @@ import {
   resolveIncludesGen,
 } from "../files";
 import {
-  Definition,
+  type Definition,
   DefinitionType,
   labelBeforePosition,
   processPath,
 } from "../symbols";
-import { Context } from "../context";
+import { type Context } from "../context";
 import { componentAtIndex, ComponentType, parseLine } from "../parse";
 import { parseSignature } from "../signature";
 import { formatMnemonicDoc } from "../formatting";
-import { isProcessed, ProcessedDocument } from "../DocumentProcessor";
+import { isProcessed, type ProcessedDocument } from "../DocumentProcessor";
 
 export default class CompletionProvider implements Provider {
   private dataRegs: lsp.CompletionItem[] = [

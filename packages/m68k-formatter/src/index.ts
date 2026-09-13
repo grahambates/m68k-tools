@@ -2,7 +2,7 @@ import { parseFile } from "m68k-parser";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import type { Range, TextEdit } from "vscode-languageserver-types";
 import DocumentFormatter, {
-  FormatterOptions,
+  type FormatterOptions,
 } from "./formatter/DocumentFormatter";
 import { defaultOptions, mergeOptions } from "./options";
 

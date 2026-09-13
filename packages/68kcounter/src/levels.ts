@@ -1,4 +1,4 @@
-import { Timing } from "./timings";
+import { type Timing } from "./timings";
 
 export type Level = "vhigh" | "high" | "med" | "low";
 

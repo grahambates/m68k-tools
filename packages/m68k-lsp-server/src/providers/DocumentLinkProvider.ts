@@ -1,8 +1,8 @@
 import * as lsp from "vscode-languageserver";
 import { URI } from "vscode-uri";
-import { Provider } from ".";
+import { type Provider } from ".";
 import { resolveInclude } from "../files";
-import { Context } from "../context";
+import { type Context } from "../context";
 
 export default class DocumentLinkProvider implements Provider {
   constructor(protected readonly ctx: Context) {}

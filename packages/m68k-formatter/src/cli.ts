@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { glob } from "glob";
-import { format, findConfig, loadConfig, FormatterOptions } from "./index";
+import { format, findConfig, loadConfig, type FormatterOptions } from "./index";
 
 const help = `Usage: m68k-format [--write | --check] [--config FILE] [FILES / GLOBS ...]
 

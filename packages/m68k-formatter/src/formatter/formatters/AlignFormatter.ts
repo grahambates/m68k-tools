@@ -1,10 +1,10 @@
 import { parseBlocks, type Block } from "m68k-parser";
-import { TextEdit } from "vscode-languageserver-types";
+import { type TextEdit } from "vscode-languageserver-types";
 
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { ParsedLine, parseLine } from "../../parse";
-import { FormatContext, Formatter } from "../DocumentFormatter";
+import { type ParsedLine, parseLine } from "../../parse";
+import { type FormatContext, type Formatter } from "../DocumentFormatter";
 
 export type AlignOptions = {
   indentConditional?: number;

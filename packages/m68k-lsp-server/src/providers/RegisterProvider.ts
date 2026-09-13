@@ -16,8 +16,8 @@ import type {
   RoutineRangeResult,
 } from "@m68k-lsp/protocol";
 import * as lsp from "vscode-languageserver";
-import { Provider } from ".";
-import { Context } from "../context";
+import { type Provider } from ".";
+import { type Context } from "../context";
 import { isProcessed } from "../DocumentProcessor";
 import {
   analyzeRegisterUsage,

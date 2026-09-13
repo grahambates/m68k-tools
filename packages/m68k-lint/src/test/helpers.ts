@@ -33,7 +33,10 @@ export function parseFixture(source: string): ParsedFile {
 }
 
 /** Build a rule context over a compact fixture, for direct analysis assertions. */
-export function fixtureContext(source: string, config: LintConfig = { processors: ["mc68000"] }): DefaultRuleContext {
+export function fixtureContext(
+  source: string,
+  config: LintConfig = { processors: ["mc68000"] },
+): DefaultRuleContext {
   const normalized = fixture(source);
   return new DefaultRuleContext(parseFile(normalized), normalized, config);
 }

@@ -20,12 +20,17 @@ scripts/conv-instructions
 
 pnpm-lock.yaml
 
-# Preserve imported formatting until dedicated tooling migration
-packages/m68k-parser/
-packages/68kcounter/
-packages/m68k-lint/
-packages/m68k-lint-langserver/
-apps/68kcounter-web/
-apps/68kcounter-vscode/
-apps/m68k-lint-vscode/
-docs/imported-m68k-lint-lsp/
+# Generated output and assembly fixtures
+**/dist/
+**/.vscode-test/
+.staging/
+packages/m68k-lint/docs/rules.md
+packages/m68k-lint/sources/
+packages/m68k-lint/notes/
+**/*.asm
+**/*.s
+**/*.i
+**/*.inc
+
+# Personal root IDE settings
+.vscode/settings.json

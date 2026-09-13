@@ -1,4 +1,4 @@
-import { FC } from "react";
+import { type FC } from "react";
 
 export const Logo: FC<{ size: string }> = ({ size }) => (
   <svg width={size} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 939.61 300">

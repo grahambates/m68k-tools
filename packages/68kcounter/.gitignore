@@ -1,5 +1,2 @@
-/node_modules
-/coverage
-/dist
-.vscode
-.DS_Store
+# Common build and dependency ignores are inherited from the repository root.
+.vscode/

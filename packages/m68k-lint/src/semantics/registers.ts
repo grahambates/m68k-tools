@@ -4,14 +4,34 @@ import { semanticMnemonic } from "./mnemonics.js";
 import { instructionSize } from "../util/ast.js";
 import { isMacroInvocation } from "../util/ast.js";
 
-export const DATA_REGISTERS = ["d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7"] as const;
-export const ADDRESS_REGISTERS = ["a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7"] as const;
+export const DATA_REGISTERS = [
+  "d0",
+  "d1",
+  "d2",
+  "d3",
+  "d4",
+  "d5",
+  "d6",
+  "d7",
+] as const;
+export const ADDRESS_REGISTERS = [
+  "a0",
+  "a1",
+  "a2",
+  "a3",
+  "a4",
+  "a5",
+  "a6",
+  "a7",
+] as const;
 export const REGISTERS = [...DATA_REGISTERS, ...ADDRESS_REGISTERS] as const;
 export type Register = (typeof REGISTERS)[number];
 
 export function normalizeRegister(register: string): Register | undefined {
   const r = register.toLowerCase() === "sp" ? "a7" : register.toLowerCase();
-  return (REGISTERS as readonly string[]).includes(r) ? (r as Register) : undefined;
+  return (REGISTERS as readonly string[]).includes(r)
+    ? (r as Register)
+    : undefined;
 }
 
 /**
@@ -46,14 +66,19 @@ const none = () => new Set<Register>();
 function addRegister(set: Set<Register>, node: unknown): void {
   if (!node || typeof node !== "object" || !("type" in node)) return;
   const n = node as { type: string; register?: string };
-  if ((n.type === "data-register" || n.type === "address-register") && n.register) {
+  if (
+    (n.type === "data-register" || n.type === "address-register") &&
+    n.register
+  ) {
     const r = normalizeRegister(n.register);
     if (r) set.add(r);
   }
 }
 
 /** Registers needed to evaluate an operand/effective address. */
-export function registersReadByOperand(op: OperandNode | undefined): ReadonlySet<Register> {
+export function registersReadByOperand(
+  op: OperandNode | undefined,
+): ReadonlySet<Register> {
   const result = new Set<Register>();
   if (!op) return result;
   switch (op.type) {
@@ -89,7 +114,8 @@ export function registersReadByOperand(op: OperandNode | undefined): ReadonlySet
 }
 
 function directRegister(op: OperandNode | undefined): Register | undefined {
-  if (op?.type !== "data-register" && op?.type !== "address-register") return undefined;
+  if (op?.type !== "data-register" && op?.type !== "address-register")
+    return undefined;
   return normalizeRegister(op.register);
 }
 
@@ -107,9 +133,18 @@ function registersInList(op: OperandNode | undefined): ReadonlySet<Register> {
   return result;
 }
 
-function addEaSideEffectWrite(writes: Set<Register>, op: OperandNode | undefined): void {
-  if (op?.type !== "address-register-indirect-postinc" && op?.type !== "address-register-indirect-predec") return;
-  const r = normalizeRegister(op.register.type === "address-register" ? op.register.register : "");
+function addEaSideEffectWrite(
+  writes: Set<Register>,
+  op: OperandNode | undefined,
+): void {
+  if (
+    op?.type !== "address-register-indirect-postinc" &&
+    op?.type !== "address-register-indirect-predec"
+  )
+    return;
+  const r = normalizeRegister(
+    op.register.type === "address-register" ? op.register.register : "",
+  );
   if (r) writes.add(r);
 }
 
@@ -122,10 +157,24 @@ function computeRegisterSemantics(line: ParsedLine): RegisterSemantics {
   // reads because that is the conservative reading of a register handed to
   // code we cannot inspect; `unknownEffects` covers everything else.
   if (isMacroInvocation(line)) {
-    for (const op of line.operands ?? []) addAll(reads, registersReadByOperand(op));
-    return { reads, writes, partialWrites: none(), unknownEffects: true, call: false };
+    for (const op of line.operands ?? [])
+      addAll(reads, registersReadByOperand(op));
+    return {
+      reads,
+      writes,
+      partialWrites: none(),
+      unknownEffects: true,
+      call: false,
+    };
   }
-  if (!mnemonic) return { reads, writes, partialWrites: none(), unknownEffects: false, call: false };
+  if (!mnemonic)
+    return {
+      reads,
+      writes,
+      partialWrites: none(),
+      unknownEffects: false,
+      call: false,
+    };
   const ops = line.operands ?? [];
   const controlFlow = getFlagSemantics(line).controlFlow;
   const read = (i: number) => addAll(reads, registersReadByOperand(ops[i]));
@@ -137,11 +186,23 @@ function computeRegisterSemantics(line: ParsedLine): RegisterSemantics {
 
   if (controlFlow === "call") {
     read(0);
-    return { reads, writes, partialWrites: none(), unknownEffects: true, call: true };
+    return {
+      reads,
+      writes,
+      partialWrites: none(),
+      unknownEffects: true,
+      call: true,
+    };
   }
   if (controlFlow === "dynamic-jump") {
     read(0);
-    return { reads, writes, partialWrites: none(), unknownEffects: false, call: false };
+    return {
+      reads,
+      writes,
+      partialWrites: none(),
+      unknownEffects: false,
+      call: false,
+    };
   }
   if (
     controlFlow === "return" ||
@@ -153,25 +214,57 @@ function computeRegisterSemantics(line: ParsedLine): RegisterSemantics {
       read(0);
       writeDirect(0);
     }
-    return { reads, writes, partialWrites: none(), unknownEffects: false, call: false };
+    return {
+      reads,
+      writes,
+      partialWrites: none(),
+      unknownEffects: false,
+      call: false,
+    };
   }
-  if (mnemonic === "nop") return { reads, writes, partialWrites: none(), unknownEffects: false, call: false };
+  if (mnemonic === "nop")
+    return {
+      reads,
+      writes,
+      partialWrites: none(),
+      unknownEffects: false,
+      call: false,
+    };
 
   if (["move", "movea"].includes(mnemonic)) {
     read(0);
     // Destination EA registers are read to form the address; a direct register is overwritten.
     if (!directRegister(ops[1])) read(1);
     writeDirect(1);
-    return { reads, writes, partialWrites: none(), unknownEffects: false, call: false };
+    return {
+      reads,
+      writes,
+      partialWrites: none(),
+      unknownEffects: false,
+      call: false,
+    };
   }
   if (mnemonic === "moveq") {
     writeDirect(1);
-    return { reads, writes, partialWrites: none(), unknownEffects: false, call: false };
+    return {
+      reads,
+      writes,
+      partialWrites: none(),
+      unknownEffects: false,
+      call: false,
+    };
   }
   if (mnemonic === "movem") {
     const leftList = ops[0]?.type === "register-list";
     const rightList = ops[1]?.type === "register-list";
-    if (leftList === rightList) return { reads, writes, partialWrites: none(), unknownEffects: true, call: false };
+    if (leftList === rightList)
+      return {
+        reads,
+        writes,
+        partialWrites: none(),
+        unknownEffects: true,
+        call: false,
+      };
 
     if (leftList) {
       // Register list -> memory: listed registers are read; EA registers are read,
@@ -185,14 +278,30 @@ function computeRegisterSemantics(line: ParsedLine): RegisterSemantics {
       addEaSideEffectWrite(writes, ops[0]);
       addAll(writes, registersInList(ops[1]));
     }
-    return { reads, writes, partialWrites: none(), unknownEffects: false, call: false };
+    return {
+      reads,
+      writes,
+      partialWrites: none(),
+      unknownEffects: false,
+      call: false,
+    };
   }
   if (mnemonic === "lea") {
     read(0);
     writeDirect(1);
-    return { reads, writes, partialWrites: none(), unknownEffects: false, call: false };
+    return {
+      reads,
+      writes,
+      partialWrites: none(),
+      unknownEffects: false,
+      call: false,
+    };
   }
-  if (["clr", "not", "neg", "negx", "swap", "ext", "extb", "tas"].includes(mnemonic)) {
+  if (
+    ["clr", "not", "neg", "negx", "swap", "ext", "extb", "tas"].includes(
+      mnemonic,
+    )
+  ) {
     // Memory EAs read address/index registers; direct registers are read only
     // for read-modify-write ops. CLR is the sole one here that overwrites
     // without reading: EXT and EXTB sign-extend the value already there, and
@@ -200,16 +309,34 @@ function computeRegisterSemantics(line: ParsedLine): RegisterSemantics {
     if (mnemonic !== "clr") read(0);
     else if (!directRegister(ops[0])) read(0);
     writeDirect(0);
-    return { reads, writes, partialWrites: none(), unknownEffects: false, call: false };
+    return {
+      reads,
+      writes,
+      partialWrites: none(),
+      unknownEffects: false,
+      call: false,
+    };
   }
   if (["tst"].includes(mnemonic)) {
     read(0);
-    return { reads, writes, partialWrites: none(), unknownEffects: false, call: false };
+    return {
+      reads,
+      writes,
+      partialWrites: none(),
+      unknownEffects: false,
+      call: false,
+    };
   }
   if (["cmp", "cmpa", "btst"].includes(mnemonic)) {
     read(0);
     read(1);
-    return { reads, writes, partialWrites: none(), unknownEffects: false, call: false };
+    return {
+      reads,
+      writes,
+      partialWrites: none(),
+      unknownEffects: false,
+      call: false,
+    };
   }
   if (
     [
@@ -238,37 +365,73 @@ function computeRegisterSemantics(line: ParsedLine): RegisterSemantics {
     read(0);
     read(1);
     writeDirect(1);
-    return { reads, writes, partialWrites: none(), unknownEffects: false, call: false };
+    return {
+      reads,
+      writes,
+      partialWrites: none(),
+      unknownEffects: false,
+      call: false,
+    };
   }
   if (["mulu", "muls", "divu", "divs"].includes(mnemonic)) {
     read(0);
     read(1);
     writeDirect(1);
-    return { reads, writes, partialWrites: none(), unknownEffects: false, call: false };
+    return {
+      reads,
+      writes,
+      partialWrites: none(),
+      unknownEffects: false,
+      call: false,
+    };
   }
   if (mnemonic === "exg") {
     read(0);
     read(1);
     writeDirect(0);
     writeDirect(1);
-    return { reads, writes, partialWrites: none(), unknownEffects: false, call: false };
+    return {
+      reads,
+      writes,
+      partialWrites: none(),
+      unknownEffects: false,
+      call: false,
+    };
   }
   if (mnemonic === "link") {
     read(0);
     writeDirect(0);
     writes.add("a7");
     reads.add("a7");
-    return { reads, writes, partialWrites: none(), unknownEffects: false, call: false };
+    return {
+      reads,
+      writes,
+      partialWrites: none(),
+      unknownEffects: false,
+      call: false,
+    };
   }
   if (mnemonic === "unlk") {
     read(0);
     writes.add("a7");
     writeDirect(0);
-    return { reads, writes, partialWrites: none(), unknownEffects: false, call: false };
+    return {
+      reads,
+      writes,
+      partialWrites: none(),
+      unknownEffects: false,
+      call: false,
+    };
   }
 
   // Uncommon/system/FPU instructions are intentionally conservative for now.
-  return { reads, writes, partialWrites: none(), unknownEffects: true, call: false };
+  return {
+    reads,
+    writes,
+    partialWrites: none(),
+    unknownEffects: true,
+    call: false,
+  };
 }
 
 /**
@@ -297,7 +460,10 @@ function directDataRegister(op: OperandNode | undefined): Register | undefined {
  * sign-extends each register it loads, and a postincrement side effect updates
  * the whole address register, so none of those preserve anything.
  */
-function partialWritesOf(line: ParsedLine, writes: ReadonlySet<Register>): Set<Register> {
+function partialWritesOf(
+  line: ParsedLine,
+  writes: ReadonlySet<Register>,
+): Set<Register> {
   const partial = new Set<Register>();
   const size = instructionSize(line);
   if (size !== "b" && size !== "w") return partial;

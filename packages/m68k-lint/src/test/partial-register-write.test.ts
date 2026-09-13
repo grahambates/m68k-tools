@@ -17,22 +17,53 @@ const fires = (lines: string[]) =>
 
 describe("a routine that writes the register whole is building a value", () => {
   test("halves assembled around a SWAP", () => {
-    expect(fires(["Routine:", "\tmove.w\t#1,d0", "\tswap\td0", "\tmove.w\t#2,d0", "\tmove.l\td0,(a0)", "\trts"])).toBe(
-      false,
-    );
+    expect(
+      fires([
+        "Routine:",
+        "\tmove.w\t#1,d0",
+        "\tswap\td0",
+        "\tmove.w\t#2,d0",
+        "\tmove.l\td0,(a0)",
+        "\trts",
+      ]),
+    ).toBe(false);
   });
 
   test("a long move establishes the upper bits, whatever they hold", () => {
-    expect(fires(["Routine:", "\tmove.l\td1,d7", "\tmove.w\td4,d7", "\tmove.l\td7,(a0)", "\trts"])).toBe(false);
+    expect(
+      fires([
+        "Routine:",
+        "\tmove.l\td1,d7",
+        "\tmove.w\td4,d7",
+        "\tmove.l\td7,(a0)",
+        "\trts",
+      ]),
+    ).toBe(false);
   });
 
   test("the MOVEQ zero-extension idiom", () => {
-    expect(fires(["Routine:", "\tmoveq\t#0,d2", "\tmove.b\t(a2),d2", "\tmove.l\td2,(a0)", "\trts"])).toBe(false);
+    expect(
+      fires([
+        "Routine:",
+        "\tmoveq\t#0,d2",
+        "\tmove.b\t(a2),d2",
+        "\tmove.l\td2,(a0)",
+        "\trts",
+      ]),
+    ).toBe(false);
   });
 
   // Anywhere in the routine counts, not only before the narrow write.
   test("a full write later in the routine still counts", () => {
-    expect(fires(["Routine:", "\tmove.w\td4,d7", "\tmove.l\td7,(a0)", "\tmove.l\t#0,d7", "\trts"])).toBe(false);
+    expect(
+      fires([
+        "Routine:",
+        "\tmove.w\td4,d7",
+        "\tmove.l\td7,(a0)",
+        "\tmove.l\t#0,d7",
+        "\trts",
+      ]),
+    ).toBe(false);
   });
 
   test("a local label does not start a new routine", () => {
@@ -51,13 +82,23 @@ describe("a routine that writes the register whole is building a value", () => {
 
 describe("bits nothing in the routine ever writes", () => {
   test("are still reported", () => {
-    expect(fires(["Routine:", "\tmove.w\td4,d7", "\tmove.l\td7,(a0)", "\trts"])).toBe(true);
+    expect(
+      fires(["Routine:", "\tmove.w\td4,d7", "\tmove.l\td7,(a0)", "\trts"]),
+    ).toBe(true);
   });
 
   // A global label starts a new routine, so what happens in another one says
   // nothing about this one.
   test("a full write in a different routine does not excuse it", () => {
-    const source = ["Other:", "\tmove.l\t#0,d7", "\trts", "Routine:", "\tmove.w\td4,d7", "\tmove.l\td7,(a0)", "\trts"];
+    const source = [
+      "Other:",
+      "\tmove.l\t#0,d7",
+      "\trts",
+      "Routine:",
+      "\tmove.w\td4,d7",
+      "\tmove.l\td7,(a0)",
+      "\trts",
+    ];
     expect(fires(source)).toBe(true);
   });
 });
@@ -77,11 +118,27 @@ const divides = (lines: string[]) => fires(lines);
 
 describe("DIVU and DIVS read a long dividend", () => {
   test("dividing after only the low word was set is reported", () => {
-    expect(divides(["Routine:", "\tmove.w\t#100,d0", "\tdivu.w\t#4,d0", "\tmove.w\td0,(a0)", "\trts"])).toBe(true);
+    expect(
+      divides([
+        "Routine:",
+        "\tmove.w\t#100,d0",
+        "\tdivu.w\t#4,d0",
+        "\tmove.w\td0,(a0)",
+        "\trts",
+      ]),
+    ).toBe(true);
   });
 
   test("the signed form too", () => {
-    expect(divides(["Routine:", "\tmove.w\td4,d0", "\tdivs.w\t#4,d0", "\tmove.w\td0,(a0)", "\trts"])).toBe(true);
+    expect(
+      divides([
+        "Routine:",
+        "\tmove.w\td4,d0",
+        "\tdivs.w\t#4,d0",
+        "\tmove.w\td0,(a0)",
+        "\trts",
+      ]),
+    ).toBe(true);
   });
 
   test("establishing the long first is fine", () => {
@@ -99,17 +156,39 @@ describe("DIVU and DIVS read a long dividend", () => {
   // The divide writes all 32 bits, but it consumed them first, so it does not
   // account for what was above the word that was set.
   test("the divide itself does not count as establishing the register", () => {
-    const source = ["Routine:", "\tmove.w\t#100,d0", "\tdivu.w\t#4,d0", "\tmove.l\td0,(a0)", "\trts"];
+    const source = [
+      "Routine:",
+      "\tmove.w\t#100,d0",
+      "\tdivu.w\t#4,d0",
+      "\tmove.l\td0,(a0)",
+      "\trts",
+    ];
     expect(divides(source)).toBe(true);
   });
 });
 
 describe("MULU and MULS read only the low word", () => {
   test("multiplying after setting the low word says nothing", () => {
-    expect(divides(["Routine:", "\tmove.w\t#100,d0", "\tmulu.w\t#4,d0", "\tmove.l\td0,(a0)", "\trts"])).toBe(false);
+    expect(
+      divides([
+        "Routine:",
+        "\tmove.w\t#100,d0",
+        "\tmulu.w\t#4,d0",
+        "\tmove.l\td0,(a0)",
+        "\trts",
+      ]),
+    ).toBe(false);
   });
 
   test("the signed form too", () => {
-    expect(divides(["Routine:", "\tmove.w\td4,d0", "\tmuls.w\t#4,d0", "\tmove.l\td0,(a0)", "\trts"])).toBe(false);
+    expect(
+      divides([
+        "Routine:",
+        "\tmove.w\td4,d0",
+        "\tmuls.w\t#4,d0",
+        "\tmove.l\td0,(a0)",
+        "\trts",
+      ]),
+    ).toBe(false);
   });
 });

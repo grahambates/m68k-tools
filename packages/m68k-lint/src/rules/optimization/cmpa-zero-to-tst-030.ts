@@ -1,5 +1,10 @@
 import type { Rule } from "../../core/rule.js";
-import { addressRegisterOperand, immediateExpressionOperand, instructionSize, isInstruction } from "../../util/ast.js";
+import {
+  addressRegisterOperand,
+  immediateExpressionOperand,
+  instructionSize,
+  isInstruction,
+} from "../../util/ast.js";
 
 export const cmpaZeroToTst030: Rule = {
   meta: {
@@ -25,10 +30,15 @@ export const cmpaZeroToTst030: Rule = {
       confidence: "certain",
       message: "CMPA.L #0,An can use TST.L An on 68030",
       loc: line.mnemonic!.loc,
-      suggestion: { description: "Use TST.L", replacement: `tst.l ${dest.register}`, applicability: "safe" },
+      suggestion: {
+        description: "Use TST.L",
+        replacement: `tst.l ${dest.register}`,
+        applicability: "safe",
+      },
       notes: [
         {
-          message: "The long form has equivalent N/Z/V/C semantics for comparison with zero.",
+          message:
+            "The long form has equivalent N/Z/V/C semantics for comparison with zero.",
         },
         {
           message:

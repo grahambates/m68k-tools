@@ -14,7 +14,8 @@ import type { Diagnostic } from "./diagnostic.js";
  * "I have applied this by hand", which is not a suppression at all -- a finding
  * you have actually fixed stops being reported on its own.
  */
-export type Decision = "apply" | "apply-rule" | "skip" | "skip-rule" | "allow" | "disable" | "quit";
+export type Decision =
+  "apply" | "apply-rule" | "skip" | "skip-rule" | "allow" | "disable" | "quit";
 
 export interface InteractiveResult {
   output: string;
@@ -60,7 +61,8 @@ export async function runInteractive(
     .slice()
     .sort((a, b) => a.span!.startLine - b.span!.startLine);
 
-  const decisions: { diagnostic: Diagnostic; decision: "apply" | "allow" }[] = [];
+  const decisions: { diagnostic: Diagnostic; decision: "apply" | "allow" }[] =
+    [];
   const disabledRules = new Set<string>();
   const acceptedRules = new Set<string>();
   const skippedRules = new Set<string>();
@@ -68,7 +70,11 @@ export async function runInteractive(
   for (const diagnostic of reviewable) {
     // Once a rule is off for the project, or set aside for this run, there is
     // nothing left to ask about it.
-    if (disabledRules.has(diagnostic.ruleId) || skippedRules.has(diagnostic.ruleId)) continue;
+    if (
+      disabledRules.has(diagnostic.ruleId) ||
+      skippedRules.has(diagnostic.ruleId)
+    )
+      continue;
 
     const fixable = diagnostic.suggestion?.replacement !== undefined;
     // A rule already accepted wholesale is not asked about again. A finding of
@@ -108,17 +114,27 @@ export async function runInteractive(
 
   for (const { diagnostic, decision } of decisions
     .slice()
-    .sort((a, b) => b.diagnostic.span!.startLine - a.diagnostic.span!.startLine)) {
+    .sort(
+      (a, b) => b.diagnostic.span!.startLine - a.diagnostic.span!.startLine,
+    )) {
     const { startLine, endLine } = diagnostic.span!;
     if (endLine >= lowestTouched) continue;
 
     if (decision === "apply") {
       const replacement = diagnostic.suggestion?.replacement;
       if (replacement === undefined) continue;
-      lines.splice(startLine - 1, endLine - startLine + 1, ...(replacement === "" ? [] : replacement.split("\n")));
+      lines.splice(
+        startLine - 1,
+        endLine - startLine + 1,
+        ...(replacement === "" ? [] : replacement.split("\n")),
+      );
       applied.push(diagnostic);
     } else {
-      lines.splice(startLine - 1, 0, suppressionFor(diagnostic, indentOf(lines[startLine - 1])));
+      lines.splice(
+        startLine - 1,
+        0,
+        suppressionFor(diagnostic, indentOf(lines[startLine - 1])),
+      );
       suppressed.push(diagnostic);
     }
     lowestTouched = startLine;

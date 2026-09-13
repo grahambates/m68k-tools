@@ -31,7 +31,9 @@
   "scripts": {
     "build": "node ../../scripts/build-lint-lsp.mjs --minify",
     "vscode:prepublish": "pnpm run build",
-    "package": "vsce package --no-dependencies"
+    "package": "vsce package --no-dependencies",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf out dist .tsbuild coverage"
   },
   "activationEvents": [
     "onLanguage:m68k",

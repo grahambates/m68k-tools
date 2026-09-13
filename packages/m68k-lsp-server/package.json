@@ -39,5 +39,10 @@
     "@types/which": "^3.0.4",
     "@m68k-lsp/protocol": "workspace:^"
   },
-  "scripts": {}
+  "scripts": {
+    "build": "node ../../scripts/build.mjs --minify",
+    "test": "vitest run --config ../../vitest.package.config.mts",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "clean": "rm -rf out dist .tsbuild coverage"
+  }
 }

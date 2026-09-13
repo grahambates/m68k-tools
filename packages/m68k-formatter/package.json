@@ -22,7 +22,9 @@
     "build": "tsdown",
     "test": "vitest run --config ../../vitest.package.config.mts",
     "prepack": "pnpm run build",
-    "pretest": "pnpm run build"
+    "pretest": "pnpm run build",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "clean": "rm -rf out dist .tsbuild coverage"
   },
   "dependencies": {
     "m68k-parser": "workspace:^",

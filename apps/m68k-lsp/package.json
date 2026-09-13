@@ -7,7 +7,10 @@
   "version": "0.11.3",
   "scripts": {
     "package": "vsce package --no-dependencies",
-    "publish": "vsce publish --no-dependencies"
+    "publish": "vsce publish --no-dependencies",
+    "test": "vitest run --config ../../vitest.package.config.mts",
+    "typecheck": "tsc -b",
+    "clean": "rm -rf out dist .tsbuild coverage wasm"
   },
   "homepage": "https://github.com/grahambates/m68k-lsp",
   "bugs": {

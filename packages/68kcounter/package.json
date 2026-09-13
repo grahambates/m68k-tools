@@ -16,7 +16,8 @@
     "test": "vitest run --config ../../vitest.package.config.mts",
     "lint": "pnpm --dir ../.. exec eslint packages/68kcounter",
     "build": "tsdown",
-    "clean": "tsc --build --clean"
+    "clean": "rm -rf out dist .tsbuild coverage",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "main": "dist/index.js",
   "bin": {

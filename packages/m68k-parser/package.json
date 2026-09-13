@@ -45,11 +45,12 @@
   ],
   "scripts": {
     "build": "tsdown",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf out dist .tsbuild coverage",
     "test": "vitest run --config ../../vitest.package.config.mts",
     "lint": "pnpm --dir ../.. exec eslint packages/m68k-parser",
     "format": "pnpm --dir ../.. run format",
-    "prepublishOnly": "pnpm run build && pnpm test"
+    "prepublishOnly": "pnpm run build && pnpm test",
+    "typecheck": "tsc -p tsconfig.test.json"
   },
   "devDependencies": {
     "@types/node": "22.18.0",

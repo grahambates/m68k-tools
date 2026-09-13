@@ -13,17 +13,16 @@
     "node": ">=22.18.0"
   },
   "scripts": {
-    "build": "node scripts/workspace.mjs build",
+    "build": "pnpm --filter './packages/**' -r --workspace-concurrency=1 run build && pnpm --filter 68kcounter-vscode build && pnpm --filter 68kcounter-web build",
     "build:dev": "node scripts/build.mjs --sourcemap",
     "watch": "node scripts/build.mjs --sourcemap --watch",
-    "clean": "rm -rf packages/*/out packages/*/.tsbuild apps/m68k-lsp/wasm",
+    "clean": "pnpm -r run clean && rm -rf .staging coverage",
     "check": "pnpm run build && pnpm run lint && pnpm run format:check && pnpm run typecheck && pnpm run test && pnpm --filter m68k-lint test:coverage && pnpm --filter m68k-lint audit:impact",
-    "typecheck": "node scripts/workspace.mjs typecheck",
-    "lint": "node scripts/workspace.mjs lint",
+    "typecheck": "tsc -b && pnpm -r --workspace-concurrency=1 run typecheck",
+    "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "test": "node scripts/workspace.mjs test",
-    "test:coverage": "vitest run --coverage",
+    "test": "pnpm -r --workspace-concurrency=1 run test",
     "build-docs": "scripts/conv-directives && scripts/conv-instructions",
     "package": "pnpm run package:extensions",
     "prepare": "husky",
@@ -35,10 +34,11 @@
     "version-packages": "changeset version && pnpm install --lockfile-only",
     "package:counter": "pnpm --filter 68kcounter-vscode package",
     "check:packages": "node scripts/check-packages.mjs",
-    "test:extension-host": "pnpm --filter 68kcounter-vscode test",
+    "test:extension-host": "pnpm --filter 68kcounter-vscode test:extension-host",
     "package:extensions": "pnpm run build && pnpm run package:assembly && pnpm run package:lint && pnpm run package:counter",
     "package:assembly": "pnpm --filter m68k-lsp package",
-    "package:lint": "pnpm --filter m68k-lint-vscode package"
+    "package:lint": "pnpm --filter m68k-lint-vscode package",
+    "test:coverage:assembly": "vitest run --coverage"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.2",

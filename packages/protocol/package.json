@@ -8,7 +8,9 @@
   "dependencies": {
     "vscode-languageserver-protocol": "^3.17.5"
   },
-  "scripts": {},
+  "scripts": {
+    "clean": "rm -rf out dist .tsbuild coverage"
+  },
   "devDependencies": {},
   "license": "MIT"
 }

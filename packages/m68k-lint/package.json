@@ -62,7 +62,8 @@
     "audit:impact": "node ./dist/cli/main.js --audit-rule-impact",
     "verify:semantics": "pnpm run build && node --experimental-wasm-modules ./scripts/verify-semantics.mjs",
     "docs:rules": "pnpm run build && node ./scripts/generate-rules-doc.mjs",
-    "prepublishOnly": "pnpm run typecheck && pnpm run lint && pnpm test && pnpm run build && pnpm run audit:impact"
+    "prepublishOnly": "pnpm run typecheck && pnpm run lint && pnpm test && pnpm run build && pnpm run audit:impact",
+    "clean": "rm -rf out dist .tsbuild coverage"
   },
   "dependencies": {
     "68kcounter": "workspace:^",

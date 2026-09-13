@@ -42,10 +42,12 @@
     "vscode:prepublish": "pnpm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "pretest": "pnpm run compile && pnpm run lint",
     "lint": "pnpm --dir ../.. exec eslint apps/68kcounter-vscode",
-    "test": "node ../../scripts/package-counter-extension.mjs --stage-only && node ./out/test/runTest.js",
-    "package": "node ../../scripts/package-counter-extension.mjs"
+    "package": "node ../../scripts/package-counter-extension.mjs",
+    "build": "pnpm run compile",
+    "typecheck": "tsc --noEmit",
+    "test:extension-host": "pnpm run compile && pnpm run lint && node ../../scripts/package-counter-extension.mjs --stage-only && node ./out/test/runTest.js",
+    "clean": "rm -rf out dist .tsbuild coverage"
   },
   "devDependencies": {
     "@types/debounce": "^1.2.0",

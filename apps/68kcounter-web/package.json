@@ -38,7 +38,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "lint": "pnpm --dir ../.. exec eslint apps/68kcounter-web"
+    "lint": "pnpm --dir ../.. exec eslint apps/68kcounter-web",
+    "clean": "rm -rf out dist .tsbuild coverage"
   },
   "browserslist": {
     "production": [

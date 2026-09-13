@@ -43,7 +43,9 @@ pnpm package:counter
 
 `pnpm package` (alias for `pnpm package:extensions`) builds the workspace and creates all three extension VSIX files. After building, use `package:assembly`, `package:lint` or `package:counter` to package just one extension. These commands do not publish anything.
 
-Build before running the isolated tarball checks. VS Code host tests run separately with `pnpm test:extension-host` and require a graphical display (or Xvfb on Linux). Counter packaging generates `.staging/68kcounter-vscode` and preserves Marketplace identity `gigabates.68kcounter`.
+Workspace tests and typechecks run through package-level scripts; TypeScript project references are built before the individual typechecks. The server build scripts also build and stage their corresponding VS Code extensions. `pnpm clean` removes package build outputs, TypeScript build metadata, coverage and extension staging. `pnpm test:coverage:assembly` covers the assembly suites and formatter; linter coverage remains `pnpm --filter m68k-lint test:coverage`.
+
+Build before running the isolated tarball checks. Their consumer fixtures live in `scripts/fixtures/packages` and are copied into a temporary installation to check the actual npm archives. VS Code host tests run separately with `pnpm test:extension-host` and require a graphical display (or Xvfb on Linux). Counter packaging generates `.staging/68kcounter-vscode` and preserves Marketplace identity `gigabates.68kcounter`.
 
 All active projects use the root Prettier configuration and ESLint rules. React-specific checks and the linter’s existing type-aware checks are scoped in the root ESLint configuration. Package lint entry points delegate to the root. Only the root Husky hook is used.
 

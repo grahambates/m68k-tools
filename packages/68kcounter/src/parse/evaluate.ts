@@ -23,11 +23,11 @@ export default function evaluate(
     // Remove immediate prefix
     .replace(/^#/, "")
     // Hex
-    .replace(/\$([0-9a-f]+)/gi, (_, p1) => eval("0x" + p1))
+    .replace(/\$([0-9a-f]+)/gi, (_, digits) => String(parseInt(digits, 16)))
     // Binary
-    .replace(/%([0-1]+)/gi, (_, p1) => eval("0b" + p1))
+    .replace(/%([0-1]+)/gi, (_, digits) => String(parseInt(digits, 2)))
     // Octal
-    .replace(/@([0-7]+)/gi, (_, p1) => eval("0o" + p1))
+    .replace(/@([0-7]+)/gi, (_, digits) => String(parseInt(digits, 8)))
     // OR
     .replace(/(?<=[a-z0-9_])!(?=[a-z0-9_])/g, "|")
     // XOR

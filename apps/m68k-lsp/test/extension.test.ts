@@ -38,6 +38,9 @@ vi.mock(
   () => ({
     DecorationRangeBehavior: { ClosedClosed: 1 },
     Range: class {},
+    ThemeColor: class {
+      constructor(readonly id: string) {}
+    },
     commands: { registerCommand: vi.fn() },
     workspace: {
       getConfiguration: () => ({

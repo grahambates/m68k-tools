@@ -6,12 +6,20 @@ class Element {
   style: Record<string, string> = {};
   children: Element[] = [];
   className = "";
-  textContent = "";
+  private text = "";
+  get textContent(): string {
+    return this.text + this.children.map((child) => child.textContent).join("");
+  }
+  set textContent(value: string) {
+    this.text = value;
+    this.children = [];
+  }
   hidden = false;
   classList = { add() {}, remove() {}, toggle() {} };
   addEventListener() {}
   setAttribute() {}
   replaceChildren() {
+    this.text = "";
     this.children = [];
   }
   append(...children: Element[]) {
@@ -214,4 +222,39 @@ it("displays validation warnings without disabling Apply and ignores stale resul
   ).not.toBe(true);
   receive({ data: { type: "validation", requestId: 1, warnings: ["stale"] } });
   expect(elements.get("status")?.textContent).not.toContain("stale");
+});
+
+it("clears source previews on refresh and disposal", async () => {
+  const clear = vi.fn();
+  const provider = new RegisterRemappingView(vi.fn(), vi.fn(), vi.fn(), clear);
+  await provider.refresh();
+  expect(clear).toHaveBeenCalledTimes(1);
+  provider.dispose();
+  expect(clear).toHaveBeenCalledTimes(2);
+});
+
+it("does not publish validation results from an obsolete mapping", async () => {
+  const first = deferred<string[]>();
+  const validate = vi
+    .fn()
+    .mockReturnValueOnce(first.promise)
+    .mockResolvedValueOnce(["latest"]);
+  const view = testView();
+  const provider = new RegisterRemappingView(vi.fn(), vi.fn(), validate);
+  provider.resolveWebviewView(view as unknown as WebviewView);
+  const receive = view.webview.onDidReceiveMessage.mock.calls[0][0];
+  const pending = receive({
+    type: "validate",
+    mappings: { d0: "a0" },
+    requestId: 1,
+  });
+  await receive({ type: "validate", mappings: { d0: "d1" }, requestId: 2 });
+  first.resolve(["obsolete"]);
+  await pending;
+  expect(view.webview.postMessage).toHaveBeenCalledTimes(1);
+  expect(view.webview.postMessage).toHaveBeenCalledWith({
+    type: "validation",
+    requestId: 2,
+    warnings: ["latest"],
+  });
 });

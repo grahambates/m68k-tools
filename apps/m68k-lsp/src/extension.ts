@@ -1,3 +1,4 @@
+import { remappingHighlights } from "./remappingHighlights";
 import {
   RegisterRangesRequest,
   RegisterUsageRequest,
@@ -15,6 +16,8 @@ import type {
 import * as path from "path";
 import {
   DecorationRangeBehavior,
+  ThemeColor,
+  type DecorationOptions,
   type ExtensionContext,
   type QuickPickItem,
   QuickPickItemKind,
@@ -125,6 +128,27 @@ export function activate(context: ExtensionContext): void {
   let clientReady = false;
   let remappingContext: RemappingContext | undefined;
   let modelGeneration = 0;
+  let previewGeneration = 0;
+  let previewUsage: RegisterUsageResult | undefined;
+  const previewMark = window.createTextEditorDecorationType({
+    border: "1px solid",
+    borderColor: new ThemeColor("editorInfo.foreground"),
+    rangeBehavior: DecorationRangeBehavior.ClosedClosed,
+  });
+  const previewWarning = window.createTextEditorDecorationType({
+    border: "1px solid",
+    borderColor: new ThemeColor("editorWarning.foreground"),
+    rangeBehavior: DecorationRangeBehavior.ClosedClosed,
+  });
+  const clearPreview = () => {
+    previewGeneration++;
+    for (const editor of window.visibleTextEditors) {
+      editor.setDecorations(previewMark, []);
+      editor.setDecorations(previewWarning, []);
+    }
+  };
+  context.subscriptions.push(previewMark, previewWarning);
+
   const decorationGenerations = new WeakMap<TextEditor, number>();
 
   const clearDecorations = (editor: TextEditor) => {
@@ -174,6 +198,8 @@ export function activate(context: ExtensionContext): void {
   const loadRemappingModel = async (
     isCurrent = () => true,
   ): Promise<RegisterRemappingModel | undefined> => {
+    clearPreview();
+    previewUsage = undefined;
     const generation = ++modelGeneration;
     remappingContext = undefined;
     if (!clientReady) {
@@ -205,6 +231,7 @@ export function activate(context: ExtensionContext): void {
     if (!stillCurrent() || !usage || usage.documentVersion !== version) {
       return;
     }
+    previewUsage = usage;
     remappingContext = {
       isCurrent: stillCurrent,
       uri: editor.document.uri.toString(),
@@ -298,7 +325,11 @@ export function activate(context: ExtensionContext): void {
     loadRemappingModel,
     applyRemappings,
     async (mappings) => {
+      clearPreview();
+      const request = previewGeneration;
       const snapshot = remappingContext;
+      if (!Object.entries(mappings).some(([a, b]) => a !== b)) return [];
+
       if (!snapshot?.isCurrent())
         return ["The editor scope changed. Refresh to validate."];
       const plan = await client.sendRequest(RegisterRemapRequest, {
@@ -307,7 +338,40 @@ export function activate(context: ExtensionContext): void {
         range: snapshot.range,
         mappings,
       });
-      if (!snapshot.isCurrent()) return [];
+      if (!snapshot.isCurrent() || request !== previewGeneration) return [];
+      const normal: DecorationOptions[] = [],
+        warning: DecorationOptions[] = [];
+      for (const item of remappingHighlights(
+        previewUsage,
+        mappings,
+        plan?.warnings ?? [],
+      )) {
+        (item.warning ? warning : normal).push({
+          range: new Range(
+            item.range.start.line,
+            item.range.start.character,
+            item.range.end.line,
+            item.range.end.character,
+          ),
+          hoverMessage: item.hover,
+          renderOptions: {
+            after: {
+              contentText: ` → ${item.destination}`,
+              margin: "0 0.4em",
+              color: new ThemeColor(
+                item.warning
+                  ? "editorWarning.foreground"
+                  : "editorInfo.foreground",
+              ),
+            },
+          },
+        });
+      }
+      for (const editor of window.visibleTextEditors)
+        if (editor.document.uri.toString() === snapshot.uri) {
+          editor.setDecorations(previewMark, normal);
+          editor.setDecorations(previewWarning, warning);
+        }
       if (plan?.validationIncomplete)
         return [
           ...(plan.warnings ?? []),
@@ -317,6 +381,7 @@ export function activate(context: ExtensionContext): void {
         return ["Unable to validate this mapping in the current scope."];
       return plan.warnings ?? [];
     },
+    clearPreview,
   );
 
   const listRegistersInSelection = async () => {

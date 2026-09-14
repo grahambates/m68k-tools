@@ -39,6 +39,7 @@ export class RegisterRemappingView implements WebviewViewProvider, Disposable {
     private readonly validateMappings: (
       mappings: Record<string, string>,
     ) => Promise<string[]> = () => Promise.resolve([]),
+    private readonly clearPreview: () => void = () => {},
   ) {}
 
   resolveWebviewView(view: WebviewView): void {
@@ -94,6 +95,7 @@ export class RegisterRemappingView implements WebviewViewProvider, Disposable {
   }
 
   refresh(): Promise<void> {
+    this.clearPreview();
     this.refreshGeneration++;
     if (!this.view?.visible) {
       return this.pendingRefresh ?? Promise.resolve();
@@ -133,6 +135,7 @@ export class RegisterRemappingView implements WebviewViewProvider, Disposable {
   }
 
   dispose(): void {
+    this.clearPreview();
     this.refreshGeneration++;
     this.view = undefined;
     this.messageSubscription?.dispose();
@@ -159,18 +162,14 @@ function webviewHtml(webview: Webview): string {
       font-size: var(--vscode-font-size);
     }
     header {
-      position: sticky;
-      top: 0;
-      z-index: 1;
-      padding: 10px 12px 8px;
-      background: var(--vscode-sideBar-background);
-      border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, var(--vscode-widget-border));
+      margin-bottom: 8px;
     }
     #scope {
       overflow: hidden;
       color: var(--vscode-descriptionForeground);
       text-overflow: ellipsis;
       white-space: nowrap;
+      margin: 8px 0 12px;
     }
     .options {
       display: flex;
@@ -186,13 +185,10 @@ function webviewHtml(webview: Webview): string {
       align-items: center;
       justify-content: space-between;
     }
-    .warning { color: var(--vscode-editorWarning-foreground); white-space: pre-line; }
     .remap-label { font-weight: bold; }
-    main { padding: 4px 12px 4px; }
-    .unsaved main { padding-bottom: 44px; }
     .row {
       display: grid;
-      grid-template-columns: 2rem 1fr 6.5rem;
+      grid-template-columns: 2rem 1fr 5rem;
       align-items: center;
       min-height: 34px;
       border-bottom: 1px solid color-mix(in srgb, var(--vscode-widget-border) 55%, transparent);
@@ -209,23 +205,19 @@ function webviewHtml(webview: Webview): string {
     select { width: 100%; padding: 0 4px; }
     select.changed { border-color: var(--vscode-focusBorder); }
     footer {
-      position: fixed;
-      right: 0;
-      bottom: 0;
-      left: 0;
-      padding: 8px 12px 10px;
-      background: var(--vscode-sideBar-background);
-      border-top: 1px solid var(--vscode-sideBarSectionHeader-border, var(--vscode-widget-border));
-      flex-drection: row;
-      justify-content: space-between;
-      display: none;
-    }
-    .unsaved footer {
-      display: flex;
+      margin-top: 12px;
     }
     #status { color: var(--vscode-descriptionForeground); }
-    #status.error { color: var(--vscode-editorWarning-foreground); }
-    .actions { display: flex; gap: 6px; flex-direction: row; }
+    #status.warning { color: var(--vscode-editorWarning-foreground); }
+    #status.error { color: var(--vscode-editorError-foreground); }
+    #status ul {
+      padding-left: 1.8em;
+      margin: 0 0 12px 0;
+    }
+    .actions { display: none; gap: 6px; flex-direction: row; justify-content: end; }
+    .unsaved .actions {
+      display: flex;
+    }
     button { padding: 0 10px; cursor: pointer; }
     button.primary { color: var(--vscode-button-foreground); background: var(--vscode-button-background); border-color: transparent; }
     button.primary:hover { background: var(--vscode-button-hoverBackground); }
@@ -295,8 +287,22 @@ function webviewHtml(webview: Webview): string {
     let validationWarnings = [];
     let conflictMessage = '';
     function showWarnings() {
-      status.textContent = [conflictMessage, ...validationWarnings].filter(Boolean).join('\\n');
-      status.className = status.textContent ? 'warning' : '';
+      const messages = [...validationWarnings];
+      if (conflictMessage) {
+        messages.unshift(conflictMessage);
+      }
+      status.replaceChildren();
+      status.className = '';
+      if (messages.length > 0) {
+        const ul = document.createElement('ul');
+        for (const message of messages) {
+          const li = document.createElement('li');
+          li.textContent = message;
+          ul.append(li);
+        }
+        status.className = 'warning';
+        status.append(ul);
+      }
     }
     function validate() {
       const changed = Object.entries(mappings).filter(([source, destination]) => source !== destination);
@@ -310,7 +316,7 @@ function webviewHtml(webview: Webview): string {
       validationWarnings = [];
       showWarnings();
       const requestId = ++validationId;
-      if (changed.length) vscode.postMessage({ type: 'validate', mappings, requestId });
+      vscode.postMessage({ type: 'validate', mappings, requestId });
       const hasUnsavedChanges = changed.length > 0;
       if (hasUnsavedChanges) {
         document.body.classList.add('unsaved');
@@ -346,7 +352,7 @@ function webviewHtml(webview: Webview): string {
         for (const destination of allRegisters) {
           const option = document.createElement('option');
           option.value = destination;
-          option.textContent = destination.toUpperCase() + (usageByName.has(destination) ? '' : ' (unused)');
+          option.textContent = destination.toUpperCase() + (usageByName.has(destination) ? '' : ' (free)');
           option.selected = destination === selectedDestination;
           select.append(option);
         }

@@ -1113,6 +1113,7 @@ Second:
         provider.onRegisterRemap({ ...params, mappings: { d0: "d2" } }),
       ).toEqual({
         documentVersion: 0,
+        warnings: [expect.stringContaining("D0 is an input register")],
         edits: [{ range: range(callLine, 5, callLine, 7), newText: "d2" }],
       });
     });
@@ -1159,6 +1160,34 @@ Second:
       expect(result?.edits[0].newText).toBe("a0");
     });
 
+    it.each([
+      [" moveq #1,d0\n", false],
+      [" addq #1,d0\n", true],
+    ])(
+      "warns only for inputs in the selected scope: %s",
+      async (instruction, input) => {
+        const textDocument = await createDoc(
+          "input-remap.s",
+          " moveq #0,d0\n" + instruction,
+        );
+        const result = provider.onRegisterRemap({
+          textDocument,
+          documentVersion: 0,
+          range: range(1, 0, 2, 0),
+          mappings: { d0: "d1" },
+        });
+        expect(result?.error).toBeUndefined();
+        expect(result?.edits).toHaveLength(1);
+        if (input) {
+          expect(result?.warnings).toEqual([
+            "Line 2: D0 is an input register. Remapping it to D1 requires updating the code outside this scope that supplies its value.",
+          ]);
+        } else {
+          expect(result?.warnings).toBeUndefined();
+        }
+      },
+    );
+
     it("plans multiple mappings against the original source", async () => {
       const textDocument = await createDoc(
         "remap.s",
@@ -1174,6 +1203,10 @@ Second:
 
       expect(result).toEqual({
         documentVersion: 0,
+        warnings: [
+          expect.stringContaining("D0 is an input register"),
+          expect.stringContaining("D2 is an input register"),
+        ],
         edits: [
           { range: range(0, 6, 0, 8), newText: "d3" },
           { range: range(0, 9, 0, 11), newText: "d0" },
@@ -1202,6 +1235,7 @@ Second:
         }),
       ).toEqual({
         documentVersion: 0,
+        warnings: [expect.stringContaining("D0 is an input register")],
         edits: [
           { range: range(4, 5, 4, 7), newText: "D2" },
           { range: range(4, 8, 4, 10), newText: "a3" },

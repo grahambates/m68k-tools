@@ -180,6 +180,14 @@ export default class RegisterProvider implements Provider {
       plannedEdits,
       this.ctx.config.processors,
     );
+    for (const [source, destination] of mappings) {
+      const register = byName.get(source);
+      if (register?.input) {
+        warnings.push(
+          `Line ${register.firstUse.line + 1}: ${source.toUpperCase()} is an input register. Remapping it to ${destination.toUpperCase()} requires updating the code outside this scope that supplies its value.`,
+        );
+      }
+    }
     if (usage.incomplete || unsupported.length) {
       return {
         documentVersion: document.document.version,

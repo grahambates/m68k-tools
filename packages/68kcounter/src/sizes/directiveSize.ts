@@ -33,7 +33,7 @@ export default function directiveSize(
     operands[0]
   ) {
     const n = evaluate(operands[0].text, vars);
-    if (n) {
+    if (n !== undefined) {
       const bytes = qualifierBytes[qualifier.name];
       return bytes * n;
     }

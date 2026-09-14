@@ -47,3 +47,19 @@ describe("evaluate", () => {
     expect(evaluate("~1")).toEqual(-2);
   });
 });
+
+test.each([
+  ["1+2<<3", 17],
+  ["2*3|1", 6],
+  ["7/2", 3],
+  ["-7/2", -3],
+  ["7//3", 1],
+  ["  #$ff", 255],
+  ["2 ! 4", 6],
+  ["12 ~ 8", 4],
+  ["1/0", undefined],
+  ["1 2", undefined],
+  ["constructor", undefined],
+])("evaluates %s using assembler semantics", (source, expected) => {
+  expect(evaluate(source)).toBe(expected);
+});

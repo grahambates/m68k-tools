@@ -235,3 +235,24 @@ https://github.com/grahambates/m68k-tools/tree/main/packages/m68k-parser
 ## Development
 
 Requires Node.js 22.15.1 or later at runtime. Use the root-pinned Node version for development. From the monorepo root, run `pnpm install --frozen-lockfile`, `pnpm --filter m68k-parser build` and `pnpm --filter m68k-parser test`.
+
+## Constant expressions
+
+`parseExpression` accepts a standalone expression without an immediate `#` prefix.
+`evaluateConstant` evaluates its AST with an optional symbol resolver:
+
+```ts
+import { parseExpression, evaluateConstant } from "m68k-parser";
+
+const parsed = parseExpression("count+2<<3");
+if (parsed.errors.length === 0) {
+  const result = evaluateConstant(parsed.value, (name) =>
+    name === "count" ? 1 : undefined,
+  );
+  // { known: true, value: 17 }
+}
+```
+
+Precedence follows [vasm's expression rules](https://github.com/StarWolf3000/vasm-mirror/blob/master/doc/vasm_main.texi): shifts and bitwise operators bind more tightly than arithmetic. Comparisons and logical binary operators return -1 for true and 0 for false, matching Motorola syntax; unary `!` returns 1 or 0. Division truncates towards zero; `%` and the Motorola-syntax `//` alias calculate remainders. Unknown symbols, address-dependent expressions and unsupported nodes return `{ known: false, reason }`. Check parse errors before evaluating a recovered AST.
+
+Evaluation uses JavaScript numbers and 32-bit bitwise operations; it does not emulate every target-width overflow or assembler compatibility option. Symbol lookup, forward references and cycle detection remain the caller's responsibility.

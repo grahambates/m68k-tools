@@ -353,9 +353,6 @@ importers:
       chalk:
         specifier: ^4.1.0
         version: 4.1.2
-      expression-eval:
-        specifier: ^4.0.0
-        version: 4.0.0
       m68k-parser:
         specifier: workspace:^
         version: link:../m68k-parser

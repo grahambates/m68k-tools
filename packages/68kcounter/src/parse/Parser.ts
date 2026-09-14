@@ -270,7 +270,7 @@ export default class Parser {
       statement.operands[0]
     ) {
       const value = evaluate(statement.operands[0].text, this.vars);
-      if (value) {
+      if (value !== undefined) {
         this.vars[statement.label.text] = value;
       }
     }

@@ -25,7 +25,7 @@ import {
  */
 export function parseExpression(
   expr: string,
-  loc: Location,
+  loc: Location = { start: 0, end: expr.length, line: 1 },
 ): ParserResult<ExpressionNode> {
   // Handle empty expressions
   if (!expr) {
@@ -297,6 +297,12 @@ export function parseExpression(
   }
 
   const value = parseLogicalOr();
+  if (current().type !== "eof" && !parseError) {
+    parseError = invalidExpression(
+      "Unexpected token after expression",
+      tokenLocation(current()),
+    );
+  }
 
   // Collect all errors - prioritize tokenizer errors as they represent more fundamental issues
   // If tokenizer can't recognize characters, that's the root cause

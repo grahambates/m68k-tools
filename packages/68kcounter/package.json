@@ -39,7 +39,6 @@
   "dependencies": {
     "@types/yargs": "^17.0.24",
     "chalk": "^4.1.0",
-    "expression-eval": "^4.0.0",
     "m68k-parser": "workspace:^",
     "yargs": "^17.7.2"
   },

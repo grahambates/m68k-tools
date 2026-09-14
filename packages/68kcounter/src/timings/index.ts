@@ -106,7 +106,7 @@ export function instructionTimings(
     // Shift
     if (mnemonicGroups.SHIFT.includes(op.name)) {
       if (source.mode === AddressingModes.Imm) {
-        calculation.n = evaluate(source.text, vars) || [1, 8];
+        calculation.n = evaluate(source.text, vars) ?? [1, 8];
       } else {
         // Range for register
         calculation.n = [0, 63];

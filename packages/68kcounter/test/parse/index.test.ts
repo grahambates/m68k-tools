@@ -338,6 +338,16 @@ d: ds.w 1
   });
 
   describe("parse assignments", () => {
+    test("zero assignments replace previous values", () => {
+      const lines = parse("count=4\ncount=0\n ds.w count");
+      expect(lines[2].bytes).toBe(0);
+    });
+
+    test("assignment expressions use vasm precedence", () => {
+      const lines = parse("count=1+2<<3\n ds.w count");
+      expect(lines[1].bytes).toBe(34);
+    });
+
     test("dynamic shift", () => {
       const code = `
 foo=4

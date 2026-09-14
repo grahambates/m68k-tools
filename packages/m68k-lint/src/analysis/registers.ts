@@ -625,6 +625,13 @@ export function analyzeRegisters(
           continue;
         }
         const sem = getRegisterSemantics(line);
+        // Calls may consume any part of a register, even when it is absent
+        // from their explicit operands. Do not prove bits unused across an
+        // instruction whose effects we cannot account for.
+        if (sem.unknownEffects) {
+          finish("unknown");
+          continue;
+        }
         if (swappedTarget(line)) {
           frame.currentMask = rotateHalves(frame.currentMask);
         } else {

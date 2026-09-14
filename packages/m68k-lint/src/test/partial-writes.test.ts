@@ -195,3 +195,32 @@ describe("bit-level liveness accounts for narrower writes", () => {
     expect(bitsAfter(lines, 0, "d1", 0xffff)).toBe("unknown");
   });
 });
+
+describe("calls may consume register inputs", () => {
+  test.each([
+    "bsr PreLerpPal",
+    "bsr.w PreLerpPal",
+    "jsr PreLerpPal",
+    "jsr (a2)",
+  ])("%s prevents dead-write claims across the call", (call) => {
+    const lines = [
+      " move.w #PAL_STEPS-1,d0",
+      " move.w #PAL_COLS-1,d1",
+      ` ${call}`,
+      " lea Palette+2,a0",
+      " lea PaletteDark+2,a1",
+      " move.w #PAL_STEPS-1,d0",
+      " move.w d0,(a0)",
+    ];
+    expect(flagged(lines)).not.toContain(1);
+    const analysis = analyzeRegisters(parseFile(lines.join("\n")));
+    expect(analysis.registerBitsUseAfter(0, "d0", 0xffff)).toBe("unknown");
+    expect(analysis.upperWordUseAfter(0, "d0")).toBe("unknown");
+  });
+
+  test("still reports a narrow write overwritten before the call", () => {
+    expect(
+      flagged([" move.w #1,d0", " move.w #2,d0", " bsr PreLerpPal"]),
+    ).toContain(1);
+  });
+});

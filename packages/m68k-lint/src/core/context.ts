@@ -373,6 +373,45 @@ export class DefaultRuleContext implements RuleContext {
       ) {
         const end = last.operands?.at(-1)?.loc ?? last.mnemonic?.loc;
         if (end) highlight = { start: mnemonic, end };
+        // A one-instruction replacement can identify a more precise display
+        // range. Compare parsed tokens, leaving edit spans and rule locations
+        // unchanged. Multi-instruction rewrites retain their full extent.
+        if (span.startLine === span.endLine && replacement?.trim()) {
+          const replacements = parseFile(replacement).lines.filter(
+            (line) => line.mnemonic,
+          );
+          const next = replacements.length === 1 ? replacements[0] : undefined;
+          if (next?.mnemonic && first?.mnemonic) {
+            const originalText = this.sourceLines[span.startLine - 1];
+            const replacementText =
+              replacement.split("\n")[(next.mnemonic.loc.line ?? 1) - 1];
+            const token = (text: string, loc: { start: number; end: number }) =>
+              text.slice(loc.start, loc.end).toLowerCase();
+            const operands = first.operands ?? [];
+            const nextOperands = next.operands ?? [];
+            const sameMnemonic =
+              token(originalText, mnemonic) ===
+              token(replacementText, next.mnemonic.loc);
+            const sameQualifier =
+              (first.qualifier
+                ? token(originalText, first.qualifier.loc)
+                : "") ===
+              (next.qualifier
+                ? token(replacementText, next.qualifier.loc)
+                : "");
+            if (operands.length === nextOperands.length && sameQualifier) {
+              const changed = operands.filter(
+                (operand, index) =>
+                  token(originalText, operand.loc) !==
+                  token(replacementText, nextOperands[index].loc),
+              );
+              if (sameMnemonic && changed.length === 1)
+                highlight = { start: changed[0].loc, end: changed[0].loc };
+              else if (!sameMnemonic && changed.length === 0)
+                highlight = { start: mnemonic, end: mnemonic };
+            }
+          }
+        }
       }
     }
     this.diagnostics.push({

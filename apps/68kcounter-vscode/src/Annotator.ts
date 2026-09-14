@@ -1,3 +1,4 @@
+import { counterOptions, onDidChangeCacheModel } from "./settings";
 import {
   Disposable,
   Range,
@@ -61,7 +62,7 @@ export class Annotator implements Disposable {
         },
       },
       before: {
-        width: "210px",
+        width: "280px",
         borderColor: new ThemeColor("editorInfo.foreground"),
         textDecoration: `;border-width: 0 2px 0 0; border-style: solid; margin-right: 26px; padding: 0 6px; text-align: right;`,
       },
@@ -85,8 +86,25 @@ export class Annotator implements Disposable {
       subscriptions,
     );
 
+    workspace.onDidChangeConfiguration(
+      (event) => {
+        if (
+          this.visible &&
+          event.affectsConfiguration("68kcounter", this.document.uri)
+        )
+          this.show();
+      },
+      undefined,
+      subscriptions,
+    );
+    subscriptions.push(
+      onDidChangeCacheModel((document) => {
+        if (this.visible && document === this.document) this.show();
+      }),
+    );
     this.disposable = Disposable.from(...subscriptions);
     this.statusBarItem = window.createStatusBarItem(StatusBarAlignment.Left);
+    this.statusBarItem.command = "68kcounter.toggleCacheModel";
     this.show();
   }
 
@@ -105,10 +123,12 @@ export class Annotator implements Disposable {
   show(): void {
     this.visible = true;
 
-    this.lines = parse(this.document.getText());
-    const annotations = this.lines.map(this.buildAnnotation);
+    this.lines = parse(this.document.getText(), counterOptions(this.document));
+    const annotations = this.lines.map((line) => this.buildAnnotation(line));
 
-    window.activeTextEditor?.setDecorations(
+    const editor = window.activeTextEditor;
+    if (editor?.document !== this.document) return;
+    editor.setDecorations(
       this.type,
       annotations.map(({ text, color, hoverMessage }, i) => ({
         range: new Range(i, 0, i, 0),
@@ -121,7 +141,10 @@ export class Annotator implements Disposable {
 
   hide(): void {
     this.visible = false;
-    window.activeTextEditor?.setDecorations(this.type, []);
+    for (const editor of window.visibleTextEditors) {
+      if (editor.document === this.document)
+        editor.setDecorations(this.type, []);
+    }
     this.statusBarItem.hide();
   }
 
@@ -129,7 +152,10 @@ export class Annotator implements Disposable {
     const selection = window.activeTextEditor?.selection;
     const lines =
       selection && selection.start.line !== selection.end.line
-        ? this.lines.slice(selection.start.line, selection.end.line + 1)
+        ? this.lines.slice(
+            selection.start.line,
+            selection.end.line + (selection.end.character === 0 ? 0 : 1),
+          )
         : this.lines;
 
     const totals = calculateTotals(lines);
@@ -141,6 +167,15 @@ export class Annotator implements Disposable {
     if (totals.isRange) {
       text += "–" + formatTiming(totals.max);
     }
+    const options = counterOptions(this.document);
+    if (
+      lines.some((line) =>
+        line.timing?.values.some((value) => value.length > 3),
+      )
+    )
+      text += options.cacheModel === "cache" ? " | Cached" : " | Uncached";
+    this.statusBarItem.tooltip =
+      "Cycles: clocks(reads/prefetches/writes) for 68020/68030; clocks(reads/writes) for 68000. Click to toggle cached/uncached timings for this document.";
     this.statusBarItem.text = text;
     this.statusBarItem.show();
   }
@@ -161,7 +196,15 @@ export class Annotator implements Disposable {
       text += " " + bytes;
     }
 
-    const infoLines: string[] = [];
+    const options = counterOptions(this.document);
+    const extended = timing?.values.some((value) => value.length > 3);
+    const infoLines: string[] = timing
+      ? [
+          extended
+            ? `Clocks(reads/prefetches/writes), ${options.cacheModel === "cache" ? "cached" : "uncached"}`
+            : "Clocks(reads/writes)",
+        ]
+      : [];
     if (line.timing && line.timing.values.length > 1) {
       infoLines.push(line.timing.labels.join(" / "));
     }
@@ -172,7 +215,9 @@ export class Annotator implements Disposable {
         (calculation?.ea && calculation.ea[0] > 0)
       ) {
         let calc = formatCalculation(
-          calculation.base[0],
+          (options.cacheModel === "cache"
+            ? (calculation.baseCache ?? calculation.base)
+            : calculation.base)[0],
           calculation.multiplier,
         );
         if (calculation?.ea && calculation.ea[0] > 0) {
@@ -180,7 +225,7 @@ export class Annotator implements Disposable {
         }
         infoLines.push(calc);
       }
-      if (calculation?.n) {
+      if (calculation?.n !== undefined) {
         infoLines.push(`n = ${calculation.n}`);
       }
     }
@@ -225,5 +270,5 @@ const formatCalculation = (timing: Timing, multiplier?: Timing) => {
     }
   }
 
-  return `${strVals[0]}(${strVals[1]}/${strVals[2]})`;
+  return `${strVals[0]}(${strVals.slice(1).join("/")})`;
 };

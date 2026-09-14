@@ -35,8 +35,46 @@
       {
         "command": "68kcounter.countSelection",
         "title": "68kcounter: Count selection"
+      },
+      {
+        "command": "68kcounter.toggleCacheModel",
+        "title": "68kcounter: Toggle cache timing model"
+      },
+      {
+        "command": "68kcounter.resetCacheModel",
+        "title": "68kcounter: Reset cache timing model to configured default"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "68k Counter",
+      "properties": {
+        "68kcounter.defaultCpu": {
+          "type": "string",
+          "enum": [
+            "68000",
+            "68020",
+            "68030"
+          ],
+          "default": "68000",
+          "scope": "resource",
+          "description": "Default timing CPU. Supported machine directives in the source override this setting."
+        },
+        "68kcounter.cacheModel": {
+          "type": "string",
+          "enum": [
+            "worst",
+            "cache"
+          ],
+          "enumDescriptions": [
+            "Uncached timings (68020 worst case; 68030 average no-cache case).",
+            "Cached instruction timings."
+          ],
+          "default": "worst",
+          "scope": "resource",
+          "description": "Default cache timing model for CPUs with cache timing data. Can be temporarily toggled per document. Ignored for 68000."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run compile",
@@ -47,7 +85,8 @@
     "build": "pnpm run compile",
     "typecheck": "tsc --noEmit",
     "test:extension-host": "pnpm run compile && pnpm run lint && node ../../scripts/package-counter-extension.mjs --stage-only && node ./out/test/runTest.js",
-    "clean": "rm -rf out dist .tsbuild coverage"
+    "clean": "rm -rf out dist .tsbuild coverage",
+    "test": "vitest run --config ../../vitest.package.config.mts --exclude 'src/test/**'"
   },
   "devDependencies": {
     "@types/debounce": "^1.2.0",
@@ -62,7 +101,7 @@
     "@vscode/vsce": "^3.6.0"
   },
   "dependencies": {
-    "68kcounter": "npm:68kcounter@^3.1.2",
+    "68kcounter": "workspace:^",
     "debounce": "^1.2.1"
   },
   "private": true

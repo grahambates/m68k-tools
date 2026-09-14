@@ -476,7 +476,13 @@ function parseMemoryIndirect(
 
   // Parse inner content: can be bd, An, Rn.s*scale in various combinations
   let baseDisplacement: ExpressionNode | undefined;
-  let baseRegister: AddressRegisterNode | undefined;
+  let baseRegister: AddressRegisterNode | SymbolNode | undefined;
+  const isBaseRegister = (text: string) =>
+    isAddressRegister(text.toLowerCase()) || text.toLowerCase() === "pc";
+  const baseNode = (text: string): AddressRegisterNode | SymbolNode =>
+    text.toLowerCase() === "pc"
+      ? { type: "symbol", name: "pc", loc }
+      : (createRegisterNode(text, loc) as AddressRegisterNode);
   let indexRegister:
     | DataRegisterNode
     | AddressRegisterNode
@@ -522,8 +528,8 @@ function parseMemoryIndirect(
   if (innerParts.length === 1) {
     // [An] or [bd]
     const part = innerParts[0];
-    if (isAddressRegister(part.toLowerCase())) {
-      baseRegister = createRegisterNode(part, loc) as AddressRegisterNode;
+    if (isBaseRegister(part)) {
+      baseRegister = baseNode(part);
     } else {
       const bdResult = parseExpression(part, loc);
       if (bdResult.errors) {
@@ -536,7 +542,7 @@ function parseMemoryIndirect(
     const first = innerParts[0];
     const second = innerParts[1];
 
-    const firstIsBaseReg = isAddressRegister(first.toLowerCase());
+    const firstIsBaseReg = isBaseRegister(first);
 
     // Calculate precise location of 'second' (after first comma in brackets)
     const bracketIndex = text.indexOf("[");
@@ -556,7 +562,7 @@ function parseMemoryIndirect(
 
     if (firstIsBaseReg) {
       // [An,Rn.s*scale]
-      baseRegister = createRegisterNode(first, loc) as AddressRegisterNode;
+      baseRegister = baseNode(first);
       indexRegister = indexSpec.register;
       indexSize = indexSpec.size;
       scaleFactor = indexSpec.scaleFactor;
@@ -573,8 +579,8 @@ function parseMemoryIndirect(
         errors.push(...bdResult.errors);
       }
       baseDisplacement = bdResult.value;
-      if (isAddressRegister(second.toLowerCase())) {
-        baseRegister = createRegisterNode(second, loc) as AddressRegisterNode;
+      if (isBaseRegister(second)) {
+        baseRegister = baseNode(second);
       }
     }
   } else if (innerParts.length === 3) {
@@ -588,8 +594,8 @@ function parseMemoryIndirect(
       errors.push(...bdResult.errors);
     }
     baseDisplacement = bdResult.value;
-    if (isAddressRegister(an.toLowerCase())) {
-      baseRegister = createRegisterNode(an, loc) as AddressRegisterNode;
+    if (isBaseRegister(an)) {
+      baseRegister = baseNode(an);
     }
 
     // Calculate precise location of idx (after second comma in brackets)

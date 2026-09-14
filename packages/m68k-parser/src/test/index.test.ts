@@ -1130,6 +1130,21 @@ describe("parse", () => {
       expect(line.value.operands?.[0].type).not.toBe("register-pair");
     });
 
+    it.each([
+      "([pc])",
+      "([4,pc])",
+      "([pc,d0],8)",
+      "([4,pc,d0],8)",
+      "([4,pc],d0,8)",
+    ])("preserves the PC base in %s", (operand) => {
+      const line = parseLine(` move.l ${operand},d1`);
+      expect(line.errors).toHaveLength(0);
+      expect(line.value.operands?.[0]).toMatchObject({
+        type: "memory-indirect",
+        baseRegister: { type: "symbol", name: "pc" },
+      });
+    });
+
     it("parses memory indirect postindexed", () => {
       const line = parseLine(" move.l ([a0],d0.l,12),d1");
       expect(line.errors).toHaveLength(0);

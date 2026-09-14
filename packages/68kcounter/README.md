@@ -30,7 +30,7 @@ See `npx 68kcounter --help` for more options.
 ### Target CPU
 
 The counter targets the **68000** by default. Pass `--cpu 68020` to select the
-68020, or declare it in the source with a `machine mc68020` (or bare `mc68020`)
+68020 (or `--cpu 68030` for the 68030), or declare it in the source with a `machine mc68020` (or bare `mc68020`)
 directive, which overrides the flag for that file.
 
 > **68020 status:** 68020 timings are transcribed from the MC68020 User's
@@ -66,6 +66,16 @@ Available as <a href="https://marketplace.visualstudio.com/items?itemName=gigaba
   will parse simple expressions but doesn't currently substitute constants
   defined elsewhere.
 - FPU and PMMU cycle timings are not modelled. See the 68020 timing assumptions above.
+
+### 68030 timings
+
+Select `--cpu 68030`, `{ cpu: "68030" }` in the library, or `machine mc68030` in source. `--cache` / `{ cacheModel: "cache" }` selects the instruction-cache case. The default (`cacheModel: "worst"`, retained for API compatibility) selects the **average no-cache case**, not an absolute worst case.
+
+The data comes from Motorola's [MC68030 User's Manual, section 11.6](https://www.nxp.com/docs/en/reference-manual/MC68030UM-P2.pdf). It assumes two-clock reads/writes and aligned operands. Timings include operand reads, instruction prefetches and writes as separate columns. Operation and effective-address costs are added without head/tail overlap; totals are isolated-instruction estimates, not pipeline simulation. Data-cache hits, MMU table walks, bus contention and additional wait states are not modelled.
+
+Covered families include MOVE/MOVEM/MOVEP, arithmetic and logic, shifts/rotates, bit operations, register bitfields, conditional branches, calls/returns, and common control instructions. Data-dependent multiply/divide use the manual's maximum values; variable shifts retain their possible outcomes. Full-format word/long displacements and memory-indirect pre/post-indexing are supported, including PC-relative sources, omitted bases, and MOVE destinations. Known displacements use the smallest encoding that fits; forced displacement-size suffixes and explicit suppressed-register aliases such as `za0` remain unsupported. Unresolved indexed or memory-indirect displacements are left untimed because their encoding cannot be determined. Memory bitfields, CAS2, FPU and MMU timings are not provided. Unsupported forms do not fall back to another CPU's timing data. Byte-size estimation still uses the older addressing-mode model and can undercount full-format and memory-indirect extension words; the extended timing calculation does not correct that size estimate.
+
+The HTML timing transcription was used as a cross-reference. The manual distinguishes brief and full extension-word rows that have similar textual operand spellings. Its corrected CMPI memory bus counts and displacement prefetch counts are used here. Head/tail values remain available in the cited source for future overlap modelling.
 
 ## Development
 

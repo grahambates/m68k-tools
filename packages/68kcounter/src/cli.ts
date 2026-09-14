@@ -50,13 +50,13 @@ const argv = yargs(hideBin(process.argv))
     cpu: {
       describe: "Target CPU model",
       type: "string",
-      choices: [Cpus.MC68000, Cpus.MC68020] as const,
+      choices: Object.values(Cpus),
       default: Cpus.MC68000,
     },
     cache: {
       describe:
-        "For 68020, assume instructions hit the cache (best available case); " +
-        "the default is worst case (cache miss)",
+        "For 68020/68030, assume instructions hit the cache (best available case); " +
+        "the default is uncached (68020 worst / 68030 average no-cache case)",
       type: "boolean",
       default: false,
     },

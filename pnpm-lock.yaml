@@ -230,8 +230,8 @@ importers:
   apps/68kcounter-vscode:
     dependencies:
       68kcounter:
-        specifier: npm:68kcounter@^3.1.2
-        version: 3.2.1
+        specifier: workspace:^
+        version: link:../../packages/68kcounter
       debounce:
         specifier: ^1.2.1
         version: 1.2.1
@@ -507,10 +507,6 @@ importers:
         version: 3.17.5
 
 packages:
-
-  68kcounter@3.2.1:
-    resolution: {integrity: sha512-l0Zgs6CwSxpoq4dNbe28FOF87A3yOvf6fZCW/AMYeDGlIpSveZNm65AxrX4shJAapv//GgzMSABII1T2VCbokA==}
-    hasBin: true
 
   '@adobe/css-tools@4.5.0':
     resolution: {integrity: sha512-6OzddxPio9UiWTCemp4N8cYLV2ZN1ncRnV1cVGtve7dhPOtRkleRyx32GQCYSwDYgaHU3USMm84tNsvKzRCa1Q==}
@@ -2451,10 +2447,6 @@ packages:
     resolution: {integrity: sha512-KfYbmpRm0VbLjEvVa9yGwCi9GI34xvi7A/HXYWQO65CSD2u3MczUJSuwXKFIxlGsgBQizV9q5J9NHj4VG0n+pA==}
     engines: {node: '>=12.0.0'}
 
-  expression-eval@4.0.0:
-    resolution: {integrity: sha512-YHSnLTyIb9IKaho2IdQbvlei/pElxnGm48UgaXJ1Fe5au95Ck0R9ftm6rHJQuKw3FguZZ4eXVllJFFFc7LX0WQ==}
-    deprecated: The expression-eval npm package is no longer maintained. The package was originally published as part of a now-completed personal project, and I do not have incentives to continue maintenance.
-
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
 
@@ -2952,10 +2944,6 @@ packages:
     peerDependenciesMeta:
       canvas:
         optional: true
-
-  jsep@0.3.5:
-    resolution: {integrity: sha512-AoRLBDc6JNnKjNcmonituEABS5bcfqDhQAWWXNTFrqu6nVXBpBAGfcoTGZMFlIrh9FjmE1CQyX9CTNwZrXMMDA==}
-    engines: {node: '>= 6.0.0'}
 
   jsesc@3.1.0:
     resolution: {integrity: sha512-/sM3dO2FOzXjKQhJuo0Q173wf2KOo8t4I8vHy6lF9poUp7bKT0/NHE8fPX23PwfhnykfqnC2xRxOnVw5XuGIaA==}
@@ -4340,14 +4328,6 @@ packages:
     resolution: {integrity: sha512-lh5RCAGFa1Cm2hjtNwLQhSs/AsqdWnTQaBER9fEwN/88pSh7KOtJavtBx/0VlkN/uFd61SwYmljLMDAsHlvzBQ==}
 
 snapshots:
-
-  68kcounter@3.2.1:
-    dependencies:
-      '@types/yargs': 17.0.35
-      chalk: 4.1.2
-      expression-eval: 4.0.0
-      json5: 2.2.3
-      yargs: 17.7.3
 
   '@adobe/css-tools@4.5.0': {}
 
@@ -6402,10 +6382,6 @@ snapshots:
 
   expect-type@1.4.0: {}
 
-  expression-eval@4.0.0:
-    dependencies:
-      jsep: 0.3.5
-
   fast-deep-equal@3.1.3: {}
 
   fast-glob@3.3.3:
@@ -6936,8 +6912,6 @@ snapshots:
       xml-name-validator: 5.0.0
     transitivePeerDependencies:
       - '@noble/hashes'
-
-  jsep@0.3.5: {}
 
   jsesc@3.1.0: {}
 

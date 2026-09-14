@@ -6,6 +6,7 @@ type Values<T> = T[keyof T];
 export const Cpus = {
   MC68000: "68000",
   MC68020: "68020",
+  MC68030: "68030",
 } as const;
 
 export type Cpu = Values<typeof Cpus>;
@@ -13,8 +14,8 @@ export type Cpu = Values<typeof Cpus>;
 export const defaultCpu: Cpu = Cpus.MC68000;
 
 /**
- * Which of the 68020's cache states to report. The 68020 manual gives a
- * cache-case and a worst-case (cache miss) figure; we default to worst case.
+ * Which instruction-cache case to report. `worst` retains its original name:
+ * it selects the 68020 worst case or the 68030 average no-cache case.
  * (The 68000 has no cache and ignores this.)
  */
 export const CacheModels = {
@@ -37,6 +38,8 @@ export function toCpu(value: string): Cpu | undefined {
       return Cpus.MC68000;
     case "68020":
       return Cpus.MC68020;
+    case "68030":
+      return Cpus.MC68030;
     default:
       return undefined;
   }

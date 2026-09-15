@@ -1497,3 +1497,24 @@ describe("parse", () => {
     });
   });
 });
+
+describe("forced displacement widths", () => {
+  test.each(["4.w(a0,d0)", "(4.w,a0,d0)", "4.w(a0)", "(4.w,pc)"])(
+    "preserves %s",
+    (operand) => {
+      const parsed = parseLine(` move.l ${operand},d1`);
+      expect(parsed.errors).toEqual([]);
+      expect(parsed.value.operands?.[0]).toMatchObject({
+        displacementSize: "w",
+      });
+    },
+  );
+  test("preserves independent base and outer widths", () => {
+    const parsed = parseLine(" move.l ([0.w,a0,d0],4.l),d1");
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.value.operands?.[0]).toMatchObject({
+      baseDisplacementSize: "w",
+      outerDisplacementSize: "l",
+    });
+  });
+});

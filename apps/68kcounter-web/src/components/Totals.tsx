@@ -26,13 +26,14 @@ export const Totals: FC<TotalsProps> = ({ totals }) => (
         )}
       </p>
       {totals.timingGroups && (
-        <p>
-          Reference sums, not elapsed sequence timings. Counts are operand
-          accesses, not external bus transfers.
+        <p title="Reference sums, not elapsed runtime. Counts represent operand accesses.">
+          Reference totals.
         </p>
       )}
       {totals.incomplete && (
-        <p>Incomplete timings: unsupported forms are excluded.</p>
+        <p title="Unsupported instruction forms are excluded from the totals.">
+          Incomplete timings.
+        </p>
       )}
       <p>
         <div>

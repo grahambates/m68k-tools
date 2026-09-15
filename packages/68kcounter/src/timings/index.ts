@@ -88,6 +88,8 @@ export interface Calculation {
   base: Timing[];
   /** Per-outcome timings for the instruction-cache-hit case (68020/68030) */
   baseCache?: Timing[];
+  /** Base costs for the active cache model, before EA and multiplier costs. */
+  selectedBase?: Timing[];
   ea?: Timing;
   multiplier?: Timing;
   /** Known number or range */
@@ -141,6 +143,7 @@ export function instructionTimings(
   if (!original) return null;
   const calculation = { ...original };
   const lookup = eaLookups.get(original);
+  let selectedEa = lookup?.timing;
   for (const [index, form] of forms.entries()) {
     if (!form) continue;
     let previous: Timing2;
@@ -148,6 +151,7 @@ export function instructionTimings(
     if (lookup?.index === index) {
       previous = lookup.timing;
       replacement = fullEaTiming(form, lookup.kind);
+      selectedEa = replacement;
     } else if (
       statement.opcode.op.name === Mnemonics.MOVE &&
       index === 1 &&
@@ -182,12 +186,22 @@ export function instructionTimings(
       calculation.baseCache = [[12, 0, 0, 0]];
     }
   }
+  if (selectedEa) {
+    const subtract = (timing: Timing, ea: Timing) =>
+      timing.map((n, i) => n - ea[i]);
+    calculation.base = calculation.base.map((t) => subtract(t, selectedEa![1]));
+    calculation.baseCache = calculation.baseCache?.map((t) =>
+      subtract(t, selectedEa![0]),
+    );
+    calculation.ea = selectedEa[cacheModel === CacheModels.Cache ? 0 : 1];
+  }
   // Pick the cache-case or worst-case per-outcome timings (68020); the 68000
   // has no cache-case variant and always uses `base`.
   const selected =
     cacheModel === CacheModels.Cache && calculation.baseCache
       ? calculation.baseCache
       : calculation.base;
+  calculation.selectedBase = selected;
   const timings: Timing[] = [...selected];
 
   const {

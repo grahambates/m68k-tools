@@ -59,8 +59,26 @@ export function fullFormat(
     const bd = value(node.baseDisplacement),
       od = value(node.outerDisplacement);
     if (bd === undefined || od === undefined) return null;
-    const base = bd === 0 ? 0 : bd >= -32768 && bd <= 32767 ? 16 : 32;
-    const outer = od === 0 ? 0 : od >= -32768 && od <= 32767 ? 16 : 32;
+    const base =
+      node.baseDisplacementSize === "w"
+        ? 16
+        : node.baseDisplacementSize === "l"
+          ? 32
+          : bd === 0
+            ? 0
+            : bd >= -32768 && bd <= 32767
+              ? 16
+              : 32;
+    const outer =
+      node.outerDisplacementSize === "w"
+        ? 16
+        : node.outerDisplacementSize === "l"
+          ? 32
+          : od === 0
+            ? 0
+            : od >= -32768 && od <= 32767
+              ? 16
+              : 32;
     // The manual has faster d16,An/PC rows when the index is not added
     // before the pointer fetch. Preindexed forms use its general B rows.
     const plainBase =
@@ -85,6 +103,8 @@ export function fullFormat(
   ) {
     const displacement = value(node.displacement);
     if (displacement === undefined) return null;
+    if (node.displacementSize === "w") return "word";
+    if (node.displacementSize === "l") return "long";
     if (displacement >= -128 && displacement <= 127) return undefined;
     return displacement >= -32768 && displacement <= 32767 ? "word" : "long";
   }
@@ -93,6 +113,7 @@ export function fullFormat(
     node.type === "pc-relative"
   ) {
     const displacement = value(node.displacement);
+    if (node.displacementSize === "l") return "long";
     // Unknown ordinary displacements retain the existing d16 estimate.
     if (
       displacement !== undefined &&

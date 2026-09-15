@@ -1,6 +1,6 @@
 # 68k Counter for VS Code
 
-Displays cycle and size information for 68000, 68020 and 68030 assembly source.
+Displays cycle and size information for 68000, 68020, 68030, 68040 and 68060 assembly source.
 
 ## Features
 
@@ -59,11 +59,11 @@ Set project defaults in `.vscode/settings.json`:
 
 The default CPU is `68000`. Supported `machine` directives in the source override it, including directives before a counted selection. Settings are scoped to the document's workspace folder.
 
-Choose `worst` or `cache` for uncached or cached timings. Run **68kcounter: Toggle cache timing model**, or click the counts in the status bar, to switch modes temporarily for the current document. Annotations and selection counts update immediately without changing settings. The override lasts until the document closes or you run **68kcounter: Reset cache timing model to configured default**. Other documents keep their own mode. The cache setting has no effect on 68000 timings.
+For 68020/68030, choose `worst` or `cache` for uncached or cached timings. Run **68kcounter: Toggle cache timing model**, or click the counts in the status bar, to switch modes temporarily for the current document. Annotations and selection counts update immediately without changing settings. The override lasts until the document closes or you run **68kcounter: Reset cache timing model to configured default**. Other documents keep their own mode. The cache setting has no effect on 68000 timings.
 
-Timings are displayed as `clocks(reads/writes)` for 68000 and `clocks(reads/prefetches/writes)` for 68020/68030. Hover over an annotation for the column legend and active cache model. Currently only 68000, 68020 and 68030 timing data are supported; 68040/060 are not selectable yet.
+Timings are displayed as `clocks(reads/writes)` for 68000 and `clocks(reads/prefetches/writes)` for 68020/68030. Hover over an annotation for the column legend and active cache model.
 
-For 68030, uncached values are the manual's average no-cache estimates with two-clock reads and writes, not absolute worst cases. Instruction overlap, data-cache hits, MMU walks, wait states and full-format addressing are not simulated. See the [core timing documentation](../../packages/68kcounter/README.md) for coverage.
+For 68030, uncached values are the manual's average no-cache estimates with two-clock reads and writes, not absolute worst cases. Instruction overlap, data-cache hits, MMU walks and wait states are not simulated. Supported full-format addressing forms have their own timing costs. See the [core timing documentation](../../packages/68kcounter/README.md) for coverage.
 
 #### 68040 / 68060
 

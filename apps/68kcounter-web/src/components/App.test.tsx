@@ -78,11 +78,41 @@ test("source-selected 060 costs are labelled as cached operand references", () =
     },
   );
   fireEvent.click(screen.getByText("Analyse"));
-  expect(
-    screen.getByText(/Reference sums, not elapsed sequence timings/),
-  ).toBeInTheDocument();
-  expect(
-    screen.getByText(/Incomplete timings: unsupported forms/),
-  ).toBeInTheDocument();
+  expect(screen.getByText(/Reference totals/)).toBeInTheDocument();
+  expect(screen.getByText(/Incomplete timings/)).toBeInTheDocument();
   expect(screen.getByTitle(/no cached timing/)).toHaveTextContent("?");
+});
+
+test("shows shared assumptions once in the header, with only instruction details in rows", () => {
+  render(<App />);
+  fireEvent.change(
+    screen.getByPlaceholderText("Paste or drop ASM source here"),
+    {
+      target: {
+        value:
+          " machine mc68060\n move.l (a0),d0\n move.l (a1),d1\n machine mc68040\n move.l (a0),d0",
+      },
+    },
+  );
+  fireEvent.click(screen.getByText("Analyse"));
+  const header = within(
+    document.querySelector(".App__resultsHeader") as HTMLElement,
+  );
+  expect(
+    header.getAllByText(/68060 cached instruction reference:/, {
+      selector: "li",
+    }),
+  ).toHaveLength(1);
+  expect(
+    header.getAllByText(/68040 cached execution-stage reference:/, {
+      selector: "li",
+    }),
+  ).toHaveLength(1);
+  const rows = document.querySelectorAll(".Line");
+  expect(within(rows[1] as HTMLElement).queryByRole("button")).toBeNull();
+  expect(within(rows[2] as HTMLElement).queryByRole("button")).toBeNull();
+  const row040 = within(rows[4] as HTMLElement);
+  fireEvent.click(row040.getByRole("button"));
+  expect(row040.getByText(/EA stage:/)).toBeInTheDocument();
+  expect(row040.queryByText(/Both caches hit/)).toBeNull();
 });

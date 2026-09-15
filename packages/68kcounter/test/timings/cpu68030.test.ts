@@ -84,7 +84,6 @@ test("machine directives and options select 68030 without using 68020 timings", 
 test.each([
   "move.l unknown(a0,d0),d1",
   "move.l ([unknown,a0],d0,8),d1",
-  "move.l 4.w(a0,d0),d1",
   "move.l 4(za0,d0),d1",
   "bftst (a0){d0:d1}",
   "pflush #0,#0",

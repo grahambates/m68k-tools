@@ -354,6 +354,8 @@ export interface AddressRegisterIndirectPreDecNode extends Node {
 // Address register indirect with displacement: 10(a0), offset(a0)
 export interface AddressRegisterIndirectDisplacementNode extends Node {
   type: "address-register-indirect-displacement";
+  /** Explicit encoding width of the base displacement. */
+  displacementSize?: "w" | "l";
   displacement: ExpressionNode; // Parsed displacement expression
   register: AddressRegisterNode | SymbolNode | MacroParameterNode;
 }
@@ -361,6 +363,8 @@ export interface AddressRegisterIndirectDisplacementNode extends Node {
 // Address register indirect with index: 10(a0,d1.w) or 10(a0,d1.w*2)
 export interface AddressRegisterIndirectIndexNode extends Node {
   type: "address-register-indirect-index";
+  /** Explicit encoding width of the base displacement. */
+  displacementSize?: "w" | "l";
   displacement?: ExpressionNode; // Parsed displacement expression
   baseRegister: AddressRegisterNode | SymbolNode | MacroParameterNode;
   indexRegister:
@@ -383,12 +387,16 @@ export interface AbsoluteAddressNode extends Node {
 // PC relative: offset(pc)
 export interface PCRelativeNode extends Node {
   type: "pc-relative";
+  /** Explicit encoding width of the base displacement. */
+  displacementSize?: "w" | "l";
   displacement: ExpressionNode; // Parsed displacement expression
 }
 
 // PC relative: offset(pc,d0) or offset(pc,d0.w*2)
 export interface PCRelativeIndexNode extends Node {
   type: "pc-relative-index";
+  /** Explicit encoding width of the base displacement. */
+  displacementSize?: "w" | "l";
   displacement?: ExpressionNode; // Parsed displacement expression
   indexRegister:
     | DataRegisterNode
@@ -431,6 +439,7 @@ export interface MacroArgumentNode extends Node {
 export interface MemoryIndirectNode extends Node {
   type: "memory-indirect";
   baseDisplacement?: ExpressionNode; // [bd,...]
+  baseDisplacementSize?: "w" | "l";
   baseRegister?: AddressRegisterNode | SymbolNode | MacroParameterNode; // [bd,An,...]
   indexRegister?:
     | DataRegisterNode
@@ -441,6 +450,7 @@ export interface MemoryIndirectNode extends Node {
   indexSize?: SizeNode | MacroParameterNode | UnknownNode;
   scaleFactor?: ExpressionNode; // 68020+ scale factor (e.g., 2, 4, foo+1)
   outerDisplacement?: ExpressionNode; // [...],od
+  outerDisplacementSize?: "w" | "l";
   /**
    * Where the index register is applied, when there is one:
    * - "pre":  preindexed,  ([bd,An,Xn],od) - index applied before the memory fetch

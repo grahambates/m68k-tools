@@ -476,6 +476,8 @@ function parseMemoryIndirect(
 
   // Parse inner content: can be bd, An, Rn.s*scale in various combinations
   let baseDisplacement: ExpressionNode | undefined;
+  let baseDisplacementSize: "w" | "l" | undefined;
+  let outerDisplacementSize: "w" | "l" | undefined;
   let baseRegister: AddressRegisterNode | SymbolNode | undefined;
   const isBaseRegister = (text: string) =>
     isAddressRegister(text.toLowerCase()) || text.toLowerCase() === "pc";
@@ -531,11 +533,12 @@ function parseMemoryIndirect(
     if (isBaseRegister(part)) {
       baseRegister = baseNode(part);
     } else {
-      const bdResult = parseExpression(part, loc);
+      const bdResult = parseDisplacement(part, loc);
       if (bdResult.errors) {
         errors.push(...bdResult.errors);
       }
       baseDisplacement = bdResult.value;
+      baseDisplacementSize = bdResult.size;
     }
   } else if (innerParts.length === 2) {
     // [bd,An] or [An,Rn.s*scale]
@@ -574,11 +577,12 @@ function parseMemoryIndirect(
       }
     } else {
       // [bd,An]
-      const bdResult = parseExpression(first, loc);
+      const bdResult = parseDisplacement(first, loc);
       if (bdResult.errors) {
         errors.push(...bdResult.errors);
       }
       baseDisplacement = bdResult.value;
+      baseDisplacementSize = bdResult.size;
       if (isBaseRegister(second)) {
         baseRegister = baseNode(second);
       }
@@ -589,11 +593,12 @@ function parseMemoryIndirect(
     const an = innerParts[1];
     const idx = innerParts[2];
 
-    const bdResult = parseExpression(bd, loc);
+    const bdResult = parseDisplacement(bd, loc);
     if (bdResult.errors) {
       errors.push(...bdResult.errors);
     }
     baseDisplacement = bdResult.value;
+    baseDisplacementSize = bdResult.size;
     if (isBaseRegister(an)) {
       baseRegister = baseNode(an);
     }
@@ -677,11 +682,12 @@ function parseMemoryIndirect(
 
   const outerPart = outerParts.filter(Boolean).join(",");
   if (outerPart) {
-    const odResult = parseExpression(outerPart, loc);
+    const odResult = parseDisplacement(outerPart, loc);
     if (odResult.errors) {
       errors.push(...odResult.errors);
     }
     outerDisplacement = odResult.value;
+    outerDisplacementSize = odResult.size;
   }
 
   // Must end with )
@@ -701,11 +707,13 @@ function parseMemoryIndirect(
       type: "memory-indirect",
       loc,
       baseDisplacement,
+      baseDisplacementSize,
       baseRegister,
       indexRegister,
       indexSize,
       scaleFactor,
       outerDisplacement,
+      outerDisplacementSize,
       indexPosition,
     },
     errors,
@@ -716,6 +724,22 @@ function parseMemoryIndirect(
  * OperandToken-based parser for indexed addressing: disp(base,index.size*scale)
  * Handles both address register and PC relative with index
  */
+function parseDisplacement(
+  text: string,
+  loc: Location,
+): ParserResult<ExpressionNode> & { size?: "w" | "l" } {
+  const match = /\.(w|l)$/i.exec(text.trimEnd());
+  if (!match) return parseExpression(text, loc);
+  const expression = text.slice(0, match.index);
+  return {
+    ...parseExpression(expression, {
+      ...loc,
+      end: loc.start + expression.length,
+    }),
+    size: match[1].toLowerCase() as "w" | "l",
+  };
+}
+
 function parseIndexedAddressing(
   text: string,
   loc: Location,
@@ -856,9 +880,9 @@ function parseIndexedAddressing(
     }
 
     // Parse displacement and check for errors
-    let dispResult: ParserResult<ExpressionNode> | undefined;
+    let dispResult: ReturnType<typeof parseDisplacement> | undefined;
     if (displacement) {
-      dispResult = parseExpression(displacement, {
+      dispResult = parseDisplacement(displacement, {
         start: loc.start,
         end: loc.start + displacement.length,
         line: loc.line,
@@ -875,6 +899,7 @@ function parseIndexedAddressing(
           type: "pc-relative-index",
           loc,
           displacement: dispResult?.value,
+          displacementSize: dispResult?.size,
           indexRegister: indexSpec.register,
           indexSize: indexSpec.size,
           scaleFactor: indexSpec.scaleFactor,
@@ -905,6 +930,7 @@ function parseIndexedAddressing(
         type: "address-register-indirect-index",
         loc,
         displacement: dispResult?.value,
+        displacementSize: dispResult?.size,
         baseRegister: baseRegResult.node,
         indexRegister: indexSpec.register,
         indexSize: indexSpec.size,
@@ -937,7 +963,7 @@ function parseIndexedAddressing(
     }
 
     // Parse displacement and check for errors
-    const dispResult = parseExpression(disp, {
+    const dispResult = parseDisplacement(disp, {
       start: loc.start + 1,
       end: loc.start + 1 + disp.length,
       line: loc.line,
@@ -952,6 +978,7 @@ function parseIndexedAddressing(
           type: "pc-relative-index",
           loc,
           displacement: dispResult.value,
+          displacementSize: dispResult.size,
           indexRegister: indexSpec.register,
           indexSize: indexSpec.size,
           scaleFactor: indexSpec.scaleFactor,
@@ -974,6 +1001,7 @@ function parseIndexedAddressing(
         type: "address-register-indirect-index",
         loc,
         displacement: dispResult.value,
+        displacementSize: dispResult.size,
         baseRegister: baseRegResult.node,
         indexRegister: indexSpec.register,
         indexSize: indexSpec.size,
@@ -1540,7 +1568,11 @@ export function parseOperand(
     const displacement = dispInParensMatch[1];
     const register = dispInParensMatch[2].toLowerCase();
 
-    const { value: dispNode, errors } = parseExpression(displacement, {
+    const {
+      value: dispNode,
+      errors,
+      size: displacementSize,
+    } = parseDisplacement(displacement, {
       start: loc.start + 1,
       end: loc.start + 1 + displacement.length,
       line: loc.line,
@@ -1553,6 +1585,7 @@ export function parseOperand(
           type: "pc-relative",
           loc,
           displacement: dispNode,
+          displacementSize,
         },
         errors,
       };
@@ -1571,6 +1604,7 @@ export function parseOperand(
         type: "address-register-indirect-displacement",
         loc,
         displacement: dispNode,
+        displacementSize,
         register: regResult.node,
       },
       errors,
@@ -1586,7 +1620,11 @@ export function parseOperand(
     const displacement = dispInParensExpr[1];
     const register = dispInParensExpr[2];
 
-    const { value: dispNode, errors } = parseExpression(displacement, {
+    const {
+      value: dispNode,
+      errors,
+      size: displacementSize,
+    } = parseDisplacement(displacement, {
       start: loc.start + 1,
       end: loc.start + 1 + displacement.length,
       line: loc.line,
@@ -1605,6 +1643,7 @@ export function parseOperand(
         type: "address-register-indirect-displacement",
         loc,
         displacement: dispNode,
+        displacementSize,
         register: regResult.node,
       },
       errors,
@@ -1651,15 +1690,17 @@ export function parseOperand(
 
     // PC relative without index
     if (register === "pc") {
-      const { value: dispExpr, errors } = parseExpression(
-        displacement || "0",
-        loc,
-      );
+      const {
+        value: dispExpr,
+        errors,
+        size: displacementSize,
+      } = parseDisplacement(displacement || "0", loc);
       return {
         value: {
           type: "pc-relative",
           loc,
           displacement: dispExpr,
+          displacementSize,
         },
         errors,
       };
@@ -1689,7 +1730,11 @@ export function parseOperand(
     }
 
     // Address register indirect with displacement
-    const { value: dispExpr, errors } = parseExpression(displacement, loc);
+    const {
+      value: dispExpr,
+      errors,
+      size: displacementSize,
+    } = parseDisplacement(displacement, loc);
 
     const regResult2 = createAddressRegisterOrSymbolNode(register, registerLoc);
     if (regResult2.error) errors.push(regResult2.error);
@@ -1699,6 +1744,7 @@ export function parseOperand(
         type: "address-register-indirect-displacement",
         loc,
         displacement: dispExpr,
+        displacementSize,
         register: regResult2.node,
       },
       errors,

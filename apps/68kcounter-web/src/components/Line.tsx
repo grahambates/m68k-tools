@@ -7,7 +7,6 @@ import {
   type Line as LineType,
   type Timing as TimingType,
   Mnemonics,
-  timingReferenceDescription,
   type Totals,
 } from "68kcounter";
 
@@ -31,8 +30,9 @@ export const Line = memo<LineProps>(
     const hasDetail =
       isCalculated ||
       isMultiple ||
-      line.timing?.reference ||
-      line.timing?.groups;
+      line.timing?.reference?.note ||
+      line.timing?.reference?.stages ||
+      !!line.timing?.groups?.length;
 
     const [expanded, setExpanded] = useState(false);
     return (
@@ -76,16 +76,22 @@ export const Line = memo<LineProps>(
             {hasDetail && line.timing && (
               <div className={"Line__detail" + (expanded ? " expanded" : "")}>
                 <div className="Line__detailContent">
-                  {line.timing.reference && (
-                    <div>{timingReferenceDescription(line.timing)}</div>
-                  )}
+                  {line.timing.groups?.map((group) => (
+                    <div key={group.model}>
+                      <span className="Line__detailLabel">{group.model}:</span>
+                      {formatTiming(group.min)}
+                      {group.min.some((value, i) => value !== group.max[i]) &&
+                        `–${formatTiming(group.max)}`}
+                    </div>
+                  ))}
                   {line.timing.reference?.note && (
                     <div>{line.timing.reference.note}</div>
                   )}
                   {line.timing.reference?.stages && (
                     <div>
-                      EA calculate: {line.timing.reference.stages.calculate};
-                      execute: {line.timing.reference.stages.executeLead} lead +{" "}
+                      EA stage: {line.timing.reference.stages.calculate}{" "}
+                      (overlapping); execute:{" "}
+                      {line.timing.reference.stages.executeLead} lead +{" "}
                       {line.timing.reference.stages.executeBase} base.
                     </div>
                   )}
@@ -100,8 +106,10 @@ export const Line = memo<LineProps>(
                     ))}
                   {(hasMultiplier || hasEa) && (
                     <div>
+                      <span className="Line__detailLabel">Base:</span>
                       {formatTiming(
-                        line.timing.calculation!.base[0],
+                        (line.timing.calculation!.selectedBase ??
+                          line.timing.calculation!.base)[0],
                         line.timing.calculation!.multiplier,
                       )}
                     </div>

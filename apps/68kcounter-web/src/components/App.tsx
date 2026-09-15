@@ -2,6 +2,7 @@ import { type FC, useCallback, useEffect, useMemo, useState } from "react";
 import {
   type CacheModel,
   calculateTotals,
+  timingReferenceDescription,
   type Cpu,
   Cpus,
   defaultCacheModel,
@@ -47,6 +48,20 @@ export const App: FC = () => {
     () => (lines ? calculateTotals(lines) : null),
     [lines],
   );
+  const timingAssumptions = useMemo(() => {
+    const descriptions = new Set<string>();
+    const collect = (items: LineType[]) => {
+      for (const line of items) {
+        if (line.timing?.reference) {
+          const description = timingReferenceDescription(line.timing);
+          if (description) descriptions.add(description);
+        }
+        if (line.macroLines) collect(line.macroLines);
+      }
+    };
+    if (lines) collect(lines);
+    return [...descriptions];
+  }, [lines]);
   // 68000 bus cycles are [reads, writes]; 68020 adds a prefetch count:
   // [reads, prefetches, writes].
   const busCycles = totals?.timingGroups
@@ -166,6 +181,9 @@ export const App: FC = () => {
 
             <div className="App__help">
               <ul>
+                {timingAssumptions.map((description) => (
+                  <li key={description}>{description}</li>
+                ))}
                 <li>
                   Data is shown in the format:{" "}
                   <code>cycles({busCycles}) bytes</code>

@@ -108,7 +108,6 @@ test.each(["68040", "68060"] as Cpu[])(
       "cas2 d0:d1,d2:d3,(a0):(a1)",
       "divu.l d0,d1:d2",
       "move.l unknown(a0,d0),d1",
-      "move.l 4.w(a0,d0),d1",
       "move.l d0,([4,pc],d1)",
     ]) {
       const line = parse(" " + source, { cpu })[0];
@@ -213,3 +212,33 @@ test("040 word MOVEM preserves separate calculate and execute adjustments", () =
     parse(" movem.w (a0),d0-d2", { cpu: "68040" })[0].timing?.reference?.stages,
   ).toEqual({ calculate: 4, executeLead: 1, executeBase: 5 });
 });
+
+test.each(["68030", "68040", "68060"] as Cpu[])(
+  "%s respects explicit full-format displacement widths",
+  (cpu) => {
+    for (const [forced, inferred] of [
+      ["4.w(a0,d0)", "300(a0,d0)"],
+      ["4.l(a0,d0)", "70000(a0,d0)"],
+      ["([0.w,a0,d0],4.l)", "([16,a0,d0],70000)"],
+    ]) {
+      expect(parse(` move.l ${forced},d1`, { cpu })[0].timing?.values).toEqual(
+        parse(` move.l ${inferred},d1`, { cpu })[0].timing!.values,
+      );
+    }
+  },
+);
+
+test.each(["68020", "68030", "68060"] as Cpu[])(
+  "%s exposes an additive EA calculation for both cache selections",
+  (cpu) => {
+    for (const cacheModel of [CacheModels.Cache, CacheModels.Worst]) {
+      const timing = parse(" neg.l 300(a0,d0)", { cpu, cacheModel })[0].timing!;
+      const calculation = timing.calculation!;
+      const base = (calculation.selectedBase ?? calculation.base)[0];
+      expect(calculation.ea).toBeDefined();
+      expect(base.map((n, i) => n + calculation.ea![i])).toEqual(
+        timing.values[0],
+      );
+    }
+  },
+);

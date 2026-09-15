@@ -15,7 +15,7 @@ const reference = {
   accesses: "operand",
   basis: "instruction-execution",
 } as const;
-const result = (
+const basicResult = (
   clocks: number,
   reads = 0,
   writes = 0,
@@ -42,6 +42,26 @@ export function timings68060(
   const operands = cachedOperands(statement, vars);
   if (!operands) return null;
   const [s, d] = operands;
+  const result = (
+    clocks: number,
+    reads = 0,
+    writes = 0,
+    note?: string,
+  ): InstructionTiming => {
+    const timing = basicResult(clocks, reads, writes, note);
+    const eaClocks = operands.reduce((sum, operand) => sum + operand.ea060, 0);
+    const pointerReads = operands.reduce(
+      (sum, operand) => sum + operand.pointerReads,
+      0,
+    );
+    if (eaClocks)
+      timing.calculation = {
+        base: [[clocks - eaClocks, reads - pointerReads, writes]],
+        ea: [eaClocks, pointerReads, 0],
+      };
+    return timing;
+  };
+
   const q = instructionQualifier(statement);
   const bwl = q === "B" || q === "W" || q === "L";
   if (

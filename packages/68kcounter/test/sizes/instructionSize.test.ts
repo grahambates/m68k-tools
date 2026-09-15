@@ -3,6 +3,10 @@ import parse from "../../src/parse";
 describe("instructionSize", () => {
   // Cross-checked with vasm 1.9: -m68020 -no-opt -Fbin.
   test.each([
+    ["move.l 4.w(a0,d0),d1", 6],
+    ["move.l 4.l(a0,d0),d1", 8],
+    ["move.l 4.l(a0),d1", 8],
+    ["move.l ([0.w,a0,d0],4.l),d1", 10],
     ["movem.l d0-d3,16(a0)", 6],
     ["movem.w $12345678,d0-d3", 8],
     ["bra.l *+100", 6],

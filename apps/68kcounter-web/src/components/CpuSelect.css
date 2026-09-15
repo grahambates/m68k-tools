@@ -2,7 +2,9 @@
   display: flex;
   gap: 1rem;
   padding: 1rem;
-  align-items: center;
+  background: rgba(0, 0, 0, 0.1);
+  align-items: start;
+  flex-direction: column;
 }
 
 .CpuSelect__field {

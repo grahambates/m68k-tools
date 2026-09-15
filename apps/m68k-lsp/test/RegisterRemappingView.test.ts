@@ -16,7 +16,10 @@ class Element {
   }
   hidden = false;
   classList = { add() {}, remove() {}, toggle() {} };
-  addEventListener() {}
+  listeners: Record<string, () => void> = {};
+  addEventListener(event: string, callback: () => void) {
+    this.listeners[event] = callback;
+  }
   setAttribute() {}
   replaceChildren() {
     this.text = "";
@@ -49,9 +52,10 @@ it.each([undefined, { d0: "#e06c75" }])(
       registers: [{ name: "d0", read: true, written: false }],
       colors,
     };
+    const postMessage = vi.fn();
     runInNewContext(script + "\nrender(testModel);", {
       testModel: model,
-      acquireVsCodeApi: () => ({ getState() {}, postMessage() {} }),
+      acquireVsCodeApi: () => ({ getState() {}, postMessage }),
       window: { addEventListener() {} },
       document: {
         body: new Element(),
@@ -64,6 +68,21 @@ it.each([undefined, { d0: "#e06c75" }])(
     });
     const rows = elements.get("rows")!.children;
     expect(rows).toHaveLength(1);
+    const name = rows[0].children[0];
+    for (const event of ["mouseenter", "focus"]) {
+      (event === "mouseenter" ? rows[0] : name).listeners[event]();
+      expect(postMessage).toHaveBeenLastCalledWith({
+        type: "highlight",
+        register: "d0",
+      });
+    }
+    for (const event of ["mouseleave", "blur"]) {
+      (event === "mouseleave" ? rows[0] : name).listeners[event]();
+      expect(postMessage).toHaveBeenLastCalledWith({ type: "highlight" });
+    }
+    expect(name.listeners.click).toBeUndefined();
+    expect(name.listeners.mouseenter).toBeUndefined();
+    expect(name.listeners.mouseleave).toBeUndefined();
     expect(rows[0].children[0].textContent).toBe("D0");
     expect(rows[0].children[0].style.color).toBe(colors?.d0);
     expect(rows[0].children[2].style.color).toBe(colors?.d0);
@@ -257,4 +276,37 @@ it("does not publish validation results from an obsolete mapping", async () => {
     requestId: 2,
     warnings: ["latest"],
   });
+});
+
+it("routes usage highlights and clears them on refresh and disposal", async () => {
+  let receive!: (message: unknown) => Promise<void>;
+  const highlight = vi.fn();
+  const view = new RegisterRemappingView(
+    vi.fn(),
+    vi.fn(),
+    undefined,
+    undefined,
+    highlight,
+  );
+  view.resolveWebviewView({
+    visible: true,
+    webview: {
+      cspSource: "test",
+      onDidReceiveMessage: (listener: typeof receive) => {
+        receive = listener;
+        return { dispose() {} };
+      },
+      postMessage: vi.fn(),
+    },
+    onDidChangeVisibility: vi.fn(),
+  } as unknown as WebviewView);
+  await receive({ type: "highlight", register: "d0" });
+  expect(highlight).toHaveBeenLastCalledWith("d0");
+  await receive({ type: "highlight" });
+  expect(highlight).toHaveBeenLastCalledWith(undefined);
+  await receive({ type: "highlight", register: "a1" });
+  await view.refresh();
+  expect(highlight).toHaveBeenLastCalledWith();
+  view.dispose();
+  expect(highlight).toHaveBeenLastCalledWith();
 });

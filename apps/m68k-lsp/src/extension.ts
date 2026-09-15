@@ -140,6 +140,29 @@ export function activate(context: ExtensionContext): void {
     borderColor: new ThemeColor("editorWarning.foreground"),
     rangeBehavior: DecorationRangeBehavior.ClosedClosed,
   });
+  const usageHighlight = window.createTextEditorDecorationType({
+    isWholeLine: true,
+    backgroundColor: new ThemeColor("editor.wordHighlightBackground"),
+    rangeBehavior: DecorationRangeBehavior.ClosedClosed,
+  });
+  const highlightUsage = (register?: string) => {
+    const snapshot = remappingContext;
+    const references =
+      register && snapshot?.isCurrent()
+        ? (previewUsage?.registers.find((usage) => usage.name === register)
+            ?.references ?? [])
+        : [];
+    // Multiple operands on one line must not stack translucent backgrounds.
+    const lines = new Set(references.map(({ range }) => range.start.line));
+    const ranges = [...lines].map((line) => new Range(line, 0, line, 0));
+    for (const editor of window.visibleTextEditors) {
+      editor.setDecorations(
+        usageHighlight,
+        editor.document.uri.toString() === snapshot?.uri ? ranges : [],
+      );
+    }
+  };
+  context.subscriptions.push(usageHighlight);
   const clearPreview = () => {
     previewGeneration++;
     for (const editor of window.visibleTextEditors) {
@@ -382,6 +405,7 @@ export function activate(context: ExtensionContext): void {
       return plan.warnings ?? [];
     },
     clearPreview,
+    highlightUsage,
   );
 
   const listRegistersInSelection = async () => {

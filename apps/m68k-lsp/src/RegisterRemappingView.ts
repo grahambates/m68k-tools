@@ -40,6 +40,7 @@ export class RegisterRemappingView implements WebviewViewProvider, Disposable {
       mappings: Record<string, string>,
     ) => Promise<string[]> = () => Promise.resolve([]),
     private readonly clearPreview: () => void = () => {},
+    private readonly highlightUsage: (register?: string) => void = () => {},
   ) {}
 
   resolveWebviewView(view: WebviewView): void {
@@ -54,8 +55,13 @@ export class RegisterRemappingView implements WebviewViewProvider, Disposable {
         type?: string;
         mappings?: Record<string, string>;
         requestId?: number;
+        register?: string;
       }) => {
-        if (message.type === "ready" || message.type === "refresh") {
+        if (message.type === "highlight") {
+          this.highlightUsage(
+            typeof message.register === "string" ? message.register : undefined,
+          );
+        } else if (message.type === "ready" || message.type === "refresh") {
           await this.refresh();
         } else if (message.type === "validate" && message.mappings) {
           const generation = ++this.validationGeneration;
@@ -96,6 +102,7 @@ export class RegisterRemappingView implements WebviewViewProvider, Disposable {
 
   refresh(): Promise<void> {
     this.clearPreview();
+    this.highlightUsage();
     this.refreshGeneration++;
     if (!this.view?.visible) {
       return this.pendingRefresh ?? Promise.resolve();
@@ -136,6 +143,7 @@ export class RegisterRemappingView implements WebviewViewProvider, Disposable {
 
   dispose(): void {
     this.clearPreview();
+    this.highlightUsage();
     this.refreshGeneration++;
     this.view = undefined;
     this.messageSubscription?.dispose();
@@ -193,7 +201,9 @@ function webviewHtml(webview: Webview): string {
       min-height: 34px;
       border-bottom: 1px solid color-mix(in srgb, var(--vscode-widget-border) 55%, transparent);
     }
-    .register { font-family: var(--vscode-editor-font-family); font-weight: 600; }
+    .row:hover, .row:has(.register:focus-visible) { background: var(--vscode-list-hoverBackground); }
+    .register:focus-visible { outline: none; }
+    .register { cursor: default; background: transparent; border: none; padding: 2px 4px; text-align: left; color: inherit; font-family: var(--vscode-editor-font-family); font-weight: 600; }
     .access { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     select, button {
       height: 24px;
@@ -273,6 +283,7 @@ function webviewHtml(webview: Webview): string {
     const sortToggle = document.getElementById('sort-first-use');
     sortToggle.checked = sortByFirstUse;
 
+
     function accessLabel(usage) {
       if (!usage) return 'unused';
       const access = usage.read && usage.written ? 'read/write' : usage.read ? 'read' : usage.written ? 'write' : 'unknown';
@@ -338,9 +349,17 @@ function webviewHtml(webview: Webview): string {
         const register = usage.name;
         const row = document.createElement('div');
         row.className = 'row';
-        const name = document.createElement('div');
+        const name = document.createElement('button');
         name.className = 'register';
         name.textContent = register.toUpperCase();
+        name.title = 'Highlight usages of ' + register.toUpperCase();
+        name.setAttribute('aria-label', name.title);
+        const showUsage = () => vscode.postMessage({ type: 'highlight', register });
+        const hideUsage = () => vscode.postMessage({ type: 'highlight' });
+        row.addEventListener('mouseenter', showUsage);
+        row.addEventListener('mouseleave', hideUsage);
+        name.addEventListener('focus', showUsage);
+        name.addEventListener('blur', hideUsage);
         const color = model.colors?.[usage.name];
         if (color) name.style.color = color;
         const access = document.createElement('div');
@@ -384,7 +403,10 @@ function webviewHtml(webview: Webview): string {
     }
 
     apply.addEventListener('click', () => vscode.postMessage({ type: 'apply', mappings }));
-    reset.addEventListener('click', () => render(model));
+    reset.addEventListener('click', () => {
+      vscode.postMessage({ type: 'highlight' });
+      render(model);
+    });
     sortToggle.addEventListener('change', () => {
       sortByFirstUse = sortToggle.checked;
       vscode.setState({ sortByFirstUse });

@@ -1,6 +1,23 @@
 import parse from "../../src/parse";
 
 describe("instructionSize", () => {
+  // Cross-checked with vasm 1.9: -m68020 -no-opt -Fbin.
+  test.each([
+    ["movem.l d0-d3,16(a0)", 6],
+    ["movem.w $12345678,d0-d3", 8],
+    ["bra.l *+100", 6],
+    ["link.l a6,#-100000", 6],
+    ["mulu.l d0,d1", 4],
+    ["divs.l (a0),d1", 4],
+    ["move.l 300(a0,d0.l),d1", 6],
+    ["move.l 70000(a0,d0.l),d1", 8],
+    ["move.l ([16,a0,d0.l],32),d1", 8],
+    ["move.l ([70000,a0,d0.l],70000),d1", 12],
+  ])("sizes %s as %i bytes", (source, bytes) => {
+    const [result] = parse(` ${source}`);
+    expect(result.bytes).toBe(bytes);
+  });
+
   test("immediate W", () => {
     const [result] = parse(" add.w #1,d0");
     expect(result.bytes).toEqual(4);

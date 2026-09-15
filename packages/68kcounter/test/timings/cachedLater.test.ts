@@ -6,6 +6,27 @@ import { PlainTextFormatter, JsonFormatter } from "../../src/formatters";
 // Explicit examples from MC68040UM §10.4–6 and MC68060UM §10.4–14.
 // 040 clock values are execute-lead + execute-base; never add EA calculate.
 test.each([
+  ["68040", "btst #3,d0", [1, 0, 0]],
+  ["68040", "btst d1,d0", [2, 0, 0]],
+  ["68040", "bset #3,(a0)", [3, 1, 1]],
+  ["68040", "bclr d1,4(a0)", [4, 1, 1]],
+  ["68040", "bchg #3,4(a0)", [4, 1, 1]],
+  ["68040", "btst #3,4(pc)", [3, 1, 0]],
+  ["68040", "btst d1,4(pc,d0)", [6, 1, 0]],
+  ["68040", "bset d1,300(a0,d0)", [11, 1, 1]],
+  ["68040", "btst #3,([4,a0],d0,8)", [12, 2, 0]],
+  ["68040", "movem.w (a0)+,d0-d2", [6, 3, 0]],
+  ["68040", "movem.w (a0),a1-a2", [8, 2, 0]],
+  ["68040", "movem.w 4(a0),d0-d1/a1-a2", [9, 4, 0]],
+  ["68040", "asl.w (a0)", [3, 1, 1]],
+  ["68040", "asr.w (a0)+", [2, 1, 1]],
+  ["68040", "lsl.w -(a0)", [2, 1, 1]],
+  ["68040", "lsr.w 4(a0,d0)", [4, 1, 1]],
+  ["68040", "asl.w 300(a0,d0)", [10, 1, 1]],
+  ["68040", "rol.w 300(a0,d0)", [9, 1, 1]],
+  ["68040", "ror.w ([4,a0,d0],8)", [12, 2, 1]],
+  ["68040", "roxl.w ([4,a0],d0,8)", [12, 2, 1]],
+  ["68040", "roxr.w ([4,a0,d0])", [10, 2, 1]],
   ["68040", "moveq #1,d0", [1, 0, 0]],
   ["68060", "moveq #1,d0", [1, 0, 0]],
   ["68040", "move.l (a0),d0", [1, 1, 0]],
@@ -172,3 +193,23 @@ test.each(["68040", "68060"] as Cpu[])(
     expect(parse(" divu.w #0,d0", { cpu })[0].timing).toBeUndefined();
   },
 );
+
+test.each(["asl.b (a0)", "lsr.l (a0)", "rol.w 4(pc)"])(
+  "040 does not time invalid memory shift %s",
+  (source) => {
+    expect(parse(" " + source, { cpu: "68040" })[0].timing).toBeUndefined();
+  },
+);
+
+test.each(["bset #1,4(pc)", "btst.w #1,d0", "bclr.l #1,(a0)", "btst #1,a0"])(
+  "040 leaves invalid bit operation untimed: %s",
+  (source) => {
+    expect(parse(" " + source, { cpu: "68040" })[0].timing).toBeUndefined();
+  },
+);
+
+test("040 word MOVEM preserves separate calculate and execute adjustments", () => {
+  expect(
+    parse(" movem.w (a0),d0-d2", { cpu: "68040" })[0].timing?.reference?.stages,
+  ).toEqual({ calculate: 4, executeLead: 1, executeBase: 5 });
+});

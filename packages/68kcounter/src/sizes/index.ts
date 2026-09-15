@@ -11,7 +11,7 @@ export default function statementSize(
     return directiveSize(statement, vars);
   }
   if (statement.isInstruction()) {
-    return instructionSize(statement);
+    return instructionSize(statement, vars);
   }
   return 0;
 }

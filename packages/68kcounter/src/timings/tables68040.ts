@@ -546,7 +546,7 @@ export function timings68040(
       list = load ? d : s;
     if (
       !ea.memory ||
-      (load && (ea.mode === "predec" || q === "W")) ||
+      (load && ea.mode === "predec") ||
       (!load && (!ea.writable || ea.mode === "postinc"))
     )
       return null;
@@ -581,8 +581,16 @@ export function timings68040(
     const pc = Number(ea.pc && !["pcdisp", "pcindex"].includes(ea.mode));
     const total = cost[0] + count + pc,
       lead = cost[1] + pc;
+    // §10.6 note c: word loads add N-2 calculate clocks and N
+    // execute clocks, where N is the number of address registers.
+    const addressCount = registers.length - data;
+    const wordLoad = load && q === "W";
     return result(
-      [total, lead, total - lead],
+      [
+        total + (wordLoad ? addressCount - 2 : 0),
+        lead,
+        total - lead + (wordLoad ? addressCount : 0),
+      ],
       ea.pointerReads + (load ? registers.length : 0),
       load ? 0 : registers.length,
     );
@@ -743,6 +751,70 @@ export function timings68040(
     return stage
       ? result([stage[0], stage[1], base + stage[2]], read(s))
       : null;
+  }
+  if (
+    ["BTST", "BCHG", "BCLR", "BSET"].includes(op) &&
+    operands.length === 2 &&
+    ["dn", "immediate"].includes(s.mode)
+  ) {
+    const testOnly = op === "BTST";
+    const explicitSize = statement.opcode.qualifier?.name;
+    if (
+      (d.mode !== "dn" && !d.memory) ||
+      (!testOnly && !d.writable) ||
+      (explicitSize && explicitSize !== (d.mode === "dn" ? "L" : "B"))
+    )
+      return null;
+    // MC68040UM §10.6 pp.10-15/17: T1/T2 denote immediate/register
+    // bit numbers, not alternative execution outcomes.
+    const dynamic = Number(s.mode === "dn");
+    const base = (testOnly ? 1 : 3) + dynamic;
+    const stages: StageTable = {
+      dn: [1, 0, base],
+      indirect: [1, 0, base],
+      postinc: [1, 0, base],
+      predec: [1, 0, base],
+      disp: [2 - dynamic, dynamic ? 0 : 1, base],
+      absolute: [2 - dynamic, dynamic ? 0 : 1, base],
+      index: [3, 0, base + 2],
+      full: [8 - (testOnly ? dynamic : 0), 1, base + 6],
+      pre: [10 - (testOnly ? dynamic : 0), 1, base + 8],
+      preOuter: [11 - (testOnly ? dynamic : 0), 1, base + 9],
+      post: [11 - (testOnly ? dynamic : 0), 3, base + 7],
+      postOuter: [12 - (testOnly ? dynamic : 0), 3, base + 8],
+    };
+    if (testOnly) {
+      stages.pcdisp = [3, 2, base];
+      stages.pcindex = [5, 1, base + 3];
+    }
+    return lookup(stages, d, read(d), Number(!testOnly && d.memory));
+  }
+  if (
+    mnemonicGroups.SHIFT.includes(op) &&
+    operands.length === 1 &&
+    q === "W" &&
+    s.memory &&
+    s.writable
+  ) {
+    // MC68040UM §10.6, pp.10-14, 10-26–27. Memory shifts are
+    // single-bit word operations; rotations have different full-EA costs.
+    const rotate = ["ROL", "ROR", "ROXL", "ROXR"].includes(op);
+    const extra = op === "ASL" || op === "ROL" || op === "ROR" ? 1 : 0;
+    const adjustment = rotate ? 0 : 1;
+    const stages: StageTable = {
+      indirect: [1, 0, 2 + extra],
+      postinc: [1, 0, 2 + extra],
+      predec: [1, 0, 2 + extra],
+      disp: [1, 0, 2 + extra],
+      absolute: [1, 0, 2 + extra],
+      index: [3, 0, 4 + extra],
+      full: [7 + adjustment, 1, 7 + adjustment + extra],
+      pre: [9 + adjustment, 1, 9 + adjustment + extra],
+      preOuter: [10 + adjustment, 1, 10 + adjustment + extra],
+      post: [10 + adjustment, 3, 8 + adjustment + extra],
+      postOuter: [11 + adjustment, 3, 9 + adjustment + extra],
+    };
+    return lookup(stages, s, read(s), 1);
   }
   if (
     mnemonicGroups.SHIFT.includes(op) &&

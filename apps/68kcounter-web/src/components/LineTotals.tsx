@@ -1,5 +1,5 @@
 import { type FC } from "react";
-import { type Totals } from "68kcounter";
+import { formatTotalsTiming, type Totals } from "68kcounter";
 import { Timing } from "./Timing";
 import { Bytes } from "./Bytes";
 import "./LineTotals.css";
@@ -10,7 +10,7 @@ export interface LineTotalsProps {
 }
 
 export const LineTotals: FC<LineTotalsProps> = ({
-  totals: { min, max, isRange, bytes },
+  totals,
   onClearSelection,
 }) => (
   <div className="LineTotals">
@@ -25,13 +25,16 @@ export const LineTotals: FC<LineTotalsProps> = ({
     </button>
 
     <strong>Total:</strong>
-    {isRange ? (
+    {totals.timingGroups ? (
+      <span>{formatTotalsTiming(totals)} (reference sums)</span>
+    ) : totals.isRange ? (
       <span>
-        <Timing timing={min} />–<Timing timing={max} />
+        <Timing timing={totals.min} />–<Timing timing={totals.max} />
       </span>
     ) : (
-      <Timing timing={min} />
+      <Timing timing={totals.min} />
     )}
-    <Bytes bytes={bytes} />
+    {totals.incomplete && <span>Incomplete timings</span>}
+    <Bytes bytes={totals.bytes} />
   </div>
 );

@@ -56,7 +56,7 @@ const argv = yargs(hideBin(process.argv))
     cache: {
       describe:
         "For 68020/68030, assume instructions hit the cache (best available case); " +
-        "the default is uncached (68020 worst / 68030 average no-cache case)",
+        "the default is uncached (68020 worst / 68030 average no-cache case). 68040/68060 currently always use cached reference costs",
       type: "boolean",
       default: false,
     },

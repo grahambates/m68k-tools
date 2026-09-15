@@ -7,6 +7,7 @@ import {
   Directives,
   type Directive,
   toCpu,
+  cachedOnlyCpu,
 } from "../syntax";
 import {
   type DirectiveStatement,
@@ -25,6 +26,7 @@ export interface Line {
   bytes?: number;
   bss?: boolean;
   timing?: InstructionTiming;
+  timingUnavailable?: string;
   /**
    * Line is annotated with timing/size for reference but excluded from the
    * grand totals. Used for macro definition bodies (no code is emitted at the
@@ -65,7 +67,7 @@ export default class Parser {
   /** Current target CPU, updated by in-source MACHINE / mc680x0 directives */
   private cpu: Cpu;
 
-  /** Which 68020 cache case to report (worst by default) */
+  /** 020/030 cache case (uncached by default); 040/060 always use cached references */
   private readonly cacheModel: CacheModel;
 
   constructor(options: { cpu?: Cpu; cacheModel?: CacheModel } = {}) {
@@ -205,7 +207,10 @@ export default class Parser {
     if (line.macroLines) {
       const macroTotals = calculateTotals(line.macroLines);
       line.bytes = macroTotals.bytes;
-      if (macroTotals.min[0]) {
+      if (macroTotals.incomplete)
+        line.timingUnavailable =
+          "Expansion contains instructions with no cached timing; timing totals are incomplete.";
+      if (macroTotals.max[0] || macroTotals.timingGroups?.length) {
         line.timing = macroTotals.isRange
           ? {
               values: [macroTotals.min, macroTotals.max],
@@ -215,6 +220,8 @@ export default class Parser {
               values: [macroTotals.min],
               labels: [],
             };
+        if (macroTotals.timingGroups && line.timing)
+          line.timing.groups = macroTotals.timingGroups;
       }
     }
 
@@ -256,6 +263,8 @@ export default class Parser {
         return new StatementNode(expanded);
       });
       line.macroLines = this.processStatements(macroStatements);
+    } else if (cachedOnlyCpu(this.cpu)) {
+      line.timingUnavailable = `${this.cpu}: no cached timing available for this instruction form or unknown macro.`;
     }
     return line;
   }
@@ -309,6 +318,8 @@ export default class Parser {
         instructionTimings(statement, this.vars, this.cpu, this.cacheModel) ||
         undefined,
     };
+    if (!line.timing && cachedOnlyCpu(this.cpu))
+      line.timingUnavailable = `${this.cpu}: no cached timing available for this instruction form.`;
     return line;
   }
 

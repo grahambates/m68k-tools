@@ -7,6 +7,7 @@ import {
   type Line as LineType,
   type Timing as TimingType,
   Mnemonics,
+  timingReferenceDescription,
   type Totals,
 } from "68kcounter";
 
@@ -27,7 +28,11 @@ export const Line = memo<LineProps>(
       line.timing?.calculation?.ea && line.timing.calculation.ea[0] > 0;
     const hasMultiplier = line.timing?.calculation?.multiplier;
     const isCalculated = hasEa || hasMultiplier;
-    const hasDetail = isCalculated || isMultiple;
+    const hasDetail =
+      isCalculated ||
+      isMultiple ||
+      line.timing?.reference ||
+      line.timing?.groups;
 
     const [expanded, setExpanded] = useState(false);
     return (
@@ -55,15 +60,35 @@ export const Line = memo<LineProps>(
                   </button>
                 </div>
               )}
-              {line.timing &&
+              {line.timingUnavailable && (
+                <span title={line.timingUnavailable}>?</span>
+              )}
+              {line.timing?.groups && line.timing.groups.length > 1 ? (
+                <span>Mixed timing models</span>
+              ) : (
+                line.timing &&
                 line.timing.values.map((t, i) => (
                   <Timing timing={t} key={i} color />
-                ))}
+                ))
+              )}
               {!!line.bytes && <Bytes bytes={line.bytes} color />}
             </div>
             {hasDetail && line.timing && (
               <div className={"Line__detail" + (expanded ? " expanded" : "")}>
                 <div className="Line__detailContent">
+                  {line.timing.reference && (
+                    <div>{timingReferenceDescription(line.timing)}</div>
+                  )}
+                  {line.timing.reference?.note && (
+                    <div>{line.timing.reference.note}</div>
+                  )}
+                  {line.timing.reference?.stages && (
+                    <div>
+                      EA calculate: {line.timing.reference.stages.calculate};
+                      execute: {line.timing.reference.stages.executeLead} lead +{" "}
+                      {line.timing.reference.stages.executeBase} base.
+                    </div>
+                  )}
                   {isMultiple &&
                     line.timing.values.map((t, i) => (
                       <div key={i}>

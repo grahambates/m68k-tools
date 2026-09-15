@@ -88,3 +88,13 @@ Requires Node.js 22.15.1 or later at runtime. Use the root-pinned Node version f
 ## Module formats
 
 ESM imports and CommonJS `require` are supported through conditional exports, with matching TypeScript declarations. Existing CommonJS file paths remain available. ESM consumers receive the native `.mjs` entry point.
+
+### 68040 and 68060 cached references
+
+Select `--cpu 68040` / `--cpu 68060`, the matching library `cpu` option, or a `machine mc68040` / `machine mc68060` directive. These CPUs currently always use cached reference costs, regardless of `--cache` or `cacheModel`. Both instruction and data accesses are assumed to hit their caches, with aligned operands. No memory-system or uncached estimate is provided.
+
+The tables are based on [MC68040UM §10.4–6](https://www.nxp.com/docs/en/reference-manual/MC68040UM.pdf) and [MC68060UM §10.4–14](https://www.nxp.com/docs/en/data-sheet/MC68060UM.pdf). The 040 clock column reports the manual's execution-stage lead + base cost; JSON/library results preserve the separate address-calculation and execution fields in `timing.reference.stages`. Pipeline stages overlap, so those fields must not be added together. The 060 reports the manual's instruction-execution reference, without instruction pairing. Branch prediction alternatives have separate labels; word division uses the published maximum cost.
+
+Parentheses show **operand reads/writes**, not external bus transfers or DMA contention. Totals are reference sums, not elapsed sequence times. When reference costs occur, use `totals.timingGroups` (also used by the CLI/extension) rather than the legacy combined `min`/`max` fields, particularly when source directives mix CPU models. These sums must not be used alone to claim a replacement sequence is faster.
+
+Initial coverage includes MOVE/MOVEA/MOVEQ, common arithmetic and logic, register shifts/rotates, comparisons, clear/negate, branches, calls/returns and address calculations. Full-format and memory-indirect costs are supported for covered families. MOVEM loads on the 040 currently cover long-word transfers only. The 060 additionally covers memory shifts and ordinary bit operations. Bitfields, FPU/MMU operations, cache maintenance, locked accesses, exception handling and several miscellaneous/control-register forms remain untimed. There is no fallback for emulated or unsupported instructions. Missing coverage is exposed as `timingUnavailable` on a line and `incomplete` on its totals; macro expansions preserve this information. The existing complex-address byte-size limitations still apply.

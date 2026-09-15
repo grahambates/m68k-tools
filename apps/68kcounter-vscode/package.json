@@ -53,7 +53,9 @@
           "enum": [
             "68000",
             "68020",
-            "68030"
+            "68030",
+            "68040",
+            "68060"
           ],
           "default": "68000",
           "scope": "resource",
@@ -71,7 +73,7 @@
           ],
           "default": "worst",
           "scope": "resource",
-          "description": "Default cache timing model for CPUs with cache timing data. Can be temporarily toggled per document. Ignored for 68000."
+          "description": "Default cache timing model for CPUs with cache timing data. Can be temporarily toggled per document for 68020/68030. Ignored for 68000; 68040/68060 always use cached reference costs."
         }
       }
     }

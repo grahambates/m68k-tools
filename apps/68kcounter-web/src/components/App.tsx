@@ -49,8 +49,15 @@ export const App: FC = () => {
   );
   // 68000 bus cycles are [reads, writes]; 68020 adds a prefetch count:
   // [reads, prefetches, writes].
-  const busCycles =
-    cpu === Cpus.MC68020 ? "reads/prefetches/writes" : "reads/writes";
+  const busCycles = totals?.timingGroups
+    ? "operand reads/writes; see model labels"
+    : lines?.some((line) =>
+          line.timing?.values.some((value) => value.length === 4),
+        ) ||
+        cpu === Cpus.MC68020 ||
+        cpu === Cpus.MC68030
+      ? "reads/prefetches/writes"
+      : "reads/writes";
 
   const handleSubmit = (code: string) => {
     setCode(code);

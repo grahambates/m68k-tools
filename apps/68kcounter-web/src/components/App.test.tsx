@@ -68,3 +68,21 @@ test("switches between 68000 and 68020 timings", () => {
   });
   expect(row.getByText("2(0/0/0)")).toBeInTheDocument();
 });
+
+test("source-selected 060 costs are labelled as cached operand references", () => {
+  render(<App />);
+  fireEvent.change(
+    screen.getByPlaceholderText("Paste or drop ASM source here"),
+    {
+      target: { value: " machine mc68060\n move.l (a0),d0\n movep.l d0,4(a0)" },
+    },
+  );
+  fireEvent.click(screen.getByText("Analyse"));
+  expect(
+    screen.getByText(/Reference sums, not elapsed sequence timings/),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(/Incomplete timings: unsupported forms/),
+  ).toBeInTheDocument();
+  expect(screen.getByTitle(/no cached timing/)).toHaveTextContent("?");
+});

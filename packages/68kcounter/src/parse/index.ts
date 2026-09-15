@@ -7,7 +7,7 @@ export * from "./nodes";
 export interface ParseOptions {
   /** Target CPU model (default 68000) */
   cpu?: Cpu;
-  /** Which 68020 cache case to report (default worst) */
+  /** 020/030 cache case (default worst); 040/060 currently always use cached references */
   cacheModel?: CacheModel;
 }
 

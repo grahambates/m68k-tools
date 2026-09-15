@@ -10,7 +10,7 @@ export interface CpuSelectProps {
 }
 
 const cacheModelLabels: Record<CacheModel, string> = {
-  [CacheModels.Worst]: "Worst case",
+  [CacheModels.Worst]: "Uncached",
   [CacheModels.Cache]: "Cache hit",
 };
 
@@ -31,7 +31,7 @@ export const CpuSelect: FC<CpuSelectProps> = ({
         ))}
       </select>
     </label>
-    {cpu === Cpus.MC68020 && (
+    {(cpu === Cpus.MC68020 || cpu === Cpus.MC68030) && (
       <label className="CpuSelect__field">
         Cache
         <select

@@ -1,6 +1,10 @@
 import { counterOptions } from "./settings";
 import { window } from "vscode";
-import process, { calculateTotals, formatTiming } from "68kcounter";
+import process, {
+  calculateTotals,
+  formatTiming,
+  formatTotalsTiming,
+} from "68kcounter";
 
 export default function countSelection(): void {
   const editor = window.activeTextEditor;
@@ -21,8 +25,10 @@ export default function countSelection(): void {
   if (totals.bssBytes) {
     text += ` (${totals.bssBytes} bss)`;
   }
-  text += " Cycles: " + formatTiming(totals.min);
-  if (totals.isRange) {
+  text += totals.timingGroups
+    ? " " + formatTotalsTiming(totals)
+    : " Cycles: " + formatTiming(totals.min);
+  if (!totals.timingGroups && totals.isRange) {
     text += "–" + formatTiming(totals.max);
   }
   if (
@@ -31,5 +37,10 @@ export default function countSelection(): void {
     )
   )
     text += options.cacheModel === "cache" ? " (cached)" : " (uncached)";
+  if (totals.timingGroups)
+    text +=
+      " (reference sums, not sequence timings; operand accesses, not external bus transfers)";
+  if (selectedLines.some((line) => line.timingUnavailable))
+    text += " — incomplete timings";
   window.showInformationMessage(text);
 }

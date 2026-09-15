@@ -7,6 +7,8 @@ export const Cpus = {
   MC68000: "68000",
   MC68020: "68020",
   MC68030: "68030",
+  MC68040: "68040",
+  MC68060: "68060",
 } as const;
 
 export type Cpu = Values<typeof Cpus>;
@@ -40,6 +42,10 @@ export function toCpu(value: string): Cpu | undefined {
       return Cpus.MC68020;
     case "68030":
       return Cpus.MC68030;
+    case "68040":
+      return Cpus.MC68040;
+    case "68060":
+      return Cpus.MC68060;
     default:
       return undefined;
   }
@@ -465,3 +471,7 @@ export const aliases: Record<string, string> = {
   SHS: Mnemonics.SCC,
   BLK: Directives.DCB,
 };
+
+/** These CPUs currently expose only cached instruction reference costs. */
+export const cachedOnlyCpu = (cpu: Cpu): boolean =>
+  cpu === Cpus.MC68040 || cpu === Cpus.MC68060;

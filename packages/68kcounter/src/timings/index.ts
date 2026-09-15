@@ -1,3 +1,5 @@
+import { timings68040 } from "./tables68040";
+import { timings68060 } from "./tables68060";
 import { parseLine } from "m68k-parser";
 import { baseTimes, lookupTimes, type TimingTable } from "./tables";
 import * as cpu68020 from "./tables68020";
@@ -43,6 +45,39 @@ export interface InstructionTiming {
   values: Timing[];
   labels: string[];
   calculation?: Calculation;
+  /** Separate totals for macro expansions containing different timing models. */
+  groups?: TimingGroup[];
+  /** Cached reference costs, not elapsed sequence timings or external DMA counts. */
+  reference?: {
+    cpu: "68040" | "68060";
+    cache: "instruction-and-data";
+    accesses: "operand";
+    basis: "execution-stage" | "instruction-execution";
+    note?: string;
+    stages?: { calculate: number; executeLead: number; executeBase: number };
+  };
+}
+
+export interface TimingGroup {
+  model: string;
+  min: Timing;
+  max: Timing;
+}
+
+export function timingReferenceDescription(
+  timing: InstructionTiming,
+): string | undefined {
+  const ref = timing.reference;
+  if (!ref)
+    return timing.groups
+      ? timing.groups
+          .map(
+            (group) =>
+              `${group.model}: ${formatTiming(group.min)}${group.min.some((n, i) => n !== group.max[i]) ? "–" + formatTiming(group.max) : ""}`,
+          )
+          .join("; ") + ". Reference sums, not elapsed sequence timings."
+      : undefined;
+  return `${ref.cpu} cached ${ref.basis === "execution-stage" ? "execution-stage" : "instruction"} reference: clocks(operand reads/writes). Both caches hit; accesses are not external bus transfers. No sequence overlap${ref.cpu === "68060" ? " or instruction pairing" : ""} is modelled.`;
 }
 
 /**
@@ -77,6 +112,8 @@ export function instructionTimings(
   cpu: Cpu = defaultCpu,
   cacheModel: CacheModel = defaultCacheModel,
 ): InstructionTiming | null {
+  if (cpu === Cpus.MC68040) return timings68040(statement, vars);
+  if (cpu === Cpus.MC68060) return timings68060(statement, vars);
   const forms: (FullForm | undefined)[] = [];
   const modes = statement.operands.map((operand) => operand.mode);
   if (cpu === Cpus.MC68030) {
@@ -486,7 +523,10 @@ function buildCachedMap(
   return map;
 }
 
-const timingMaps: Record<Cpu, Map<string, Calculation>> = {
+const timingMaps: Record<
+  Exclude<Cpu, "68040" | "68060">,
+  Map<string, Calculation>
+> = {
   [Cpus.MC68000]: buildTimingMap(baseTimes, lookupTimes),
   [Cpus.MC68020]: buildCachedMap(cpu68020),
   [Cpus.MC68030]: buildCachedMap(cpu68030),

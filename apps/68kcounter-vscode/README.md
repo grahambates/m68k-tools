@@ -64,3 +64,9 @@ Choose `worst` or `cache` for uncached or cached timings. Run **68kcounter: Togg
 Timings are displayed as `clocks(reads/writes)` for 68000 and `clocks(reads/prefetches/writes)` for 68020/68030. Hover over an annotation for the column legend and active cache model. Currently only 68000, 68020 and 68030 timing data are supported; 68040/060 are not selectable yet.
 
 For 68030, uncached values are the manual's average no-cache estimates with two-clock reads and writes, not absolute worst cases. Instruction overlap, data-cache hits, MMU walks, wait states and full-format addressing are not simulated. See the [core timing documentation](../../packages/68kcounter/README.md) for coverage.
+
+#### 68040 / 68060
+
+The default CPU setting and source `machine` directives also support 68040 and 68060. These targets currently provide cached integer reference costs only; the cache toggle does not switch a document containing only these references to an unavailable uncached model.
+
+Hovers identify **operand** reads/writes (not external bus transfers), and show the 040 address-calculation and execution lead/base fields. Totals are labelled reference sums and keep different timing models separate. They do not predict sequence runtime or 060 instruction pairing. A `?` annotation identifies an instruction form without timing coverage, and the status/selection totals indicate incomplete coverage. See the [counter timing assumptions and coverage](../../packages/68kcounter/README.md#68040-and-68060-cached-references).

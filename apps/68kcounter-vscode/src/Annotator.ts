@@ -15,6 +15,8 @@ import {
 } from "vscode";
 import parse, {
   formatTiming,
+  formatTotalsTiming,
+  timingReferenceDescription,
   type Level,
   Levels,
   timingLevel,
@@ -163,8 +165,10 @@ export class Annotator implements Disposable {
     if (totals.bssBytes) {
       text += ` (${totals.bssBytes} bss)`;
     }
-    text += " | Cycles: " + formatTiming(totals.min);
-    if (totals.isRange) {
+    text += totals.timingGroups
+      ? " | " + formatTotalsTiming(totals)
+      : " | Cycles: " + formatTiming(totals.min);
+    if (!totals.timingGroups && totals.isRange) {
       text += "–" + formatTiming(totals.max);
     }
     const options = counterOptions(this.document);
@@ -176,6 +180,17 @@ export class Annotator implements Disposable {
       text += options.cacheModel === "cache" ? " | Cached" : " | Uncached";
     this.statusBarItem.tooltip =
       "Cycles: clocks(reads/prefetches/writes) for 68020/68030; clocks(reads/writes) for 68000. Click to toggle cached/uncached timings for this document.";
+    const cachedOnly = totals.timingGroups?.every((group) =>
+      group.model.includes("cached"),
+    );
+    this.statusBarItem.command = cachedOnly
+      ? undefined
+      : "68kcounter.toggleCacheModel";
+    if (totals.timingGroups)
+      this.statusBarItem.tooltip =
+        "Cached reference sums, not elapsed sequence timings. Operand accesses are not external bus transfers. 68040/68060 currently have no uncached model.";
+    if (lines.some((line) => line.timingUnavailable))
+      text += " | Incomplete timings";
     this.statusBarItem.text = text;
     this.statusBarItem.show();
   }
@@ -188,10 +203,14 @@ export class Annotator implements Disposable {
     let text = "";
     let color: ThemeColor | string = colorPre;
     if (timing) {
-      text += timing.values.map(formatTiming).join(" ");
+      text +=
+        timing.groups && timing.groups.length > 1
+          ? "Mixed timing models"
+          : timing.values.map(formatTiming).join(" ");
       const level = timingLevel(timing.values[0]);
       color = colors[level];
     }
+    if (line.timingUnavailable) text += "?";
     if (bytes) {
       text += " " + bytes;
     }
@@ -200,11 +219,19 @@ export class Annotator implements Disposable {
     const extended = timing?.values.some((value) => value.length > 3);
     const infoLines: string[] = timing
       ? [
-          extended
-            ? `Clocks(reads/prefetches/writes), ${options.cacheModel === "cache" ? "cached" : "uncached"}`
-            : "Clocks(reads/writes)",
+          timingReferenceDescription(timing) ??
+            (extended
+              ? `Clocks(reads/prefetches/writes), ${options.cacheModel === "cache" ? "cached" : "uncached"}`
+              : "Clocks(reads/writes)"),
         ]
       : [];
+    if (line.timingUnavailable) infoLines.push(line.timingUnavailable);
+    if (timing?.reference?.note) infoLines.push(timing.reference.note);
+    const stages = timing?.reference?.stages;
+    if (stages)
+      infoLines.push(
+        `EA calculate: ${stages.calculate}; execute: ${stages.executeLead} lead + ${stages.executeBase} base. Stages overlap; do not add these stage costs.`,
+      );
     if (line.timing && line.timing.values.length > 1) {
       infoLines.push(line.timing.labels.join(" / "));
     }

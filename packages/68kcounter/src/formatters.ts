@@ -7,7 +7,7 @@ import chalk, { type Color } from "chalk";
 import { formatTiming, type Level, Levels, timingLevel } from ".";
 import { type Timing } from "./timings";
 import { type Line } from "./parse";
-import { type Totals } from "./totals";
+import { formatTotalsTiming, type Totals } from "./totals";
 
 export interface IncludedElements {
   text: boolean;
@@ -48,6 +48,7 @@ export class JsonFormatter implements Formatter {
           ? lines.map((l) => ({
               text: inc.text ? l.statement.text : undefined,
               timing: inc.timings ? l.timing : undefined,
+              timingUnavailable: inc.timings ? l.timingUnavailable : undefined,
               bytes: inc.bytes ? l.bytes : undefined,
               // Flag lines shown for reference only (excluded from totals)
               reference: l.reference || undefined,
@@ -84,7 +85,10 @@ export class PlainTextFormatter implements Formatter {
           const format = this.options.color
             ? this.formatTimingColored
             : formatTiming;
-          annotation += l.timing.values.map(format).join(" / ");
+          annotation +=
+            l.timing.groups && l.timing.groups.length > 1
+              ? "Mixed timing models"
+              : l.timing.values.map(format).join(" / ");
         }
         if (l.bytes && inc.bytes) {
           annotation += " " + this.formatNumber(l.bytes);
@@ -99,7 +103,9 @@ export class PlainTextFormatter implements Formatter {
 
     if (inc.totals) {
       output.push("\nTotals:");
-      if (totals.isRange) {
+      if (totals.timingGroups) {
+        output.push(formatTotalsTiming(totals));
+      } else if (totals.isRange) {
         output.push(
           formatTiming(totals.min) + " - " + formatTiming(totals.max),
         );
@@ -113,6 +119,17 @@ export class PlainTextFormatter implements Formatter {
       );
     }
 
+    if (
+      inc.timings &&
+      lines.some((l) => l.timing?.reference || l.timing?.groups)
+    )
+      output.push(
+        "Cached reference costs, not elapsed sequence timings. Parentheses count operand accesses, not external bus transfers. 68040 uses execution-stage lead + base; 68060 excludes pairing.",
+      );
+    if (inc.timings && lines.some((l) => l.timingUnavailable))
+      output.push(
+        "Some instruction forms have no cached timing and are excluded from timing totals.",
+      );
     return output.join("\n");
   }
 

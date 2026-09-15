@@ -193,3 +193,37 @@ test("68030 default and runtime cache switching", () => {
       .timing?.values,
   ).toEqual([[2, 0, 0, 0]]);
 });
+
+test.each(["68040", "68060"])(
+  "%s source directives show cached reference costs despite the uncached default",
+  (cpu) => {
+    state.source = ` machine mc${cpu}\n move.l (a0),d0`;
+    const annotator = new Annotator(window.activeTextEditor!.document);
+    const annotation = state.decorations.mock.calls.at(-1)![1][1];
+    expect(annotation.hoverMessage).toContain("operand reads/writes");
+    expect(annotation.hoverMessage).toContain("not external bus transfers");
+    expect(state.status.text).toContain(`${cpu} cached`);
+    expect(state.status.command).toBeUndefined();
+    countSelection();
+    expect(state.message).toHaveBeenLastCalledWith(
+      expect.stringContaining("not sequence timings"),
+    );
+    const before = state.status.text;
+    toggleCacheModel();
+    expect(state.message).toHaveBeenLastCalledWith(
+      expect.stringContaining("no uncached model"),
+    );
+    expect(state.status.text).toBe(before);
+    annotator.dispose();
+  },
+);
+
+test("unsupported cached instruction forms are visible and excluded from totals", () => {
+  state.source = " machine mc68060\n movep.l d0,4(a0)";
+  const annotator = new Annotator(window.activeTextEditor!.document);
+  const annotation = state.decorations.mock.calls.at(-1)![1][1];
+  expect(annotation.renderOptions.before.contentText).toContain("?");
+  expect(annotation.hoverMessage).toContain("no cached timing");
+  expect(state.status.text).toContain("Incomplete timings");
+  annotator.dispose();
+});

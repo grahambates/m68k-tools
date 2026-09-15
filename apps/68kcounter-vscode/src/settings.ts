@@ -1,4 +1,4 @@
-import {
+import parse, {
   CacheModels,
   defaultCacheModel,
   defaultCpu,
@@ -42,6 +42,22 @@ export function counterOptions(document: TextDocument): ParseOptions {
 export function toggleCacheModel(): void {
   const document = window.activeTextEditor?.document;
   if (!document) return;
+  const timed = parse(document.getText(), counterOptions(document)).filter(
+    (line) => line.timing,
+  );
+  if (
+    timed.length &&
+    timed.every(
+      (line) =>
+        line.timing?.reference ||
+        line.timing?.groups?.every((group) => group.model.includes("cached")),
+    )
+  ) {
+    window.showInformationMessage(
+      "68040/68060 currently provide cached reference costs only; no uncached model is available.",
+    );
+    return;
+  }
   overrides.set(
     document,
     counterOptions(document).cacheModel === CacheModels.Cache

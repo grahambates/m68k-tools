@@ -74,6 +74,18 @@ describe("parse AST", () => {
       });
     });
 
+    it("recognises compatibility and option directives", () => {
+      // db/dl (ArgAsm/BAsm/etc. aliases for dc.b/dc.l), fopt and radix are
+      // documented vasm directives that were missing from the directive list.
+      for (const directive of ["db", "dl", "fopt", "radix"]) {
+        const line = parseLine(`  ${directive} 1`).value;
+        expect(line.mnemonic).toMatchObject({
+          type: "directive",
+          directive,
+        });
+      }
+    });
+
     it("parses size with type", () => {
       const line = parseLine("  move.w d0,d1").value;
       expect(line.qualifier).toMatchObject({

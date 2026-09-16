@@ -9,7 +9,7 @@
     },
     {
       "name": "comment.line.asterisk.m68k",
-      "match": "(?<=^|\\s)\\*.*"
+      "match": "(?<=^|\\s)(?<!\\([^)]*)(?<!\\[[^\\]]*)(?<!\\{[^}]*)\\*.*"
     },
     {
       "name": "comment.line.positional.operands.m68k",
@@ -17,7 +17,7 @@
     },
     {
       "name": "comment.line.positional.nooperands.m68k",
-      "match": "(?i)(?<=^([^\\s:=]+\\s+|\\s*[^\\s]+:\\s*|\\s+)(nop|reset|rte|rtr|rts|trapv|illegal|clrfo|clrso|comment|einline|even|inline|list|mexit|nolist|nopage|odd|page|popsection|pushsection|rsreset)(\\.[^\\s]+)?(\\s+))[^\\s].*"
+      "match": "(?i)(?<=^([^\\s:=]+\\s+|\\s*[^\\s]+:\\s*|\\s+)(clrfo|clrso|comment|einline|else|end|endc|endif|endm|endr|erem|even|illegal|inline|list|mexit|nolist|nop|nopage|odd|page|popsection|pushsection|rem|reset|rsreset|rte|rtr|rts|trapv)(\\.[^\\s]+)?(\\s+))[^\\s].*"
     },
     {
       "name": "comment.block.rem.m68k",
@@ -30,7 +30,7 @@
     },
     {
       "name": "constant.character.escape.macro.m68k",
-      "match": "(?i)\\\\(\\??[0-9]|@[!?@]?|[#.+-]|<[^>]+>|\\$?\\.?[a-z]\\w+)"
+      "match": "(?i)\\\\(\\d+|[a-z]|@[!?@]?|<[^>]+>|\\?(?:\\d+|[a-z])|[.+#-])"
     },
     {
       "name": "keyword.control.mnemonic.m68k",
@@ -46,11 +46,11 @@
     },
     {
       "name": "keyword.other.register.m68k",
-      "match": "(?i)(?<=^([^\\s:=]+\\s+|\\s*[^\\s]+:\\s*|\\s+)([^\\s.=:]+)(\\.[^\\s]+)?\\s+.*)\\b((d|a|fp)[0-7]|pc|sp|sr|ccr|usp|vbr)\\b"
+      "match": "(?i)(?<=^([^\\s:=]+\\s+|\\s*[^\\s]+:\\s*|\\s+)([^\\s.=:]+)(\\.[^\\s]+)?\\s+.*)\\b((d|a|fp)[0-7]|pc|sp|sr|ccr|usp|ssp|vbr|sfc|dfc|cacr|caar|fpcr|fpsr|fpiar)\\b"
     },
     {
       "name": "keyword.other.builtin.m68k",
-      "match": "(?i)(?<=^([^\\s:=]+\\s+|\\s*[^\\s]+:\\s*|\\s+)([^\\s.=:]+)(\\.[^\\s]+)?\\s+.*)\\b(reptn|carg|narg)\\b"
+      "match": "(?<=^([^\\s:=]+\\s+|\\s*[^\\s]+:\\s*|\\s+)([^\\s.=:]+)(\\.[^\\s]+)?\\s+.*)\\b(__RS|__SO|__FO|REPTN|CARG|NARG|__G2|__LK|__CPU|__FPU|__MMU|__OPTC|_MOVEMBYTES|__MOVEMREGS|__VASM)\\b"
     },
     {
       "name": "storage.type.sectionType.m68k",
@@ -75,7 +75,7 @@
         },
         {
           "name": "constant.character.escape.macro.m68k",
-          "match": "(?i)\\\\(\\??[0-9]|@[!?@]?|[#.+-]|<[^>]+>|\\$?\\.?[a-z]\\w+)"
+          "match": "(?i)\\\\(\\d+|[a-z]|@[!?@]?|<[^>]+>|\\?(?:\\d+|[a-z])|[.+#-])"
         }
       ]
     },
@@ -90,7 +90,7 @@
         },
         {
           "name": "constant.character.escape.macro.m68k",
-          "match": "(?i)\\\\(\\??[0-9]|@[!?@]?|[#.+-]|<[^>]+>|\\$?\\.?[a-z]\\w+)"
+          "match": "(?i)\\\\(\\d+|[a-z]|@[!?@]?|<[^>]+>|\\?(?:\\d+|[a-z])|[.+#-])"
         }
       ]
     },
@@ -105,7 +105,7 @@
         },
         {
           "name": "constant.character.escape.macro.m68k",
-          "match": "(?i)\\\\(\\??[0-9]|@[!?@]?|[#.+-]|<[^>]+>|\\$?\\.?[a-z]\\w+)"
+          "match": "(?i)\\\\(\\d+|[a-z]|@[!?@]?|<[^>]+>|\\?(?:\\d+|[a-z])|[.+#-])"
         }
       ]
     },
@@ -120,6 +120,10 @@
     {
       "name": "constant.numeric.binary.m68k",
       "match": "(?<!\\w)%[01]+\\b"
+    },
+    {
+      "name": "constant.numeric.float.m68k",
+      "match": "(?<!\\w)[0-9]+\\.[0-9]+([eE][-+]?[0-9]+)?\\b"
     },
     {
       "name": "constant.numeric.decimal.m68k",

@@ -44,7 +44,12 @@ function movePair(
       defaultSeverity: "suggestion",
       description: `Combine adjacent MOVE.${fromSize.toUpperCase()} immediate stores`,
       tags: ["asp68k", "peephole", "memory"],
-      docs: { source: "ASP68K" },
+      docs: {
+        source: "ASP68K",
+        example: {
+          source: `\tmove.${fromSize} #1,0(a0)\n\tmove.${fromSize} #2,${delta}(a0)`,
+        },
+      },
     },
     checkLine(ctx, line, index) {
       if (!isInstruction(line, "move") || instructionSize(line) !== fromSize)

@@ -16,7 +16,10 @@ export const compareLongImmediateViaMoveq: Rule = {
     description:
       "Compare a small long immediate via MOVEQ and a dead scratch register",
     tags: ["tricks-and-traps", "68000", "compare"],
-    docs: { source: "Mike Morton, 68000 Tricks and Traps (BYTE, Sep 1986)" },
+    docs: {
+      source: "Mike Morton, 68000 Tricks and Traps (BYTE, Sep 1986)",
+      example: { source: "\tcmp.l #42,d1\n\tmoveq #0,d0\n\trts" },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "cmp") || instructionSize(line) !== "l") return;

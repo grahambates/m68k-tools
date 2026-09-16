@@ -40,7 +40,10 @@ export const foldAddressArithmeticToIndexedLea: Rule = {
     description:
       "Fold address immediate arithmetic plus indexed addition into LEA",
     tags: ["flamewing", "68000", "address-register", "lea", "sequence"],
-    docs: { source: "Flamewing M68000 Peephole Optimizations" },
+    docs: {
+      source: "Flamewing M68000 Peephole Optimizations",
+      example: { source: "\tadda.w #8,a0\n\tadda.l d1,a0" },
+    },
   },
   checkLine(ctx, line, index) {
     if (!ctx.config.processors.every((cpu) => cpu === "mc68000")) return;

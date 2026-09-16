@@ -96,7 +96,10 @@ export const redundantTst: Rule = {
     description:
       "Remove a TST when the previous instruction already established the required flags",
     tags: ["peephole", "ccr", "native"],
-    docs: { note: "m68k-lint native rule; not derived from ASP68K." },
+    docs: {
+      note: "m68k-lint native rule; not derived from ASP68K.",
+      example: { source: "\tmove.l d0,d1\n\ttst.l d1" },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "tst")) return;

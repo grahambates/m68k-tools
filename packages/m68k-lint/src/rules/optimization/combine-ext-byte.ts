@@ -13,7 +13,13 @@ export const combineExtByte: Rule = {
     defaultSeverity: "suggestion",
     description: "Combine EXT.W + EXT.L into EXTB.L",
     tags: ["asp68k", "sequence", "68020+"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: {
+        source: "\text.w d0\n\text.l d0",
+        config: { processors: ["mc68020"] },
+      },
+    },
   },
 
   checkLine(ctx, line, index) {

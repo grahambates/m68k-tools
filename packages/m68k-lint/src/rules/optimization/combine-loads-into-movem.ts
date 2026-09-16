@@ -119,6 +119,9 @@ export const combineLoadsIntoMovem: Rule = {
     tags: ["movem", "sequence", "memory", "ccr", "native"],
     docs: {
       note: "Found by mining a corpus of real Amiga assembly, where reading a header or vertex record field by field through a walking pointer is the common shape.",
+      example: {
+        source: "\tmove.l (a0)+,d0\n\tmove.l (a0)+,d1\n\tmove.l (a0)+,d2",
+      },
     },
   },
 

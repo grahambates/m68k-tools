@@ -35,7 +35,7 @@ export const redundantLea: Rule = {
     defaultSeverity: "suggestion",
     description: "Remove LEA (An),An when source and destination are identical",
     tags: ["asp68k", "redundant"],
-    docs: { source: "ASP68K" },
+    docs: { source: "ASP68K", example: { source: "\tlea (a0),a0" } },
   },
 
   checkLine(ctx, line) {

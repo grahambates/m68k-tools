@@ -15,7 +15,7 @@ export const preferMoveWordAddress: Rule = {
     description:
       "Use a word immediate when loading a signed 16-bit address-register constant",
     tags: ["asp68k"],
-    docs: { source: "ASP68K" },
+    docs: { source: "ASP68K", example: { source: "\tmovea.l #100,a0" } },
   },
   checkLine(ctx, line) {
     if (!isInstruction(line, "movea") || instructionSize(line) !== "l") return;

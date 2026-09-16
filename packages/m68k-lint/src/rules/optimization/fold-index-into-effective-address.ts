@@ -36,7 +36,12 @@ export const foldIndexIntoEffectiveAddress: Rule = {
     description:
       "Fold an address-register index addition into the indexed addressing mode",
     tags: ["addressing", "address-register", "sequence"],
-    docs: { source: "EAB 68000 code optimisations" },
+    docs: {
+      source: "EAB 68000 code optimisations",
+      example: {
+        source: "\tadda.w d4,a0\n\tmove.l (a0),a1\n\tlea buf,a0\n\trts\nbuf:",
+      },
+    },
   },
 
   checkLine(ctx, line, index) {

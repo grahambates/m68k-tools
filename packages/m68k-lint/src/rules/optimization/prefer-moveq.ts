@@ -27,7 +27,7 @@ export const preferMoveq: Rule = {
     defaultSeverity: "suggestion",
     description: "Prefer MOVEQ for long immediates in the signed 8-bit range",
     tags: ["asp68k", "68000"],
-    docs: { source: "ASP68K" },
+    docs: { source: "ASP68K", example: { source: "\tmove.l #42,d3" } },
   },
 
   checkLine(ctx, line) {

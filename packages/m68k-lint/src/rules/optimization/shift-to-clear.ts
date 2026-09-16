@@ -16,7 +16,10 @@ export const shiftToClear: Rule = {
     defaultSeverity: "suggestion",
     description: "Replace shifts that necessarily clear the operand",
     tags: ["asp68k", "ccr"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tlsl.b #8,d0\n\tadd.l d1,d2" },
+    },
   },
   checkLine(ctx, line, index) {
     const mnemonic = canonicalMnemonic(line) ?? "";

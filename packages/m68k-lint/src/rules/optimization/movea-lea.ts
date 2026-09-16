@@ -27,6 +27,7 @@ export const moveImmediateAddressToLea: Rule = {
     docs: {
       source: "ASP68K",
       note: "ASP68K claims a 68000/68010 speed win, which exact auditing does not bear out: the two forms measure identically. The real gain is clarity, and that LEA lets the assembler relax the operand to PC-relative, which a long immediate MOVEA can never be.",
+      example: { source: "\tmovea.l #$1000,a0" },
     },
   },
   checkLine(ctx, line) {
@@ -82,7 +83,10 @@ export const moveAddressThenAddToLea: Rule = {
     defaultSeverity: "suggestion",
     description: "Combine MOVEA plus immediate ADDA/ADDQ into one LEA",
     tags: ["asp68k", "address-register", "sequence"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tmovea.l a1,a0\n\tadda.w #4,a0" },
+    },
   },
   checkLine(ctx, line, index) {
     // Restrict the copy to .L. MOVEA.W sign-extends the low source word, while

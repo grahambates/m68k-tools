@@ -14,7 +14,10 @@ function makeTailCallRule(
       defaultSeverity: "suggestion",
       description: `Replace ${from.toUpperCase()} followed by RTS with ${to.toUpperCase()}`,
       tags: ["asp68k", "control-flow", "tail-call"],
-      docs: { source: "ASP68K" },
+      docs: {
+        source: "ASP68K",
+        example: { source: `\t${from} Sub\n\trts` },
+      },
     },
 
     checkLine(ctx, line, index) {

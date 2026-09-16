@@ -20,7 +20,10 @@ function quickNegative(
       defaultSeverity: "suggestion",
       description: `Use ${to.toUpperCase()} for negative ${from.toUpperCase()} immediates`,
       tags: ["asp68k"],
-      docs: { source: "ASP68K" },
+      docs: {
+        source: "ASP68K",
+        example: { source: `\t${from}.l #-5,d0\n\tadd.l d1,d2` },
+      },
     },
     checkLine(ctx, line, index) {
       if (!isInstructionFamily(line, from)) return;

@@ -25,7 +25,7 @@ export const singleRegisterMovem: Rule = {
     defaultSeverity: "suggestion",
     description: "Use MOVE instead of MOVEM for a single register",
     tags: ["asp68k", "movem", "ccr"],
-    docs: { source: "ASP68K" },
+    docs: { source: "ASP68K", example: { source: "\tmovem.l (a0)+,a1" } },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "movem")) return;

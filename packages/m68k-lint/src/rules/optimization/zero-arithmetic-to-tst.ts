@@ -19,7 +19,10 @@ export const zeroArithmeticToTst: Rule = {
     defaultSeverity: "suggestion",
     description: "Use TST instead of adding/subtracting zero",
     tags: ["asp68k", "ccr"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tadd.l #0,d0\n\tadd.l d1,d2" },
+    },
   },
 
   checkLine(ctx, line, index) {

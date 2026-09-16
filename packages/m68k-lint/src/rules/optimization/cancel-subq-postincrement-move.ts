@@ -33,7 +33,10 @@ export const cancelSubqPostincrementMove: Rule = {
     description:
       "Cancel SUBQ address adjustment against an immediately following postincrement MOVE",
     tags: ["asp68k", "sequence", "address-register"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tsubq.w #2,a3\n\tmove.w (a3)+,d0" },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "subq")) return;

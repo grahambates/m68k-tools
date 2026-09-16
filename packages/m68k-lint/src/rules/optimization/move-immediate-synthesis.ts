@@ -29,7 +29,10 @@ export const moveImmediateBelowMoveq: Rule = {
     description:
       "Construct immediates just below MOVEQ range with MOVEQ plus SUBQ",
     tags: ["asp68k", "constant", "ccr"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tmove.l #-130,d0\n\tadd.l d1,d2" },
+    },
   },
   checkLine(ctx, line, index) {
     const match = baseMatch(line);
@@ -75,7 +78,10 @@ export const moveImmediateByteComplement: Rule = {
     defaultSeverity: "suggestion",
     description: "Construct 128..255 using MOVEQ plus NOT.B",
     tags: ["asp68k", "constant", "ccr"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tmove.l #200,d0\n\tadd.l d1,d2" },
+    },
   },
   checkLine(ctx, line, index) {
     const match = baseMatch(line);
@@ -123,7 +129,10 @@ export const moveImmediateDoubleByte: Rule = {
     defaultSeverity: "suggestion",
     description: "Construct selected even immediates with MOVEQ plus ADD.B",
     tags: ["asp68k", "constant", "ccr"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tmove.l #150,d0\n\tadd.l d1,d2" },
+    },
   },
   checkLine(ctx, line, index) {
     const match = baseMatch(line);

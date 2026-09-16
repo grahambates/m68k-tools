@@ -54,7 +54,15 @@ function synthesisRule(
       defaultSeverity: "suggestion",
       description: `Synthesize selected long immediates with MOVEQ + ${transformName.toUpperCase()}`,
       tags: ["asp68k", "constant", "ccr"],
-      docs: { source: "ASP68K" },
+      docs: {
+        source: "ASP68K",
+        example: {
+          source:
+            transformName === "not.w"
+              ? "\tmove.l #65534,d0\n\tmove.l d1,d2"
+              : "\tmove.l #2752512,d0\n\tmove.l d1,d2",
+        },
+      },
     },
     checkLine(ctx, line, index) {
       if (!isInstruction(line, "move") || instructionSize(line) !== "l") return;

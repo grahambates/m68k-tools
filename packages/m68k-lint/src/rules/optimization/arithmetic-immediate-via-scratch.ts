@@ -50,6 +50,7 @@ export const arithmeticImmediateViaScratch: Rule = {
     tags: ["register-analysis", "scratch-register", "moveq"],
     docs: {
       source: "EAB 68000 code optimisations; Optimizing 680x0 Applications",
+      example: { source: "\tand.l #100,d1\n\tmoveq #0,d0\n\trts" },
     },
   },
 

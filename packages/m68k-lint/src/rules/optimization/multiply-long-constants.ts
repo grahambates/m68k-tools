@@ -61,7 +61,10 @@ export const multiplyLongSmallConstant: Rule = {
     defaultSeverity: "suggestion",
     description: "Replace selected long constant multiplies with shifts/adds",
     tags: ["asp68k", "multiply", "constant", "scratch", "ccr"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tmuls.l #2,d0\n\tadd.l d1,d2" },
+    },
   },
   checkLine(ctx, line, index) {
     const match = longMulMatch(ctx, line);
@@ -147,7 +150,10 @@ export const multiplyLongLargePowerOfTwo: Rule = {
     description:
       "Replace long multiply by 2^m (9<m<14) with register-count ASL",
     tags: ["asp68k", "multiply", "constant", "scratch", "ccr"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tmuls.l #4096,d0\n\tmoveq #0,d1\n\trts" },
+    },
   },
   checkLine(ctx, line, index) {
     const match = longMulMatch(ctx, line);
@@ -189,7 +195,13 @@ export const multiplySignedLong060: Rule = {
     defaultSeverity: "suggestion",
     description: "Use MOVEQ/ASL for simple MULS.L constants on 68060",
     tags: ["asp68k", "multiply", "68060", "constant", "ccr"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: {
+        source: "\tmuls.l #8,d0\n\tadd.l d1,d2",
+        config: { processors: ["mc68060"] },
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (

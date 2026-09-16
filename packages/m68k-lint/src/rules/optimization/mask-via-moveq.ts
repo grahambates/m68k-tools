@@ -30,7 +30,10 @@ export const maskViaMoveq: Rule = {
     description:
       "Seed a MOVEQ mask and AND the source in, rather than loading then masking",
     tags: ["constant", "ccr"],
-    docs: { source: "EAB 68000 code optimisations" },
+    docs: {
+      source: "EAB 68000 code optimisations",
+      example: { source: "\tmove.l (a0),d0\n\tand.l #$3f,d0" },
+    },
   },
 
   checkLine(ctx, line, index) {

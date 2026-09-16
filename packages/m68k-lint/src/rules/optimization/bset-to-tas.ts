@@ -44,7 +44,13 @@ export const bsetToTas: Rule = {
     enabledByDefault: false,
     description: "Use TAS for BSET bit 7 patterns",
     tags: ["asp68k", "peephole", "ccr", "tas", "disabled-by-default"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: {
+        source: "\tbset.l #7,d0\n\tadd.l d1,d2",
+        config: { rules: { "optimization/bset-to-tas": "suggestion" } },
+      },
+    },
   },
   checkLine(ctx, line, index) {
     // Never suggest TAS in Amiga mode: the Amiga architecture does not support it.

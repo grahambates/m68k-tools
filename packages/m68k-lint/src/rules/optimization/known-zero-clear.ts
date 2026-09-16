@@ -31,7 +31,10 @@ export const knownZeroClear: Rule = {
     description:
       "Use a known-zero data register instead of CLR for selected memory forms",
     tags: ["asp68k", "register-analysis", "known-zero", "memory"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tmoveq #0,d0\n\tclr.w (a0)" },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "clr")) return;

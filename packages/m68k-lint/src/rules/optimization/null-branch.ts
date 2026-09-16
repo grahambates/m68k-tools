@@ -32,7 +32,7 @@ export const nullBranch: Rule = {
     description:
       "Remove an unconditional branch to the immediately following label",
     tags: ["asp68k", "control-flow"],
-    docs: { source: "ASP68K" },
+    docs: { source: "ASP68K", example: { source: "\tbra next\nnext:\n\trts" } },
   },
 
   checkLine(ctx, line, index) {

@@ -44,7 +44,10 @@ export const btstSignBranch: Rule = {
     defaultSeverity: "suggestion",
     description: "Use TST plus sign branch for a sign-bit BTST sequence",
     tags: ["asp68k", "peephole", "ccr", "branch"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tbtst #7,d0\n\tbeq .done\n.done:\n\trts" },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "btst")) return;

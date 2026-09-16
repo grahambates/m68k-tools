@@ -15,7 +15,10 @@ function makeRule(kind: "bset" | "bclr" | "bchg"): Rule {
       defaultSeverity: "suggestion",
       description: `Use a word mask for low-bit ${kind.toUpperCase()}`,
       tags: ["asp68k", "bit", "ccr"],
-      docs: { source: "ASP68K" },
+      docs: {
+        source: "ASP68K",
+        example: { source: `\t${kind} #3,d0\n\tadd.l d1,d2` },
+      },
     },
     checkLine(ctx, line, index) {
       if (!isInstruction(line, kind)) return;

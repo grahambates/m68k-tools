@@ -19,7 +19,15 @@ function bitRule(kind: "or" | "and"): Rule {
       defaultSeverity: "suggestion",
       description: `Prefer ${kind === "or" ? "BSET" : "BCLR"} for a one-bit mask`,
       tags: ["asp68k", "ccr"],
-      docs: { source: "ASP68K" },
+      docs: {
+        source: "ASP68K",
+        example: {
+          source:
+            kind === "or"
+              ? "\tor.l #8,d0\n\tadd.l d1,d2"
+              : "\tand.l #$fffffff7,d0\n\tadd.l d1,d2",
+        },
+      },
     },
     checkLine(ctx, line, index) {
       if (!isInstruction(line, kind) || instructionSize(line) !== "l") return;

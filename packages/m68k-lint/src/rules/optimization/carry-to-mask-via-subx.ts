@@ -38,7 +38,10 @@ export const carryToMaskViaSubx: Rule = {
     defaultSeverity: "suggestion",
     description: "Use SUBX to turn the carry into an all-ones mask",
     tags: ["peephole", "ccr"],
-    docs: { source: "EAB 68000 code optimisations" },
+    docs: {
+      source: "EAB 68000 code optimisations",
+      example: { source: "\tadd.l d1,d2\n\tscs d0\n\text.w d0\n\text.l d0" },
+    },
   },
 
   checkLine(ctx, line, index) {

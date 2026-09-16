@@ -30,7 +30,10 @@ export const combineConsecutiveAddq: Rule = {
     defaultSeverity: "suggestion",
     description: "Combine consecutive ADDQ.L operations on the same register",
     tags: ["asp68k", "sequence", "addq", "ccr"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\taddq.l #3,d0\n\taddq.l #5,d0\n\tadd.l d1,d2" },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "addq") || instructionSize(line) !== "l") return;

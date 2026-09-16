@@ -18,7 +18,15 @@ function makeRule(
       defaultSeverity: "suggestion",
       description: `Remove NEG before ${secondMnemonic.toUpperCase()} when the negated source is dead`,
       tags: ["asp68k", "sequence", "register-liveness", "ccr"],
-      docs: { source: "ASP68K" },
+      docs: {
+        source: "ASP68K",
+        example: {
+          source:
+            secondMnemonic === "sub"
+              ? "\tneg.l d0\n\tsub.l d0,d1\n\tmove.l #0,d0\n\tadd.l d2,d3"
+              : "\tneg.w d4\n\tadd.w d4,d5\n\tmoveq #0,d4\n\tmove.l d0,d1",
+        },
+      },
     },
     checkLine(ctx, line, index) {
       if (!isInstruction(line, "neg")) return;
@@ -120,7 +128,10 @@ export const negateAddMaskToEor: Rule = {
     description:
       "Replace NEG followed by ADD of a low-bit mask with an EOR by that mask when the input is proven in range",
     tags: ["asp68k", "sequence", "constant-propagation", "ccr"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tmoveq #3,d0\n\tneg.l d0\n\tadd.l #7,d0" },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "neg")) return;

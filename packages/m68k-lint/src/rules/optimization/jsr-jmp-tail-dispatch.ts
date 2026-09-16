@@ -11,7 +11,12 @@ export const jsrJmpDispatch: Rule = {
     defaultSeverity: "suggestion",
     description: "Replace JSR sub / JMP next with PEA next / JMP sub",
     tags: ["tricks-and-traps", "68000", "control-flow"],
-    docs: { source: "Mike Morton, 68000 Tricks and Traps (BYTE, Sep 1986)" },
+    docs: {
+      source: "Mike Morton, 68000 Tricks and Traps (BYTE, Sep 1986)",
+      example: {
+        source: "\tjsr Sub\n\tjmp Cont\nSub:\n\trts\nCont:\n\trts",
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "jsr")) return;

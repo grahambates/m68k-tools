@@ -21,7 +21,10 @@ export const simplifyLongWordMasks: Rule = {
     defaultSeverity: "suggestion",
     description: "Simplify common 32-bit word masks on 68000",
     tags: ["flamewing", "68000", "mask", "ccr"],
-    docs: { source: "Flamewing M68000 Peephole Optimizations" },
+    docs: {
+      source: "Flamewing M68000 Peephole Optimizations",
+      example: { source: "\tand.l #$ffff0000,d0\n\tadd.l d1,d2" },
+    },
   },
   checkLine(ctx, line, index) {
     if (

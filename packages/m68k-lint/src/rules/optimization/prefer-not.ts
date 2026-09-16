@@ -14,7 +14,7 @@ export const preferNot: Rule = {
     defaultSeverity: "suggestion",
     description: "Prefer NOT for EOR #-1",
     tags: ["asp68k"],
-    docs: { source: "ASP68K" },
+    docs: { source: "ASP68K", example: { source: "\teori.w #-1,d0" } },
   },
   checkLine(ctx, line) {
     if (!isInstruction(line, "eor")) return;

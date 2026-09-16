@@ -22,7 +22,10 @@ export const normalizeByteRotate: Rule = {
     defaultSeverity: "suggestion",
     description: "Use the shorter-direction immediate byte rotate on 68000",
     tags: ["flamewing", "68000", "rotate", "ccr"],
-    docs: { source: "Flamewing M68000 Peephole Optimizations" },
+    docs: {
+      source: "Flamewing M68000 Peephole Optimizations",
+      example: { source: "\trol.b #6,d0\n\tadd.l d1,d2" },
+    },
   },
   checkLine(ctx, line, index) {
     if (!m68000Only(ctx) || instructionSize(line) !== "b") return;

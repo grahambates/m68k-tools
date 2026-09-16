@@ -31,7 +31,7 @@ export const multiplyWordByZero: Rule = {
     defaultSeverity: "suggestion",
     description: "Replace MULS.W/MULU.W by zero with MOVEQ #0",
     tags: ["asp68k", "multiply", "constant"],
-    docs: { source: "ASP68K" },
+    docs: { source: "ASP68K", example: { source: "\tmuls.w #0,d0" } },
   },
   checkLine(ctx, line) {
     if (!(isInstruction(line, "muls") || isInstruction(line, "mulu"))) return;
@@ -67,7 +67,7 @@ export const multiplySignedWordByOne: Rule = {
     defaultSeverity: "suggestion",
     description: "Replace MULS.W #1 with EXT.L",
     tags: ["asp68k", "multiply", "constant"],
-    docs: { source: "ASP68K" },
+    docs: { source: "ASP68K", example: { source: "\tmuls.w #1,d0" } },
   },
   checkLine(ctx, line) {
     if (
@@ -109,7 +109,7 @@ export const multiplyUnsignedWordByOne: Rule = {
     description: "Replace MULU.W #1 with a zero-extension sequence",
     tags: ["asp68k", "multiply", "constant"],
     serves: "speed",
-    docs: { source: "ASP68K" },
+    docs: { source: "ASP68K", example: { source: "\tmulu.w #1,d0" } },
   },
   checkLine(ctx, line) {
     if (!isInstruction(line, "mulu") || instructionSize(line) !== "w") return;
@@ -153,7 +153,10 @@ export const multiplySignedWordPowerOfTwo: Rule = {
     description:
       "Replace signed word multiply by a small power of two with EXT plus ASL",
     tags: ["asp68k", "multiply", "constant", "ccr"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tmuls.w #8,d0\n\tadd.l d1,d2" },
+    },
   },
   checkLine(ctx, line, index) {
     if (
@@ -222,7 +225,10 @@ export const multiplyUnsignedWordPowerOfTwo: Rule = {
       "Replace unsigned word multiply by a small power of two with zero-extension plus LSL",
     tags: ["asp68k", "multiply", "constant", "ccr"],
     serves: "speed",
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tmulu.w #8,d0\n\tadd.l d1,d2" },
+    },
   },
   checkLine(ctx, line, index) {
     if (
@@ -289,7 +295,10 @@ export const multiplySignedWordHighPowerOfTwo: Rule = {
       "Replace signed word multiply by a large power of two with SWAP/CLR/ASR",
     tags: ["asp68k", "multiply", "constant", "ccr"],
     serves: "speed",
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tmuls.w #1024,d0\n\tadd.l d1,d2" },
+    },
   },
   checkLine(ctx, line, index) {
     if (
@@ -357,7 +366,10 @@ export const multiplyUnsignedWordHighPowerOfTwo: Rule = {
       "Replace unsigned word multiply by a large power of two with SWAP/CLR/LSR",
     tags: ["asp68k", "multiply", "constant", "ccr"],
     serves: "speed",
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tmulu.w #1024,d0\n\tadd.l d1,d2" },
+    },
   },
   checkLine(ctx, line, index) {
     if (

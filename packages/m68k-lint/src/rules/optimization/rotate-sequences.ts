@@ -65,7 +65,13 @@ export const simplifyKnownRegisterRotate: Rule = {
     description:
       "Replace a known register-count rotate with a shorter immediate rotate sequence",
     tags: ["flamewing", "68000", "rotate", "sequence", "ccr"],
-    docs: { source: "Flamewing M68000 Peephole Optimizations" },
+    docs: {
+      source: "Flamewing M68000 Peephole Optimizations",
+      example: {
+        source: "\tmoveq #10,d1\n\trol.w d1,d0\n\tmoveq #0,d1\n\trts",
+        config: { processors: ["mc68000"] },
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (!m68000Only(ctx)) return;
@@ -159,7 +165,13 @@ export const roxlToAddx: Rule = {
     description:
       "Use ADDX for small rotate-through-extend-left counts on 68000",
     tags: ["flamewing", "68000", "rotate", "addx", "ccr"],
-    docs: { source: "Flamewing M68000 Peephole Optimizations" },
+    docs: {
+      source: "Flamewing M68000 Peephole Optimizations",
+      example: {
+        source: "\troxl.b #1,d0\n\tmove.l d1,d2",
+        config: { processors: ["mc68000"] },
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (!m68000Only(ctx) || !isInstruction(line, "roxl")) return;
@@ -213,7 +225,13 @@ export const lslByteSeven: Rule = {
     description: "Replace LSL.B #7 with ROR.B #1 plus a mask on 68000",
     tags: ["flamewing", "68000", "shift", "ccr"],
     serves: "speed",
-    docs: { source: "Flamewing M68000 Peephole Optimizations" },
+    docs: {
+      source: "Flamewing M68000 Peephole Optimizations",
+      example: {
+        source: "\tlsl.b #7,d0\n\tmove.l d1,d2",
+        config: { processors: ["mc68000"] },
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (
@@ -273,7 +291,13 @@ export const aslByteSeven: Rule = {
     description: "Replace ASL.B #7 with ROR.B #1 plus a mask on 68000",
     tags: ["flamewing", "68000", "shift", "ccr"],
     serves: "speed",
-    docs: { source: "Flamewing M68000 Peephole Optimizations" },
+    docs: {
+      source: "Flamewing M68000 Peephole Optimizations",
+      example: {
+        source: "\tasl.b #7,d0\n\tmove.l d1,d2",
+        config: { processors: ["mc68000"] },
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (

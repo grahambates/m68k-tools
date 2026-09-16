@@ -29,7 +29,12 @@ export const cancelMultiplePredecrementMoves: Rule = {
     description:
       "Cancel an address ADDQ against two following predecrement stores",
     tags: ["asp68k", "sequence", "address-register"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: {
+        source: "\taddq.w #6,a0\n\tmove.w d1,-(a0)\n\tmove.l d2,-(a0)",
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "addq")) return;

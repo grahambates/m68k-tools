@@ -34,7 +34,10 @@ export const vasmNegativeSignedMultiply: Rule = {
       "Replace signed multiplication by -1 or a negative power of two with NEG/shift operations",
     tags: ["vasm", "multiply"],
     serves: "speed",
-    docs: { source: "vasm m68k optimizer" },
+    docs: {
+      source: "vasm m68k optimizer",
+      example: { source: "\tmuls.w #-1,d0\n\tadd.l d1,d2" },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "muls")) return;

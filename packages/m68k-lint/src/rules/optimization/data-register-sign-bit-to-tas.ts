@@ -26,7 +26,10 @@ export const dataRegisterSignBitToTas: Rule = {
     defaultSeverity: "suggestion",
     description: "Use TAS to set bit 7 of a data register",
     tags: ["peephole", "tas", "ccr"],
-    docs: { source: "EAB 68000 code optimisations" },
+    docs: {
+      source: "EAB 68000 code optimisations",
+      example: { source: "\tori.b #$80,d0\n\tadd.l d1,d2" },
+    },
   },
 
   checkLine(ctx, line, index) {

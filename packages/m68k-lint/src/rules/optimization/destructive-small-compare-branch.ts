@@ -24,7 +24,13 @@ export const destructiveSmallCompareBranch: Rule = {
     description:
       "Use SUBQ for a small compare when the compared register is disposable",
     tags: ["tricks-and-traps", "68000", "compare", "branch", "ccr"],
-    docs: { source: "Mike Morton, 68000 Tricks and Traps (BYTE, Sep 1986)" },
+    docs: {
+      source: "Mike Morton, 68000 Tricks and Traps (BYTE, Sep 1986)",
+      example: {
+        source:
+          "\tcmp.w #4,d0\n\tbeq target\ntarget:\n\tmoveq #0,d0\n\tadd.l d1,d2",
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "cmp")) return;

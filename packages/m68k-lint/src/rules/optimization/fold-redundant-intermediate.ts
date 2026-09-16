@@ -134,6 +134,9 @@ export const foldRedundantIntermediate: Rule = {
     tags: ["peephole", "register-analysis", "scratch-register", "native"],
     docs: {
       note: "Found by mining a corpus of real Amiga assembly for values staged through a register that is used exactly once, then verified with 68kcounter.",
+      example: {
+        source: "\tmove.w d2,d1\n\tadd.w d1,d0\n\tmoveq #0,d1\n\trts",
+      },
     },
   },
 

@@ -77,7 +77,12 @@ export const knownRegisterShiftToClear: Rule = {
     description:
       "Replace a known large register-count logical shift with a clear",
     tags: ["flamewing", "shift", "register-count", "ccr"],
-    docs: { source: "Flamewing M68000 Peephole Optimizations" },
+    docs: {
+      source: "Flamewing M68000 Peephole Optimizations",
+      example: {
+        source: "\tmoveq #32,d1\n\tlsr.l d1,d0\n\tmoveq #0,d1\n\tmove.l d2,d3",
+      },
+    },
   },
   checkLine(ctx, line, index) {
     const mnemonic = canonicalMnemonic(line);
@@ -167,7 +172,13 @@ export const lsrByteSeven: Rule = {
     description: "Replace LSR.B #7 with ADD/SUBX/NEG on 68000",
     tags: ["flamewing", "68000", "shift", "ccr"],
     serves: "speed",
-    docs: { source: "Flamewing M68000 Peephole Optimizations" },
+    docs: {
+      source: "Flamewing M68000 Peephole Optimizations",
+      example: {
+        source: "\tlsr.b #7,d0\n\tmove.l d1,d2\n\trts",
+        config: { processors: ["mc68000"] },
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (
@@ -218,7 +229,13 @@ export const asrByteSaturate: Rule = {
     description: "Replace ASR.B #7/#8 with ADD/SUBX on 68000",
     tags: ["flamewing", "68000", "shift", "ccr"],
     serves: "speed",
-    docs: { source: "Flamewing M68000 Peephole Optimizations" },
+    docs: {
+      source: "Flamewing M68000 Peephole Optimizations",
+      example: {
+        source: "\tasr.b #8,d0\n\tmove.l d1,d2\n\trts",
+        config: { processors: ["mc68000"] },
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (
@@ -284,7 +301,14 @@ export const knownRegisterShiftReduction: Rule = {
       "Reduce a known register-count shift to immediate word/SWAP operations",
     tags: ["flamewing", "68000", "shift", "register-count", "ccr"],
     serves: "speed",
-    docs: { source: "Flamewing M68000 Peephole Optimizations" },
+    docs: {
+      source: "Flamewing M68000 Peephole Optimizations",
+      example: {
+        source:
+          "\tmoveq #30,d1\n\tlsl.l d1,d0\n\tmove.l d0,d2\n\tmoveq #0,d1\n\trts",
+        config: { processors: ["mc68000"] },
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (!m68000Only(ctx)) return;
@@ -426,7 +450,14 @@ export const knownRegisterAsrWordLowOnly: Rule = {
       "ccr",
     ],
     serves: "speed",
-    docs: { source: "Flamewing M68000 Peephole Optimizations" },
+    docs: {
+      source: "Flamewing M68000 Peephole Optimizations",
+      example: {
+        source:
+          "\tmoveq #12,d1\n\tasr.w d1,d0\n\tmove.w d0,d2\n\tmoveq #0,d0\n\tmoveq #0,d1\n\trts",
+        config: { processors: ["mc68000"] },
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (
@@ -517,7 +548,14 @@ export const knownRegisterAsrLongHighReduction: Rule = {
     description: "Reduce a known high-count ASR.L to SWAP/EXT/ROL operations",
     tags: ["flamewing", "68000", "shift", "register-count", "ccr"],
     serves: "speed",
-    docs: { source: "Flamewing M68000 Peephole Optimizations" },
+    docs: {
+      source: "Flamewing M68000 Peephole Optimizations",
+      example: {
+        source:
+          "\tmoveq #28,d1\n\tasr.l d1,d0\n\tmove.l d0,d2\n\tmoveq #0,d1\n\trts",
+        config: { processors: ["mc68000"] },
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (
@@ -600,7 +638,14 @@ export const knownRegisterAsrSaturate: Rule = {
     description:
       "Replace a known large register-count ASR with ADD/SUBX saturation",
     tags: ["flamewing", "68000", "shift", "register-count", "ccr"],
-    docs: { source: "Flamewing M68000 Peephole Optimizations" },
+    docs: {
+      source: "Flamewing M68000 Peephole Optimizations",
+      example: {
+        source:
+          "\tmoveq #31,d1\n\tasr.l d1,d0\n\tmove.l d0,d2\n\tmoveq #0,d1\n\trts",
+        config: { processors: ["mc68000"] },
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (!m68000Only(ctx) || !isInstruction(line, "asr")) return;

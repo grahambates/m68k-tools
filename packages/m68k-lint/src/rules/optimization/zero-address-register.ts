@@ -15,7 +15,7 @@ export const zeroAddressRegister: Rule = {
     defaultSeverity: "suggestion",
     description: "Zero an address register with SUBA An,An",
     tags: ["asp68k"],
-    docs: { source: "ASP68K" },
+    docs: { source: "ASP68K", example: { source: "\tmovea.l #0,a0" } },
   },
   checkLine(ctx, line) {
     if (!isInstruction(line, "movea")) return;

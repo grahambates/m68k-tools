@@ -81,6 +81,7 @@ export const combineConsecutiveBitOps: Rule = {
     tags: ["peephole", "bit", "ccr", "native"],
     docs: {
       note: "Found by mining a corpus of real Amiga assembly, where BCLR chains clearing several bits of one register are common in hardware setup code.",
+      example: { source: "\tbclr #0,d0\n\tbclr #4,d0\n\tadd.l d1,d2" },
     },
   },
 

@@ -19,7 +19,10 @@ function makeAddressImmediateLea(mnemonic: "add" | "sub"): Rule {
       defaultSeverity: "suggestion",
       description: `Use LEA to ${mnemonic.toUpperCase()} immediate to an address register`,
       tags: ["asp68k", "address-register"],
-      docs: { source: "ASP68K" },
+      docs: {
+        source: "ASP68K",
+        example: { source: `\t${mnemonic}.l #100,a0` },
+      },
     },
     checkLine(ctx, line) {
       if (!isInstructionFamily(line, mnemonic)) return;

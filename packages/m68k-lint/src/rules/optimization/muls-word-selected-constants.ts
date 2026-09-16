@@ -37,7 +37,10 @@ export const multiplySignedWordSelectedConstants: Rule = {
     description: "Replace selected MULS.W constants with EXT/shifts/adds",
     tags: ["asp68k", "multiply", "constant", "scratch", "ccr"],
     serves: "speed",
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tmuls.w #2,d0\n\tadd.l d1,d2" },
+    },
   },
   checkLine(ctx, line, index) {
     if (

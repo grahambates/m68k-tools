@@ -30,7 +30,13 @@ export const preferLinkSequence: Rule = {
     defaultSeverity: "suggestion",
     description: "Use LINK for a standard frame setup sequence",
     tags: ["asp68k", "stack", "peephole"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: {
+        source:
+          "\tmove.l a6,-(sp)\n\tmovea.l sp,a6\n\tadda.l #-16,sp\n\tadd.l d1,d2",
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "move") || instructionSize(line) !== "l") return;

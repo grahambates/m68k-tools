@@ -26,7 +26,7 @@ export const divuWordPowerOfTwo: Rule = {
     description:
       "Replace unsigned word division by a power of two with a logical shift when its remainder semantics are not needed",
     tags: ["asp68k", "divide", "shift", "remainder", "review"],
-    docs: { source: "ASP68K" },
+    docs: { source: "ASP68K", example: { source: "\tdivu.w #4,d0" } },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "divu") || instructionSize(line) !== "w") return;
@@ -149,7 +149,13 @@ export const divuLongPowerOfTwo: Rule = {
     description:
       "Replace unsigned long division by a power of two with a logical shift",
     tags: ["asp68k", "divide", "shift", "68020+"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: {
+        source: "\tdivu.l #4,d0",
+        config: { processors: ["mc68020"] },
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "divu") || instructionSize(line) !== "l") return;

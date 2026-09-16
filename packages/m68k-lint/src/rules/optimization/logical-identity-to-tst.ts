@@ -39,7 +39,12 @@ function makeIdentityRule(
       defaultSeverity: "suggestion",
       description: `${label} can use TST`,
       tags: ["vasm", "identity", "tst", "ccr"],
-      docs: { source: "vasm m68k optimization history" },
+      docs: {
+        source: "vasm m68k optimization history",
+        example: {
+          source: `\t${mnemonic}.w #${expected === "all-ones" ? -1 : expected},d0`,
+        },
+      },
     },
     checkLine(ctx, line) {
       if (!isInstruction(line, mnemonic)) return;

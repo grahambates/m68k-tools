@@ -1,7 +1,12 @@
 import type { ParsedLine } from "m68k-parser";
 import type { RuleContext } from "./context.js";
 import type { RuleCategory, Severity } from "./diagnostic.js";
-import type { OptimizationGoal, Platform, RulePreset } from "./config.js";
+import type {
+  LintConfig,
+  OptimizationGoal,
+  Platform,
+  RulePreset,
+} from "./config.js";
 
 export interface RuleMeta {
   id: string;
@@ -44,6 +49,18 @@ export interface RuleMeta {
   docs?: {
     source?: string;
     note?: string;
+    /**
+     * A minimal source snippet that triggers this rule, used to render a
+     * before/after example in docs/rules.md. The generator lints it against
+     * this rule alone and applies the resulting fix to produce "after", so an
+     * example that does not trigger the rule or produce a change fails the
+     * doc build rather than silently documenting the wrong thing.
+     */
+    example?: {
+      source: string;
+      /** Overrides the generator's default lint config (mc68000, generic). */
+      config?: Partial<LintConfig>;
+    };
   };
 }
 

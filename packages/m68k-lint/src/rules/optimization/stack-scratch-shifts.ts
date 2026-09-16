@@ -114,6 +114,10 @@ export const stackAlignedWordShiftByEight: Rule = {
       source:
         "Flamewing M68000 Peephole Optimizations / 68000 Tricks and Traps",
       note: "Uses two temporary stack bytes and restores SP exactly.",
+      example: {
+        source: "\tlsl.w #8,d0",
+        config: { processors: ["mc68000"] },
+      },
     },
   },
   checkLine(ctx, line, index) {
@@ -201,7 +205,13 @@ export const stackAlignedKnownRegisterShifts: Rule = {
       "Use bounded A7 scratch space for selected known register-count shifts",
     tags: ["flamewing", "68000", "shift", "register-count", "stack", "ccr"],
     serves: "speed",
-    docs: { source: "Flamewing M68000 Peephole Optimizations" },
+    docs: {
+      source: "Flamewing M68000 Peephole Optimizations",
+      example: {
+        source: "\tmoveq #9,d1\n\tlsl.w d1,d0\n\tmoveq #0,d1\n\trts",
+        config: { processors: ["mc68000"] },
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (!m68000Only(ctx)) return;

@@ -14,7 +14,13 @@ export const multiplyLongByOne: Rule = {
     defaultSeverity: "suggestion",
     description: "Remove a long multiply by one on 68060",
     tags: ["asp68k", "multiply", "68060"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: {
+        source: "\tmuls.l #1,d0\n\tadd.l d1,d2",
+        config: { processors: ["mc68060"] },
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (

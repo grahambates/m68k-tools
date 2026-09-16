@@ -15,7 +15,13 @@ export const cmpaZeroToTst030: Rule = {
     defaultSeverity: "suggestion",
     description: "Use TST.L An for CMPA.L #0,An on 68030",
     tags: ["asp68k", "68030", "address-register", "ccr"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: {
+        source: "\tcmpa.l #0,a0",
+        config: { processors: ["mc68030"] },
+      },
+    },
   },
   checkLine(ctx, line) {
     if (!ctx.config.processors.every((cpu) => cpu === "mc68030")) return;

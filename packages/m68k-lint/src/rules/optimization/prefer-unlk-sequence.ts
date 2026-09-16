@@ -28,7 +28,10 @@ export const preferUnlkSequence: Rule = {
     defaultSeverity: "suggestion",
     description: "Use UNLK for a standard two-instruction frame teardown",
     tags: ["asp68k", "stack", "peephole"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tmovea.l a6,sp\n\tmovea.l (sp)+,a6" },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "movea") || instructionSize(line) !== "l") return;

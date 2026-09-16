@@ -97,7 +97,10 @@ export const flamewingMulsWordFullResultConstants: Rule = {
       "Replace additional MULS.W constants with verified 68000 shift/add sequences",
     tags: ["flamewing", "68000", "multiply", "constant", "scratch", "ccr"],
     serves: "speed",
-    docs: { source: "Flamewing M68000 Peephole Optimizations" },
+    docs: {
+      source: "Flamewing M68000 Peephole Optimizations",
+      example: { source: "\tmuls.w #11,d0\n\tmove.l d0,d2\n\trts" },
+    },
   },
   checkLine(ctx, line, index) {
     if (
@@ -190,7 +193,13 @@ export const flamewingMulsWordLowWordOnly: Rule = {
       "ccr",
     ],
     serves: "speed",
-    docs: { source: "Flamewing M68000 Peephole Optimizations" },
+    docs: {
+      source: "Flamewing M68000 Peephole Optimizations",
+      example: {
+        source:
+          "\tmuls.w #7,d0\n\tmove.w d0,d2\n\tmoveq #0,d0\n\tmove.l d3,d4\n\trts",
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (
@@ -298,7 +307,12 @@ export const flamewingMuluWordLowWordOnly: Rule = {
       "ccr",
     ],
     serves: "speed",
-    docs: { source: "Flamewing M68000 Peephole Optimizations" },
+    docs: {
+      source: "Flamewing M68000 Peephole Optimizations",
+      example: {
+        source: "\tmulu.w #9,d0\n\tmove.w d0,d2\n\tmoveq #0,d0\n\trts",
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (

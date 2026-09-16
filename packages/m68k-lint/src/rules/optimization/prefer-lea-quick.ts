@@ -28,7 +28,7 @@ export const preferLeaQuick: Rule = {
     defaultSeverity: "suggestion",
     description: "Use ADDQ/SUBQ for small same-register LEA displacements",
     tags: ["asp68k", "address-register"],
-    docs: { source: "ASP68K" },
+    docs: { source: "ASP68K", example: { source: "\tlea 4(a0),a0" } },
   },
 
   checkLine(ctx, line) {

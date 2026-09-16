@@ -15,7 +15,10 @@ export const preferAddForShiftOne: Rule = {
     defaultSeverity: "suggestion",
     description: "Consider ADD Dn,Dn for a one-bit left shift",
     tags: ["asp68k", "ccr"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tasl.w #1,d0\n\tmove.l d1,d2" },
+    },
   },
   checkLine(ctx, line, index) {
     const shift = isInstruction(line, "asl")

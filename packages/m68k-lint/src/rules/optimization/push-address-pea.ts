@@ -50,7 +50,10 @@ export const pushAddressPea: Rule = {
     description:
       "Fold an address-register push plus immediate stack adjustment into PEA",
     tags: ["asp68k", "stack", "peephole"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tmove.l a0,-(sp)\n\tadd.l #4,(sp)" },
+    },
   },
 
   checkLine(ctx, line, index) {

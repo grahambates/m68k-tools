@@ -43,6 +43,7 @@ export const zeroStoreToClear: Rule = {
     tags: ["peephole", "memory", "native"],
     docs: {
       note: "Found by mining a corpus of real Amiga assembly, where storing #0 to a hardware register is the single most common shape a rule did not cover.",
+      example: { source: "\tmove.w #0,(a0)" },
     },
   },
 

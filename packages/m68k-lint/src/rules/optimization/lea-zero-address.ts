@@ -14,7 +14,7 @@ export const leaZeroAddress: Rule = {
     defaultSeverity: "suggestion",
     description: "Zero an address register with SUBA/SUB where profitable",
     tags: ["asp68k", "68000", "68010", "68030", "ccr"],
-    docs: { source: "ASP68K" },
+    docs: { source: "ASP68K", example: { source: "\tlea 0.w,a0" } },
   },
   checkLine(ctx, line) {
     if (!isInstruction(line, "lea")) return;

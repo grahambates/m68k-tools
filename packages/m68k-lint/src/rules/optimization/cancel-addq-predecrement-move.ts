@@ -22,7 +22,10 @@ export const cancelAddqPredecrementMove: Rule = {
     description:
       "Cancel ADDQ address adjustment against an immediately following predecrement MOVE",
     tags: ["asp68k", "sequence", "address-register"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\taddq.w #2,a0\n\tmove.w d1,-(a0)" },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "addq")) return;

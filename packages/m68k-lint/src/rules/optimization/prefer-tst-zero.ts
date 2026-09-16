@@ -15,7 +15,7 @@ export const preferTstZero: Rule = {
     defaultSeverity: "suggestion",
     description: "Prefer TST for CMP #0",
     tags: ["asp68k"],
-    docs: { source: "ASP68K" },
+    docs: { source: "ASP68K", example: { source: "\tcmp.l #0,d0" } },
   },
   checkLine(ctx, line) {
     if (!isInstruction(line, "cmp")) return;

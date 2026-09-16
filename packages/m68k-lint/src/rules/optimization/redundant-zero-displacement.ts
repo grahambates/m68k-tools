@@ -16,6 +16,10 @@ export const redundantZeroDisplacement: Rule = {
     docs: {
       source: "ASP68K",
       note: "Off by default, because vasm drops the zero displacement under its default optimisations, so for the common case the measured saving is in the written form rather than the output, and a displacement of zero is sometimes written on purpose to match the non-zero cases around it. Enable it if your assembler leaves the extension word in, whether because optimisations are off or because it does not fold the operand at all: the saving is then real.",
+      example: {
+        source: "\tmove.l 0(a0),d0",
+        config: { presets: ["style"] },
+      },
     },
   },
   checkLine(ctx, line) {

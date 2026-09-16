@@ -15,7 +15,7 @@ export const preferSubq: Rule = {
     defaultSeverity: "suggestion",
     description: "Prefer SUBQ for immediate subtractions from 1 through 8",
     tags: ["asp68k"],
-    docs: { source: "ASP68K" },
+    docs: { source: "ASP68K", example: { source: "\tsub.l #5,d0" } },
   },
   checkLine(ctx, line) {
     if (!isInstructionFamily(line, "sub")) return;

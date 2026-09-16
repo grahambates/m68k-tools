@@ -56,6 +56,7 @@ export const combineConsecutiveShift: Rule = {
     tags: ["sequence", "shift", "ccr"],
     docs: {
       note: "Found by mining a corpus of real Amiga assembly for repeated instruction shapes, then verified with 68kcounter rather than taken from a documented source.",
+      example: { source: "\tlsl.w #3,d0\n\tlsl.w #4,d0" },
     },
   },
   checkLine(ctx, line, index) {

@@ -34,6 +34,9 @@ function copyPair(
       tags: ["peephole", "memory"],
       docs: {
         note: "Two MOVE instructions that each copy a value between memory (not an immediate, and not a register-list MOVEM candidate) at adjacent addresses on both sides can be replaced by one wider MOVE, the same trick used for pairs of immediate stores.",
+        example: {
+          source: `\tmove.${fromSize} 0(a0),0(a1)\n\tmove.${fromSize} ${delta}(a0),${delta}(a1)`,
+        },
       },
     },
     checkLine(ctx, line, index) {

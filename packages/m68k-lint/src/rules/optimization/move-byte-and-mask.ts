@@ -40,7 +40,13 @@ export const moveByteAndMaskViaMoveq: Rule = {
     description:
       "Replace MOVE.B + ANDI.B with MOVEQ + AND when upper bits are dead",
     tags: ["flamewing", "68000", "partial-register", "mask"],
-    docs: { source: "Flamewing M68000 Peephole Optimizations" },
+    docs: {
+      source: "Flamewing M68000 Peephole Optimizations",
+      example: {
+        source:
+          "\tmove.b (a0),d0\n\tandi.b #$7f,d0\n\tmove.b d0,d1\n\tmoveq #0,d0\n\trts",
+      },
+    },
   },
   checkLine(ctx, line, index) {
     if (

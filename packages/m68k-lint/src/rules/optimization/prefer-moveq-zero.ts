@@ -12,7 +12,7 @@ export const preferMoveqZero: Rule = {
     defaultSeverity: "suggestion",
     description: "Prefer MOVEQ #0 to CLR.L on early 68k targets",
     tags: ["asp68k", "68000", "68010"],
-    docs: { source: "ASP68K" },
+    docs: { source: "ASP68K", example: { source: "\tclr.l d0" } },
   },
   checkLine(ctx, line) {
     if (!isInstruction(line, "clr") || instructionSize(line) !== "l") return;

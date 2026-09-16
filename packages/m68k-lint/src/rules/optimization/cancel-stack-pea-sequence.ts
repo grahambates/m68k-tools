@@ -81,7 +81,10 @@ export const cancelStackPeaSequence: Rule = {
     description:
       "Cancel stack ADDQ/PEA/predecrement sequences into fixed-offset stores",
     tags: ["asp68k", "stack", "pea", "sequence"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\taddq.l #4,sp\n\tpea (a0)" },
+    },
   },
 
   checkLine(ctx, line, index) {

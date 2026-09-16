@@ -14,7 +14,10 @@ export const pushImmediatePea: Rule = {
     defaultSeverity: "suggestion",
     description: "Use PEA for a signed-16-bit immediate longword push",
     tags: ["asp68k", "stack", "ccr", "68000", "68010"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tmove.l #100,-(sp)\n\tadd.l d1,d2" },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "move") || instructionSize(line) !== "l") return;

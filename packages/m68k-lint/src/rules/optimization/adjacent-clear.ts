@@ -27,7 +27,12 @@ function clearPair(
       defaultSeverity: "suggestion",
       description: `Combine adjacent CLR.${fromSize.toUpperCase()} writes`,
       tags: ["asp68k", "peephole", "memory"],
-      docs: { source: "ASP68K" },
+      docs: {
+        source: "ASP68K",
+        example: {
+          source: `\tclr.${fromSize} 0(a0)\n\tclr.${fromSize} ${delta}(a0)`,
+        },
+      },
     },
     checkLine(ctx, line, index) {
       if (!isInstruction(line, "clr") || instructionSize(line) !== fromSize)

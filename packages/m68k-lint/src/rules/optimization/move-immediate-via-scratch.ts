@@ -32,7 +32,10 @@ export const moveImmediateViaScratch: Rule = {
     description:
       "Materialize a small long immediate with MOVEQ before storing it",
     tags: ["asp68k", "register-analysis", "scratch-register", "moveq"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tmove.l #42,(a0)\n\tmoveq #0,d0\n\trts" },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "move") || instructionSize(line) !== "l") return;

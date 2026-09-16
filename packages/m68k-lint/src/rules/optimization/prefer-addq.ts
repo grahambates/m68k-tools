@@ -15,7 +15,7 @@ export const preferAddq: Rule = {
     defaultSeverity: "suggestion",
     description: "Prefer ADDQ for immediate additions from 1 through 8",
     tags: ["asp68k"],
-    docs: { source: "ASP68K" },
+    docs: { source: "ASP68K", example: { source: "\tadd.l #5,d0" } },
   },
 
   checkLine(ctx, line) {

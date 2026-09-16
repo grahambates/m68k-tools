@@ -22,7 +22,10 @@ export const cmpZeroAddressViaScratch: Rule = {
       "cmp",
       "address-register",
     ],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tcmp.l #0,a0\n\tmoveq #1,d0\n\trts" },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstructionFamily(line, "cmp")) return;

@@ -28,7 +28,10 @@ export const longShiftSequence: Rule = {
       "Replace selected 16..31-bit long shifts with word/SWAP sequences",
     tags: ["asp68k", "shift", "sequence", "ccr", "68000", "68010"],
     serves: "speed",
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tlsl.l #20,d0\n\tadd.l d1,d2" },
+    },
   },
   checkLine(ctx, line, index) {
     const kind = ["asl", "asr", "lsl", "lsr"].find((name) =>

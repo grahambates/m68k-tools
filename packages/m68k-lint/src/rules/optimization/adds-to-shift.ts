@@ -28,6 +28,10 @@ export const addsToShift: Rule = {
     docs: {
       source: "ASP68K",
       note: "The inverse of optimization/shift-two-adds, which trades the two bytes back for two cycles.",
+      example: {
+        source: "\tadd.b d0,d0\n\tadd.b d0,d0\n\tadd.l d2,d3",
+        config: { goal: "size" },
+      },
     },
   },
 

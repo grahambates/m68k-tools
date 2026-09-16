@@ -34,7 +34,10 @@ export const preferStMinusOne: Rule = {
     defaultSeverity: "suggestion",
     description: "Prefer ST for MOVE.B #-1",
     tags: ["asp68k", "ccr"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tmove.b #-1,d0\n\tadd.l d1,d2" },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "move") || instructionSize(line) !== "b") return;

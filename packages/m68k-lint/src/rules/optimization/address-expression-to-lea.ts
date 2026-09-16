@@ -33,7 +33,10 @@ export const foldAddressExpressionToLea: Rule = {
     description:
       "Fold an address-register copy plus constant/index additions into LEA",
     tags: ["asp68k", "address-register", "sequence", "lea"],
-    docs: { source: "ASP68K" },
+    docs: {
+      source: "ASP68K",
+      example: { source: "\tmove.l a1,a0\n\tadda.w #4,a0\n\tadda.l d2,a0" },
+    },
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "movea") || instructionSize(line) !== "l") return;

@@ -32,11 +32,8 @@ Totals cycles and size across a range of lines. Either:
 
 An extension which provides a 68000 assembly language definition:
 
+- [m68k LSP](https://marketplace.visualstudio.com/items?itemName=gigabates.m68k-lsp)
 - [Amiga Assembly](https://marketplace.visualstudio.com/items?itemName=prb28.amiga-assembly)
-- [m68k](https://marketplace.visualstudio.com/items?itemName=steventattersall.m68k)
-- [Motorola 68k Assembly](https://marketplace.visualstudio.com/items?itemName=clcxce.motorola-68k-assembly)
-
-Requires VS Code 1.101 or later. This extension currently uses the published counter 3.x library; the workspace counter upgrade is a separate application change.
 
 ## Development
 

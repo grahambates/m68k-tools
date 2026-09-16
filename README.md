@@ -69,4 +69,4 @@ See the [migration record](docs/monorepo-migration.md), [assembly server documen
 
 ## Licences
 
-The workspace projects declare MIT licences. Package licence files retain their original copyright notices, including the Eric Amodio notice in the counter extension and typicode notice in the web app. Third-party dependencies and bundled tools retain their own licences.
+The workspace projects declare MIT licences, copyright Graham Bates. Third-party dependencies and bundled tools retain their own licences.

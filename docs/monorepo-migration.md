@@ -18,14 +18,14 @@ See the [root README](../README.md) for development and debugging, [release inst
 
 Workspace build, lint, formatting, type checks, unit and LSP integration tests, linter coverage thresholds and rule-impact checks passed after tooling consolidation. Isolated npm tarball checks and all three VSIX builds passed. The generated linter rule table was refreshed and its freshness check restored in root CI.
 
-Packed imports and CLI smoke tests passed on Node 22.15.1. Counter extension activation and its existing sample test passed on VS Code 1.101.0. This is startup coverage, not comprehensive extension feature testing. The host test needed the inherited `ELECTRON_RUN_AS_NODE` variable removed.
+Packed imports and CLI smoke tests passed on Node 22.15.1. Counter extension activation and its existing sample test passed on VS Code 1.101.0. This is startup coverage, not comprehensive extension feature testing; the owner has since performed manual feature testing of all three extensions and the web app. The host test needed the inherited `ELECTRON_RUN_AS_NODE` variable removed.
+
+The counter extension's application code has been upgraded from published counter 3.x to the workspace library (`68kcounter-vscode`'s manifest now depends on `workspace:^`), including new 68030 timings and cache-model support.
 
 ## Remaining work
 
 - Link Vercel to this repository with project root `apps/68kcounter-web`, verify a preview, then use `main` for production. The configuration is prepared; deployment linkage has not been changed.
-- Upgrade the counter extension's application code from published counter 3.x to the workspace library. This is deliberately deferred to the owner.
-- Perform manual feature and breakpoint checks for all three extensions before release.
-- Configure and review npm and Marketplace publishing, including the first releases of the formatter and lint language server. No migration releases or tags have been published.
+- This release round publishes manually (release workflow only opens a version PR; no publish step exists yet). npm trusted publishing (OIDC) is planned before the next round: `m68k-formatter` and `m68k-lint-langserver` don't exist on the registry yet and need a one-time manual bootstrap publish before trusted publishing can be configured for them; the other four packages can move to it directly. Marketplace/Azure DevOps publishing has no OIDC equivalent, so it stays manual (or token-based with a rotation plan) regardless.
 - Add source-repository notices, disable old release automation where applicable, and archive source repositories once the replacement workflows are proven.
 - Consider root Dependabot separately. The obsolete nested configuration was removed; no replacement automation was enabled.
 

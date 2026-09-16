@@ -6,7 +6,9 @@
     "rootDir": "src",
     "isolatedModules": true,
     "types": ["node", "vitest/globals"],
-    "noEmit": true
+    "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./.tsbuild/.tsbuildinfo"
   },
   "include": ["src/**/*.ts"]
 }

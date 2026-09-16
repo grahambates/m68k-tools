@@ -1,1 +1,3 @@
-corepack pnpm run check
+corepack pnpm exec lint-staged
+corepack pnpm run build
+corepack pnpm run check:no-lint-format

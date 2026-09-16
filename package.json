@@ -17,10 +17,11 @@
     "build:dev": "node scripts/build.mjs --sourcemap",
     "watch": "node scripts/build.mjs --sourcemap --watch",
     "clean": "pnpm -r run clean && rm -rf .staging coverage",
-    "check": "pnpm run build && pnpm run lint && pnpm run format:check && pnpm run typecheck && pnpm run test && pnpm --filter m68k-lint test:coverage && pnpm --filter m68k-lint audit:impact",
+    "check": "pnpm run build && pnpm run lint && pnpm run format:check && pnpm run check:no-lint-format",
+    "check:no-lint-format": "pnpm run typecheck && pnpm run test && pnpm --filter m68k-lint test:coverage && pnpm --filter m68k-lint audit:impact",
     "typecheck": "tsc -b && pnpm -r --workspace-concurrency=1 run typecheck",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "eslint . --cache --cache-location node_modules/.cache/eslint/",
+    "lint:fix": "eslint . --fix --cache --cache-location node_modules/.cache/eslint/",
     "format": "prettier --write .",
     "test": "pnpm -r --workspace-concurrency=1 run test",
     "build-docs": "scripts/conv-directives && scripts/conv-instructions",
@@ -49,18 +50,23 @@
     "esbuild": "^0.25.11",
     "eslint": "9.39.5",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^16.4.0",
     "husky": "^9.1.7",
     "js-yaml": "^4.1.0",
+    "lint-staged": "^17.5.1",
     "prettier": "3.9.6",
     "tsdown": "^0.23.0",
     "typescript": "5.9.3",
     "typescript-eslint": "8.70.0",
-    "vitest": "^5.0.0",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-import-resolver-typescript": "^4.4.5"
+    "vitest": "^5.0.0"
   },
-  "packageManager": "pnpm@12.4.1"
+  "packageManager": "pnpm@12.4.1",
+  "lint-staged": {
+    "*.{js,cjs,mjs,jsx,ts,tsx}": "eslint --cache --cache-location node_modules/.cache/eslint/",
+    "*": "prettier --check --ignore-unknown"
+  }
 }

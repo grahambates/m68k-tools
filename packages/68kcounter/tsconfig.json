@@ -1,7 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./.tsbuild/.tsbuildinfo"
   },
   "exclude": ["node_modules"],
   "include": ["src/**/*.ts"]

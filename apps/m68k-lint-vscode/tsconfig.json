@@ -11,7 +11,9 @@
     "exactOptionalPropertyTypes": false,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
-    "noEmit": true
+    "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./.tsbuild/.tsbuildinfo"
   },
   "include": ["src/**/*.ts"]
 }

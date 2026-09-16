@@ -9,7 +9,9 @@
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "incremental": true,
+    "tsBuildInfoFile": "./.tsbuild/.tsbuildinfo"
   },
   "include": ["src", "vite.config.ts"]
 }

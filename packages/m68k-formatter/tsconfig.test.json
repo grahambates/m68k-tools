@@ -6,7 +6,9 @@
     "rootDir": ".",
     "noEmit": true,
     "types": ["node", "vitest/globals"],
-    "declarationMap": false
+    "declarationMap": false,
+    "incremental": true,
+    "tsBuildInfoFile": "./.tsbuild/test.tsbuildinfo"
   },
   "include": ["src", "test"]
 }

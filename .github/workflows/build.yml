@@ -26,6 +26,6 @@ jobs:
       - name: Check generated rule documentation
         run: |
           pnpm --filter m68k-lint exec node scripts/generate-rules-doc.mjs
-          git diff --exit-code -- packages/m68k-lint/docs/rules.md
+          git diff --exit-code -- packages/m68k-lint/docs/rules.md packages/m68k-lint/docs/rule-examples.md
       - run: pnpm run check:packages
       - run: pnpm package

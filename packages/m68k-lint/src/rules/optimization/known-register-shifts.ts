@@ -70,6 +70,7 @@ function canRemoveCountSetup(
  */
 export const knownRegisterShiftToClear: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/known-register-shift-to-clear",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -159,6 +160,7 @@ export const knownRegisterShiftToClear: Rule = {
 /** LSR.B #7 leaves only the original sign bit in bit zero. */
 export const lsrByteSeven: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/lsr-byte-seven",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -209,6 +211,7 @@ export const lsrByteSeven: Rule = {
 /** ASR.B #7 and #8 both saturate a byte to $00 or $FF according to its sign. */
 export const asrByteSaturate: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/asr-byte-saturate",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -273,6 +276,7 @@ export const asrByteSaturate: Rule = {
  */
 export const knownRegisterShiftReduction: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/known-register-shift-reduction",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -407,6 +411,7 @@ export const knownRegisterShiftReduction: Rule = {
  */
 export const knownRegisterAsrWordLowOnly: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/known-register-asr-word-low-only",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -505,6 +510,7 @@ export const knownRegisterAsrWordLowOnly: Rule = {
 /** Full-result non-stack ASR.L reduction for known counts 26..30. */
 export const knownRegisterAsrLongHighReduction: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/known-register-asr-long-high",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -587,6 +593,7 @@ export const knownRegisterAsrLongHighReduction: Rule = {
  */
 export const knownRegisterAsrSaturate: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/known-register-asr-saturate",
     category: "optimization",
     defaultSeverity: "suggestion",

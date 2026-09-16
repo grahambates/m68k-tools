@@ -9,6 +9,7 @@ import {
 
 export const cmpZeroAddressViaScratch: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/cmp-zero-address-via-scratch",
     category: "optimization",
     defaultSeverity: "suggestion",

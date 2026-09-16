@@ -102,6 +102,7 @@ function stackNotes(
 /** Immediate word shifts using the 68000 A7 byte-alignment behaviour. */
 export const stackAlignedWordShiftByEight: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/stack-word-shift-eight",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -192,6 +193,7 @@ export const stackAlignedWordShiftByEight: Rule = {
  */
 export const stackAlignedKnownRegisterShifts: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/stack-known-register-shift",
     category: "optimization",
     defaultSeverity: "suggestion",

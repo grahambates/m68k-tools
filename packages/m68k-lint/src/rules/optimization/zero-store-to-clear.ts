@@ -32,6 +32,8 @@ const CLEARABLE = [
  */
 export const zeroStoreToClear: Rule = {
   meta: {
+    // CLR removes the explicit zero value or expression being stored.
+    obfuscated: true,
     id: "optimization/zero-store-to-clear",
     category: "optimization",
     defaultSeverity: "suggestion",

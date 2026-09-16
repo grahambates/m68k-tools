@@ -9,6 +9,7 @@ import { changedFlagsApplicability } from "./helpers.js";
 
 export const shiftTwoAdds: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/shift-two-adds",
     category: "optimization",
     defaultSeverity: "suggestion",

@@ -4,6 +4,8 @@ import { hasLabelBetween, sourceOperand } from "./helpers.js";
 
 export const jsrJmpDispatch: Rule = {
   meta: {
+    // The call is encoded as a manually pushed return address and jump.
+    obfuscated: true,
     id: "optimization/jsr-jmp-tail-dispatch",
     category: "optimization",
     defaultSeverity: "suggestion",

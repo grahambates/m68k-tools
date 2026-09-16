@@ -21,6 +21,8 @@ function predecrementRegister(
 
 export const cancelMultiplePredecrementMoves: Rule = {
   meta: {
+    // Fixed offsets hide the original address adjustment and store sequence.
+    obfuscated: true,
     id: "optimization/cancel-multiple-predecrement-moves",
     category: "optimization",
     defaultSeverity: "suggestion",

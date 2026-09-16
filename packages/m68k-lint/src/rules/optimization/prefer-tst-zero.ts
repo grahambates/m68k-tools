@@ -8,6 +8,8 @@ import {
 import { sourceOperand } from "./helpers.js";
 export const preferTstZero: Rule = {
   meta: {
+    // TST removes the explicit comparison value or expression.
+    obfuscated: true,
     id: "optimization/prefer-tst-zero",
     category: "optimization",
     defaultSeverity: "suggestion",

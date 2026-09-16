@@ -1,3 +1,4 @@
+import type { FixAnnotation } from "../core/fix.js";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, join, parse, resolve } from "node:path";
 import type {
@@ -40,6 +41,7 @@ const categories = new Set<RuleCategory>([
 ]);
 
 export interface ProjectConfig {
+  fixAnnotate?: FixAnnotation;
   processors?: Processor[];
   platform?: Platform;
   goal?: OptimizationGoal;
@@ -120,6 +122,7 @@ export async function loadProjectConfig(path: string): Promise<ProjectConfig> {
   const config = value as Record<string, unknown>;
   const knownFields = new Set([
     "$schema",
+    "fixAnnotate",
     "processors",
     "platform",
     "goal",
@@ -187,6 +190,12 @@ export async function loadProjectConfig(path: string): Promise<ProjectConfig> {
   )
     throw new Error("inlineConfig must be a boolean");
 
+  if (
+    config.fixAnnotate !== undefined &&
+    !["obfuscated", "all", "none"].includes(config.fixAnnotate as string)
+  )
+    throw new Error("fixAnnotate must be obfuscated, all, or none");
+
   if (config.rules !== undefined) {
     if (
       !config.rules ||
@@ -224,6 +233,7 @@ export function lintConfigFromProject(
   config: ProjectConfig,
 ): Partial<LintConfig> {
   return {
+    fixAnnotate: config.fixAnnotate,
     processors: config.processors,
     platform: config.platform,
     goal: config.goal,

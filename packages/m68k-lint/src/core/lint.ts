@@ -127,7 +127,14 @@ export function lintParsedFile(
     // one central place so rules stay configuration-agnostic.
     const diagnostics = ctx.getDiagnostics() as Diagnostic[];
     for (let i = before; i < diagnostics.length; i++) {
-      diagnostics[i] = { ...diagnostics[i], severity };
+      const diagnostic = diagnostics[i];
+      diagnostics[i] = {
+        ...diagnostic,
+        severity,
+        ...(diagnostic.suggestion && rule.meta.obfuscated
+          ? { suggestion: { ...diagnostic.suggestion, obfuscated: true } }
+          : {}),
+      };
     }
   }
 

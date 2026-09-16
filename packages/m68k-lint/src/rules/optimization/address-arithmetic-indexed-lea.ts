@@ -32,6 +32,8 @@ function hasInterveningLabel(
  */
 export const foldAddressArithmeticToIndexedLea: Rule = {
   meta: {
+    // The displacement is evaluated, losing the original expression.
+    obfuscated: true,
     id: "optimization/address-arithmetic-indexed-lea",
     category: "optimization",
     defaultSeverity: "suggestion",

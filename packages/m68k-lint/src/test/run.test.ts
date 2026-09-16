@@ -278,3 +278,14 @@ describe("run", () => {
     expect(code).toBe(2);
   });
 });
+
+test("annotation precedence is CLI, project, then obfuscated", () => {
+  expect(buildConfig(options()).fixAnnotate).toBe("obfuscated");
+  expect(buildConfig(options(), { fixAnnotate: "all" }).fixAnnotate).toBe(
+    "all",
+  );
+  expect(
+    buildConfig(options(["--fix-annotate", "none"]), { fixAnnotate: "all" })
+      .fixAnnotate,
+  ).toBe("none");
+});

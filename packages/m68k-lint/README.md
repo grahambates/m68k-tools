@@ -67,7 +67,7 @@ explicit file paths are always linted whatever their suffix.
 | `--rule <id>=<setting>`                  | Override a rule: `off\|error\|warning\|suggestion\|info`       |
 | `--fix`                                  | Apply safe suggestions and rewrite the files                   |
 | `--fix-conditional`                      | Also apply conditional ones; read their notes first            |
-| `--fix-annotate`                         | Keep the original, commented out, above an opaque rewrite      |
+| `--fix-annotate <obfuscated\|all\|none>` | Annotate fixes (default `obfuscated`)                          |
 | `-i`, `--fix-interactive`                | Review each finding and choose what to do with it              |
 | `--fix-dry-run`                          | Report what `--fix` would change, writing nothing              |
 | `--format <pretty\|json>`                | Output format, default `pretty`                                |
@@ -276,8 +276,8 @@ offer one wherever a faithful rewrite is impossible: a label in the middle of a
 matched run, or a directive inside it. The replacement already carries the
 indentation, operand column, label and comments of the lines it replaces.
 
-`--fix-annotate` keeps the original above a rewrite that is hard to read back,
-commented out:
+By default, rules marked as obscuring the original intent keep the original
+above the replacement, commented out:
 
 ```
 	; was:
@@ -289,9 +289,23 @@ commented out:
 	;------------------------------
 ```
 
-Two things trigger it, both measurable: the replacement has more lines than what
-it replaces, or it dropped a name that the code no longer mentions. Ordinary
-one-for-one rewrites are left plain.
+Rules declare this explicitly with `RuleMeta.obfuscated`, carried onto their
+suggestions. Losing an original constant or expression is sufficient, even for
+an otherwise obvious rewrite: the comment preserves it for reference. Without
+that loss, only opaque tricks such as stack-based shifts or carry-to-mask
+sequences qualify. Multiple lines alone are not enough; loading an unchanged
+expression into a scratch register before using it stays plain, as do routine
+bit-to-mask rewrites that retain the original bit expression.
+
+Rules are marked if any supported form needs annotation; this can also annotate
+a simple instance of that rule. Removal of redundant instructions stays plain.
+The [rule table](docs/rules.md) lists the classification for every rule.
+
+Use `--fix-annotate obfuscated|all|none`, or set `"fixAnnotate": "obfuscated"`
+in the project config. `obfuscated` is the default, `all` preserves originals
+for every applied fix (including deletions), and `none` disables annotations.
+This also applies to interactive review and editor fixes. Library callers can
+set `FixOptions.annotate` or the annotation argument to `applyOnce`.
 
 `-i` / `--fix-interactive` reviews findings one at a time instead, showing each
 as it would be reported and asking what to do:

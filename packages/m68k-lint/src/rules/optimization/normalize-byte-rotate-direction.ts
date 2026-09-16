@@ -15,6 +15,8 @@ function m68000Only(
 
 export const normalizeByteRotate: Rule = {
   meta: {
+    // Reversing direction replaces the original count and expression.
+    obfuscated: true,
     id: "optimization/normalize-byte-rotate-direction",
     category: "optimization",
     defaultSeverity: "suggestion",

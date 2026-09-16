@@ -47,6 +47,8 @@ export function buildConfig(
 ): LintConfig {
   const config: LintConfig = {
     ...defaultConfig,
+    fixAnnotate:
+      options.fixAnnotate ?? project.fixAnnotate ?? defaultConfig.fixAnnotate,
     processors:
       options.processors ?? project.processors ?? defaultConfig.processors,
     platform: options.platform ?? project.platform ?? defaultConfig.platform,
@@ -122,7 +124,7 @@ async function lintOne(
       {
         accept,
         acceptAssessments,
-        annotate: options.fixAnnotate,
+        annotate: config.fixAnnotate,
         verify: (candidate) => parseFile(candidate).errors.length <= errorCount,
       },
     );

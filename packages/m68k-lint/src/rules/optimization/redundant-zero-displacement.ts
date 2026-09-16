@@ -4,6 +4,8 @@ import { replaceOperandInLine, sourceOperand } from "./helpers.js";
 
 export const redundantZeroDisplacement: Rule = {
   meta: {
+    // A zero displacement can be a named field offset or expression.
+    obfuscated: true,
     id: "optimization/redundant-zero-displacement",
     category: "optimization",
     defaultSeverity: "suggestion",

@@ -7,6 +7,8 @@ import {
 import { sourceOperand } from "./helpers.js";
 export const preferNot: Rule = {
   meta: {
+    // NOT removes the explicit all-ones mask expression.
+    obfuscated: true,
     id: "optimization/prefer-not",
     category: "optimization",
     defaultSeverity: "suggestion",

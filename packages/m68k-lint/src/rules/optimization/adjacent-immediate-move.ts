@@ -37,6 +37,8 @@ function movePair(
 ): Rule {
   return {
     meta: {
+      // Packing the immediates loses their individual values and expressions.
+      obfuscated: true,
       id,
       category: "optimization",
       defaultSeverity: "suggestion",

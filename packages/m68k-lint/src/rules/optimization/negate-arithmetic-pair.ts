@@ -114,6 +114,7 @@ export const negateThenAddToSub = makeRule(
 export const negateAddMaskToEor: Rule = {
   meta: {
     id: "optimization/negate-add-mask-to-eor",
+    obfuscated: true,
     category: "optimization",
     defaultSeverity: "suggestion",
     description:

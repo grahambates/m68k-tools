@@ -20,6 +20,7 @@ function targetsAre(
  */
 export const longShiftSequence: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/long-shift-sequence",
     category: "optimization",
     defaultSeverity: "suggestion",

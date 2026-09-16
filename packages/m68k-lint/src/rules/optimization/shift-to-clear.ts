@@ -9,6 +9,8 @@ import { canonicalMnemonic } from "../../semantics/mnemonics.js";
 
 export const shiftToClear: Rule = {
   meta: {
+    // The replacement no longer shows the shift count or expression.
+    obfuscated: true,
     id: "optimization/shift-to-clear",
     category: "optimization",
     defaultSeverity: "suggestion",

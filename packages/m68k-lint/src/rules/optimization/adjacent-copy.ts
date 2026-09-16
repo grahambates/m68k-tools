@@ -25,6 +25,8 @@ function copyPair(
 ): Rule {
   return {
     meta: {
+      // The wider transfer hides the separate source/destination fields.
+      obfuscated: true,
       id,
       category: "optimization",
       defaultSeverity: "suggestion",

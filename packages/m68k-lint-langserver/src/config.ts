@@ -1,3 +1,4 @@
+import type { FixAnnotation } from "m68k-lint";
 import { dirname } from "node:path";
 import { defaultConfig, type LintConfig } from "m68k-lint";
 import {
@@ -23,7 +24,7 @@ export interface Settings {
     /** Include conditional fixes in Fix All; individual actions always allow review. */
     conditional: boolean;
     /** Keep the original commented above an opaque rewrite. */
-    annotate: boolean;
+    annotate: FixAnnotation;
   };
 }
 
@@ -31,7 +32,7 @@ export const defaultSettings: Settings = {
   enable: true,
   run: "onType",
   defaults: {},
-  quickFix: { conditional: false, annotate: false },
+  quickFix: { conditional: false, annotate: "obfuscated" },
 };
 
 /** Drops the keys a source left unset, so a spread does not erase what is under it. */
@@ -85,7 +86,11 @@ export class ConfigResolver {
   }
 
   private async load(dir: string): Promise<ResolvedConfig> {
-    const base: LintConfig = { ...defaultConfig, ...this.settings.defaults };
+    const base: LintConfig = {
+      ...defaultConfig,
+      fixAnnotate: this.settings.quickFix.annotate,
+      ...this.settings.defaults,
+    };
 
     let configPath: string | undefined;
     try {

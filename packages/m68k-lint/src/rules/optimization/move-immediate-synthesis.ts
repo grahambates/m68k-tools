@@ -22,6 +22,7 @@ function baseMatch(line: Parameters<NonNullable<Rule["checkLine"]>>[1]) {
 
 export const moveImmediateBelowMoveq: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/move-immediate-below-moveq",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -68,6 +69,7 @@ export const moveImmediateBelowMoveq: Rule = {
 
 export const moveImmediateByteComplement: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/move-immediate-byte-complement",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -115,6 +117,7 @@ export const moveImmediateByteComplement: Rule = {
 
 export const moveImmediateDoubleByte: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/move-immediate-double-byte",
     category: "optimization",
     defaultSeverity: "suggestion",

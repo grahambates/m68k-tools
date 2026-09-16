@@ -52,6 +52,10 @@ const lines = [
   "`--rule <id>=<off|error|warning|suggestion|info>` or the `rules` block in project",
   "configuration.",
   "",
+  "**Obfuscated** marks rules whose fixes retain the original source as comments",
+  "under the default annotation mode: lost constants/expressions or opaque tricks.",
+  "Multiple lines or routine idioms alone do not qualify.",
+  "",
   "**Source** records historical provenance. Rule IDs are deliberately descriptive",
   "rather than source-named.",
   "",
@@ -70,8 +74,8 @@ for (const category of CATEGORY_ORDER) {
     "",
   );
   lines.push(
-    "| Rule | Default | Description | Source |",
-    "| --- | --- | --- | --- |",
+    "| Rule | Default | Obfuscated | Description | Source |",
+    "| --- | --- | --- | --- | --- |",
   );
   for (const rule of rules) {
     const platforms = rule.meta.platforms?.length
@@ -82,6 +86,7 @@ for (const category of CATEGORY_ORDER) {
         "",
         `\`${escape(rule.meta.id)}\``,
         escape(defaultState(rule)),
+        rule.meta.obfuscated ? "yes" : "—",
         `${escape(rule.meta.description)}${platforms}`,
         escape(rule.meta.docs?.source ?? "—"),
         "",

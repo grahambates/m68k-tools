@@ -308,7 +308,48 @@ function settingsWith(quickFix, overrides = {}) {
     enable: true,
     run: "onType",
     defaults: {},
-    quickFix: { conditional: false, annotate: false, ...quickFix },
+    quickFix: { conditional: false, annotate: "obfuscated", ...quickFix },
     ...overrides,
   };
 }
+
+describe("fix annotations", () => {
+  for (const annotate of ["obfuscated", "all", "none"]) {
+    it(`honours ${annotate} for ordinary quick fixes and fix all`, async () => {
+      const client = withClient({ settings: settingsWith({ annotate }) });
+      await client.initialize(fixture("basic"));
+      const { uri } = await client.open(fixture("basic/moveq.s"));
+      const actions = await client.codeActions(uri, 1);
+      const fixes = actions.filter(
+        (action) =>
+          action.title.startsWith("Use moveq") ||
+          action.kind === "source.fixAll",
+      );
+      assert.equal(fixes.length, 2);
+      for (const fix of fixes)
+        assert.equal(
+          editsOf(fix, uri)[0].newText.includes("; was:"),
+          annotate === "all",
+        );
+    });
+  }
+});
+
+it("annotates an obscuring rule by default, with project mode taking precedence", async () => {
+  for (const directory of ["basic", "annotations"]) {
+    const client = withClient();
+    await client.initialize(fixture(directory));
+    const { uri } = await client.open(fixture(`${directory}/shift.s`));
+    const actions = await client.codeActions(uri, 0);
+    const fixes = actions.filter(
+      (action) =>
+        action.title.startsWith("Use ADD") || action.kind === "source.fixAll",
+    );
+    assert.equal(fixes.length, 2);
+    for (const fix of fixes)
+      assert.equal(
+        editsOf(fix, uri)[0].newText.includes("; was:"),
+        directory === "basic",
+      );
+  }
+});

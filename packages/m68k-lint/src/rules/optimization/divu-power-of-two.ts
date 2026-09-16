@@ -19,6 +19,7 @@ function unsigned32(value: number): number {
 
 export const divuWordPowerOfTwo: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/divu-word-power-of-two",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -141,6 +142,7 @@ export const divuWordPowerOfTwo: Rule = {
 
 export const divuLongPowerOfTwo: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/divu-long-power-of-two",
     category: "optimization",
     defaultSeverity: "suggestion",

@@ -14,6 +14,8 @@ import { hasLabelBetween } from "./helpers.js";
 
 export const cancelAddqPredecrementMove: Rule = {
   meta: {
+    // The direct store removes the explicit address adjustment expression.
+    obfuscated: true,
     id: "optimization/cancel-addq-predecrement-move",
     category: "optimization",
     defaultSeverity: "suggestion",

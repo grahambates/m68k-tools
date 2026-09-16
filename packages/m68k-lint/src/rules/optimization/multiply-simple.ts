@@ -25,6 +25,7 @@ function powerOfTwoTimingUseful(
 
 export const multiplyWordByZero: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/multiply-word-by-zero",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -60,6 +61,7 @@ export const multiplyWordByZero: Rule = {
 
 export const multiplySignedWordByOne: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/muls-word-by-one",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -100,6 +102,7 @@ export const multiplySignedWordByOne: Rule = {
 
 export const multiplyUnsignedWordByOne: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/mulu-word-by-one",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -143,6 +146,7 @@ export const multiplyUnsignedWordByOne: Rule = {
 
 export const multiplySignedWordPowerOfTwo: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/muls-word-power-of-two",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -210,6 +214,7 @@ export const multiplySignedWordPowerOfTwo: Rule = {
 
 export const multiplyUnsignedWordPowerOfTwo: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/mulu-word-power-of-two",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -276,6 +281,7 @@ export const multiplyUnsignedWordPowerOfTwo: Rule = {
 
 export const multiplySignedWordHighPowerOfTwo: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/muls-word-high-power-of-two",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -343,6 +349,7 @@ export const multiplySignedWordHighPowerOfTwo: Rule = {
 
 export const multiplyUnsignedWordHighPowerOfTwo: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/mulu-word-high-power-of-two",
     category: "optimization",
     defaultSeverity: "suggestion",

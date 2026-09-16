@@ -1,3 +1,4 @@
+import { annotateReplacement, type FixAnnotation } from "./fix.js";
 import type { Diagnostic } from "./diagnostic.js";
 
 /**
@@ -62,6 +63,7 @@ export async function runInteractive(
   source: string,
   diagnostics: readonly Diagnostic[],
   decide: (diagnostic: Diagnostic) => Promise<Decision>,
+  annotate: FixAnnotation = "obfuscated",
 ): Promise<InteractiveResult> {
   const reviewable = diagnostics
     .filter((diagnostic) => diagnostic.span !== undefined)
@@ -142,8 +144,8 @@ export async function runInteractive(
     if (endLine >= lowestTouched) continue;
 
     if (decision === "apply") {
-      const replacement = diagnostic.suggestion?.replacement;
-      if (replacement === undefined) continue;
+      if (diagnostic.suggestion?.replacement === undefined) continue;
+      const replacement = annotateReplacement(lines, diagnostic, annotate);
       lines.splice(
         startLine - 1,
         endLine - startLine + 1,

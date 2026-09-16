@@ -32,6 +32,8 @@ function makeIdentityRule(
 ): Rule {
   return {
     meta: {
+      // TST hides the original logical operation and any mask expression.
+      obfuscated: true,
       id,
       category: "optimization",
       defaultSeverity: "suggestion",

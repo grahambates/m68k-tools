@@ -31,6 +31,14 @@ export interface RuleMeta {
    * one carrying this is off, leaving the other as the canonical direction.
    */
   inverseOf?: string;
+  /**
+   * Retain the original when a rewrite loses a constant/expression or encodes
+   * its intent through an opaque trick (e.g. stack shifts or carry masks).
+   * Multiple lines and routine idioms alone do not qualify.
+   * Mark the rule if any supported form needs this; expression-preserving
+   * substitutions and simple removal of redundant code normally stay unmarked.
+   */
+  obfuscated?: boolean;
   description: string;
   tags?: string[];
   docs?: {

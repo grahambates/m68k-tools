@@ -241,3 +241,17 @@ describe("setting a rule aside for this run only", () => {
     expect(asked).toContain("suspicious/partial-register-write@4");
   });
 });
+
+test("interactive fixes honour all annotation modes", async () => {
+  const source = "\tlsl.w\t#1,d0\n\tmove.l\td1,d2\n\trts";
+  const diagnostics = lintSource(source, { processors: ["mc68000"] });
+  for (const mode of ["obfuscated", "all", "none"] as const) {
+    const result = await runInteractive(
+      source,
+      diagnostics,
+      () => Promise.resolve("apply"),
+      mode,
+    );
+    expect(result.output.includes("; was:")).toBe(mode !== "none");
+  }
+});

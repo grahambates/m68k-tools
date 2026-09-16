@@ -25,6 +25,8 @@ import { hasLabelBetween, sourceOperand } from "./helpers.js";
  */
 export const cancelSubqPostincrementMove: Rule = {
   meta: {
+    // The direct transfer removes the explicit address adjustment expression.
+    obfuscated: true,
     id: "optimization/cancel-subq-postincrement-move",
     category: "optimization",
     defaultSeverity: "suggestion",

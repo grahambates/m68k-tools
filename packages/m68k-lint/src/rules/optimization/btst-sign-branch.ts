@@ -38,6 +38,7 @@ function isMemoryBtstOperand(op: OperandNode | undefined): boolean {
 
 export const btstSignBranch: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/btst-sign-branch",
     category: "optimization",
     defaultSeverity: "suggestion",

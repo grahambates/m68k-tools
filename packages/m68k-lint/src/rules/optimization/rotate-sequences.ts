@@ -58,6 +58,7 @@ function countRegisterCanLoseMoveq(
  */
 export const simplifyKnownRegisterRotate: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/known-register-rotate",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -151,6 +152,7 @@ export const simplifyKnownRegisterRotate: Rule = {
 
 export const roxlToAddx: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/roxl-to-addx",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -204,6 +206,7 @@ export const roxlToAddx: Rule = {
 
 export const lslByteSeven: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/lsl-byte-seven",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -263,6 +266,7 @@ export const lslByteSeven: Rule = {
  */
 export const aslByteSeven: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/asl-byte-seven",
     category: "optimization",
     defaultSeverity: "suggestion",

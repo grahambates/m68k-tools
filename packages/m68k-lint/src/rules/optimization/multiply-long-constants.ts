@@ -55,6 +55,7 @@ const recipes: Readonly<Record<number, (d: string, s: string) => string>> = {
 
 export const multiplyLongSmallConstant: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/multiply-long-small-constant",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -139,6 +140,7 @@ export const multiplyLongSmallConstant: Rule = {
 
 export const multiplyLongLargePowerOfTwo: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/multiply-long-large-power-of-two",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -181,6 +183,7 @@ export const multiplyLongLargePowerOfTwo: Rule = {
 
 export const multiplySignedLong060: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/muls-long-060-simple",
     category: "optimization",
     defaultSeverity: "suggestion",

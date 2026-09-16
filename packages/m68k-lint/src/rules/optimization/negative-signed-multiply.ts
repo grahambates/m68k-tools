@@ -26,6 +26,7 @@ function supportsLongMultiply(
 
 export const vasmNegativeSignedMultiply: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/negative-signed-multiply",
     category: "optimization",
     defaultSeverity: "suggestion",

@@ -12,6 +12,8 @@ function bitRule(kind: "or" | "and"): Rule {
     kind === "or" ? "optimization/prefer-bset" : "optimization/prefer-bclr";
   return {
     meta: {
+      // The computed bit number replaces the original mask expression.
+      obfuscated: true,
       id,
       category: "optimization",
       defaultSeverity: "suggestion",

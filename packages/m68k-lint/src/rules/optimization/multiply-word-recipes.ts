@@ -89,6 +89,7 @@ const fullResultRecipes: Readonly<
 
 export const flamewingMulsWordFullResultConstants: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/muls-word-full-result-constants",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -173,6 +174,7 @@ const lowWordRecipes: Readonly<
 
 export const flamewingMulsWordLowWordOnly: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/muls-word-low-word-only",
     category: "optimization",
     defaultSeverity: "suggestion",
@@ -281,6 +283,7 @@ const muluLowWordRecipes: Readonly<
 
 export const flamewingMuluWordLowWordOnly: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/mulu-word-low-word-only",
     category: "optimization",
     defaultSeverity: "suggestion",

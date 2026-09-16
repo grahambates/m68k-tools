@@ -9,6 +9,7 @@ import { changedFlagsApplicability } from "./helpers.js";
 
 export const preferAddForShiftOne: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/prefer-add-for-shift-one",
     category: "optimization",
     defaultSeverity: "suggestion",

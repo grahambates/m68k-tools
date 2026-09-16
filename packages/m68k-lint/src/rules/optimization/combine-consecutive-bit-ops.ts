@@ -71,6 +71,8 @@ function sameTarget(a: BitOp, b: BitOp): boolean {
  */
 export const combineConsecutiveBitOps: Rule = {
   meta: {
+    // The combined mask hides the individual bit operations.
+    obfuscated: true,
     id: "optimization/combine-consecutive-bit-ops",
     category: "optimization",
     defaultSeverity: "suggestion",

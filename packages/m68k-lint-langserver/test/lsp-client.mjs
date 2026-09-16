@@ -35,7 +35,7 @@ export class TestClient {
         enable: true,
         run: "onType",
         defaults: {},
-        quickFix: { conditional: false, annotate: false },
+        quickFix: { conditional: false, annotate: "obfuscated" },
       },
       workspaceFolders: true,
       configuration: true,

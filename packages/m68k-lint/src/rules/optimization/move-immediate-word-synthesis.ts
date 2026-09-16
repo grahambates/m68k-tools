@@ -48,6 +48,7 @@ function synthesisRule(
 ): Rule {
   return {
     meta: {
+      obfuscated: true,
       id,
       category: "optimization",
       defaultSeverity: "suggestion",

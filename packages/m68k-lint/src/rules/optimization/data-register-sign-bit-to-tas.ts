@@ -20,6 +20,7 @@ import { semanticMnemonic } from "../../semantics/mnemonics.js";
  */
 export const dataRegisterSignBitToTas: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/data-register-sign-bit-to-tas",
     category: "optimization",
     defaultSeverity: "suggestion",

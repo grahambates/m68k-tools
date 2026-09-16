@@ -64,3 +64,16 @@ describe("project config", () => {
     expect(loaded.presets).toEqual(["style"]);
   });
 });
+
+test("validates project annotation modes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "m68k-lint-annotate-"));
+  const path = join(root, "m68k-lint.json");
+  for (const fixAnnotate of ["obfuscated", "all", "none"]) {
+    await writeFile(path, JSON.stringify({ fixAnnotate }));
+    expect(await loadProjectConfig(path)).toMatchObject({ fixAnnotate });
+  }
+  for (const fixAnnotate of [true, false, "invalid", null]) {
+    await writeFile(path, JSON.stringify({ fixAnnotate }));
+    await expect(loadProjectConfig(path)).rejects.toThrow(/fixAnnotate/);
+  }
+});

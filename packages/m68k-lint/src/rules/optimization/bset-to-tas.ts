@@ -37,6 +37,7 @@ function isAlterableMemory(op: OperandNode | undefined): boolean {
 
 export const bsetToTas: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/bset-to-tas",
     category: "optimization",
     defaultSeverity: "suggestion",

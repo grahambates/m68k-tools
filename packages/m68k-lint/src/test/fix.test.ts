@@ -131,15 +131,14 @@ describe("overlapping suggestions", () => {
  * documentation for what the replacement does, and once it is gone nothing in
  * the file says what the sequence was for.
  *
- * Two signals decide, both measurable rather than a matter of taste: the
- * replacement grew, or it dropped a name.
+ * Rules explicitly declare which rewrites obscure intent.
  */
 describe("keeping the original above an opaque rewrite", () => {
   const annotate = (source: string) =>
     applyFixes(source, lint, {
       accept: ["safe", "conditional"],
       acceptAssessments: ["improvement", "tradeoff"],
-      annotate: true,
+      annotate: "obfuscated",
     }).output;
 
   test("a rewrite that expands is annotated", () => {
@@ -164,12 +163,13 @@ describe("keeping the original above an opaque rewrite", () => {
     );
   });
 
-  test("it does nothing unless asked", () => {
+  test("none disables annotation", () => {
     const source = "start:\n\tasr.w\t#8,d0\n\tmove.l\td1,d2\n\trts";
     expect(
       applyFixes(source, lint, {
         accept: ["safe", "conditional"],
         acceptAssessments: ["improvement", "tradeoff"],
+        annotate: "none",
       }).output,
     ).not.toContain("; was:");
   });
@@ -232,5 +232,33 @@ describe("what a fix is worth, not just whether it is equivalent", () => {
       "\tmove.w\t#100,d0\n\tmove.w\t#200,d0\n\tmove.l\td0,(a0)\n\trts",
     );
     expect(result).toBe("\tmove.w\t#200,d0\n\tmove.l\td0,(a0)\n\trts");
+  });
+});
+
+describe("rule-specific annotations", () => {
+  test("annotates a one-for-one arithmetic trick by default", () => {
+    const source = "\tlsl.l\t#1,d0\n\tmove.l\td1,d2\n\trts";
+    const output = fix(source, ["safe", "conditional"]).output;
+    expect(output).toContain("; lsl.l\t#1,d0");
+    expect(output).toContain("\tadd.l\td0,d0");
+    expect(fix(output).output).toBe(output);
+  });
+
+  test("all annotates an ordinary rewrite and none leaves it plain", () => {
+    const source = "\tmove.l\t#100,d0\n\trts";
+    expect(applyOnce(source, lint(source), ["safe"], "all").output).toContain(
+      "; move.l\t#100,d0",
+    );
+    expect(applyOnce(source, lint(source), ["safe"], "none").output).toBe(
+      "\tmoveq\t#100,d0\n\trts",
+    );
+  });
+
+  test("all preserves deleted instructions as comments", () => {
+    const source =
+      "\tmove.w\t#100,d0\n\tmove.w\t#200,d0\n\tmove.l\td0,(a0)\n\trts";
+    const output = applyOnce(source, lint(source), ["safe"], "all").output;
+    expect(output).toContain("; move.w\t#100,d0");
+    expect(parseFile(output).errors).toHaveLength(0);
   });
 });

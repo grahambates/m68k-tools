@@ -113,6 +113,12 @@
       "additionalProperties": {
         "enum": ["off", "error", "warning", "suggestion", "info"]
       }
+    },
+    "fixAnnotate": {
+      "type": "string",
+      "enum": ["obfuscated", "all", "none"],
+      "default": "obfuscated",
+      "description": "Keep original source as comments for intent-obscuring rules, all fixes, or none."
     }
   }
 }

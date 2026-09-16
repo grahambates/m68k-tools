@@ -1,3 +1,4 @@
+import type { FixAnnotation } from "../core/fix.js";
 import type {
   OptimizationGoal,
   Platform,
@@ -73,7 +74,7 @@ export interface CliOptions {
   /** Report what would be rewritten without touching anything. */
   fixDryRun: boolean;
   /** Keep the original, commented out, above a rewrite that is hard to read back. */
-  fixAnnotate: boolean;
+  fixAnnotate?: FixAnnotation;
   /** Review each finding and choose what to do with it. */
   fixInteractive: boolean;
 }
@@ -104,7 +105,7 @@ Options:
   --rule <id>=<setting>         Override a rule: off|error|warning|suggestion|info
   --fix                         Apply safe suggestions and rewrite the files
   --fix-conditional             Also apply conditional ones; read their notes first
-  --fix-annotate                Keep the original, commented out, above an opaque rewrite
+  --fix-annotate <obfuscated|all|none>  Annotate fixes (default: obfuscated)
   -i, --fix-interactive         Review each finding and choose what to do with it
   --fix-dry-run                 Report what --fix would change, writing nothing
   --format <pretty|json>        Output format, default: pretty
@@ -180,7 +181,7 @@ export function parseArgs(
     fix: false,
     fixConditional: false,
     fixDryRun: false,
-    fixAnnotate: false,
+
     fixInteractive: false,
   };
 
@@ -227,7 +228,11 @@ export function parseArgs(
     }
     if (arg === "--fix-annotate") {
       options.fix = true;
-      options.fixAnnotate = true;
+      const value = requireValue(argv, i, arg);
+      if (value !== "obfuscated" && value !== "all" && value !== "none")
+        throw new Error("--fix-annotate must be obfuscated, all, or none");
+      options.fixAnnotate = value;
+      i++;
       continue;
     }
     if (arg === "--fix-dry-run") {

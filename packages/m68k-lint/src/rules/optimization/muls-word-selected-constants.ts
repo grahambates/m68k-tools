@@ -30,6 +30,7 @@ const recipes: Readonly<Record<number, (d: string, s: string) => string>> = {
 
 export const multiplySignedWordSelectedConstants: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/muls-word-selected-constants",
     category: "optimization",
     defaultSeverity: "suggestion",

@@ -15,6 +15,7 @@ function m68000Only(
 
 export const simplifyLongWordMasks: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/simplify-long-word-mask",
     category: "optimization",
     defaultSeverity: "suggestion",

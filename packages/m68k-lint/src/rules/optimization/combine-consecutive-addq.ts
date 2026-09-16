@@ -23,6 +23,8 @@ function directRegisterName(line: ParsedLine): string | undefined {
 
 export const combineConsecutiveAddq: Rule = {
   meta: {
+    // The total can hide the separate increments and their intent.
+    obfuscated: true,
     id: "optimization/combine-consecutive-addq",
     category: "optimization",
     defaultSeverity: "suggestion",

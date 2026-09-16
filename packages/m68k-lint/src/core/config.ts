@@ -1,3 +1,4 @@
+import type { FixAnnotation } from "./fix.js";
 import type { RuleCategory, Severity } from "./diagnostic.js";
 
 export type Processor =
@@ -15,6 +16,8 @@ export type Platform = "generic" | "amiga" | "atari";
 export type RulePreset = "recommended" | "style";
 
 export interface LintConfig {
+  /** Which applied fixes retain the original source as comments. */
+  fixAnnotate?: FixAnnotation;
   processors: Processor[];
   /** Target platform for platform-specific safety and correctness rules. */
   platform?: Platform;
@@ -38,6 +41,7 @@ export interface LintConfig {
 }
 
 export const defaultConfig: LintConfig = {
+  fixAnnotate: "obfuscated",
   processors: ["mc68000"],
   platform: "generic",
   goal: "balanced",

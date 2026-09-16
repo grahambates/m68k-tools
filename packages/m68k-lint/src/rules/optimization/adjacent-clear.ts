@@ -20,6 +20,8 @@ function clearPair(
 ): Rule {
   return {
     meta: {
+      // The wider clear hides the second destination and its field boundary.
+      obfuscated: true,
       id,
       category: "optimization",
       defaultSeverity: "suggestion",

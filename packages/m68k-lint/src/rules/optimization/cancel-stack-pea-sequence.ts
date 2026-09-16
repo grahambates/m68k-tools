@@ -73,6 +73,8 @@ function quickAmount(
 
 export const cancelStackPeaSequence: Rule = {
   meta: {
+    // Fixed stack offsets obscure the original pushes and stack adjustment.
+    obfuscated: true,
     id: "optimization/cancel-stack-pea-sequence",
     category: "optimization",
     defaultSeverity: "suggestion",

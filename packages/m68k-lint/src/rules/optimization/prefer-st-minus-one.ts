@@ -27,6 +27,8 @@ function isStDestination(op: OperandNode | undefined): boolean {
 
 export const preferStMinusOne: Rule = {
   meta: {
+    // ST removes the explicit value or expression being stored.
+    obfuscated: true,
     id: "optimization/prefer-st-minus-one",
     category: "optimization",
     defaultSeverity: "suggestion",

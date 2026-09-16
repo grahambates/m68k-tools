@@ -8,6 +8,8 @@ import {
 
 export const zeroAddressRegister: Rule = {
   meta: {
+    // Self-subtraction hides the original zero expression.
+    obfuscated: true,
     id: "optimization/zero-address-register",
     category: "optimization",
     defaultSeverity: "suggestion",

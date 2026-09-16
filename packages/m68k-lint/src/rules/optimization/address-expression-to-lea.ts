@@ -25,6 +25,8 @@ function sameRegister(a: string, b: string): boolean {
  */
 export const foldAddressExpressionToLea: Rule = {
   meta: {
+    // The folded displacement no longer shows the original expression.
+    obfuscated: true,
     id: "optimization/address-expression-to-lea",
     category: "optimization",
     defaultSeverity: "suggestion",

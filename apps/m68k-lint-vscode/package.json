@@ -90,9 +90,14 @@
           "markdownDescription": "Include conditional fixes in Fix All. Individual conditional replacements are always offered with a review label; read their notes before applying."
         },
         "m68kLint.quickFix.annotate": {
-          "type": "boolean",
-          "default": false,
-          "markdownDescription": "Keep the original instructions, commented out, above a rewrite that is hard to read back. Matches `m68k-lint --fix-annotate`."
+          "type": "string",
+          "enum": [
+            "obfuscated",
+            "all",
+            "none"
+          ],
+          "default": "obfuscated",
+          "markdownDescription": "Keep the original instructions as comments for intent-obscuring rules (obfuscated), all fixes, or no fixes. Matches `m68k-lint --fix-annotate`."
         },
         "m68kLint.defaults.platform": {
           "type": "string",

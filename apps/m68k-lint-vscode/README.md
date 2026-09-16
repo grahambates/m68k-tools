@@ -38,6 +38,10 @@ config file checked into a repo gives everyone on the team the same results.
 Where a workspace has no config file, `m68kLint.defaults.*` supplies the platform, CPUs, goal
 and presets instead.
 
+Fixes preserve the original as comments for rules that obscure intent by default.
+Set `m68kLint.quickFix.annotate` to `obfuscated`, `all`, or `none`; a project
+`fixAnnotate` setting takes precedence.
+
 ### Fix on save
 
 ```jsonc

@@ -46,6 +46,8 @@ function shiftMnemonic(line: ParsedLine): ShiftMnemonic | undefined {
  */
 export const combineConsecutiveShift: Rule = {
   meta: {
+    // The total hides the separate counts and can require a scratch sequence.
+    obfuscated: true,
     id: "optimization/combine-consecutive-shift",
     category: "optimization",
     defaultSeverity: "suggestion",

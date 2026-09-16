@@ -1,3 +1,4 @@
+import type { FixAnnotation } from "../core/fix.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 import { parseFile } from "m68k-parser";
@@ -55,62 +56,70 @@ export async function reviewFile(
   diagnostics: readonly Diagnostic[],
   ask: (query: string) => Promise<string>,
   color: boolean,
+  annotate: FixAnnotation = "obfuscated",
 ): Promise<InteractiveResult> {
-  return runInteractive(source, diagnostics, async (diagnostic) => {
-    console.log(`\n${formatDiagnostic(path, source, diagnostic, color)}`);
-    const fixable = diagnostic.suggestion?.replacement !== undefined;
-    const alternatives = diagnostic.alternatives?.length
-      ? [diagnostic, ...diagnostic.alternatives]
-      : undefined;
-    const choices = alternatives
-      ? `1-${alternatives.length}/n/N/a/d/q/?`
-      : fixable
-        ? "y/Y/n/N/a/d/q/?"
-        : "n/N/a/d/q/?";
-    for (;;) {
-      // Case matters here, so the answer is not folded to lower case.
-      const answer = (
-        await ask(
-          `  ${fixable ? "apply" : "no rewrite available"} [${choices}] `,
+  return runInteractive(
+    source,
+    diagnostics,
+    async (diagnostic) => {
+      console.log(`\n${formatDiagnostic(path, source, diagnostic, color)}`);
+      const fixable = diagnostic.suggestion?.replacement !== undefined;
+      const alternatives = diagnostic.alternatives?.length
+        ? [diagnostic, ...diagnostic.alternatives]
+        : undefined;
+      const choices = alternatives
+        ? `1-${alternatives.length}/n/N/a/d/q/?`
+        : fixable
+          ? "y/Y/n/N/a/d/q/?"
+          : "n/N/a/d/q/?";
+      for (;;) {
+        // Case matters here, so the answer is not folded to lower case.
+        const answer = (
+          await ask(
+            `  ${fixable ? "apply" : "no rewrite available"} [${choices}] `,
+          )
+        ).trim();
+        if (
+          alternatives &&
+          /^[1-9][0-9]*$/.test(answer) &&
+          Number(answer) <= alternatives.length
         )
-      ).trim();
-      if (
-        alternatives &&
-        /^[1-9][0-9]*$/.test(answer) &&
-        Number(answer) <= alternatives.length
-      )
-        return { alternative: Number(answer) - 1 };
-      if (answer === "?" || answer === "h") {
-        if (alternatives)
+          return { alternative: Number(answer) - 1 };
+        if (answer === "?" || answer === "h") {
+          if (alternatives)
+            console.log(
+              "  Enter the alternative number to apply that replacement.",
+            );
+          if (fixable) {
+            console.log("  y  apply the rewrite");
+            console.log(
+              `  Y  apply every remaining ${diagnostic.ruleId} without asking`,
+            );
+          }
+          console.log("  n  skip, and report it again next time");
           console.log(
-            "  Enter the alternative number to apply that replacement.",
+            `  N  skip every remaining ${diagnostic.ruleId} in this run`,
           );
-        if (fixable) {
-          console.log("  y  apply the rewrite");
+          console.log("  a  allow here, adding a directive beside this code");
           console.log(
-            `  Y  apply every remaining ${diagnostic.ruleId} without asking`,
+            `  d  disable ${diagnostic.ruleId} for the whole project`,
           );
+          console.log("  q  stop; what has been decided still stands");
+          continue;
         }
-        console.log("  n  skip, and report it again next time");
-        console.log(
-          `  N  skip every remaining ${diagnostic.ruleId} in this run`,
-        );
-        console.log("  a  allow here, adding a directive beside this code");
-        console.log(`  d  disable ${diagnostic.ruleId} for the whole project`);
-        console.log("  q  stop; what has been decided still stands");
-        continue;
+        if (answer === "Y" && fixable && !alternatives) return "apply-rule";
+        if (answer === "N") return "skip-rule";
+        const lowered = answer.toLowerCase();
+        if (lowered === "q") return "quit";
+        if (lowered === "a") return "allow";
+        if (lowered === "d") return "disable";
+        if (lowered === "n" || lowered === "") return "skip";
+        if (lowered === "y" && fixable && !alternatives) return "apply";
+        console.error(`  Expected one of: ${choices}`);
       }
-      if (answer === "Y" && fixable && !alternatives) return "apply-rule";
-      if (answer === "N") return "skip-rule";
-      const lowered = answer.toLowerCase();
-      if (lowered === "q") return "quit";
-      if (lowered === "a") return "allow";
-      if (lowered === "d") return "disable";
-      if (lowered === "n" || lowered === "") return "skip";
-      if (lowered === "y" && fixable && !alternatives) return "apply";
-      console.error(`  Expected one of: ${choices}`);
-    }
-  });
+    },
+    annotate,
+  );
 }
 
 export interface InteractiveSession {
@@ -155,6 +164,7 @@ export async function runInteractiveFixes(
         diagnostics,
         (query) => rl.question(query),
         session.color,
+        config.fixAnnotate,
       );
       if (result.output !== source)
         await writeFile(file, result.output, "utf8");

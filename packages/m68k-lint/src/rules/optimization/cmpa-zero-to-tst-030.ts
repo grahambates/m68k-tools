@@ -8,6 +8,8 @@ import {
 
 export const cmpaZeroToTst030: Rule = {
   meta: {
+    // TST removes the explicit comparison value or expression.
+    obfuscated: true,
     id: "optimization/cmpa-zero-to-tst-030",
     category: "optimization",
     defaultSeverity: "suggestion",

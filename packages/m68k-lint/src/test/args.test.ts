@@ -146,9 +146,9 @@ describe("parseArgs", () => {
       fix: true,
       fixConditional: true,
     });
-    expect(parse(["--fix-annotate"])).toMatchObject({
+    expect(parse(["--fix-annotate", "all"])).toMatchObject({
       fix: true,
-      fixAnnotate: true,
+      fixAnnotate: "all",
     });
     expect(parse(["--fix-dry-run"])).toMatchObject({
       fix: true,
@@ -183,4 +183,13 @@ describe("parseArgs", () => {
     expect(parse([]).onlyCategories).toBeUndefined();
     expect(() => parse(["--only", "perf"])).toThrow("unknown value 'perf'");
   });
+});
+
+test("annotation modes require a valid value", () => {
+  for (const mode of ["obfuscated", "all", "none"])
+    expect(parseArgs(["--fix-annotate", mode])).toMatchObject({
+      fixAnnotate: mode,
+    });
+  expect(() => parseArgs(["--fix-annotate"])).toThrow(/requires a value/);
+  expect(() => parseArgs(["--fix-annotate", "true"])).toThrow(/must be/);
 });

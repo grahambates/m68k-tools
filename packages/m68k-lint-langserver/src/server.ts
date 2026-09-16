@@ -283,7 +283,7 @@ connection.onCodeAction(async (params: CodeActionParams) => {
   const settings = configs.getSettings();
   const options: ActionOptions = {
     conditional: settings.quickFix.conditional,
-    annotate: settings.quickFix.annotate,
+    annotate: config.fixAnnotate ?? "obfuscated",
     lint: (text) => lintSource(text, config, undefined, external),
   };
 

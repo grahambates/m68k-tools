@@ -53,6 +53,8 @@ export interface OptimizationImpact {
 }
 
 export interface Suggestion {
+  /** Inherited from the rule; requests annotation in the default obfuscated mode. */
+  obfuscated?: boolean;
   description: string;
   replacement?: string;
   applicability: Applicability;

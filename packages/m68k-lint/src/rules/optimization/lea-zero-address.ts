@@ -7,6 +7,8 @@ import {
 
 export const leaZeroAddress: Rule = {
   meta: {
+    // Self-subtraction hides the original address expression.
+    obfuscated: true,
     id: "optimization/lea-zero-address",
     category: "optimization",
     defaultSeverity: "suggestion",

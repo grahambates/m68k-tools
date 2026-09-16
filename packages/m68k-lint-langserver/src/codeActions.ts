@@ -1,3 +1,4 @@
+import type { FixAnnotation } from "m68k-lint";
 import {
   CodeActionKind,
   type CodeAction,
@@ -51,7 +52,7 @@ export function singleFixEdit(
   source: string,
   diagnostic: Diagnostic,
   accept: readonly Applicability[],
-  annotate: boolean,
+  annotate: FixAnnotation,
 ): { span: SourceSpan; newText: string } | undefined {
   const before = source.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
   const result = applyOnce(
@@ -108,7 +109,7 @@ function fixTitle(diagnostic: Diagnostic): string {
 
 export interface ActionOptions {
   conditional: boolean;
-  annotate: boolean;
+  annotate: FixAnnotation;
   /**
    * Re-lints intermediate text for fix-all, with the config and project
    * symbols that apply to this document.

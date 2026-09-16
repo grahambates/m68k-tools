@@ -33,6 +33,7 @@ function hasInterveningLabel(
  */
 export const moveByteAndMaskViaMoveq: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/move-byte-and-mask",
     category: "optimization",
     defaultSeverity: "suggestion",

@@ -12,6 +12,8 @@ import { changedFlagsApplicability } from "./helpers.js";
  */
 export const zeroArithmeticToTst: Rule = {
   meta: {
+    // TST removes the original arithmetic and its immediate expression.
+    obfuscated: true,
     id: "optimization/zero-arithmetic-to-tst",
     category: "optimization",
     defaultSeverity: "suggestion",

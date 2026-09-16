@@ -35,7 +35,7 @@ Settings, under the `m68kLint` section:
   "run": "onType", // or "onSave"
   "quickFix": {
     "conditional": false, // include conditional replacements in Fix All
-    "annotate": false, // keep the original commented above an opaque rewrite
+    "annotate": "obfuscated", // or "all" / "none"; project fixAnnotate takes precedence
   },
   "defaults": {
     // used only where the workspace has no config file

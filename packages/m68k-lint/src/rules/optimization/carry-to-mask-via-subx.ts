@@ -32,6 +32,7 @@ function sharedFlagDefinition(ctx: RuleContext, index: number): boolean {
 
 export const carryToMaskViaSubx: Rule = {
   meta: {
+    obfuscated: true,
     id: "optimization/carry-to-mask-via-subx",
     category: "optimization",
     defaultSeverity: "suggestion",

@@ -74,7 +74,7 @@ Smaller or faster equivalents, gated on CPU target and proven flag/register live
 | [`optimization/cancel-subq-postincrement-move`](rule-examples.md#optimizationcancel-subq-postincrement-move) | suggestion | yes | Cancel SUBQ address adjustment against an immediately following postincrement MOVE | ASP68K |
 | [`optimization/carry-to-mask-via-subx`](rule-examples.md#optimizationcarry-to-mask-via-subx) | suggestion | yes | Use SUBX to turn the carry into an all-ones mask | EAB 68000 code optimisations |
 | [`optimization/cmp-zero-address-via-scratch`](rule-examples.md#optimizationcmp-zero-address-via-scratch) | suggestion | yes | Compare an address register with zero via a dead data register on early CPUs | ASP68K |
-| [`optimization/cmpa-zero-to-tst-030`](rule-examples.md#optimizationcmpa-zero-to-tst-030) | suggestion | yes | Use TST.L An for CMPA.L #0,An on 68030 | ASP68K |
+| [`optimization/cmpa-zero-to-tst-030`](rule-examples.md#optimizationcmpa-zero-to-tst-030) | suggestion | yes | Use TST.L An for CMPA.L #0,An on 68020+ | ASP68K |
 | [`optimization/combine-adjacent-clr-bytes`](rule-examples.md#optimizationcombine-adjacent-clr-bytes) | suggestion | yes | Combine adjacent CLR.B writes | ASP68K |
 | [`optimization/combine-adjacent-clr-words`](rule-examples.md#optimizationcombine-adjacent-clr-words) | suggestion | yes | Combine adjacent CLR.W writes | ASP68K |
 | [`optimization/combine-adjacent-copy-bytes`](rule-examples.md#optimizationcombine-adjacent-copy-bytes) | suggestion | yes | Combine adjacent MOVE.B transfers | — |
@@ -117,14 +117,14 @@ Smaller or faster equivalents, gated on CPU target and proven flag/register live
 | [`optimization/move-immediate-word-complement`](rule-examples.md#optimizationmove-immediate-word-complement) | suggestion | yes | Synthesize selected long immediates with MOVEQ + NOT.W | ASP68K |
 | [`optimization/movea-add-to-lea`](rule-examples.md#optimizationmovea-add-to-lea) | suggestion | — | Combine MOVEA plus immediate ADDA/ADDQ into one LEA | ASP68K |
 | [`optimization/movea-immediate-to-lea`](rule-examples.md#optimizationmovea-immediate-to-lea) | suggestion | — | Use LEA for a non-zero immediate address-register load | ASP68K |
-| [`optimization/muls-long-060-simple`](rule-examples.md#optimizationmuls-long-060-simple) | suggestion | yes | Use MOVEQ/ASL for simple MULS.L constants on 68060 | ASP68K |
+| [`optimization/muls-long-060-simple`](rule-examples.md#optimizationmuls-long-060-simple) | suggestion | yes | Use MOVEQ/ASL for simple MULS.L constants | ASP68K |
 | [`optimization/muls-word-by-one`](rule-examples.md#optimizationmuls-word-by-one) | suggestion | yes | Replace MULS.W #1 with EXT.L | ASP68K |
 | [`optimization/muls-word-full-result-constants`](rule-examples.md#optimizationmuls-word-full-result-constants) | suggestion | yes | Replace additional MULS.W constants with verified 68000 shift/add sequences | Flamewing M68000 Peephole Optimizations |
 | [`optimization/muls-word-high-power-of-two`](rule-examples.md#optimizationmuls-word-high-power-of-two) | suggestion | yes | Replace signed word multiply by a large power of two with SWAP/CLR/ASR | ASP68K |
 | [`optimization/muls-word-low-word-only`](rule-examples.md#optimizationmuls-word-low-word-only) | suggestion | yes | Use shorter MULS.W recipes when the result's upper word is unobserved | Flamewing M68000 Peephole Optimizations |
 | [`optimization/muls-word-power-of-two`](rule-examples.md#optimizationmuls-word-power-of-two) | suggestion | yes | Replace signed word multiply by a small power of two with EXT plus ASL | ASP68K |
 | [`optimization/muls-word-selected-constants`](rule-examples.md#optimizationmuls-word-selected-constants) | suggestion | yes | Replace selected MULS.W constants with EXT/shifts/adds | ASP68K |
-| [`optimization/multiply-long-by-one`](rule-examples.md#optimizationmultiply-long-by-one) | suggestion | — | Remove a long multiply by one on 68060 | ASP68K |
+| [`optimization/multiply-long-by-one`](rule-examples.md#optimizationmultiply-long-by-one) | suggestion | — | Remove a long multiply by one | ASP68K |
 | [`optimization/multiply-long-large-power-of-two`](rule-examples.md#optimizationmultiply-long-large-power-of-two) | suggestion | yes | Replace long multiply by 2^m (9<m<14) with register-count ASL | ASP68K |
 | [`optimization/multiply-long-small-constant`](rule-examples.md#optimizationmultiply-long-small-constant) | suggestion | yes | Replace selected long constant multiplies with shifts/adds | ASP68K |
 | [`optimization/multiply-word-by-zero`](rule-examples.md#optimizationmultiply-word-by-zero) | suggestion | yes | Replace MULS.W/MULU.W by zero with MOVEQ #0 | ASP68K |
@@ -134,12 +134,12 @@ Smaller or faster equivalents, gated on CPU target and proven flag/register live
 | [`optimization/mulu-word-power-of-two`](rule-examples.md#optimizationmulu-word-power-of-two) | suggestion | yes | Replace unsigned word multiply by a small power of two with zero-extension plus LSL | ASP68K |
 | [`optimization/narrow-address-immediate-word`](rule-examples.md#optimizationnarrow-address-immediate-word) | suggestion | — | Use word-sized ADDA/SUBA immediates when the constant fits signed 16 bits | Flamewing M68000 Peephole Optimizations |
 | [`optimization/narrow-cmpa-immediate-word`](rule-examples.md#optimizationnarrow-cmpa-immediate-word) | suggestion | — | Use CMPA.W for signed 16-bit immediate comparisons | vasm m68k optimization history |
-| [`optimization/narrow-movea-immediate-word`](rule-examples.md#optimizationnarrow-movea-immediate-word) | suggestion | — | Use MOVEA.W for signed 16-bit immediate address loads on 68000 | Flamewing M68000 Peephole Optimizations |
+| [`optimization/narrow-movea-immediate-word`](rule-examples.md#optimizationnarrow-movea-immediate-word) | suggestion | — | Use MOVEA.W for signed 16-bit immediate address loads | Flamewing M68000 Peephole Optimizations |
 | [`optimization/negate-add-mask-to-eor`](rule-examples.md#optimizationnegate-add-mask-to-eor) | suggestion | yes | Replace NEG followed by ADD of a low-bit mask with an EOR by that mask when the input is proven in range | ASP68K |
 | [`optimization/negate-add-to-sub`](rule-examples.md#optimizationnegate-add-to-sub) | suggestion | — | Remove NEG before ADD when the negated source is dead | ASP68K |
 | [`optimization/negate-sub-to-add`](rule-examples.md#optimizationnegate-sub-to-add) | suggestion | — | Remove NEG before SUB when the negated source is dead | ASP68K |
 | [`optimization/negative-signed-multiply`](rule-examples.md#optimizationnegative-signed-multiply) | suggestion | yes | Replace signed multiplication by -1 or a negative power of two with NEG/shift operations | vasm m68k optimizer |
-| [`optimization/normalize-byte-rotate-direction`](rule-examples.md#optimizationnormalize-byte-rotate-direction) | suggestion | yes | Use the shorter-direction immediate byte rotate on 68000 | Flamewing M68000 Peephole Optimizations |
+| [`optimization/normalize-byte-rotate-direction`](rule-examples.md#optimizationnormalize-byte-rotate-direction) | suggestion | yes | Use the shorter-direction immediate byte rotate | Flamewing M68000 Peephole Optimizations |
 | [`optimization/null-branch`](rule-examples.md#optimizationnull-branch) | suggestion | — | Remove an unconditional branch to the immediately following label | ASP68K |
 | [`optimization/ori-zero-to-tst`](rule-examples.md#optimizationori-zero-to-tst) | suggestion | yes | ORI #0 can use TST | vasm m68k optimization history |
 | [`optimization/prefer-add-for-shift-one`](rule-examples.md#optimizationprefer-add-for-shift-one) | suggestion | yes | Consider ADD Dn,Dn for a one-bit left shift | ASP68K |
@@ -163,10 +163,10 @@ Smaller or faster equivalents, gated on CPU target and proven flag/register live
 | [`optimization/redundant-lea`](rule-examples.md#optimizationredundant-lea) | suggestion | — | Remove LEA (An),An when source and destination are identical | ASP68K |
 | [`optimization/redundant-tst`](rule-examples.md#optimizationredundant-tst) | suggestion | — | Remove a TST when the previous instruction already established the required flags | — |
 | [`optimization/redundant-zero-displacement`](rule-examples.md#optimizationredundant-zero-displacement) | preset: style | yes | Omit a zero address-register displacement | ASP68K |
-| [`optimization/roxl-to-addx`](rule-examples.md#optimizationroxl-to-addx) | suggestion | yes | Use ADDX for small rotate-through-extend-left counts on 68000 | Flamewing M68000 Peephole Optimizations |
+| [`optimization/roxl-to-addx`](rule-examples.md#optimizationroxl-to-addx) | suggestion | yes | Use ADDX for small rotate-through-extend-left counts | Flamewing M68000 Peephole Optimizations |
 | [`optimization/shift-to-clear`](rule-examples.md#optimizationshift-to-clear) | suggestion | yes | Replace shifts that necessarily clear the operand | ASP68K |
 | [`optimization/shift-two-adds`](rule-examples.md#optimizationshift-two-adds) | suggestion | yes | Consider two ADDs for a two-bit byte/word left shift | ASP68K |
-| [`optimization/simplify-long-word-mask`](rule-examples.md#optimizationsimplify-long-word-mask) | suggestion | yes | Simplify common 32-bit word masks on 68000 | Flamewing M68000 Peephole Optimizations |
+| [`optimization/simplify-long-word-mask`](rule-examples.md#optimizationsimplify-long-word-mask) | suggestion | yes | Simplify common 32-bit word masks | Flamewing M68000 Peephole Optimizations |
 | [`optimization/single-register-movem`](rule-examples.md#optimizationsingle-register-movem) | suggestion | — | Use MOVE instead of MOVEM for a single register | ASP68K |
 | [`optimization/stack-known-register-shift`](rule-examples.md#optimizationstack-known-register-shift) | suggestion | yes | Use bounded A7 scratch space for selected known register-count shifts | Flamewing M68000 Peephole Optimizations |
 | [`optimization/stack-word-shift-eight`](rule-examples.md#optimizationstack-word-shift-eight) | suggestion | yes | Use the 68000 A7 byte-alignment quirk for a word shift by eight | Flamewing M68000 Peephole Optimizations / 68000 Tricks and Traps |

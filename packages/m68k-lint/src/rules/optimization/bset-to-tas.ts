@@ -67,8 +67,10 @@ export const bsetToTas: Rule = {
     const size = instructionSize(line);
     if (dataDest ? size !== "l" : !memoryDest || size !== "b") return;
 
+    // Verified with 68kcounter: the data-register form is cycle-equal-or-
+    // faster on every target checked, including 68020.
     const allowed = dataDest
-      ? ["mc68000", "mc68010", "mc68030"]
+      ? ["mc68000", "mc68010", "mc68020", "mc68030"]
       : ["mc68000", "mc68010"];
     if (!ctx.config.processors.every((cpu) => allowed.includes(cpu))) return;
 

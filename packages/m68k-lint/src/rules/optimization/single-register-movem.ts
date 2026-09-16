@@ -29,9 +29,12 @@ export const singleRegisterMovem: Rule = {
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "movem")) return;
+    // Verified with 68kcounter: a real win through 68040 and (byte-only) on
+    // 68060; 68020 could not be verified (68kcounter has no timing entry for
+    // this MOVEM form on that target) and stays excluded pending that.
     if (
       !ctx.config.processors.every((cpu) =>
-        ["mc68000", "mc68010", "mc68030", "mc68040"].includes(cpu),
+        ["mc68000", "mc68010", "mc68030", "mc68040", "mc68060"].includes(cpu),
       )
     )
       return;

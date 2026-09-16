@@ -13,9 +13,10 @@ export const pushImmediatePea: Rule = {
     category: "optimization",
     defaultSeverity: "suggestion",
     description: "Use PEA for a signed-16-bit immediate longword push",
-    tags: ["asp68k", "stack", "ccr", "68000", "68010"],
+    tags: ["asp68k", "stack", "ccr"],
     docs: {
       source: "ASP68K",
+      note: "Verified with 68kcounter: a clean win on every target checked, not just 68000/68010.",
       example: { source: "\tmove.l #100,-(sp)\n\tadd.l d1,d2" },
     },
   },
@@ -38,8 +39,15 @@ export const pushImmediatePea: Rule = {
     const value = ctx.evaluate(source.value);
     if (!value.known || value.value < -32768 || value.value > 32767) return;
     if (
-      !ctx.config.processors.every(
-        (cpu) => cpu === "mc68000" || cpu === "mc68010",
+      !ctx.config.processors.every((cpu) =>
+        [
+          "mc68000",
+          "mc68010",
+          "mc68020",
+          "mc68030",
+          "mc68040",
+          "mc68060",
+        ].includes(cpu),
       )
     )
       return;

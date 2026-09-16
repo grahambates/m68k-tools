@@ -49,10 +49,13 @@ function makeAddressImmediateLea(mnemonic: "add" | "sub"): Rule {
           ? valueText(ctx, imm.value, displacement)
           : negatedValueText(ctx, imm.value, displacement);
 
+      // Verified with 68kcounter: LEA is cycle-equal-or-faster on every
+      // target except ADDA.L specifically on 68040, where it costs one cycle
+      // more than ADDA.L itself (7 vs 6); SUBA.L has no such gap there.
       const allowed =
         mnemonic === "add"
-          ? ["mc68000", "mc68010", "mc68030"]
-          : ["mc68000", "mc68010", "mc68030", "mc68040"];
+          ? ["mc68000", "mc68010", "mc68020", "mc68030", "mc68060"]
+          : ["mc68000", "mc68010", "mc68020", "mc68030", "mc68040", "mc68060"];
       if (!ctx.config.processors.every((cpu) => allowed.includes(cpu))) return;
 
       ctx.report({

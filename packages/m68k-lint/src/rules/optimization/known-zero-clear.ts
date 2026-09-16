@@ -42,9 +42,11 @@ export const knownZeroClear: Rule = {
     if (!size) return;
     const dest = operand(line, 0);
     if (!supportedDestination(dest)) return;
+    // Verified with 68kcounter: a clean win on every target checked except
+    // 68040/68060, where it ties (0 delta) rather than improves.
     if (
       !ctx.config.processors.every((cpu) =>
-        ["mc68000", "mc68010", "mc68030"].includes(cpu),
+        ["mc68000", "mc68010", "mc68020", "mc68030"].includes(cpu),
       )
     )
       return;

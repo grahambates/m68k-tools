@@ -49,9 +49,11 @@ export const moveImmediateViaScratch: Rule = {
       return;
     const value = ctx.evaluate(source.value);
     if (!value.known || value.value < -128 || value.value > 127) return;
+    // Verified with 68kcounter: a clean win through 68030; 68040/68060 were
+    // not measured as improvements here and stay excluded.
     if (
       !ctx.config.processors.every((cpu) =>
-        ["mc68000", "mc68010", "mc68030"].includes(cpu),
+        ["mc68000", "mc68010", "mc68020", "mc68030"].includes(cpu),
       )
     )
       return;

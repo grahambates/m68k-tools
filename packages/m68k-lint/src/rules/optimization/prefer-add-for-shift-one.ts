@@ -35,10 +35,11 @@ export const preferAddForShiftOne: Rule = {
     const value = ctx.evaluate(imm.value);
     if (!value.known || value.value !== 1) return;
 
-    // ASP68K marks 060 as no win and leaves 020 unknown.
+    // ASP68K marks 060 as no win and leaves 020 unknown ("?" in its table).
+    // Verified with 68kcounter: 020 is in fact a real win too (1 cycle).
     if (
       !ctx.config.processors.every((cpu) =>
-        ["mc68000", "mc68010", "mc68030", "mc68040"].includes(cpu),
+        ["mc68000", "mc68010", "mc68020", "mc68030", "mc68040"].includes(cpu),
       )
     )
       return;

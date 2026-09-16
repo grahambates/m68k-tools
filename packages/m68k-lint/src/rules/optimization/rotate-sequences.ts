@@ -67,6 +67,7 @@ export const simplifyKnownRegisterRotate: Rule = {
     tags: ["flamewing", "68000", "rotate", "sequence", "ccr"],
     docs: {
       source: "Flamewing M68000 Peephole Optimizations",
+      note: "Unlike some of its siblings in this file, the reduction stays a clean win on every target checked (verified with 68kcounter): 68010 through 68060.",
       example: {
         source: "\tmoveq #10,d1\n\trol.w d1,d0\n\tmoveq #0,d1\n\trts",
         config: { processors: ["mc68000"] },
@@ -74,7 +75,19 @@ export const simplifyKnownRegisterRotate: Rule = {
     },
   },
   checkLine(ctx, line, index) {
-    if (!m68000Only(ctx)) return;
+    if (
+      !ctx.config.processors.every((cpu) =>
+        [
+          "mc68000",
+          "mc68010",
+          "mc68020",
+          "mc68030",
+          "mc68040",
+          "mc68060",
+        ].includes(cpu),
+      )
+    )
+      return;
     const direction = isInstruction(line, "rol")
       ? "rol"
       : isInstruction(line, "ror")
@@ -162,11 +175,11 @@ export const roxlToAddx: Rule = {
     id: "optimization/roxl-to-addx",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description:
-      "Use ADDX for small rotate-through-extend-left counts on 68000",
+    description: "Use ADDX for small rotate-through-extend-left counts",
     tags: ["flamewing", "68000", "rotate", "addx", "ccr"],
     docs: {
       source: "Flamewing M68000 Peephole Optimizations",
+      note: "Verified with 68kcounter: a clean win from 68000 through 68040 (4 to 10 cycles); 68060 ties rather than improves, so it stays excluded.",
       example: {
         source: "\troxl.b #1,d0\n\tmove.l d1,d2",
         config: { processors: ["mc68000"] },
@@ -174,7 +187,13 @@ export const roxlToAddx: Rule = {
     },
   },
   checkLine(ctx, line, index) {
-    if (!m68000Only(ctx) || !isInstruction(line, "roxl")) return;
+    if (
+      !ctx.config.processors.every((cpu) =>
+        ["mc68000", "mc68010", "mc68020", "mc68030", "mc68040"].includes(cpu),
+      ) ||
+      !isInstruction(line, "roxl")
+    )
+      return;
     const size = instructionSize(line);
     if (size !== "b" && size !== "w" && size !== "l") return;
     const expr = immediateExpressionOperand(line, 0);

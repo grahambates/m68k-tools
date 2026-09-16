@@ -113,16 +113,18 @@ function synthesisRule(
   };
 }
 
+// Verified with 68kcounter: both stay a clean win through 68030; 68040/68060
+// tie or cost a cycle more, so they stay excluded.
 export const moveImmediateWordComplement = synthesisRule(
   "optimization/move-immediate-word-complement",
   "not.w",
   notWord,
-  ["mc68000", "mc68010", "mc68030"],
+  ["mc68000", "mc68010", "mc68020", "mc68030"],
 );
 
 export const moveImmediateSwap = synthesisRule(
   "optimization/move-immediate-swap",
   "swap",
   swapWord,
-  ["mc68000", "mc68010"],
+  ["mc68000", "mc68010", "mc68020", "mc68030"],
 );

@@ -18,12 +18,12 @@ import { semanticMnemonic } from "../../semantics/mnemonics.js";
  * Only valid when the adjusted address register is dead afterwards, since the
  * fold leaves it unchanged.
  *
- * Gated by target. The indexed mode is the cheaper form on the 68000 family and
- * the 68060, and exact auditing measures that. On the 68020 and 68040 the
- * preference reverses: precomputing the address into the register is faster
- * there, so folding would be a pessimisation.
+ * Gated by target. The indexed mode is the cheaper form on the 68000 family,
+ * 68030 and 68060, and exact auditing measures that. On the 68020 and 68040
+ * the preference reverses: precomputing the address into the register is
+ * faster there, so folding would be a pessimisation.
  */
-const INDEXED_IS_FASTER = ["mc68000", "mc68010", "mc68060"];
+const INDEXED_IS_FASTER = ["mc68000", "mc68010", "mc68030", "mc68060"];
 
 function targetPrefersIndexed(ctx: RuleContext): boolean {
   return ctx.config.processors.every((cpu) => INDEXED_IS_FASTER.includes(cpu));

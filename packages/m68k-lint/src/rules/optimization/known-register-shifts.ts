@@ -640,6 +640,7 @@ export const knownRegisterAsrSaturate: Rule = {
     tags: ["flamewing", "68000", "shift", "register-count", "ccr"],
     docs: {
       source: "Flamewing M68000 Peephole Optimizations",
+      note: "Unlike its siblings in this file, the ADD/SUBX saturation sequence stays a clean win from 68010 through 68040 (verified with 68kcounter); only 68060 ties rather than improves, so it stays excluded.",
       example: {
         source:
           "\tmoveq #31,d1\n\tasr.l d1,d0\n\tmove.l d0,d2\n\tmoveq #0,d1\n\trts",
@@ -648,7 +649,13 @@ export const knownRegisterAsrSaturate: Rule = {
     },
   },
   checkLine(ctx, line, index) {
-    if (!m68000Only(ctx) || !isInstruction(line, "asr")) return;
+    if (
+      !ctx.config.processors.every((cpu) =>
+        ["mc68000", "mc68010", "mc68020", "mc68030", "mc68040"].includes(cpu),
+      ) ||
+      !isInstruction(line, "asr")
+    )
+      return;
     const size = instructionSize(line);
     if (size !== "w" && size !== "l") return;
     const countReg = dataRegisterOperand(line, 0);

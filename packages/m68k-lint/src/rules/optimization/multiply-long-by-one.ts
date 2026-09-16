@@ -12,10 +12,11 @@ export const multiplyLongByOne: Rule = {
     id: "optimization/multiply-long-by-one",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Remove a long multiply by one on 68060",
-    tags: ["asp68k", "multiply", "68060"],
+    description: "Remove a long multiply by one",
+    tags: ["asp68k", "multiply", "68020+"],
     docs: {
       source: "ASP68K",
+      note: "MULS.L/MULU.L only exist from 68020 on. Verified with 68kcounter: removing it entirely saves cycles on every target checked -- 68020 (50), 68030 (48), 68040 (20), 68060 (3) -- not just 68060.",
       example: {
         source: "\tmuls.l #1,d0\n\tadd.l d1,d2",
         config: { processors: ["mc68060"] },
@@ -25,7 +26,9 @@ export const multiplyLongByOne: Rule = {
   checkLine(ctx, line, index) {
     if (
       ctx.config.processors.length === 0 ||
-      !ctx.config.processors.every((cpu) => cpu === "mc68060")
+      !ctx.config.processors.every((cpu) =>
+        ["mc68020", "mc68030", "mc68040", "mc68060"].includes(cpu),
+      )
     )
       return;
     if (

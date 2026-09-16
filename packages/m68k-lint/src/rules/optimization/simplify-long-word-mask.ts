@@ -7,10 +7,17 @@ import {
 } from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
 
-function m68000Only(
+// Verified with 68kcounter: a clean win on every target it models
+// (68000/68020/68030/68040/68060); 68010 follows 68000, being cycle-identical
+// for this form.
+function supportedTarget(
   ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
 ): boolean {
-  return ctx.config.processors.every((cpu) => cpu === "mc68000");
+  return ctx.config.processors.every((cpu) =>
+    ["mc68000", "mc68010", "mc68020", "mc68030", "mc68040", "mc68060"].includes(
+      cpu,
+    ),
+  );
 }
 
 export const simplifyLongWordMasks: Rule = {
@@ -19,8 +26,8 @@ export const simplifyLongWordMasks: Rule = {
     id: "optimization/simplify-long-word-mask",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Simplify common 32-bit word masks on 68000",
-    tags: ["flamewing", "68000", "mask", "ccr"],
+    description: "Simplify common 32-bit word masks",
+    tags: ["flamewing", "mask", "ccr"],
     docs: {
       source: "Flamewing M68000 Peephole Optimizations",
       example: { source: "\tand.l #$ffff0000,d0\n\tadd.l d1,d2" },
@@ -28,7 +35,7 @@ export const simplifyLongWordMasks: Rule = {
   },
   checkLine(ctx, line, index) {
     if (
-      !m68000Only(ctx) ||
+      !supportedTarget(ctx) ||
       !isInstruction(line, "and") ||
       instructionSize(line) !== "l"
     )

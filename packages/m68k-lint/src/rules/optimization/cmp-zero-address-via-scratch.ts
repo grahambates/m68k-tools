@@ -35,9 +35,18 @@ export const cmpZeroAddressViaScratch: Rule = {
     if (!source || source.value.type === "string-literal" || !dest) return;
     const value = ctx.evaluate(source.value);
     if (!value.known || value.value !== 0) return;
+    // Verified with 68kcounter: MOVE.L through a scratch register is
+    // cycle-equal-or-faster than CMPA.L #0,An on every target checked.
     if (
       !ctx.config.processors.every((cpu) =>
-        ["mc68000", "mc68010", "mc68030"].includes(cpu),
+        [
+          "mc68000",
+          "mc68010",
+          "mc68020",
+          "mc68030",
+          "mc68040",
+          "mc68060",
+        ].includes(cpu),
       )
     )
       return;

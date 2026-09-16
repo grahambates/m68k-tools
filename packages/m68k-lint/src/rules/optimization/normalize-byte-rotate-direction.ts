@@ -7,10 +7,12 @@ import {
 } from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
 
-function m68000Only(
+function m68000FamilyOnly(
   ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
 ): boolean {
-  return ctx.config.processors.every((cpu) => cpu === "mc68000");
+  return ctx.config.processors.every((cpu) =>
+    ["mc68000", "mc68010"].includes(cpu),
+  );
 }
 
 export const normalizeByteRotate: Rule = {
@@ -20,15 +22,16 @@ export const normalizeByteRotate: Rule = {
     id: "optimization/normalize-byte-rotate-direction",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Use the shorter-direction immediate byte rotate on 68000",
-    tags: ["flamewing", "68000", "rotate", "ccr"],
+    description: "Use the shorter-direction immediate byte rotate",
+    tags: ["flamewing", "68000", "68010", "rotate", "ccr"],
     docs: {
       source: "Flamewing M68000 Peephole Optimizations",
+      note: "Verified with 68kcounter: a real win on 68000/68010 (8 fewer cycles); 68020 and later tie rather than improve.",
       example: { source: "\trol.b #6,d0\n\tadd.l d1,d2" },
     },
   },
   checkLine(ctx, line, index) {
-    if (!m68000Only(ctx) || instructionSize(line) !== "b") return;
+    if (!m68000FamilyOnly(ctx) || instructionSize(line) !== "b") return;
     const direction = isInstruction(line, "rol")
       ? "rol"
       : isInstruction(line, "ror")

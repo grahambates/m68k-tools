@@ -46,7 +46,15 @@ export const foldAddressArithmeticToIndexedLea: Rule = {
     },
   },
   checkLine(ctx, line, index) {
-    if (!ctx.config.processors.every((cpu) => cpu === "mc68000")) return;
+    // Verified with 68kcounter: folding is cycle-equal-or-faster on every
+    // target except 68040, where the folded LEA costs one cycle more than
+    // the pair it replaces.
+    if (
+      !ctx.config.processors.every((cpu) =>
+        ["mc68000", "mc68010", "mc68020", "mc68030", "mc68060"].includes(cpu),
+      )
+    )
+      return;
     const add = isInstruction(line, "adda");
     const sub = isInstruction(line, "suba");
     if ((!add && !sub) || instructionSize(line) !== "w") return;

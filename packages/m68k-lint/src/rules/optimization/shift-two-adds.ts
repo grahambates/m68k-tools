@@ -36,10 +36,13 @@ export const shiftTwoAdds: Rule = {
     const value = ctx.evaluate(count.value);
     if (!value.known || value.value !== 2) return;
 
+    // Verified with 68kcounter: ASL.B/W #2 is a genuine cycle win through
+    // 68040. LSL ties on 68030 instead of improving (4 cycles either way)
+    // while still costing 2 more bytes, so 68030 is excluded for LSL only.
     const allowed =
       shift === "asl"
         ? ["mc68000", "mc68010", "mc68030", "mc68040"]
-        : ["mc68000", "mc68010", "mc68030"];
+        : ["mc68000", "mc68010"];
     if (!ctx.config.processors.every((cpu) => allowed.includes(cpu))) return;
 
     const safety = changedFlagsApplicability(ctx, index, [

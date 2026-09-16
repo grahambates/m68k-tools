@@ -7,11 +7,13 @@ import {
 } from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
 
+// Verified with 68kcounter: a clean win on every target checked, including
+// 68020 (e.g. factor 2: 31 to 6 cycles; factor 3: 31 to 13 cycles).
 function usefulTargets(
   ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
 ): boolean {
   return ctx.config.processors.every((cpu) =>
-    ["mc68000", "mc68010", "mc68030", "mc68040"].includes(cpu),
+    ["mc68000", "mc68010", "mc68020", "mc68030", "mc68040"].includes(cpu),
   );
 }
 

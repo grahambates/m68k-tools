@@ -28,9 +28,11 @@ export const leaZeroAddress: Rule = {
       (source.addressSize.size !== "w" && source.addressSize.size !== "l")
     )
       return;
+    // Verified with 68kcounter: a clean win on every target checked except
+    // 68040, where SUBA costs one cycle more than LEA.
     if (
       !ctx.config.processors.every((cpu) =>
-        ["mc68000", "mc68010", "mc68030"].includes(cpu),
+        ["mc68000", "mc68010", "mc68020", "mc68030", "mc68060"].includes(cpu),
       )
     )
       return;

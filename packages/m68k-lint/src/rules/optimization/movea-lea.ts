@@ -26,7 +26,7 @@ export const moveImmediateAddressToLea: Rule = {
     ],
     docs: {
       source: "ASP68K",
-      note: "ASP68K claims a 68000/68010 speed win, which exact auditing does not bear out: the two forms measure identically. The real gain is clarity, and that LEA lets the assembler relax the operand to PC-relative, which a long immediate MOVEA can never be.",
+      note: "ASP68K claims a 68000/68010 speed win, which exact auditing does not bear out: the two forms measure identically there, and on 68020 the unqualified absolute-long form this rule targets is actually one cycle slower (68kcounter: MOVEA.L 7 vs LEA 8). Offered regardless of target: the real gain is clarity, and that LEA lets the assembler relax the operand to PC-relative, which a long immediate MOVEA can never be.",
       example: { source: "\tmovea.l #$1000,a0" },
     },
   },

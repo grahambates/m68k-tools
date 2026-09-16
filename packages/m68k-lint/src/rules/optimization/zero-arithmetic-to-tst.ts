@@ -33,10 +33,20 @@ export const zeroArithmeticToTst: Rule = {
         : undefined;
     if (!mnemonic) return;
 
-    // ASP68K records the win on 000/010/030; 020 is unknown and 040/060 are not wins.
+    // ASP68K records the win on 000/010/030 and leaves 020 unknown ("?" in
+    // its table). Verified with 68kcounter: 020 is a real cycle win too, and
+    // 040/060 tie on cycles but TST still drops the immediate word, so all
+    // three are a clean win by the same bar the other targets are held to.
     if (
       !ctx.config.processors.every((cpu) =>
-        ["mc68000", "mc68010", "mc68030"].includes(cpu),
+        [
+          "mc68000",
+          "mc68010",
+          "mc68020",
+          "mc68030",
+          "mc68040",
+          "mc68060",
+        ].includes(cpu),
       )
     )
       return;

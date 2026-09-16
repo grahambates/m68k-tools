@@ -13,18 +13,24 @@ export const cmpaZeroToTst030: Rule = {
     id: "optimization/cmpa-zero-to-tst-030",
     category: "optimization",
     defaultSeverity: "suggestion",
-    description: "Use TST.L An for CMPA.L #0,An on 68030",
-    tags: ["asp68k", "68030", "address-register", "ccr"],
+    description: "Use TST.L An for CMPA.L #0,An on 68020+",
+    tags: ["asp68k", "68020+", "address-register", "ccr"],
     docs: {
       source: "ASP68K",
+      note: "TST An is not a legal 68000/68010 addressing mode -- 68kcounter has no timing entry for it there at all, confirming ASP68K's own '-' (cannot be used) marker -- but its table does have one from 68020 on, where it is cycle-equal-or-faster than CMPA.L #0,An. The rule id keeps its historical '-030' spelling; ids are stable identifiers.",
       example: {
         source: "\tcmpa.l #0,a0",
-        config: { processors: ["mc68030"] },
+        config: { processors: ["mc68020"] },
       },
     },
   },
   checkLine(ctx, line) {
-    if (!ctx.config.processors.every((cpu) => cpu === "mc68030")) return;
+    if (
+      !ctx.config.processors.every((cpu) =>
+        ["mc68020", "mc68030"].includes(cpu),
+      )
+    )
+      return;
     if (!isInstruction(line, "cmpa") || instructionSize(line) !== "l") return;
     const expr = immediateExpressionOperand(line, 0);
     const dest = addressRegisterOperand(line, 1);
@@ -36,7 +42,7 @@ export const cmpaZeroToTst030: Rule = {
       category: this.meta.category,
       severity: this.meta.defaultSeverity,
       confidence: "certain",
-      message: "CMPA.L #0,An can use TST.L An on 68030",
+      message: "CMPA.L #0,An can use TST.L An on 68020+",
       loc: line.mnemonic!.loc,
       suggestion: {
         description: "Use TST.L",

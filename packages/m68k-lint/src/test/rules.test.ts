@@ -659,13 +659,29 @@ describe("CCR analysis", () => {
     expect(diagnostic?.suggestion?.replacement).toBe("\tbclr.l #3,d0");
   });
 
-  test("BCLR mask preference is narrower than BSET: not offered on mc68030", () => {
-    // BSET.L supports mc68000/010/030; BCLR.L only mc68000/010, so a mask that
-    // would trigger BSET on 68030 must not also trigger BCLR there.
-    const diagnostics = lint("and.l #~8,d0", { processors: ["mc68030"] });
-    expect(
-      diagnostics.some((d) => d.ruleId === "optimization/prefer-bclr"),
-    ).toBe(false);
+  test("BSET/BCLR mask preference is offered on 68000/010/020/030/060 but not 68040", () => {
+    // Verified with 68kcounter: both stay a clean win through 68030 and on
+    // 68060; 68040 costs 2 cycles more than the mask form there.
+    for (const cpu of [
+      "mc68000",
+      "mc68010",
+      "mc68020",
+      "mc68030",
+      "mc68060",
+    ] as const) {
+      expect(ids("or.l #8,d0", { processors: [cpu] })).toContain(
+        "optimization/prefer-bset",
+      );
+      expect(ids("and.l #~8,d0", { processors: [cpu] })).toContain(
+        "optimization/prefer-bclr",
+      );
+    }
+    expect(ids("or.l #8,d0", { processors: ["mc68040"] })).not.toContain(
+      "optimization/prefer-bset",
+    );
+    expect(ids("and.l #~8,d0", { processors: ["mc68040"] })).not.toContain(
+      "optimization/prefer-bclr",
+    );
   });
 
   test("BCLR mask preference does not apply to non-power-of-two masks", () => {
@@ -1396,8 +1412,12 @@ describe("v0.11 register-driven rules", () => {
     });
 
     test("is offered only for the targets the win is measured on", () => {
-      // 68kcounter models the 68000 and 68020 and both agree from three
-      // registers up, but MOVEM is not the fast path on 68040/68060.
+      // 68kcounter models 68000 through 68060: 68000/68010/68020 agree from
+      // three registers up. 68030 does not -- checked at every register
+      // count from 2 through 8, MOVEM is consistently 6 to 10 cycles slower
+      // there than the loads it replaces. 68040 is consistently 3 cycles
+      // slower at every count. 68060 ties the loads it replaces (never
+      // faster, never slower) and is a pure byte win.
       const source = [
         "move.l (a0)+,d0",
         "move.l (a0)+,d1",
@@ -1405,13 +1425,13 @@ describe("v0.11 register-driven rules", () => {
         "moveq #0,d7",
         "rts",
       ].join("\n");
-      for (const cpu of ["mc68000", "mc68010", "mc68020", "mc68030"] as const) {
+      for (const cpu of ["mc68000", "mc68010", "mc68020", "mc68060"] as const) {
         expect([cpu, ids(source, { processors: [cpu] }).includes(ID)]).toEqual([
           cpu,
           true,
         ]);
       }
-      for (const cpu of ["mc68040", "mc68060", "cpu32"] as const) {
+      for (const cpu of ["mc68030", "mc68040", "cpu32"] as const) {
         expect([cpu, ids(source, { processors: [cpu] }).includes(ID)]).toEqual([
           cpu,
           false,
@@ -2217,7 +2237,7 @@ describe("v0.20 coverage rules", () => {
     ).not.toContain("optimization/cancel-stack-pea-sequence");
   });
 
-  test("removes long multiply by one only for 68060 and respects CCR", () => {
+  test("removes long multiply by one on every 68020+ target and respects CCR", () => {
     const diagnostic = lint(
       ["muls.l #1,d0", "move.l d1,d2", "rts"].join("\n"),
       { processors: ["mc68060"] },
@@ -2225,9 +2245,14 @@ describe("v0.20 coverage rules", () => {
     expect(diagnostic?.suggestion?.replacement).toBe("");
     expect(diagnostic?.suggestion?.applicability).toBe("safe");
 
-    expect(
-      lint("muls.l #1,d0", { processors: ["mc68040"] }).map((d) => d.ruleId),
-    ).not.toContain("optimization/multiply-long-by-one");
+    // MULS.L/MULU.L only exist from 68020 on. Verified with 68kcounter:
+    // removing it entirely saves cycles on every target checked -- 68020
+    // (50), 68030 (48), 68040 (20), 68060 (3) -- not just 68060.
+    for (const cpu of ["mc68020", "mc68030", "mc68040", "mc68060"] as const) {
+      expect(
+        lint("muls.l #1,d0", { processors: [cpu] }).map((d) => d.ruleId),
+      ).toContain("optimization/multiply-long-by-one");
+    }
   });
 });
 
@@ -3829,10 +3854,21 @@ describe("previously untested rules (coverage audit)", () => {
     expect(diagnostic?.suggestion?.replacement).toBe("\tmovea.w #1234,a0");
   });
 
-  test("does not narrow MOVEA.L immediates outside the 68000-only scope", () => {
-    expect(ids("movea.l #1234,a0", { processors: ["mc68020"] })).not.toContain(
-      "optimization/narrow-movea-immediate-word",
-    );
+  test("narrows MOVEA.L immediates on every target checked", () => {
+    // Verified with 68kcounter: a clean win on every target it models
+    // (68000/68020/68030/68040/68060); 68010 follows 68000.
+    for (const cpu of [
+      "mc68000",
+      "mc68010",
+      "mc68020",
+      "mc68030",
+      "mc68040",
+      "mc68060",
+    ] as const) {
+      expect(ids("movea.l #1234,a0", { processors: [cpu] })).toContain(
+        "optimization/narrow-movea-immediate-word",
+      );
+    }
   });
 
   test("narrows a signed-16-bit ADDA.L immediate to ADDA.W on 68000", () => {
@@ -4048,10 +4084,21 @@ describe("previously untested rules (coverage audit)", () => {
     );
   });
 
-  test("does not replace ADD #0 with TST on 68040, where it is not a win", () => {
-    expect(ids("add.w #0,d0", { processors: ["mc68040"] })).not.toContain(
-      "optimization/zero-arithmetic-to-tst",
-    );
+  test("replaces ADD #0 with TST on every target checked, including 68040/68060", () => {
+    // Verified with 68kcounter: 68040/68060 tie on cycles but TST still
+    // drops the immediate word, so it stays a clean win there too.
+    for (const cpu of [
+      "mc68000",
+      "mc68010",
+      "mc68020",
+      "mc68030",
+      "mc68040",
+      "mc68060",
+    ] as const) {
+      expect(ids("add.w #0,d0", { processors: [cpu] })).toContain(
+        "optimization/zero-arithmetic-to-tst",
+      );
+    }
   });
 
   test("synthesizes an immediate just below the MOVEQ range with MOVEQ plus SUBQ", () => {

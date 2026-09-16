@@ -102,14 +102,16 @@ function memberData(
  * to prove those bits dead first. In the corpus 169 of 188 foldable runs are
  * long anyway.
  *
- * Restricted to the targets the win is measured on. 68kcounter models the
- * 68000 and the 68020, and both agree from three registers up, but MOVEM is
- * not the fast path on the 68040 and 68060 -- and the code this fires on most
- * in the corpus is Kalms' c2p routines, which target exactly those. Rather
- * than assume the 68000 result carries over to the parts most likely to
- * disagree with it, they are left out until someone measures them.
+ * Restricted to the targets the win is measured on, now that 68kcounter
+ * models 68020 through 68060: 68000/68010/68020 agree with the numbers above.
+ * 68030 does not -- checked at every register count from 2 through 8, MOVEM
+ * is consistently 6 to 10 cycles *slower* there than the loads it replaces,
+ * so it is excluded despite the earlier, 68000/68020-only measurement having
+ * included it. 68040 is consistently 3 cycles slower at every count and stays
+ * excluded too. 68060 ties the loads it replaces at every count (never faster,
+ * never slower) and is a pure 2-byte win, so it is included.
  */
-const MEASURED_TARGETS = ["mc68000", "mc68010", "mc68020", "mc68030"];
+const MEASURED_TARGETS = ["mc68000", "mc68010", "mc68020", "mc68060"];
 export const combineLoadsIntoMovem: Rule = {
   meta: {
     id: "optimization/combine-loads-into-movem",

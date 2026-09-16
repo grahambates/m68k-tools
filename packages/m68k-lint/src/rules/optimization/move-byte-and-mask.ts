@@ -11,10 +11,21 @@ import {
 } from "../../semantics/registers.js";
 import { sourceOperand } from "./helpers.js";
 
-function m68000Only(
+// Verified with 68kcounter: a clean win on every target it models
+// (68000/68020/68030/68040/68060); 68010 follows 68000, being cycle-identical
+// for this form.
+const MEASURED_TARGETS = [
+  "mc68000",
+  "mc68010",
+  "mc68020",
+  "mc68030",
+  "mc68040",
+  "mc68060",
+];
+function supportedTarget(
   ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
 ): boolean {
-  return ctx.config.processors.every((cpu) => cpu === "mc68000");
+  return ctx.config.processors.every((cpu) => MEASURED_TARGETS.includes(cpu));
 }
 
 function hasInterveningLabel(
@@ -39,7 +50,7 @@ export const moveByteAndMaskViaMoveq: Rule = {
     defaultSeverity: "suggestion",
     description:
       "Replace MOVE.B + ANDI.B with MOVEQ + AND when upper bits are dead",
-    tags: ["flamewing", "68000", "partial-register", "mask"],
+    tags: ["flamewing", "partial-register", "mask"],
     docs: {
       source: "Flamewing M68000 Peephole Optimizations",
       example: {
@@ -50,7 +61,7 @@ export const moveByteAndMaskViaMoveq: Rule = {
   },
   checkLine(ctx, line, index) {
     if (
-      !m68000Only(ctx) ||
+      !supportedTarget(ctx) ||
       !isInstruction(line, "and") ||
       instructionSize(line) !== "b"
     )

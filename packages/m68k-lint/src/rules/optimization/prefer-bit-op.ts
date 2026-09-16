@@ -36,10 +36,10 @@ function bitRule(kind: "or" | "and"): Rule {
       if (!imm || !dest || imm.value.type === "string-literal") return;
       const raw = ctx.evaluate(imm.value);
       if (!raw.known) return;
-      const allowed =
-        kind === "or"
-          ? ["mc68000", "mc68010", "mc68030"]
-          : ["mc68000", "mc68010"];
+      // Verified with 68kcounter: both stay a clean win through 68030 and on
+      // 68060; 68040 costs 2 cycles more than the mask form there, so it
+      // stays excluded for both.
+      const allowed = ["mc68000", "mc68010", "mc68020", "mc68030", "mc68060"];
       if (!ctx.config.processors.every((cpu) => allowed.includes(cpu))) return;
       const mask = kind === "or" ? raw.value >>> 0 : ~raw.value >>> 0;
       if (!isPowerOfTwo(mask)) return;

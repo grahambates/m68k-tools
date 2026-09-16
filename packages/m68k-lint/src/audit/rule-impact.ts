@@ -423,9 +423,9 @@ export const ruleImpactAuditCases: readonly RuleImpactAuditCase[] = [
     ruleId: "optimization/combine-ext-byte",
     exempt: "68020+-only; 68kcounter is 68000-only",
   },
-  { ruleId: "optimization/cmpa-zero-to-tst-030", exempt: "68030-only" },
-  { ruleId: "optimization/multiply-long-by-one", exempt: "68060-only" },
-  { ruleId: "optimization/muls-long-060-simple", exempt: "68060-only" },
+  { ruleId: "optimization/cmpa-zero-to-tst-030", exempt: "68020+-only" },
+  { ruleId: "optimization/multiply-long-by-one", exempt: "68020+-only" },
+  { ruleId: "optimization/muls-long-060-simple", exempt: "68020+-only" },
   {
     ruleId: "optimization/divu-word-power-of-two",
     source:

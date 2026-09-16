@@ -460,7 +460,7 @@ Notes:
 
 ## `optimization/cmpa-zero-to-tst-030`
 
-Use TST.L An for CMPA.L #0,An on 68030.
+Use TST.L An for CMPA.L #0,An on 68020+.
 
 Before:
 
@@ -1429,7 +1429,7 @@ Notes:
 
 ## `optimization/muls-long-060-simple`
 
-Use MOVEQ/ASL for simple MULS.L constants on 68060.
+Use MOVEQ/ASL for simple MULS.L constants.
 
 Before:
 
@@ -1587,7 +1587,7 @@ Notes:
 
 ## `optimization/multiply-long-by-one`
 
-Remove a long multiply by one on 68060.
+Remove a long multiply by one.
 
 Before:
 
@@ -1800,7 +1800,7 @@ Saves 2 bytes, 4(1,0) cycles, (overall improvement)
 
 ## `optimization/narrow-movea-immediate-word`
 
-Use MOVEA.W for signed 16-bit immediate address loads on 68000.
+Use MOVEA.W for signed 16-bit immediate address loads.
 
 Before:
 
@@ -1912,7 +1912,7 @@ Notes:
 
 ## `optimization/normalize-byte-rotate-direction`
 
-Use the shorter-direction immediate byte rotate on 68000.
+Use the shorter-direction immediate byte rotate.
 
 Before:
 
@@ -2374,7 +2374,7 @@ Notes:
 
 ## `optimization/roxl-to-addx`
 
-Use ADDX for small rotate-through-extend-left counts on 68000.
+Use ADDX for small rotate-through-extend-left counts.
 
 Before:
 
@@ -2434,7 +2434,7 @@ Saves -2 bytes, 2(-1,0) cycles, (tradeoff)
 
 ## `optimization/simplify-long-word-mask`
 
-Simplify common 32-bit word masks on 68000.
+Simplify common 32-bit word masks.
 
 Before:
 

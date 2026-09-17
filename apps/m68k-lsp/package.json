@@ -149,6 +149,11 @@
           "default": true,
           "description": "Enable distinct colours for registers by default"
         },
+        "m68k.inlayHints.enabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show the evaluated value of constant assignments (`equ`, `fequ`, `=`, `set`) inline."
+        },
         "m68k.format.align.indentConditional": {
           "type": "integer",
           "default": 0,

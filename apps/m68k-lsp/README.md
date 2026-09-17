@@ -24,9 +24,12 @@ Adds language support for Motorola 68000 Assembly to Visual Studio Code.
 - Register remapping view
 - Find References
 - Go to definition
+- Call Hierarchy
 - Hover
   - Instruction/directive documentation
   - Symbol info
+- Inlay Hints
+  - Evaluated value of constant assignments (see [68kcounter](https://marketplace.visualstudio.com/items?itemName=gigabates.68kcounter) for cycle/size annotations)
 - Multiple workspaces
 - Rename Symbols
 - Signature Help

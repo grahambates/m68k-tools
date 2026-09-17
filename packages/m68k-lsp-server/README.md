@@ -28,9 +28,12 @@ family assembly, using [m68k-parser](https://github.com/grahambates/m68k-tools/t
 - Workspace indexing and assembly-unit-aware symbol lookup
 - Find References
 - Go to definition
+- Call Hierarchy
 - Hover
   - Instruction/directive documentation
   - Symbol info
+- Inlay Hints
+  - Evaluated value of constant assignments (`equ`/`fequ`/`=`/`set`)
 - Multiple workspaces
 - Rename Symbols
 - Signature Help
@@ -146,6 +149,18 @@ The server will use a local `vasmm68k_mot` executable if one exists in your path
 | `args`               | Custom arguments to pass to vasm. Include paths and processor(s) from server config will automatically be added |
 | `preferWasm`         | Always use bundled Web Assembly vasm                                                                            |
 | `exclude`            | File patterns to ignore and not build directly e.g. `["*.i"]`                                                   |
+
+### Inlay hints:
+
+Shows the evaluated value of constant assignments (`equ`, `fequ`, `=`, `set`) inline, when the expression is more than a bare literal.
+
+```json
+{
+  "inlayHints": {
+    "enabled": true
+  }
+}
+```
 
 ### Formatting:
 

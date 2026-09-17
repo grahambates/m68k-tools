@@ -16,6 +16,7 @@ import DocumentSymbolProvider from "./DocumentSymbolProvider";
 import FileOperationsProvider from "./FileOperationsProvider";
 import FoldingRangeProvider from "./FoldingRangeProvider";
 import HoverProvider from "./HoverProvider";
+import InlayHintProvider from "./InlayHintProvider";
 import ReferencesProvider from "./ReferencesProvider";
 import RegisterProvider from "./RegisterProvider";
 import RenameProvider from "./RenameProvider";
@@ -41,6 +42,7 @@ const providers = [
   FileOperationsProvider,
   FoldingRangeProvider,
   HoverProvider,
+  InlayHintProvider,
   ReferencesProvider,
   RegisterProvider,
   RenameProvider,

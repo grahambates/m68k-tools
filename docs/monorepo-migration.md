@@ -24,8 +24,6 @@ The counter extension's application code has been upgraded from published counte
 
 ## Remaining work
 
-- Link Vercel to this repository with project root `apps/68kcounter-web`, verify a preview, then use `main` for production. The configuration is prepared; deployment linkage has not been changed.
-- This release round publishes manually (release workflow only opens a version PR; no publish step exists yet). npm trusted publishing (OIDC) is planned before the next round: `m68k-formatter` and `m68k-lint-langserver` don't exist on the registry yet and need a one-time manual bootstrap publish before trusted publishing can be configured for them; the other four packages can move to it directly. Marketplace/Azure DevOps publishing has no OIDC equivalent, so it stays manual (or token-based with a rotation plan) regardless.
 - Add source-repository notices, disable old release automation where applicable, and archive source repositories once the replacement workflows are proven.
 - Consider root Dependabot separately. The obsolete nested configuration was removed; no replacement automation was enabled.
 

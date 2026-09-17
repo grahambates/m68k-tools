@@ -44,14 +44,17 @@ if (manifest.publisher !== "gigabates" || manifest.name !== "68kcounter") {
   throw new Error("Unexpected Marketplace identity");
 }
 if (!process.argv.includes("--stage-only")) {
+  const vsixPath = join(root, `68kcounter-${manifest.version}.vsix`);
   execFileSync(
     join(source, "node_modules/.bin/vsce"),
-    [
-      "package",
-      "--no-dependencies",
-      "--out",
-      join(root, `68kcounter-${manifest.version}.vsix`),
-    ],
+    ["package", "--no-dependencies", "--out", vsixPath],
     { cwd: staging, stdio: "inherit" },
   );
+  if (process.argv.includes("--publish")) {
+    execFileSync(
+      join(source, "node_modules/.bin/vsce"),
+      ["publish", "--packagePath", vsixPath],
+      { stdio: "inherit" },
+    );
+  }
 }

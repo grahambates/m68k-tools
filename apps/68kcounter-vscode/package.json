@@ -84,6 +84,7 @@
     "watch": "tsc -watch -p ./",
     "lint": "pnpm --dir ../.. exec eslint apps/68kcounter-vscode",
     "package": "node ../../scripts/package-counter-extension.mjs",
+    "publish": "node ../../scripts/package-counter-extension.mjs --publish",
     "build": "pnpm run compile",
     "typecheck": "tsc --noEmit",
     "test:extension-host": "pnpm run compile && pnpm run lint && node ../../scripts/package-counter-extension.mjs --stage-only && node ./out/test/runTest.js",

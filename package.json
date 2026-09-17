@@ -39,7 +39,11 @@
     "package:extensions": "pnpm run build && pnpm run package:assembly && pnpm run package:lint && pnpm run package:counter",
     "package:assembly": "pnpm --filter m68k-lsp package",
     "package:lint": "pnpm --filter m68k-lint-vscode package",
-    "test:coverage:assembly": "vitest run --coverage"
+    "test:coverage:assembly": "vitest run --coverage",
+    "publish:extensions": "pnpm run publish:assembly && pnpm run publish:lint && pnpm run publish:counter",
+    "publish:assembly": "pnpm --filter m68k-lsp run publish",
+    "publish:lint": "pnpm --filter m68k-lint-vscode run publish",
+    "publish:counter": "pnpm --filter 68kcounter-vscode run publish"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.2",

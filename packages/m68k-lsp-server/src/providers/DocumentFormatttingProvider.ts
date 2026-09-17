@@ -116,7 +116,7 @@ export default class DocumentFormattingProvider implements Provider {
       documentRangeFormattingProvider: true,
       documentOnTypeFormattingProvider: {
         firstTriggerCharacter: "\n",
-        moreTriggerCharacter: [";", " ", "\t", ",", "."],
+        moreTriggerCharacter: [";", " ", "\t", ",", ".", "#", ":", "=", ")"],
       },
     };
   }

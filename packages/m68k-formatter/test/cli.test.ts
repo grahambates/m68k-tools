@@ -78,6 +78,12 @@ it.each([
   expect(result.stderr).toContain("m68k-format:");
 });
 
+it("refuses --init without an interactive terminal", () => {
+  const result = run(["--init"]);
+  expect(result.status).toBe(2);
+  expect(result.stderr).toContain("--init needs an interactive terminal");
+});
+
 it("rejects malformed config before writing any files", () => {
   writeFileSync(join(directory, "a.s"), " NOP");
   writeFileSync(

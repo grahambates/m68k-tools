@@ -2,6 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { glob } from "glob";
 import { format, findConfig, loadConfig, type FormatterOptions } from "./index";
+import { runInit } from "./cli/init";
 
 const help = `Usage: m68k-format [--write | --check] [--config FILE] [FILES / GLOBS ...]
 
@@ -11,6 +12,7 @@ With no files (or -), reads stdin. Stdin cannot be mixed with files.
   --check          Report unformatted files; exit 1 if changes are needed
   --config FILE    Use this JSON configuration instead of discovery
   --stdin-filepath FILE  Discover configuration relative to this stdin path
+  --init           Create a project config file interactively
   --help           Show this help
   --               Treat remaining arguments as file paths
 
@@ -21,7 +23,8 @@ Exit codes: 0 success, 1 formatting required, 2 error.
 export async function main(args = process.argv.slice(2)): Promise<number> {
   let write = false,
     check = false,
-    literal = false;
+    literal = false,
+    init = false;
   let configPath: string | undefined, stdinPath: string | undefined;
   const patterns: string[] = [];
   for (let i = 0; i < args.length; i++) {
@@ -33,6 +36,7 @@ export async function main(args = process.argv.slice(2)): Promise<number> {
       return 0;
     } else if (arg === "--write") write = true;
     else if (arg === "--check") check = true;
+    else if (arg === "--init") init = true;
     else if (arg === "--config" || arg === "--stdin-filepath") {
       const value = args[++i];
       if (!value || value.startsWith("--"))
@@ -43,6 +47,7 @@ export async function main(args = process.argv.slice(2)): Promise<number> {
       throw new Error(`Unknown option: ${arg}`);
     else patterns.push(arg);
   }
+  if (init) return runInit();
   if (write && check) throw new Error("--write and --check cannot be combined");
   const stdin = patterns.length === 0 || patterns.includes("-");
   if (stdin && patterns.length > 1)

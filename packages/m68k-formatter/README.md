@@ -26,6 +26,7 @@ m68k-format --check 'src/**/*.s'
 cat source.s | m68k-format
 cat source.s | m68k-format --stdin-filepath src/source.s
 m68k-format --config formatter.json source.s
+m68k-format --init
 ```
 
 The default output is formatted source on stdout; multiple files are concatenated
@@ -38,6 +39,16 @@ With no file arguments, or `-`, input comes from stdin. Stdin cannot be combined
 files or `--write`. Use `--` before file names beginning with a dash.
 
 ## Configuration
+
+```sh
+m68k-format --init
+```
+
+Asks for case, label colons, quote style, operand spacing, indent style, trailing
+whitespace, final newline and line endings, then writes `.m68k-format.json` in the
+current directory. Only answers that differ from the defaults are written. It shows
+the file and asks before writing, and asks again before overwriting an existing one.
+`--init` needs an interactive terminal; write the file by hand otherwise.
 
 Both the CLI and the language server discover the nearest `.m68k-format.json`,
 searching upwards from the source file's directory. Stdin searches from the working

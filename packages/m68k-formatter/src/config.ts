@@ -2,13 +2,15 @@ import { readFile, stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import type { FormatterOptions } from "./formatter/DocumentFormatter";
 
+export const configFileName = ".m68k-format.json";
+
 /** Find the nearest project configuration, starting at a directory. */
 export async function findConfig(
   directory: string,
 ): Promise<string | undefined> {
   let current = resolve(directory);
   for (;;) {
-    const candidate = join(current, ".m68k-format.json");
+    const candidate = join(current, configFileName);
     try {
       if ((await stat(candidate)).isFile()) return candidate;
     } catch (error) {

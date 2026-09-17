@@ -53,11 +53,22 @@ export enum DefinitionType {
   XRef = "xref",
 }
 
+/** A `bsr`/`jsr` call site, for call hierarchy. */
+export interface CallSite {
+  /** Name of the enclosing global label the call is made from, if any. */
+  caller?: string;
+  /** Name of the label being called. */
+  target: string;
+  /** Location of the call target operand itself, not the whole instruction. */
+  location: lsp.Location;
+}
+
 export interface Symbols {
   definitions: Map<string, Definition>;
   references: Map<string, NamedSymbol[]>;
   includes: Literal[];
   incDirs: Literal[];
+  calls: CallSite[];
 }
 
 type Directive = string;
@@ -98,6 +109,30 @@ const registerDefinitions = new Set([
 
 /** Directives that declare symbols defined elsewhere. */
 const externalDefinitions = new Set(["xref", "nref"]);
+
+/** Instructions that call a subroutine, for call hierarchy. */
+const callInstructions = new Set(["bsr", "jsr"]);
+
+function isCallInstruction(line: ParsedLine): boolean {
+  return (
+    line.mnemonic?.type === "instruction" &&
+    callInstructions.has(line.mnemonic.instruction.toLowerCase())
+  );
+}
+
+/** First symbol named by an instruction's operands, however deeply nested. */
+function callTargetSymbol(
+  operands: AstNode[] | undefined,
+): SymbolNode | undefined {
+  for (const operand of operands ?? []) {
+    for (const node of [operand, ...descendants(operand)]) {
+      if (node.type === "symbol") {
+        return node as unknown as SymbolNode;
+      }
+    }
+  }
+  return undefined;
+}
 
 function directiveOf(line: ParsedLine): Directive | undefined {
   return line.mnemonic?.type === "directive"
@@ -210,6 +245,7 @@ export function processSymbols(
     references: new Map<string, NamedSymbol[]>(),
     includes: [],
     incDirs: [],
+    calls: [],
   };
 
   const lineTexts = text.split(/\r?\n/g);
@@ -357,6 +393,17 @@ export function processSymbols(
         range,
         index,
       );
+    }
+
+    if (isCallInstruction(line)) {
+      const target = callTargetSymbol(line.operands);
+      if (target && target.interpolated !== true) {
+        symbols.calls.push({
+          caller: lastGlobalLabel?.name,
+          target: target.name,
+          location: { uri, range: locationAsRange(target.loc, index) },
+        });
+      }
     }
 
     // Operands of a register equate name registers, not symbols.
@@ -614,6 +661,29 @@ export async function getDefinitions(
   }
 
   return defs;
+}
+
+/**
+ * Resolve a definition by name rather than cursor position, for call
+ * hierarchy: nearest definition in the current document, falling back to the
+ * closest unit file that defines it.
+ */
+export function resolveDefinitionByName(
+  uri: string,
+  name: string,
+  ctx: Context,
+): Definition | undefined {
+  const def = ctx.store.get(uri)?.symbols.definitions.get(name);
+  if (def) {
+    return def;
+  }
+  for (const depUri of getUnitFilesByDistance(uri, ctx)) {
+    const def = ctx.store.get(depUri)?.symbols.definitions.get(name);
+    if (def) {
+      return def;
+    }
+  }
+  return undefined;
 }
 
 /**

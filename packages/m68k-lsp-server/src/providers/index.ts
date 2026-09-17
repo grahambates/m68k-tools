@@ -5,6 +5,7 @@ import {
 } from "vscode-languageserver";
 import { type Context } from "../context";
 
+import CallHierarchyProvider from "./CallHierarchyProvider";
 import CompletionProvider from "./CompletionProvider";
 import ConfiguratonProvider from "./ConfigurationProvider";
 import DefinitionProvider from "./DefinitionProvider";
@@ -29,6 +30,7 @@ export interface Provider {
   ): ServerCapabilities;
 }
 const providers = [
+  CallHierarchyProvider,
   CompletionProvider,
   ConfiguratonProvider,
   DefinitionProvider,

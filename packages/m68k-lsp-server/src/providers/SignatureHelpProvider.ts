@@ -119,7 +119,7 @@ export default class SignatureHelpProvider implements Provider {
     connection.onSignatureHelp(this.onSignatureHelp.bind(this));
     return {
       signatureHelpProvider: {
-        triggerCharacters: [" ", "\t", ",", "."],
+        triggerCharacters: [","],
       },
     };
   }

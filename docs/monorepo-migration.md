@@ -11,6 +11,7 @@ The existing repository was renamed to `grahambates/m68k-tools`, with `main` as 
 - Only the root Husky hook, GitHub workflows and VS Code launch configuration are maintained. Package ESLint entry points delegate to the root.
 - Changesets manages independent versions and changelogs. The release workflow creates version PRs; automatic publishing is not configured.
 - Counter extension packaging stages a generated manifest to preserve Marketplace ID `gigabates.68kcounter`, while its workspace package is named `68kcounter-vscode`.
+- No Dependabot: the obsolete nested configuration was removed and root Dependabot was considered and declined, mainly because there was no good way to guarantee its dependency bumps carry a changeset.
 
 See the [root README](../README.md) for development and debugging, [release instructions](../.changeset/README.md), and [server documentation](../packages/m68k-lsp-server/README.md).
 
@@ -23,9 +24,5 @@ Packed imports and CLI smoke tests passed on Node 22.15.1. Counter extension act
 The counter extension's application code has been upgraded from published counter 3.x to the workspace library (`68kcounter-vscode`'s manifest now depends on `workspace:^`), including new 68030 timings and cache-model support.
 
 The six original source repositories (`68kcounter`, `68kcounter-vscode`, `68kcounter-web`, `m68k-lint`, `m68k-lint-lsp`, `m68k-parser`) each got a README notice pointing to their new location in this repository and were archived on GitHub. None had CI-based release automation to disable.
-
-## Remaining work
-
-- Consider root Dependabot separately. The obsolete nested configuration was removed; no replacement automation was enabled.
 
 The local checkout directory still has its original name. Renaming it is optional and should be done outside the active editor session.

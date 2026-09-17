@@ -158,7 +158,7 @@ export const App: FC = () => {
                 VS Code extension
               </a>
               <Github />
-              <a href="https://github.com/grahambates/68kcounter">
+              <a href="https://github.com/grahambates/m68k-tools/tree/main/packages/68kcounter">
                 JS package + CLI tool
               </a>{" "}
             </div>
@@ -224,7 +224,7 @@ export const App: FC = () => {
           })}
         </div>
       )}
-      <div className="App__footer">&copy; 2021 Graham Bates</div>
+      <div className="App__footer">&copy; 2021-2026 Graham Bates</div>
     </div>
   );
 };

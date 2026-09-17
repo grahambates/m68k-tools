@@ -22,9 +22,10 @@ Packed imports and CLI smoke tests passed on Node 22.15.1. Counter extension act
 
 The counter extension's application code has been upgraded from published counter 3.x to the workspace library (`68kcounter-vscode`'s manifest now depends on `workspace:^`), including new 68030 timings and cache-model support.
 
+The six original source repositories (`68kcounter`, `68kcounter-vscode`, `68kcounter-web`, `m68k-lint`, `m68k-lint-lsp`, `m68k-parser`) each got a README notice pointing to their new location in this repository and were archived on GitHub. None had CI-based release automation to disable.
+
 ## Remaining work
 
-- Add source-repository notices, disable old release automation where applicable, and archive source repositories once the replacement workflows are proven.
 - Consider root Dependabot separately. The obsolete nested configuration was removed; no replacement automation was enabled.
 
 The local checkout directory still has its original name. Renaming it is optional and should be done outside the active editor session.

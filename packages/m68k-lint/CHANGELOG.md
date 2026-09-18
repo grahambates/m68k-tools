@@ -1,5 +1,22 @@
 # m68k-lint
 
+## 2.1.0
+
+### Minor Changes
+
+- b02a898: Add `suspicious/unreachable-code`, flagging instructions that nothing can branch to or fall into, usually left behind after an edit. Deliberately conservative: code under a global label, under a referenced local label, straight after a computed jump (an inline jump table) or after a macro invocation is never reported. An unreferenced local label on unreachable code is reported once, as unreachable, rather than also as `unused-local-label` (unless the new rule is turned off).
+- d29fda4: Add `suspicious/unused-constant`, flagging an `equ`/`=` constant referenced nowhere in the project. Off by default and only checked when a project-wide reference index is available, for the same reason `unused-global-label` is opt-in: a constant has no scope of its own, and a header full of hardware equates is written expecting most of it to go unused within its own file. Uses the same project reference index as `unused-global-label`, so it adds no further indexing cost when the two are enabled together.
+- d29fda4: Add `suspicious/unused-global-label`, flagging a global label referenced nowhere in the project. Off by default and only checked when a project-wide reference index is available: a label with no reference the index can see may still be a linker-specified entry point or a hardware vector table entry placed by address rather than by name, neither of which is visible to source analysis. XDEF and XREF need no special handling -- their operands are ordinary symbol references, so an exported or imported name already counts as used. `_start` is exempt outright as the conventional linker entry point name.
+
+  Add `buildProjectReferences` and thread an optional `ProjectReferences` index through `lintParsedFile`/`lintSource` and `RuleContext.projectReferences`, built from the same project scan `buildProjectSymbols` already does. Building it re-parses every project file on top of the constant index's own pass, so both the CLI and the language server now build it only when `needsProjectReferences(config)` says a live rule actually reads it -- in practice, only when `unused-global-label` itself is enabled. Project indexing overall can still be turned off with `projectSymbols: false`.
+
+- d29fda4: Add `suspicious/unused-local-label`, flagging a local label (`.loop`, `loop$`) that nothing in its routine refers to. Restricted to local labels, since their scope guarantees nothing outside the enclosing global label can reference them; a global label with no in-file reference is left alone, as it may still be reached from another module or a jump table. Matching follows the same scoping an assembler uses -- the nearest preceding global label -- so two routines may each have their own unused `.loop` without one hiding the other.
+
+### Patch Changes
+
+- a76bfa3: Publish a bundled build instead of one output file per source module, and share the CLI's file walking and glob matching with the language servers. The package entry points, the `m68k-lint` binary and the `m68k-lint/project-config` subpath are unchanged; internal module paths under `dist/` were never part of the public exports map. Glob patterns for inputs and `ignorePatterns` are now matched with minimatch, so brace expansion and other standard glob syntax work where the previous small glob subset did not.
+- a76bfa3: `m68k-lint --init` now writes a `$schema` URL pinned to the CLI's version instead of a path into `node_modules`, which rarely exists in an assembly project. The schema `$id` no longer points at the archived standalone repository. The VS Code extension now bundles the schema and validates `m68k-lint.json` and `.m68klintrc.json` against it offline, rather than fetching it from that repository.
+
 ## 2.0.0
 
 ### Major Changes

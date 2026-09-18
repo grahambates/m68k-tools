@@ -1,7 +1,7 @@
 {
   "name": "m68k-lsp-server",
   "description": "Motorola 68000 assembly language server in node.",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "author": "Graham Bates",
   "license": "MIT",
   "engines": {

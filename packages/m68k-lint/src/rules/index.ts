@@ -120,6 +120,7 @@ import { movemRestoreMismatch } from "./suspicious/movem-restore-mismatch.js";
 import { unusedLocalLabel } from "./suspicious/unused-local-label.js";
 import { unusedGlobalLabel } from "./suspicious/unused-global-label.js";
 import { unusedConstant } from "./suspicious/unused-constant.js";
+import { unreachableCode } from "./suspicious/unreachable-code.js";
 import { maskViaMoveq } from "./optimization/mask-via-moveq.js";
 import { carryToMaskViaSubx } from "./optimization/carry-to-mask-via-subx.js";
 import { arithmeticImmediateViaScratch } from "./optimization/arithmetic-immediate-via-scratch.js";
@@ -220,6 +221,7 @@ export {
   unusedLocalLabel,
   unusedGlobalLabel,
   unusedConstant,
+  unreachableCode,
   maskViaMoveq,
   carryToMaskViaSubx,
   arithmeticImmediateViaScratch,
@@ -471,6 +473,7 @@ export const defaultRules: readonly Rule[] = [
   unusedLocalLabel,
   unusedGlobalLabel,
   unusedConstant,
+  unreachableCode,
   maskViaMoveq,
   carryToMaskViaSubx,
   arithmeticImmediateViaScratch,

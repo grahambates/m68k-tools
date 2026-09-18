@@ -1,6 +1,8 @@
 import type { Rule } from "../../core/rule.js";
 import { isInMacroDefinition, scanBlocks } from "../../analysis/blocks.js";
 import { analyzeLocalLabelScopes } from "../../analysis/local-label-scopes.js";
+import { findUnreachableLines } from "../../analysis/reachability.js";
+import { isExecutableLine } from "../../util/ast.js";
 
 /**
  * A local label (`.loop`, `loop$`) that nothing in its routine refers to.
@@ -37,12 +39,27 @@ export const unusedLocalLabel: Rule = {
   checkFile(ctx) {
     const blocks = scanBlocks(ctx.file);
     const scopes = analyzeLocalLabelScopes(ctx.file);
+    // An unreferenced label on unreachable code is the same finding as the
+    // code itself, so it is reported once, as unreachable, unless that rule
+    // has been turned off.
+    const unreachableLive =
+      ctx.config.rules?.["suspicious/unreachable-code"] !== "off" &&
+      ctx.config.categories?.suspicious !== false;
+    const dead = unreachableLive
+      ? new Set(findUnreachableLines(ctx.file, scopes))
+      : new Set<number>();
+    const labelsDeadCode = (from: number): boolean => {
+      for (let i = from; i < ctx.file.lines.length; i++)
+        if (isExecutableLine(ctx.file.lines[i])) return dead.has(i);
+      return false;
+    };
 
     ctx.file.lines.forEach((line, index) => {
       const label = line.label;
       if (!label || label.scope !== "local" || label.interpolated) return;
       if (isInMacroDefinition(blocks, index)) return;
       if (scopes.referenced.has(scopes.keyOf(index, label.label))) return;
+      if (labelsDeadCode(index)) return;
 
       const scope = scopes.scopeOf(index);
       ctx.report({

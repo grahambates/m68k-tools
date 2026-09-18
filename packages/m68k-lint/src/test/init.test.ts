@@ -8,6 +8,7 @@ import {
   detectSourceGlobs,
   normalizeIgnoreGlobs,
   renderInitConfig,
+  schemaUrl,
   validateProcessors,
   terminalPrompt,
   type InitAnswers,
@@ -55,7 +56,7 @@ describe("m68k-lint --init", () => {
   test("accepting every default writes only the schema reference", () => {
     // A config restating the defaults is noise, and pins behaviour never chosen.
     expect(renderInitConfig(base)).toBe(
-      `{\n  "$schema": "./node_modules/m68k-lint/m68k-lint.schema.json"\n}\n`,
+      `{\n  "$schema": "${schemaUrl()}"\n}\n`,
     );
   });
 
@@ -72,7 +73,7 @@ describe("m68k-lint --init", () => {
     ) as Record<string, unknown>;
 
     expect(config).toEqual({
-      $schema: "./node_modules/m68k-lint/m68k-lint.schema.json",
+      $schema: schemaUrl(),
       platform: "amiga",
       processors: ["mc68000", "mc68020"],
       goal: "size",

@@ -203,9 +203,9 @@ export { adapt, assemble, execute, calibrate, splice, compare, seedFor, hex };
 
 async function runShard(from, to) {
   const { ruleImpactAuditCases, normalizeRuleImpactAuditSource } =
-    await import("../dist/audit/rule-impact.js");
-  const { lintParsedFile } = await import("../dist/core/lint.js");
-  const { defaultRules } = await import("../dist/rules/index.js");
+    await import("../dist/index.js");
+  const { lintParsedFile } = await import("../dist/index.js");
+  const { defaultRules } = await import("../dist/index.js");
 
   const byId = new Map(defaultRules.map((r) => [r.meta.id, r]));
   const report = {
@@ -343,7 +343,7 @@ async function runShard(from, to) {
 
 async function main() {
   const shardArg = process.argv.find((a) => a.startsWith("--shard="));
-  const { ruleImpactAuditCases } = await import("../dist/audit/rule-impact.js");
+  const { ruleImpactAuditCases } = await import("../dist/index.js");
 
   if (shardArg) {
     // Children speak JSON on stdout and nothing else, so calibration, which

@@ -1,7 +1,7 @@
 import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { discoverFiles, globToRegExp } from "../cli/file-discovery.js";
+import { discoverFiles, matchesGlob } from "../cli/file-discovery.js";
 
 describe("CLI file discovery", () => {
   test("discovers default assembly extensions recursively", async () => {
@@ -37,8 +37,8 @@ describe("CLI file discovery", () => {
   });
 
   test("glob conversion handles common patterns", () => {
-    expect(globToRegExp("src/**/*.asm").test("src/a/b.asm")).toBe(true);
-    expect(globToRegExp("src/**/*.asm").test("src/b.asm")).toBe(true);
-    expect(globToRegExp("src/*.asm").test("src/a/b.asm")).toBe(false);
+    expect(matchesGlob("src/a/b.asm", "src/**/*.asm")).toBe(true);
+    expect(matchesGlob("src/b.asm", "src/**/*.asm")).toBe(true);
+    expect(matchesGlob("src/a/b.asm", "src/*.asm")).toBe(false);
   });
 });

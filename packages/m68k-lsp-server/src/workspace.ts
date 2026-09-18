@@ -1,45 +1,31 @@
-import { minimatch } from "minimatch";
 import { URI } from "vscode-uri";
+import { defaultExclude, isExcluded } from "@m68k-lsp/workspace-files";
 
 import type DocumentProcessor from "./DocumentProcessor";
 import { getAsmFilesInDir } from "./files";
 import { type Context } from "./context";
 
-/**
- * Directories that hold copies of the sources rather than sources.
- *
- * A build directory usually contains a second copy of every file, which would
- * otherwise appear as a second definition of every symbol, and as a second
- * entry point for every program.
- */
-export const defaultExclude = [
-  "**/node_modules/**",
-  "**/.git/**",
-  "**/build/**",
-  "**/out/**",
-  "**/dist/**",
-  "**/target/**",
-];
+export { defaultExclude };
 
+/**
+ * Whether a workspace path should be skipped while indexing.
+ *
+ * The pattern matching itself -- which glob wins, and why a directory needs a
+ * whole-subtree pattern rather than any match -- is shared with the linter's
+ * own language server; this just adds this server's own config on top of the
+ * built-in defaults.
+ */
 export function isIndexExcluded(
   uri: string,
   ctx: Context,
   isDirectory = false,
 ): boolean {
   const path = URI.parse(uri).fsPath;
-  return [...defaultExclude, ...ctx.config.exclude].some((pattern) => {
-    // Prune only explicit subtree exclusions. A file glob can match a folder
-    // name without excluding its children; negated globs cannot prove that
-    // every descendant is excluded either.
-    if (isDirectory && (!pattern.endsWith("/**") || pattern.startsWith("!"))) {
-      return false;
-    }
-    return minimatch(
-      isDirectory ? path.replace(/\/$/, "") + "/" : path,
-      pattern,
-      { dot: true },
-    );
-  });
+  return isExcluded(
+    path,
+    [...defaultExclude, ...ctx.config.exclude],
+    isDirectory,
+  );
 }
 
 /**

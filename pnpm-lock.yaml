@@ -413,6 +413,9 @@ importers:
         specifier: workspace:^
         version: link:../m68k-parser
     devDependencies:
+      '@m68k-lsp/workspace-files':
+        specifier: workspace:^
+        version: link:../workspace-files
       '@specy/s68k':
         specifier: ^1.4.0
         version: 1.4.2
@@ -444,6 +447,9 @@ importers:
         specifier: ^3.0.8
         version: 3.2.0
     devDependencies:
+      '@m68k-lsp/workspace-files':
+        specifier: workspace:^
+        version: link:../workspace-files
       m68k-lint:
         specifier: workspace:^
         version: link:../m68k-lint
@@ -481,6 +487,9 @@ importers:
       '@m68k-lsp/protocol':
         specifier: workspace:^
         version: link:../protocol
+      '@m68k-lsp/workspace-files':
+        specifier: workspace:^
+        version: link:../workspace-files
       '@types/which':
         specifier: ^3.0.4
         version: 3.0.4
@@ -508,6 +517,12 @@ importers:
       vscode-languageserver-protocol:
         specifier: ^3.17.5
         version: 3.17.5
+
+  packages/workspace-files:
+    dependencies:
+      minimatch:
+        specifier: ^10.0.1
+        version: 10.2.6
 
 packages:
 

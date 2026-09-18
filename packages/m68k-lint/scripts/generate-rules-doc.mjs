@@ -10,7 +10,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const { defaultRules } = await import(join(root, "dist", "rules", "index.js"));
+const { defaultRules } = await import(join(root, "dist", "index.js"));
 const { lintSource, defaultConfig } = await import(
   join(root, "dist", "index.js")
 );

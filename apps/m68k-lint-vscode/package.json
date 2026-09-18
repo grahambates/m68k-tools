@@ -65,7 +65,7 @@
           "m68k-lint.json",
           ".m68klintrc.json"
         ],
-        "url": "https://raw.githubusercontent.com/grahambates/m68k-lint/main/m68k-lint.schema.json"
+        "url": "./out/m68k-lint.schema.json"
       }
     ],
     "configuration": {

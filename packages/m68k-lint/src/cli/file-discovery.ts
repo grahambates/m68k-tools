@@ -1,7 +1,12 @@
-import { readdir, stat } from "node:fs/promises";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { stat } from "node:fs/promises";
+import { isAbsolute, relative, resolve, sep } from "node:path";
+import {
+  defaultExtensions,
+  matchesGlob as matchGlob,
+  walkFiles,
+} from "@m68k-lsp/workspace-files";
 
-export const defaultAssemblyExtensions = [".s", ".asm", ".i"] as const;
+export const defaultAssemblyExtensions = defaultExtensions;
 
 export interface FileDiscoveryOptions {
   cwd?: string;
@@ -23,48 +28,9 @@ function slash(path: string): string {
   return path.split(sep).join("/");
 }
 
-function escapeRegexChar(char: string): string {
-  return /[\\^$.*+?()[\]{}|]/.test(char) ? `\\${char}` : char;
-}
-
-/** Small dependency-free glob subset: *, **, ?, and [] character classes. */
-export function globToRegExp(pattern: string): RegExp {
-  const p = slash(pattern.replace(/^\.\//, ""));
-  let out = "^";
-  for (let i = 0; i < p.length; i++) {
-    const ch = p[i];
-    if (ch === "*") {
-      if (p[i + 1] === "*") {
-        i++;
-        if (p[i + 1] === "/") {
-          i++;
-          out += "(?:.*/)?";
-        } else {
-          out += ".*";
-        }
-      } else {
-        out += "[^/]*";
-      }
-      continue;
-    }
-    if (ch === "?") {
-      out += "[^/]";
-      continue;
-    }
-    if (ch === "[") {
-      const close = p.indexOf("]", i + 1);
-      if (close !== -1) {
-        let cls = p.slice(i + 1, close);
-        if (cls.startsWith("!")) cls = `^${cls.slice(1)}`;
-        out += `[${cls}]`;
-        i = close;
-        continue;
-      }
-    }
-    out += escapeRegexChar(ch);
-  }
-  out += "$";
-  return new RegExp(out);
+/** Whether a slash-separated path matches a glob, dotfiles included. */
+export function matchesGlob(path: string, pattern: string): boolean {
+  return matchGlob(path, slash(pattern.replace(/^\.\//, "")));
 }
 
 function hasGlobMagic(input: string): boolean {
@@ -79,17 +45,6 @@ function globBase(input: string): string {
   return slashBefore < 0 ? "." : normalized.slice(0, slashBefore) || "/";
 }
 
-async function walkFiles(root: string): Promise<string[]> {
-  const result: string[] = [];
-  const entries = await readdir(root, { withFileTypes: true });
-  for (const entry of entries) {
-    const full = join(root, entry.name);
-    if (entry.isDirectory()) result.push(...(await walkFiles(full)));
-    else if (entry.isFile()) result.push(full);
-  }
-  return result;
-}
-
 function matchesExtension(
   path: string,
   extensions: readonly string[],
@@ -101,10 +56,10 @@ function matchesExtension(
 function ignored(
   path: string,
   cwd: string,
-  ignoreRegexes: readonly RegExp[],
+  ignorePatterns: readonly string[],
 ): boolean {
   const rel = slash(relative(cwd, path));
-  return ignoreRegexes.some((regex) => regex.test(rel));
+  return ignorePatterns.some((pattern) => matchesGlob(rel, pattern));
 }
 
 export async function discoverFiles(
@@ -115,7 +70,7 @@ export async function discoverFiles(
   const extensions = normalizeExtensions(
     options.extensions ?? defaultAssemblyExtensions,
   );
-  const ignoreRegexes = (options.ignorePatterns ?? []).map(globToRegExp);
+  const ignorePatterns = options.ignorePatterns ?? [];
   const found = new Set<string>();
 
   for (const raw of inputs) {
@@ -124,16 +79,16 @@ export async function discoverFiles(
       const base = resolve(globBase(absolutePattern));
       let candidates: string[];
       try {
-        candidates = await walkFiles(base);
+        candidates = await walkFiles(base, { include: () => true });
       } catch {
         continue;
       }
-      const regex = globToRegExp(slash(absolutePattern));
+      const pattern = slash(absolutePattern);
       for (const file of candidates) {
         const absolute = resolve(file);
-        if (!regex.test(slash(absolute))) continue;
+        if (!matchesGlob(slash(absolute), pattern)) continue;
         if (!matchesExtension(absolute, extensions)) continue;
-        if (ignored(absolute, cwd, ignoreRegexes)) continue;
+        if (ignored(absolute, cwd, ignorePatterns)) continue;
         found.add(absolute);
       }
       continue;
@@ -148,15 +103,15 @@ export async function discoverFiles(
     }
 
     if (info.isFile()) {
-      if (!ignored(absolute, cwd, ignoreRegexes)) found.add(absolute);
+      if (!ignored(absolute, cwd, ignorePatterns)) found.add(absolute);
       continue;
     }
     if (!info.isDirectory()) continue;
 
-    for (const file of await walkFiles(absolute)) {
+    for (const file of await walkFiles(absolute, { include: () => true })) {
       const resolved = resolve(file);
       if (!matchesExtension(resolved, extensions)) continue;
-      if (ignored(resolved, cwd, ignoreRegexes)) continue;
+      if (ignored(resolved, cwd, ignorePatterns)) continue;
       found.add(resolved);
     }
   }

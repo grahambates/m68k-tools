@@ -11,6 +11,11 @@
     "version": true,
     "tag": true
   },
-  "ignore": ["@m68k-lsp/protocol", "m68k-tools", "68kcounter-web"],
+  "ignore": [
+    "@m68k-lsp/protocol",
+    "@m68k-lsp/workspace-files",
+    "m68k-tools",
+    "68kcounter-web"
+  ],
   "bumpVersionsWithWorkspaceProtocolOnly": true
 }

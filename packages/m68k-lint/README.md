@@ -136,7 +136,7 @@ named rule. File and ignore patterns are relative to the config file's directory
 
 ```json
 {
-  "$schema": "./node_modules/m68k-lint/m68k-lint.schema.json",
+  "$schema": "https://cdn.jsdelivr.net/npm/m68k-lint@2/m68k-lint.schema.json",
   "processors": ["mc68000"],
   "platform": "amiga",
   "goal": "balanced",

@@ -36,7 +36,8 @@
     "vscode-uri": "^3.0.8"
   },
   "devDependencies": {
-    "m68k-lint": "workspace:^"
+    "m68k-lint": "workspace:^",
+    "@m68k-lsp/workspace-files": "workspace:^"
   },
   "scripts": {
     "build": "node ../../scripts/build-lint-lsp.mjs --minify",

@@ -22,11 +22,19 @@ const shared = {
 const serverOut = join(root, "packages/m68k-lint-langserver/out/server.js");
 const clientOut = join(root, "apps/m68k-lint-vscode/out/extension.js");
 const bundledServer = join(root, "apps/m68k-lint-vscode/out/server.js");
+const schemaSrc = join(root, "packages/m68k-lint/m68k-lint.schema.json");
+const bundledSchema = join(
+  root,
+  "apps/m68k-lint-vscode/out/m68k-lint.schema.json",
+);
 
 /** The .vsix ships the server next to the client, so the extension is self-contained. */
 async function copyServer() {
   await mkdir(dirname(bundledServer), { recursive: true });
   await copyFile(serverOut, bundledServer);
+  // Referenced by the extension's jsonValidation, so config files validate
+  // offline against the schema that matches the bundled linter.
+  await copyFile(schemaSrc, bundledSchema);
   if (args.has("--sourcemap")) await copySourceMap(serverOut, bundledServer);
 }
 

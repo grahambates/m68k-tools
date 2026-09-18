@@ -106,11 +106,10 @@ describe("indexWorkspace", () => {
     await indexWorkspace(ctx, new DocumentProcessor(ctx));
 
     expect([...ctx.store.keys()]).toEqual([source]);
+    // The walk itself works in filesystem paths, converting to URIs only at
+    // the LSP boundary, so that is what reaches readdir here.
     expect(readdir.mock.calls.map(([path]) => String(path)).sort()).toEqual(
-      [
-        pathToFileURL(dir).toString(),
-        pathToFileURL(join(dir, "src")).toString(),
-      ].sort(),
+      [dir, join(dir, "src")].sort(),
     );
   });
 

@@ -75,7 +75,8 @@
     "typescript": "5.9.3",
     "vitest": "5.0.0",
     "@vitest/coverage-v8": "5.0.0",
-    "tsdown": "0.23.0"
+    "tsdown": "0.23.0",
+    "@m68k-lsp/workspace-files": "workspace:^"
   },
   "bin": {
     "m68k-lint": "./dist/cli/main.js"

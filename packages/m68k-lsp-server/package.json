@@ -37,7 +37,8 @@
   },
   "devDependencies": {
     "@types/which": "^3.0.4",
-    "@m68k-lsp/protocol": "workspace:^"
+    "@m68k-lsp/protocol": "workspace:^",
+    "@m68k-lsp/workspace-files": "workspace:^"
   },
   "scripts": {
     "build": "node ../../scripts/build.mjs --minify",

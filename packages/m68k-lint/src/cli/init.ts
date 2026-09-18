@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 import type { OptimizationGoal, Platform, Processor } from "../core/config.js";
 import { defaultAssemblyExtensions } from "./file-discovery.js";
 import { paint } from "./format.js";
+import { VERSION } from "./version.js";
 
 export const initConfigFileName = "m68k-lint.json";
 
@@ -157,12 +158,23 @@ export function validateProcessors(values: readonly string[]): Processor[] {
 }
 
 /**
+ * The schema as published with this version of the CLI.
+ *
+ * A URL rather than a path into `node_modules`: an assembly project rarely has
+ * m68k-lint installed locally, so a relative path resolves to nothing and the
+ * editor silently validates nothing. Pinned to the version that wrote the
+ * file, so the schema matches the options this CLI actually understands.
+ */
+export const schemaUrl = (version: string = VERSION): string =>
+  `https://cdn.jsdelivr.net/npm/m68k-lint@${version}/m68k-lint.schema.json`;
+
+/**
  * Only non-default values are written. A config full of restated defaults is
  * noise, and it silently pins behaviour the user never chose.
  */
 export function renderInitConfig(answers: InitAnswers): string {
   const config: Record<string, unknown> = {
-    $schema: "./node_modules/m68k-lint/m68k-lint.schema.json",
+    $schema: schemaUrl(),
   };
   if (answers.platform !== "generic") config.platform = answers.platform;
   if (answers.processors.length !== 1 || answers.processors[0] !== "mc68000")
@@ -245,9 +257,7 @@ export async function runInit(color: boolean): Promise<number> {
     console.error(
       "m68k-lint: --init needs an interactive terminal. Write m68k-lint.json by hand instead;",
     );
-    console.error(
-      "its schema is at node_modules/m68k-lint/m68k-lint.schema.json.",
-    );
+    console.error(`its schema is at ${schemaUrl()}.`);
     return 2;
   }
 

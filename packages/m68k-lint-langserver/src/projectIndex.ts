@@ -1,11 +1,12 @@
-import { readdir, readFile } from "node:fs/promises";
-import { join, relative, extname } from "node:path";
+import { readFile } from "node:fs/promises";
+import { relative } from "node:path";
 import {
   buildProjectSymbols,
   buildProjectReferences,
   type ProjectSymbols,
   type ProjectReferences,
 } from "m68k-lint";
+import { discoverAssemblyFiles } from "@m68k-lsp/workspace-files";
 
 /**
  * Constants a file uses but does not define live in an include somewhere else
@@ -13,6 +14,10 @@ import {
  * label is referenced at all is the same kind of question, answered from the
  * same scan. The CLI indexes the tree once per run; a server has to keep that
  * index alive and drop it when the tree changes underneath.
+ *
+ * The walk itself -- which directories to skip, which extensions count as
+ * assembly source -- is shared with the assembly language server, rather than
+ * this package keeping its own copy.
  */
 
 export interface ProjectIndex {
@@ -21,45 +26,15 @@ export interface ProjectIndex {
   references?: ProjectReferences;
 }
 
-const EXTENSIONS = new Set([".s", ".asm", ".a68", ".i", ".inc", ".h"]);
-const SKIP_DIRS = new Set([
-  "node_modules",
-  ".git",
-  "out",
-  "dist",
-  "build",
-  ".vscode",
-]);
+/**
+ * Wider than the assembly server's own default: headers are often excluded
+ * from linting but are exactly where constants and cross-file XDEF/XREF pairs
+ * live, so `.inc`/`.h`/`.a68` count here even though they would not for
+ * symbol indexing.
+ */
+const EXTENSIONS = [".s", ".asm", ".a68", ".i", ".inc", ".h"];
 /** A guard against indexing a home directory someone opened by accident. */
 const MAX_FILES = 4000;
-
-async function collect(
-  root: string,
-  dir: string,
-  found: string[],
-): Promise<void> {
-  if (found.length >= MAX_FILES) return;
-  let entries;
-  try {
-    entries = await readdir(dir, { withFileTypes: true });
-  } catch {
-    return; // An unreadable directory contributes nothing.
-  }
-  for (const entry of entries) {
-    if (found.length >= MAX_FILES) return;
-    if (entry.name.startsWith(".") && entry.name !== ".") continue;
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (SKIP_DIRS.has(entry.name)) continue;
-      await collect(root, path, found);
-    } else if (
-      entry.isFile() &&
-      EXTENSIONS.has(extname(entry.name).toLowerCase())
-    ) {
-      found.push(path);
-    }
-  }
-}
 
 /**
  * Indexes one workspace root.
@@ -72,8 +47,10 @@ export async function buildIndex(
   overrides: ReadonlyMap<string, string>,
   needsReferences: boolean,
 ): Promise<ProjectIndex | undefined> {
-  const paths: string[] = [];
-  await collect(root, root, paths);
+  const paths = await discoverAssemblyFiles(root, {
+    extensions: EXTENSIONS,
+    limit: MAX_FILES,
+  });
   if (!paths.length) return undefined;
 
   const files: { path: string; source: string }[] = [];

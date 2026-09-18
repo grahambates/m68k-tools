@@ -4,20 +4,21 @@ This is a pnpm workspace for Motorola 68k assembly tooling. Run commands from th
 
 ## Repository map
 
-| Location                        | Responsibility                                          |
-| ------------------------------- | ------------------------------------------------------- |
-| `packages/m68k-parser`          | Assembly AST and expression parsing/evaluation          |
-| `packages/m68k-formatter`       | Formatter library and CLI                               |
-| `packages/68kcounter`           | Instruction sizes, CPU timings, counter library and CLI |
-| `packages/m68k-lint`            | Static analysis, optimisation rules and CLI             |
-| `packages/m68k-lsp-server`      | Assembly language server                                |
-| `packages/m68k-lint-langserver` | Independent linter language server                      |
-| `packages/protocol`             | Private assembly client/server protocol                 |
-| `apps/m68k-lsp`                 | Assembly VS Code extension                              |
-| `apps/m68k-lint-vscode`         | Linter VS Code extension                                |
-| `apps/68kcounter-vscode`        | Counter VS Code extension, using the workspace counter  |
-| `apps/68kcounter-web`           | React/Vite counter application                          |
-| `scripts`                       | Shared build, packaging and verification scripts        |
+| Location                        | Responsibility                                           |
+| ------------------------------- | -------------------------------------------------------- |
+| `packages/m68k-parser`          | Assembly AST and expression parsing/evaluation           |
+| `packages/m68k-formatter`       | Formatter library and CLI                                |
+| `packages/68kcounter`           | Instruction sizes, CPU timings, counter library and CLI  |
+| `packages/m68k-lint`            | Static analysis, optimisation rules and CLI              |
+| `packages/m68k-lsp-server`      | Assembly language server                                 |
+| `packages/m68k-lint-langserver` | Independent linter language server                       |
+| `packages/protocol`             | Private assembly client/server protocol                  |
+| `packages/workspace-files`      | Private shared workspace file discovery for both servers |
+| `apps/m68k-lsp`                 | Assembly VS Code extension                               |
+| `apps/m68k-lint-vscode`         | Linter VS Code extension                                 |
+| `apps/68kcounter-vscode`        | Counter VS Code extension, using the workspace counter   |
+| `apps/68kcounter-web`           | React/Vite counter application                           |
+| `scripts`                       | Shared build, packaging and verification scripts         |
 
 Keep the assembly and linter language servers separate. Put shared parsing, evaluation and timing behaviour in libraries rather than duplicating it in clients. Changes to library APIs can affect CLI, web and VS Code consumers; check those paths together.
 

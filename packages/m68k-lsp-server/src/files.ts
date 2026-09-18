@@ -1,9 +1,10 @@
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
-import { constants, promises as fsp } from "fs";
-import { extname, resolve } from "path";
-import { fileURLToPath } from "url";
+import { promises as fsp } from "fs";
+import { resolve } from "path";
+import { fileURLToPath, pathToFileURL } from "url";
 import { dirname } from "path";
+import { isAssemblySource, walkFiles } from "@m68k-lsp/workspace-files";
 
 import { type Context } from "./context";
 
@@ -110,7 +111,7 @@ export async function resolveReferencedUris(
  * Check whether file extension is ASM source file
  */
 export function isAsmExt(filename: string): boolean {
-  return [".asm", ".s", ".i"].includes(extname(filename).toLowerCase());
+  return isAssemblySource(filename);
 }
 
 /**
@@ -338,33 +339,29 @@ export function getEntryPointsFor(
   return found;
 }
 
+/**
+ * Every assembly file under a directory, as URIs.
+ *
+ * The actual walk is shared with the linter's own language server; this is
+ * just the URI boundary around it, since LSP works in URIs throughout while
+ * the shared walker deals only in filesystem paths.
+ */
 export async function getAsmFilesInDir(
   uri: string,
   isExcluded?: (uri: string, isDirectory: boolean) => boolean,
 ): Promise<string[]> {
-  if (isExcluded?.(uri, true)) {
-    return [];
-  }
-  const result: string[] = [];
-  const url = new URL(uri);
+  const root = fileURLToPath(uri);
+  const toUri = (path: string) => pathToFileURL(path).toString();
 
-  try {
-    await fsp.access(url, constants.R_OK);
-  } catch (_err) {
-    return [];
-  }
+  const paths = await walkFiles(root, {
+    prune: isExcluded
+      ? (dir: string) => isExcluded(toUri(dir), true)
+      : undefined,
+    include: (path) =>
+      isAsmExt(path) && !(isExcluded?.(toUri(path), false) ?? false),
+  });
 
-  for (const dirent of await fsp.readdir(url, { withFileTypes: true })) {
-    const childUri = `${uri}/${dirent.name}`;
-    if (dirent.isDirectory()) {
-      const inDir = await getAsmFilesInDir(childUri, isExcluded);
-      result.push(...inDir);
-    } else if (isAsmExt(dirent.name) && !isExcluded?.(childUri, false)) {
-      result.push(childUri);
-    }
-  }
-
-  return result;
+  return paths.map(toUri);
 }
 
 export async function isDir(uri: string): Promise<boolean> {

@@ -12,6 +12,9 @@
     },
     {
       "path": "../m68k-formatter"
+    },
+    {
+      "path": "../workspace-files"
     }
   ]
 }

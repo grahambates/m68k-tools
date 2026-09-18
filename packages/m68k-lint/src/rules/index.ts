@@ -120,6 +120,7 @@ import { movemRestoreMismatch } from "./suspicious/movem-restore-mismatch.js";
 import { unusedLocalLabel } from "./suspicious/unused-local-label.js";
 import { unusedGlobalLabel } from "./suspicious/unused-global-label.js";
 import { unusedConstant } from "./suspicious/unused-constant.js";
+import { unusedMacro } from "./suspicious/unused-macro.js";
 import { unreachableCode } from "./suspicious/unreachable-code.js";
 import { infiniteLoop } from "./suspicious/infinite-loop.js";
 import { dbraWordCounter } from "./suspicious/dbra-word-counter.js";
@@ -226,6 +227,7 @@ export {
   unusedLocalLabel,
   unusedGlobalLabel,
   unusedConstant,
+  unusedMacro,
   unreachableCode,
   infiniteLoop,
   dbraWordCounter,
@@ -483,6 +485,7 @@ export const defaultRules: readonly Rule[] = [
   unusedLocalLabel,
   unusedGlobalLabel,
   unusedConstant,
+  unusedMacro,
   unreachableCode,
   infiniteLoop,
   dbraWordCounter,

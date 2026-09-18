@@ -8,6 +8,7 @@ import {
   defaultRules,
   unusedGlobalLabel,
   unusedConstant,
+  unusedMacro,
 } from "../rules/index.js";
 import { measureDiagnosticImpact } from "../analysis/impact.js";
 import { createInlineSuppression } from "./inline-config.js";
@@ -116,6 +117,7 @@ export function effectiveSeverity(
 const PROJECT_REFERENCE_RULES: readonly Rule[] = [
   unusedGlobalLabel,
   unusedConstant,
+  unusedMacro,
 ];
 
 export function needsProjectReferences(config: LintConfig): boolean {

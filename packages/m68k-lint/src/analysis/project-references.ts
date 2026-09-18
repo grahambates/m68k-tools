@@ -18,12 +18,22 @@ import type { ProjectSourceFile } from "./project-symbols.js";
  */
 export interface ProjectReferences {
   references(name: string): boolean;
+  /**
+   * Whether a macro of this name is invoked anywhere in the project.
+   *
+   * Separate from `references`: a macro call is written where an instruction
+   * would be, so it is a mnemonic rather than an operand symbol, and the
+   * operand of the `MACRO` directive that defines it is a symbol that would
+   * otherwise make every macro look used by its own definition.
+   */
+  invokes(name: string): boolean;
 }
 
 export function buildProjectReferences(
   files: readonly ProjectSourceFile[],
 ): ProjectReferences {
   const referenced = new Set<string>();
+  const invoked = new Set<string>();
   for (const { source } of files) {
     let parsed;
     try {
@@ -32,8 +42,12 @@ export function buildProjectReferences(
       continue;
     }
     collectReferencedSymbols(parsed.lines, referenced);
+    for (const line of parsed.lines)
+      if (line.mnemonic?.type === "macro")
+        invoked.add(line.mnemonic.macro.toLowerCase());
   }
   return {
     references: (name) => referenced.has(name.toLowerCase()),
+    invokes: (name) => invoked.has(name.toLowerCase()),
   };
 }

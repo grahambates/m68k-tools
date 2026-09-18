@@ -3,6 +3,7 @@ import { getFlagSemantics } from "../semantics/flags.js";
 import { canonicalMnemonic } from "../semantics/mnemonics.js";
 import { isExecutableLine } from "../util/ast.js";
 import { scanBlocks, type ConditionalBlock } from "./blocks.js";
+import { analyzeLocalLabelScopes } from "./local-label-scopes.js";
 
 export interface ControlFlowGraph {
   successors: ReadonlyArray<ReadonlySet<number>>;
@@ -110,14 +111,21 @@ export function buildControlFlowGraph(file: ParsedFile): ControlFlowGraph {
     fallthroughTargets(index)[0];
 
   // Labels are resolved within a region, so a branch inside a macro body cannot
-  // land in the file and vice versa.
+  // land in the file and vice versa. A local label belongs to the routine that
+  // defines it: two routines can each have a `.loop`, and a branch reaches the
+  // one in its own.
+  const scopes = analyzeLocalLabelScopes(file);
+  const labelKey = (index: number, name: string): string => {
+    const lower = name.toLowerCase();
+    const local = lower.startsWith(".") || lower.endsWith("$");
+    return `${region[index]}:${local ? scopes.keyOf(index, lower) : lower}`;
+  };
   const labels = new Map<string, number>();
   for (let i = 0; i < file.lines.length; i++) {
     const label = file.lines[i]?.label?.label;
     if (!label) continue;
     const target = isExecutable(file.lines[i]) ? i : nextExecutableIndex(i);
-    if (target !== undefined)
-      labels.set(`${region[i]}:${label.toLowerCase()}`, target);
+    if (target !== undefined) labels.set(labelKey(i, label), target);
   }
 
   const successors: Set<number>[] = file.lines.map(() => new Set<number>());
@@ -130,9 +138,7 @@ export function buildControlFlowGraph(file: ParsedFile): ControlFlowGraph {
     const semantics = getFlagSemantics(line);
     const fallthrough = fallthroughTargets(i);
     const targetName = branchTarget(line);
-    const target = targetName
-      ? labels.get(`${region[i]}:${targetName}`)
-      : undefined;
+    const target = targetName ? labels.get(labelKey(i, targetName)) : undefined;
 
     switch (semantics.controlFlow) {
       case "return":

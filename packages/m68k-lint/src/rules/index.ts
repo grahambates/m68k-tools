@@ -121,6 +121,11 @@ import { unusedLocalLabel } from "./suspicious/unused-local-label.js";
 import { unusedGlobalLabel } from "./suspicious/unused-global-label.js";
 import { unusedConstant } from "./suspicious/unused-constant.js";
 import { unreachableCode } from "./suspicious/unreachable-code.js";
+import { infiniteLoop } from "./suspicious/infinite-loop.js";
+import { dbraWordCounter } from "./suspicious/dbra-word-counter.js";
+import { missingEven } from "./suspicious/missing-even.js";
+import { oddAddressAccess } from "./suspicious/odd-address-access.js";
+import { unbalancedStack } from "./suspicious/unbalanced-stack.js";
 import { maskViaMoveq } from "./optimization/mask-via-moveq.js";
 import { carryToMaskViaSubx } from "./optimization/carry-to-mask-via-subx.js";
 import { arithmeticImmediateViaScratch } from "./optimization/arithmetic-immediate-via-scratch.js";
@@ -222,6 +227,11 @@ export {
   unusedGlobalLabel,
   unusedConstant,
   unreachableCode,
+  infiniteLoop,
+  dbraWordCounter,
+  missingEven,
+  oddAddressAccess,
+  unbalancedStack,
   maskViaMoveq,
   carryToMaskViaSubx,
   arithmeticImmediateViaScratch,
@@ -474,6 +484,11 @@ export const defaultRules: readonly Rule[] = [
   unusedGlobalLabel,
   unusedConstant,
   unreachableCode,
+  infiniteLoop,
+  dbraWordCounter,
+  missingEven,
+  oddAddressAccess,
+  unbalancedStack,
   maskViaMoveq,
   carryToMaskViaSubx,
   arithmeticImmediateViaScratch,

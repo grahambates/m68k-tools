@@ -4,10 +4,15 @@ import { DefaultRuleContext } from "./context.js";
 import { defaultConfig, type LintConfig } from "./config.js";
 import type { Diagnostic, Severity } from "./diagnostic.js";
 import type { Rule } from "./rule.js";
-import { defaultRules } from "../rules/index.js";
+import {
+  defaultRules,
+  unusedGlobalLabel,
+  unusedConstant,
+} from "../rules/index.js";
 import { measureDiagnosticImpact } from "../analysis/impact.js";
 import { createInlineSuppression } from "./inline-config.js";
 import type { ExternalSymbols } from "../analysis/symbols.js";
+import type { ProjectReferences } from "../analysis/project-references.js";
 
 function matchesOptimizationGoal(
   diagnostic: Diagnostic,
@@ -97,14 +102,43 @@ export function effectiveSeverity(
   return rule.meta.defaultSeverity;
 }
 
+/**
+ * Rules that need a project-wide reference index to do anything at all.
+ *
+ * Building one costs a second parse of every project file on top of the
+ * constant index's own pass, so a caller building that index (the CLI, an
+ * editor session) should skip it unless a rule that actually reads
+ * `ctx.projectReferences` is live under this config. Kept here rather than
+ * left for each caller to decide so the two callers cannot drift: adding a
+ * second rule that needs the index is one line in this list, not a change
+ * duplicated in the CLI and the language server.
+ */
+const PROJECT_REFERENCE_RULES: readonly Rule[] = [
+  unusedGlobalLabel,
+  unusedConstant,
+];
+
+export function needsProjectReferences(config: LintConfig): boolean {
+  return PROJECT_REFERENCE_RULES.some(
+    (rule) => effectiveSeverity(rule, config) !== "off",
+  );
+}
+
 export function lintParsedFile(
   file: ParsedFile,
   source: string,
   config: LintConfig = defaultConfig,
   rules: readonly Rule[] = defaultRules,
   external?: ExternalSymbols,
+  projectReferences?: ProjectReferences,
 ): Diagnostic[] {
-  const ctx = new DefaultRuleContext(file, source, config, external);
+  const ctx = new DefaultRuleContext(
+    file,
+    source,
+    config,
+    external,
+    projectReferences,
+  );
 
   const paired = inversePairs(rules);
   for (const rule of rules) {
@@ -199,6 +233,14 @@ export function lintSource(
   config: LintConfig = defaultConfig,
   rules: readonly Rule[] = defaultRules,
   external?: ExternalSymbols,
+  projectReferences?: ProjectReferences,
 ): Diagnostic[] {
-  return lintParsedFile(parseFile(source), source, config, rules, external);
+  return lintParsedFile(
+    parseFile(source),
+    source,
+    config,
+    rules,
+    external,
+    projectReferences,
+  );
 }

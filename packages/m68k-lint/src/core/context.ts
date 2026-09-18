@@ -20,6 +20,8 @@ import type { Diagnostic } from "./diagnostic.js";
 import { isMacroInvocation } from "../util/ast.js";
 import { computeSourceSpan, type SourceSpan } from "./span.js";
 import { isBlockBoundary } from "../analysis/blocks.js";
+import { collectReferencedSymbols } from "../analysis/references.js";
+import type { ProjectReferences } from "../analysis/project-references.js";
 
 export interface RuleContext {
   readonly file: ParsedFile;
@@ -28,6 +30,14 @@ export interface RuleContext {
   readonly symbols: SymbolTable;
   readonly flags: FlagAnalysis;
   readonly registers: RegisterAnalysis;
+  /**
+   * Whether any name appears anywhere in the project, for rules that need to
+   * know a symbol is unused rather than what it resolves to. Undefined where
+   * no project-wide index was built -- a single file linted in isolation, or
+   * project indexing turned off -- since "unused in the one file I can see" is
+   * not evidence for a name that may be called from elsewhere.
+   */
+  readonly projectReferences?: ProjectReferences;
 
   report(diagnostic: Diagnostic): void;
   evaluate(expr: ExpressionNode): ConstantResult;
@@ -189,27 +199,6 @@ function alignOperands(text: string, alignment: OperandAlignment): string {
 }
 
 /**
- * Symbol names appearing in a line's operands.
- *
- * Registers and mnemonics are not symbols to the parser, so this sees only the
- * names a person chose: constants, labels, equates.
- */
-function collectSymbols(lines: readonly ParsedLine[], into: Set<string>): void {
-  const walk = (node: unknown): void => {
-    if (!node || typeof node !== "object") return;
-    const candidate = node as { type?: string; name?: string };
-    if (candidate.type === "symbol" && typeof candidate.name === "string")
-      into.add(candidate.name.toLowerCase());
-    for (const value of Object.values(node)) {
-      if (Array.isArray(value)) value.forEach(walk);
-      else if (value && typeof value === "object") walk(value);
-    }
-  };
-  for (const line of lines)
-    for (const operand of line.operands ?? []) walk(operand);
-}
-
-/**
  * Names the replacement works out rather than carries.
  *
  * Where a rule copies a value through, the symbol survives and the code still
@@ -227,13 +216,12 @@ function symbolsLostBy(
   replacement: string,
 ): string[] {
   if (!replacement.trim()) return [];
-  const before = new Set<string>();
-  collectSymbols(original, before);
+  const before = collectReferencedSymbols(original);
   if (before.size === 0) return [];
 
-  const after = new Set<string>();
+  let after: Set<string>;
   try {
-    collectSymbols(parseFile(replacement).lines, after);
+    after = collectReferencedSymbols(parseFile(replacement).lines);
   } catch {
     return [];
   }
@@ -321,6 +309,7 @@ export class DefaultRuleContext implements RuleContext {
     public readonly source: string,
     public readonly config: LintConfig,
     external?: ExternalSymbols,
+    public readonly projectReferences?: ProjectReferences,
   ) {
     this.sourceLines = source.split(/\r?\n/);
     this.symbols = new DefaultSymbolTable(file, external);

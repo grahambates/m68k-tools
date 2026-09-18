@@ -1,13 +1,25 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative, extname } from "node:path";
-import { buildProjectSymbols, type ProjectSymbols } from "m68k-lint";
+import {
+  buildProjectSymbols,
+  buildProjectReferences,
+  type ProjectSymbols,
+  type ProjectReferences,
+} from "m68k-lint";
 
 /**
  * Constants a file uses but does not define live in an include somewhere else
- * in the project, and several rules go quiet without them. The CLI indexes the
- * tree once per run; a server has to keep that index alive and drop it when the
- * tree changes underneath.
+ * in the project, and several rules go quiet without them; whether a global
+ * label is referenced at all is the same kind of question, answered from the
+ * same scan. The CLI indexes the tree once per run; a server has to keep that
+ * index alive and drop it when the tree changes underneath.
  */
+
+export interface ProjectIndex {
+  symbols: ProjectSymbols;
+  /** Undefined when nothing has asked for it yet -- see `ProjectIndexCache`. */
+  references?: ProjectReferences;
+}
 
 const EXTENSIONS = new Set([".s", ".asm", ".a68", ".i", ".inc", ".h"]);
 const SKIP_DIRS = new Set([
@@ -58,7 +70,8 @@ async function collect(
 export async function buildIndex(
   root: string,
   overrides: ReadonlyMap<string, string>,
-): Promise<ProjectSymbols | undefined> {
+  needsReferences: boolean,
+): Promise<ProjectIndex | undefined> {
   const paths: string[] = [];
   await collect(root, root, paths);
   if (!paths.length) return undefined;
@@ -79,7 +92,10 @@ export async function buildIndex(
       // Unreadable files simply contribute nothing to the index.
     }
   }
-  return buildProjectSymbols(files);
+  return {
+    symbols: buildProjectSymbols(files),
+    references: needsReferences ? buildProjectReferences(files) : undefined,
+  };
 }
 
 /**
@@ -89,23 +105,36 @@ export async function buildIndex(
  * table is built from every file at once, and a constant's value can depend on
  * expressions defined in another file, so there is no sound way to patch a
  * single file's entries back into an existing table.
+ *
+ * `needsReferences` is decided per document (from that document's own resolved
+ * config), but the cache is shared across every document under one root, so a
+ * `false` from an early caller must never stick and starve a later one that
+ * asks for references: this tracks which roots have been built with them and
+ * rebuilds -- once -- the first time a document actually needs them. It never
+ * downgrades back, since a root already carrying references costs nothing
+ * extra to keep serving to a document that does not need them.
  */
 export class ProjectIndexCache {
-  private cache = new Map<string, Promise<ProjectSymbols | undefined>>();
+  private cache = new Map<string, Promise<ProjectIndex | undefined>>();
+  private withReferences = new Set<string>();
 
   get(
     root: string,
     overrides: ReadonlyMap<string, string>,
-  ): Promise<ProjectSymbols | undefined> {
-    let index = this.cache.get(root);
-    if (!index) {
-      index = buildIndex(root, overrides);
-      this.cache.set(root, index);
-    }
+    needsReferences: boolean,
+  ): Promise<ProjectIndex | undefined> {
+    const cached = this.cache.get(root);
+    if (cached && (!needsReferences || this.withReferences.has(root)))
+      return cached;
+
+    if (needsReferences) this.withReferences.add(root);
+    const index = buildIndex(root, overrides, needsReferences);
+    this.cache.set(root, index);
     return index;
   }
 
   clear(): void {
     this.cache.clear();
+    this.withReferences.clear();
   }
 }

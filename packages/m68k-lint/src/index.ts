@@ -8,6 +8,7 @@ export * from "./core/span.js";
 export * from "./analysis/constants.js";
 export * from "./analysis/symbols.js";
 export * from "./analysis/project-symbols.js";
+export * from "./analysis/project-references.js";
 export * from "./analysis/cfg.js";
 export * from "./analysis/flags.js";
 export * from "./analysis/impact.js";

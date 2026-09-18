@@ -11,7 +11,7 @@ import {
 } from "vscode-languageserver/node.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
-import { lintSource, type Diagnostic } from "m68k-lint";
+import { lintSource, needsProjectReferences, type Diagnostic } from "m68k-lint";
 import { ConfigResolver, defaultSettings, type Settings } from "./config.js";
 import {
   DIAGNOSTIC_SOURCE,
@@ -72,11 +72,21 @@ async function lintDocument(
 
   const root =
     config.projectSymbols === false ? undefined : rootFor(uri.fsPath);
-  const external = root
-    ? await indexes.get(root, openDocumentText())
+  const projectIndex = root
+    ? await indexes.get(
+        root,
+        openDocumentText(),
+        needsProjectReferences(config),
+      )
     : undefined;
 
-  return lintSource(document.getText(), config, undefined, external);
+  return lintSource(
+    document.getText(),
+    config,
+    undefined,
+    projectIndex?.symbols,
+    projectIndex?.references,
+  );
 }
 
 async function validate(document: TextDocument): Promise<void> {
@@ -276,15 +286,26 @@ connection.onCodeAction(async (params: CodeActionParams) => {
   const { config } = await configs.resolve(uri.fsPath);
   const root =
     config.projectSymbols === false ? undefined : rootFor(uri.fsPath);
-  const external = root
-    ? await indexes.get(root, openDocumentText())
+  const projectIndex = root
+    ? await indexes.get(
+        root,
+        openDocumentText(),
+        needsProjectReferences(config),
+      )
     : undefined;
 
   const settings = configs.getSettings();
   const options: ActionOptions = {
     conditional: settings.quickFix.conditional,
     annotate: config.fixAnnotate ?? "obfuscated",
-    lint: (text) => lintSource(text, config, undefined, external),
+    lint: (text) =>
+      lintSource(
+        text,
+        config,
+        undefined,
+        projectIndex?.symbols,
+        projectIndex?.references,
+      ),
   };
 
   const actions = codeActionsFor(

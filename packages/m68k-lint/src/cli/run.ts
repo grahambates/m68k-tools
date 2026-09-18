@@ -2,7 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { statSync } from "node:fs";
 import { dirname, relative, resolve, sep } from "node:path";
 import { parseFile } from "m68k-parser";
-import { lintParsedFile } from "../core/lint.js";
+import { lintParsedFile, needsProjectReferences } from "../core/lint.js";
 import { applyFixes, type FixResult } from "../core/fix.js";
 import type {
   Applicability,
@@ -15,7 +15,10 @@ import {
   buildProjectSymbols,
   type ProjectSymbols,
 } from "../analysis/project-symbols.js";
-import type { ExternalSymbols } from "../analysis/symbols.js";
+import {
+  buildProjectReferences,
+  type ProjectReferences,
+} from "../analysis/project-references.js";
 import { defaultConfig, type LintConfig } from "../core/config.js";
 import { formatDiagnostic, formatImpactSummary, paint } from "./format.js";
 import { runInit } from "./init.js";
@@ -97,7 +100,7 @@ async function lintOne(
   path: string,
   options: CliOptions,
   config: LintConfig,
-  external?: ExternalSymbols,
+  projectIndex?: ProjectIndex,
 ) {
   let source = await readFile(path, "utf8");
   let fixed: FixResult | undefined;
@@ -120,7 +123,14 @@ async function lintOne(
     fixed = applyFixes(
       source,
       (text) =>
-        lintParsedFile(parseFile(text), text, config, undefined, external),
+        lintParsedFile(
+          parseFile(text),
+          text,
+          config,
+          undefined,
+          projectIndex?.symbols,
+          projectIndex?.references,
+        ),
       {
         accept,
         acceptAssessments,
@@ -142,7 +152,8 @@ async function lintOne(
     source,
     config,
     undefined,
-    external,
+    projectIndex?.symbols,
+    projectIndex?.references,
   );
   return { path, source, parseErrors: parsed.errors, diagnostics, fixed };
 }
@@ -173,20 +184,34 @@ export function inputRoot(inputs: readonly string[], fallback: string): string {
   return common.join(sep) || fallback;
 }
 
+export interface ProjectIndex {
+  symbols: ProjectSymbols;
+  /** Undefined when no live rule needs it -- see `needsProjectReferences`. */
+  references?: ProjectReferences;
+}
+
 /**
- * Index constants defined anywhere in the project, so a file that uses a name
- * an include defines can still be analysed.
+ * Index the project once for what it's built from: what a constant resolves
+ * to, and, only when something will use it, whether a name is referenced at
+ * all.
  *
  * Deliberately wider than the lint set: headers are often excluded from linting
- * but are exactly where constants live. Reading them costs one pass and the
- * index answers only for names the whole project agrees on, so a project with
- * conflicting definitions is no worse off than before.
+ * but are exactly where constants and cross-file XDEF/XREF pairs live. Reading
+ * them costs one pass and each index answers conservatively -- constants only
+ * for names the whole project agrees on, references only for names it actually
+ * finds -- so a project with conflicting definitions or files this cannot read
+ * is no worse off than before.
+ *
+ * The reference index re-parses every file on top of the constant pass, so
+ * `needsReferences` is checked before paying for it: `unused-global-label`
+ * ships off, and almost every run has no rule that reads it at all.
  */
 async function buildProjectIndex(
   root: string,
   ignorePatterns: readonly string[],
   extensions: readonly string[],
-): Promise<ProjectSymbols | undefined> {
+  needsReferences: boolean,
+): Promise<ProjectIndex | undefined> {
   let paths: string[];
   try {
     paths = await discoverFiles([root], {
@@ -211,7 +236,10 @@ async function buildProjectIndex(
       // Unreadable files simply contribute nothing to the index.
     }
   }
-  return buildProjectSymbols(files);
+  return {
+    symbols: buildProjectSymbols(files),
+    references: needsReferences ? buildProjectReferences(files) : undefined,
+  };
 }
 
 type LintResult =
@@ -449,6 +477,7 @@ export async function run(argv: string[]): Promise<number> {
           projectConfigPath ? projectRoot : inputRoot(rawInputs, projectRoot),
           ignorePatterns,
           extensions,
+          needsProjectReferences(config),
         );
 
   const results: LintResult[] = [];

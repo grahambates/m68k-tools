@@ -50,10 +50,16 @@ current directory. Only answers that differ from the defaults are written. It sh
 the file and asks before writing, and asks again before overwriting an existing one.
 `--init` needs an interactive terminal; write the file by hand otherwise.
 
+The `format` section of a shared `.m68krc.json`, the project config the language servers read, works
+too: it holds the same options. The nearest `.m68k-format.json` and the nearest `.m68krc.json` with a
+`format` section are both loaded and merged, whichever is nearer taking precedence (the `.m68k-format.json`
+where they share a directory), so the CLI reads what the language server does. A `.m68krc.json` without a
+`format` section is passed over.
+
 Both the CLI and the language server discover the nearest `.m68k-format.json`,
 searching upwards from the source file's directory. Stdin searches from the working
 directory, or from `--stdin-filepath` when supplied. `--config` overrides discovery.
-Only the nearest file is loaded; ancestor configuration files are not merged.
+Only the nearest file of each kind is used; further ancestors are not merged.
 
 A JSON schema for the file is published as `m68k-format.schema.json` in this package
 and bundled with the VS Code extension. Elsewhere, reference it with `$schema`:

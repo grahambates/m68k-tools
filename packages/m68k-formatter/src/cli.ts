@@ -1,7 +1,12 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { glob } from "glob";
-import { format, findConfig, loadConfig, type FormatterOptions } from "./index";
+import {
+  format,
+  findConfigs,
+  loadConfigs,
+  type FormatterOptions,
+} from "./index";
 import { runInit } from "./cli/init";
 
 const help = `Usage: m68k-format [--write | --check] [--config FILE] [FILES / GLOBS ...]
@@ -57,10 +62,10 @@ export async function main(args = process.argv.slice(2)): Promise<number> {
 
   const configs = new Map<string, FormatterOptions>();
   const optionsFor = async (directory: string): Promise<FormatterOptions> => {
-    const path = configPath ?? (await findConfig(directory));
-    if (!path) return {};
-    if (!configs.has(path)) configs.set(path, await loadConfig(path));
-    return configs.get(path)!;
+    const paths = configPath ? [configPath] : await findConfigs(directory);
+    const key = paths.join("\0");
+    if (!configs.has(key)) configs.set(key, await loadConfigs(paths));
+    return configs.get(key)!;
   };
   if (stdin) {
     const chunks: Buffer[] = [];

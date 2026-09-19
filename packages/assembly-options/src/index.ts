@@ -136,7 +136,8 @@ const isStrings = (value: unknown): value is string[] =>
  * Only the shared keys are read, and anything else in the file, which is the
  * tool's own, is left alone and never an error. A key set outright wins over
  * what the `vasm.args` in the same file imply, and where the two disagree the
- * caller is told. Relative paths are taken from the file's directory.
+ * caller is told. Relative paths are taken from the file's directory, except
+ * those in `vasm.args`, which are taken from the source root as vasm would.
  *
  * @throws if the file cannot be read or is not JSON
  */
@@ -150,11 +151,6 @@ export async function loadAssemblyOptions(
     throw new Error(`${path} must contain a JSON object`);
 
   const warnings: string[] = [];
-  const vasm = json.vasm as { args?: unknown } | undefined;
-  const fromArgs = isStrings(vasm?.args)
-    ? optionsFromVasmArgs(vasm.args, dir)
-    : {};
-
   const stated: AssemblyOptions = {};
   if (isStrings(json.processors)) stated.processors = json.processors;
   if (isStrings(json.includePaths))
@@ -163,6 +159,14 @@ export async function loadAssemblyOptions(
     stated.caseSensitive = json.caseSensitive;
   if (typeof json.sourceRoot === "string")
     stated.sourceRoot = resolve(dir, json.sourceRoot);
+
+  // vasm is run in the source root, so a relative -I among its arguments is
+  // relative to that, not to this file; without one the file's directory is the
+  // nearest thing to a place the assembler is run.
+  const vasm = json.vasm as { args?: unknown } | undefined;
+  const fromArgs = isStrings(vasm?.args)
+    ? optionsFromVasmArgs(vasm.args, stated.sourceRoot ?? dir)
+    : {};
 
   if (stated.caseSensitive === true && fromArgs.caseSensitive === false)
     warnings.push(

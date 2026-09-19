@@ -172,6 +172,17 @@ describe("the project config file", () => {
     expect(warnings).toEqual([]);
   });
 
+  it("takes a relative -I in the vasm arguments from the source root", async () => {
+    const dir = await project({
+      ".m68krc.json": JSON.stringify({
+        sourceRoot: "build",
+        vasm: { args: ["-Iinc"] },
+      }),
+    });
+    const { options } = await loadAssemblyOptions(join(dir, ".m68krc.json"));
+    expect(options.includePaths).toEqual([resolve(dir, "build", "inc")]);
+  });
+
   it("takes the source root from its directory", async () => {
     const dir = await project({
       ".m68krc.json": JSON.stringify({ sourceRoot: "src" }),

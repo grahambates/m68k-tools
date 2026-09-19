@@ -5,8 +5,8 @@ import { type Provider } from ".";
 import { type Context } from "../context";
 import {
   DocumentFormatter,
-  findConfig,
-  loadConfig,
+  findConfigs,
+  loadConfigs,
   mergeOptions,
   type FormatContext,
 } from "m68k-formatter";
@@ -72,12 +72,12 @@ export default class DocumentFormattingProvider implements Provider {
     uri: string,
   ): Promise<DocumentFormatter> {
     // Defaults
-    const path = uri.startsWith("file:")
-      ? await findConfig(dirname(fileURLToPath(uri)))
-      : undefined;
+    const paths = uri.startsWith("file:")
+      ? await findConfigs(dirname(fileURLToPath(uri)))
+      : [];
     const config = mergeOptions(
       this.ctx.config.format,
-      path ? await loadConfig(path) : {},
+      await loadConfigs(paths),
     );
 
     // Override defaults with passed options

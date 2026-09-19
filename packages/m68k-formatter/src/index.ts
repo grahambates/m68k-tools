@@ -13,7 +13,7 @@ export type {
 } from "./formatter/DocumentFormatter";
 export type { AlignOptions } from "./formatter/formatters/AlignFormatter";
 export type { Range, TextEdit } from "vscode-languageserver-types";
-export { loadConfig, findConfig } from "./config";
+export { loadConfig, loadConfigs, findConfig, findConfigs } from "./config";
 
 /** Return edits against the original source, optionally limited to a range. */
 export function formatEdits(

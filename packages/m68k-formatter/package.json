@@ -34,6 +34,7 @@
     "vscode-languageserver-textdocument": "^1.0.12"
   },
   "devDependencies": {
+    "@m68k-lsp/assembly-options": "workspace:^",
     "typescript": "5.9.3",
     "@types/node": "22.18.0",
     "tsdown": "0.23.0",

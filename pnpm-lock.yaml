@@ -393,6 +393,9 @@ importers:
         specifier: ^3.17.5
         version: 3.17.5
     devDependencies:
+      '@m68k-lsp/assembly-options':
+        specifier: workspace:^
+        version: link:../assembly-options
       '@types/node':
         specifier: 22.18.0
         version: 22.18.0

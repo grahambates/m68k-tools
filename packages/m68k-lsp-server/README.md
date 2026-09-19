@@ -125,7 +125,7 @@ Supported values:
 ### Include Paths:
 
 Additional paths to use to resolve include directives. This is equivalent to `INCDIR` in source. It should probably
-include anything you pass to vasm `-I` arguments. Can be absolute or relative.
+include anything you pass to vasm `-I` arguments. Can be absolute or relative; in a `.m68krc.json`, relative paths are taken from that file's directory.
 
 ```json
 {

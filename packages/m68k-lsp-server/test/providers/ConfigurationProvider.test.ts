@@ -48,6 +48,22 @@ describe("ConfigurationProvider", () => {
     expect(ctx.config.processors).toEqual(["mc68030"]);
   });
 
+  it("takes relative include paths from the config file", async () => {
+    await writeFile(
+      join(dir, ".m68krc.json"),
+      JSON.stringify({ includePaths: ["inc", "/abs"] }),
+    );
+    await mkdir(join(dir, "game"));
+    const ctx = await createContext(
+      [{ uri: pathToFileURL(join(dir, "game")).toString(), name: "game" }],
+      new NullLogger(),
+      {} as lsp.Connection,
+      {},
+    );
+    new ConfigurationProvider(ctx);
+    expect(ctx.config.includePaths).toEqual([join(dir, "inc"), "/abs"]);
+  });
+
   it("resets removed client settings while retaining workspace overrides", async () => {
     await writeFile(
       join(dir, ".m68krc.json"),

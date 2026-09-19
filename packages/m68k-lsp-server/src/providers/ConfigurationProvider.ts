@@ -15,6 +15,7 @@ import {
 } from "@m68k-lsp/assembly-options";
 import { type Context } from "../context";
 import { readFileSync, watch } from "fs";
+import { dirname, resolve } from "path";
 
 export default class ConfiguratonProvider implements Provider {
   protected clientConfig: Config;
@@ -57,7 +58,16 @@ export default class ConfiguratonProvider implements Provider {
       if (!found) continue;
       this.ctx.logger.info("Found workspace config " + found);
       try {
-        return JSON.parse(readFileSync(found).toString());
+        const config: Partial<Config> = JSON.parse(
+          readFileSync(found).toString(),
+        );
+        // Relative paths mean relative to the file, as they do to the linter,
+        // wherever the file is found and wherever vasm is run from.
+        if (Array.isArray(config.includePaths))
+          config.includePaths = config.includePaths.map((path) =>
+            resolve(dirname(found), path),
+          );
+        return config;
       } catch (err) {
         if (err instanceof Error) {
           this.ctx.logger.error("Error loading config: " + err.message);

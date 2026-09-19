@@ -148,6 +148,7 @@ named rule. File and ignore patterns are relative to the config file's directory
   "includePaths": ["../shared/include"],
   "sourceRoot": ".",
   "caseSensitive": true,
+  "escapeSequences": false,
   "categories": { "style": false },
   "rules": {
     "suspicious/nop": "off",
@@ -244,7 +245,7 @@ is followed with no configuration. An `INCDIR` in the source is not used yet.
 
 ## Shared `.m68krc.json`
 
-The options that describe how the source is assembled, `processors`, `includePaths`, `caseSensitive` and `sourceRoot`, are also read from a `.m68krc.json` (or `.m68krc`) found by walking up from the linted path, so the assembly server and the linter can share one file. From highest precedence: the lint config, the `.m68krc.json`, then `-nocase`, `-I` and `-m` among its `vasm.args`, then the defaults. Include paths from all of them are combined; a relative `-I` among the `vasm.args` is taken from the source root, where vasm is run, or from the file's directory when there is none. `sourceRoot` is the directory the assembler is run from, so an include named from there, such as `lib/defs.i`, is found; it is looked in after the including file's own directory and before the include paths. Other keys in the file are ignored, and `--no-config` skips it.
+The options that describe how the source is assembled, `processors`, `includePaths`, `caseSensitive`, `escapeSequences` and `sourceRoot`, are also read from a `.m68krc.json` (or `.m68krc`) found by walking up from the linted path, so the assembly server and the linter can share one file. From highest precedence: the lint config, the `.m68krc.json`, then `-nocase`, `-esc`, `-I` and `-m` among its `vasm.args`, then the defaults. Include paths from all of them are combined; a relative `-I` among the `vasm.args` is taken from the source root, where vasm is run, or from the file's directory when there is none. `sourceRoot` is the directory the assembler is run from, so an include named from there, such as `lib/defs.i`, is found; it is looked in after the including file's own directory and before the include paths. Other keys in the file are ignored, and `--no-config` skips it.
 
 ## Symbol case
 

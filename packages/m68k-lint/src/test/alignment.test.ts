@@ -35,6 +35,22 @@ describe("suspicious/missing-even", () => {
     ).toHaveLength(0);
   });
 
+  test("a string's length depends on whether the assembler reads escapes", () => {
+    // "ab\n" is four elements as written, so what follows is aligned; with -esc
+    // the newline is one element and it is three.
+    const source = ['msg: dc.b "ab\\n"', "moveq #0,d0"].join("\n");
+    expect(found(RULE, source)).toHaveLength(0);
+    expect(
+      found(RULE, source, { processors: ["mc68000"], escapeSequences: true }),
+    ).toHaveLength(1);
+    const even = ['msg: dc.b "a\\n"', "moveq #0,d0"].join("\n");
+    // Three elements as written, two with escapes.
+    expect(found(RULE, even)).toHaveLength(1);
+    expect(
+      found(RULE, even, { processors: ["mc68000"], escapeSequences: true }),
+    ).toHaveLength(0);
+  });
+
   test("EVEN restores alignment", () => {
     expect(
       found(RULE, ["dc.b 1", "even", "moveq #0,d0"].join("\n")),

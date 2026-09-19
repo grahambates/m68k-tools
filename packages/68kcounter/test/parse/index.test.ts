@@ -534,3 +534,15 @@ describe("symbol case", () => {
     expect(call.macroLines).toHaveLength(1);
   });
 });
+
+describe("escape sequences in strings", () => {
+  const source = '      dc.b "a\\n",0';
+
+  test("a backslash is a character by default, as vasm has it", () => {
+    expect(parse(source)[0].bytes).toEqual(4);
+  });
+
+  test("an escape is one byte when the assembler reads them", () => {
+    expect(parse(source, { escapeSequences: true })[0].bytes).toEqual(3);
+  });
+});

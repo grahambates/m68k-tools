@@ -8,6 +8,7 @@ import { analyzeLocalLabelScopes } from "./local-label-scopes.js";
 import { expansionOf } from "../semantics/macro-expansions.js";
 import { scanBlocks } from "./blocks.js";
 import { conditionalAssembly } from "./conditionals.js";
+import { hasEscapeSequences } from "./case-mode.js";
 
 /** Whether an address is even (0) or odd (1); undefined when it cannot be told. */
 export type Parity = 0 | 1 | undefined;
@@ -208,7 +209,13 @@ export function analyzeAlignment(
                 ? "l"
                 : (size ?? "w");
         if (width !== "b") return;
-        return advance(directiveSize(line, { evaluate }), index);
+        return advance(
+          directiveSize(line, {
+            evaluate,
+            escapeSequences: hasEscapeSequences(file),
+          }),
+          index,
+        );
       }
       default:
         return set(undefined);

@@ -22,6 +22,11 @@ export interface AssemblyOptions {
    * file's own directory.
    */
   sourceRoot?: string;
+  /**
+   * Whether the assembler reads backslash escapes in strings, so `"a\n"` holds a
+   * newline. Not unless vasm was given `-esc`.
+   */
+  escapeSequences?: boolean;
 }
 
 /** A project config file: a name containing `.m68krc`, as the assembly server matches it. */
@@ -88,6 +93,7 @@ export function optionsFromVasmArgs(
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === "-nocase") options.caseSensitive = false;
+    else if (arg === "-esc") options.escapeSequences = true;
     else if (PROCESSOR_ARG.test(arg)) processors.push(`mc${arg.slice(2)}`);
     else if (arg === "-I" && args[i + 1] !== undefined)
       includePaths.push(resolve(base, args[++i]));
@@ -114,6 +120,8 @@ export function mergeOptions(
     if (layer.caseSensitive !== undefined)
       merged.caseSensitive = layer.caseSensitive;
     if (layer.sourceRoot !== undefined) merged.sourceRoot = layer.sourceRoot;
+    if (layer.escapeSequences !== undefined)
+      merged.escapeSequences = layer.escapeSequences;
     for (const path of layer.includePaths ?? [])
       if (!paths.includes(path)) paths.push(path);
   }
@@ -157,6 +165,8 @@ export async function loadAssemblyOptions(
     stated.includePaths = json.includePaths.map((p) => resolve(dir, p));
   if (typeof json.caseSensitive === "boolean")
     stated.caseSensitive = json.caseSensitive;
+  if (typeof json.escapeSequences === "boolean")
+    stated.escapeSequences = json.escapeSequences;
   if (typeof json.sourceRoot === "string")
     stated.sourceRoot = resolve(dir, json.sourceRoot);
 
@@ -171,6 +181,11 @@ export async function loadAssemblyOptions(
   if (stated.caseSensitive === true && fromArgs.caseSensitive === false)
     warnings.push(
       `caseSensitive is true but the vasm arguments include -nocase; the setting is used for analysis, and vasm still folds case`,
+    );
+
+  if (stated.escapeSequences === false && fromArgs.escapeSequences === true)
+    warnings.push(
+      `escapeSequences is false but the vasm arguments include -esc; the setting is used for analysis, and vasm still reads escapes`,
     );
 
   return { options: mergeOptions(fromArgs, stated), warnings };
@@ -214,5 +229,6 @@ export function vasmArgs(
     if (!has(arg)) args.push(arg);
   }
   if (options.caseSensitive === false && !has("-nocase")) args.push("-nocase");
+  if (options.escapeSequences === true && !has("-esc")) args.push("-esc");
   return args;
 }

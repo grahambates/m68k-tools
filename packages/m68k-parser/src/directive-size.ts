@@ -1,4 +1,5 @@
 import { evaluateConstant } from "./evaluate.js";
+import { decodeStringEscapes } from "./string-escapes.js";
 import type { ExpressionNode, ParsedLine, Size } from "./types.js";
 
 /** Bytes in one element of each size. */
@@ -19,6 +20,11 @@ export interface DirectiveSizeOptions {
    * number is understood, so a `ds` sized by a constant is unknown.
    */
   evaluate?: (expr: ExpressionNode) => number | undefined;
+  /**
+   * Whether the assembler reads backslash escapes in strings (vasm's `-esc`), so
+   * `"a\n"` is two elements, not three. Default false.
+   */
+  escapeSequences?: boolean;
 }
 
 /**
@@ -28,7 +34,7 @@ export interface DirectiveSizeOptions {
  * Covers `dc` (and `db`, `dw`, `dl`), `dcb` and `ds` (and `blk`). Without a
  * size they take a word, as an assembler does. Every character of a string is
  * one element as written, so `"a\n"` is three bytes: a backslash is not an
- * escape.
+ * escape, unless `escapeSequences` says the assembler reads them.
  *
  * Undefined also covers what has no fixed size, such as a count that is not a
  * known number, and everything that is not one of these directives: a caller
@@ -67,7 +73,9 @@ export function directiveSize(
       let elements = 0;
       for (const operand of operands) {
         if (operand.type === "string-literal") {
-          elements += operand.content.length;
+          elements += options.escapeSequences
+            ? decodeStringEscapes(operand.content).elements.length
+            : operand.content.length;
         } else if (operand.type === "value") {
           elements++;
         } else {

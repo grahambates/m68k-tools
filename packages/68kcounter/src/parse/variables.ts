@@ -10,12 +10,26 @@
 export type Variables = Record<string, number>;
 
 const FOLDED = Symbol("caseFolded");
+const ESCAPES = Symbol("escapeSequences");
 
-/** A new set of variables. */
-export function createVariables(caseSensitive = true): Variables {
+/**
+ * A new set of variables. `escapeSequences` marks it the same way for whether
+ * strings read backslash escapes (`-esc`), which the size of string data needs.
+ */
+export function createVariables(
+  caseSensitive = true,
+  escapeSequences = false,
+): Variables {
   const variables: Variables = {};
   if (!caseSensitive) Object.defineProperty(variables, FOLDED, { value: true });
+  if (escapeSequences)
+    Object.defineProperty(variables, ESCAPES, { value: true });
   return variables;
+}
+
+/** Whether strings read backslash escapes, for a set made with that option. */
+export function readsEscapes(variables: Variables): boolean {
+  return ESCAPES in variables;
 }
 
 function keyOf(variables: Variables, name: string): string {

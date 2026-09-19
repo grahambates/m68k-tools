@@ -41,6 +41,14 @@ export default class ConfiguratonProvider implements Provider {
         "caseSensitive is true but the vasm arguments include -nocase: symbols are analysed with case kept, and vasm folds it",
       );
 
+    if (
+      this.ctx.config.escapeSequences === false &&
+      optionsFromVasmArgs(vasm.args).escapeSequences === true
+    )
+      this.ctx.logger.warn(
+        "escapeSequences is false but the vasm arguments include -esc: vasm still reads escapes in strings",
+      );
+
     // Every document's symbols were keyed under the old setting, and nothing
     // else would notice: names that were one symbol are now two, or the reverse.
     if (symbolsCaseSensitive(this.ctx.config) !== before)

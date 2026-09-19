@@ -183,6 +183,30 @@ describe("the project config file", () => {
     expect(options.includePaths).toEqual([resolve(dir, "build", "inc")]);
   });
 
+  it("reads -esc from the vasm arguments, and the key over it", async () => {
+    const dir = await project({
+      ".m68krc.json": JSON.stringify({ vasm: { args: ["-esc"] } }),
+    });
+    const loaded = await loadAssemblyOptions(join(dir, ".m68krc.json"));
+    expect(loaded.options.escapeSequences).toBe(true);
+
+    const off = await project({
+      ".m68krc.json": JSON.stringify({
+        escapeSequences: false,
+        vasm: { args: ["-esc"] },
+      }),
+    });
+    const conflict = await loadAssemblyOptions(join(off, ".m68krc.json"));
+    expect(conflict.options.escapeSequences).toBe(false);
+    expect(conflict.warnings).toHaveLength(1);
+  });
+
+  it("adds -esc for the option, once", () => {
+    expect(vasmArgs({ escapeSequences: true })).toEqual(["-esc"]);
+    expect(vasmArgs({ escapeSequences: true }, ["-esc"])).toEqual(["-esc"]);
+    expect(vasmArgs({ escapeSequences: false })).toEqual([]);
+  });
+
   it("takes the source root from its directory", async () => {
     const dir = await project({
       ".m68krc.json": JSON.stringify({ sourceRoot: "src" }),

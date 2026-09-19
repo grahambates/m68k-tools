@@ -334,7 +334,9 @@ Small pieces that several tools need, kept here so they agree:
 - **Data sizes** — `directiveSize(line, { evaluate })` is the number of bytes a
   `dc`, `dcb` or `ds` (and `db`, `dw`, `dl`, `blk`) emits, or `undefined` when it is
   not known. Without a size they take a word, and every character of a string
-  counts as written, so `"a\n"` is three bytes.
+  counts as written, so `"a\n"` is three bytes, unless `escapeSequences` says the
+  assembler reads them (`vasm -esc`). `decodeStringEscapes(content)` gives the
+  elements such a string stands for and any sequence vasm calls illegal.
 - **Walking and ranges** — `walkLine`, `walkFile`, `childNodes`, `lineNodes` and
   `descendants` traverse a tree structurally, so a node type added later is walked
   without a change. `locationAsRange`, `containsPosition` and `containsRange` work

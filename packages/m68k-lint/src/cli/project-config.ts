@@ -74,6 +74,8 @@ export interface ProjectConfig {
    * True if omitted.
    */
   caseSensitive?: boolean;
+  /** Whether the assembler reads backslash escapes in strings (`vasm -esc`). False if omitted. */
+  escapeSequences?: boolean;
   presets?: RulePreset[];
   rules?: Record<string, RuleSetting>;
   categories?: Partial<Record<RuleCategory, boolean>>;
@@ -168,6 +170,7 @@ export async function loadProjectConfig(path: string): Promise<ProjectConfig> {
     "measureImpact",
     "inlineConfig",
     "caseSensitive",
+    "escapeSequences",
     "presets",
     "rules",
     "categories",
@@ -235,6 +238,11 @@ export async function loadProjectConfig(path: string): Promise<ProjectConfig> {
   )
     throw new Error("caseSensitive must be a boolean");
   if (
+    config.escapeSequences !== undefined &&
+    typeof config.escapeSequences !== "boolean"
+  )
+    throw new Error("escapeSequences must be a boolean");
+  if (
     config.inlineConfig !== undefined &&
     typeof config.inlineConfig !== "boolean"
   )
@@ -290,6 +298,7 @@ export function lintConfigFromProject(
     measureImpact: config.measureImpact,
     inlineConfig: config.inlineConfig,
     caseSensitive: config.caseSensitive,
+    escapeSequences: config.escapeSequences,
     presets: config.presets,
     rules: config.rules,
     categories: config.categories,

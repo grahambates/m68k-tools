@@ -77,6 +77,9 @@ Symbols keep their case, as an assembler has them unless told otherwise: `Foo` a
 are different constants, and a macro is called by the name it was defined with. Pass
 `{ caseSensitive: false }` to `parse` for a project assembled with `vasm -nocase`.
 
+A backslash in a string is an ordinary character, so `dc.b "a\n"` is three bytes. Pass
+`{ escapeSequences: true }` for a project assembled with `vasm -esc`, where it is two.
+
 ## Limitations:
 
 - Because it analyses your pre-assembled source, it can't take into account

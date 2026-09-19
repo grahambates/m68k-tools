@@ -14,6 +14,11 @@ export interface ParseOptions {
    * (default true, as an assembler has it; false for `vasm -nocase`).
    */
   caseSensitive?: boolean;
+  /**
+   * Whether the assembler reads backslash escapes in strings (`vasm -esc`), so
+   * `"a\n"` is two bytes, not three (default false).
+   */
+  escapeSequences?: boolean;
 }
 
 /**

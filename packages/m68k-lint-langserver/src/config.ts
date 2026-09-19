@@ -134,6 +134,7 @@ export class ConfigResolver {
       ...defined({
         processors: knownProcessors(shared.processors),
         caseSensitive: shared.caseSensitive,
+        escapeSequences: shared.escapeSequences,
       }),
     };
 

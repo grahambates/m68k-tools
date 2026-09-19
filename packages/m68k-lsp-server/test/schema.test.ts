@@ -24,6 +24,7 @@ describe("m68krc.schema.json", () => {
     for (const key of [
       ...Object.keys(defaultConfig),
       "caseSensitive",
+      "escapeSequences",
       "sourceRoot",
     ]) {
       expect(keys).toContain(key);

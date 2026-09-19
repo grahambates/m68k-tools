@@ -76,6 +76,7 @@ export function buildConfig(
       options.processors ?? project.processors ?? defaultConfig.processors,
     platform: options.platform ?? project.platform ?? defaultConfig.platform,
     caseSensitive: project.caseSensitive ?? defaultConfig.caseSensitive,
+    escapeSequences: project.escapeSequences ?? defaultConfig.escapeSequences,
     goal: options.goal ?? project.goal ?? defaultConfig.goal,
     measureImpact:
       options.measureImpact ??
@@ -537,6 +538,7 @@ export async function run(argv: string[]): Promise<number> {
     ...projectConfig,
     processors: projectConfig.processors ?? knownProcessors(shared.processors),
     caseSensitive: projectConfig.caseSensitive ?? shared.caseSensitive,
+    escapeSequences: projectConfig.escapeSequences ?? shared.escapeSequences,
   });
   // Where an include is looked for after the including file's own directory:
   // the source root, where the assembler runs, then the include paths.

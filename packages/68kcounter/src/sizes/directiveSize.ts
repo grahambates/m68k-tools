@@ -4,7 +4,11 @@ import {
   parseLine,
   type ExpressionNode,
 } from "m68k-parser";
-import { type Variables, lookupVariable } from "../parse/variables";
+import {
+  type Variables,
+  lookupVariable,
+  readsEscapes,
+} from "../parse/variables";
 import { type DirectiveStatement, type StatementNode } from "../parse/nodes";
 
 /**
@@ -24,5 +28,10 @@ export default function directiveSize(
       ? result.value
       : undefined;
   };
-  return sizeOf(parseLine(statement.text).value, { evaluate }) ?? 0;
+  return (
+    sizeOf(parseLine(statement.text).value, {
+      evaluate,
+      escapeSequences: readsEscapes(vars),
+    }) ?? 0
+  );
 }

@@ -151,6 +151,21 @@ after the file's own directory and before the include paths.
 
 Default: unset
 
+### Escape sequences:
+
+Whether the assembler reads backslash escapes in strings (`vasm -esc`), so `dc.b "Hello\n"` holds a newline.
+Without it a backslash is an ordinary character. Leave it unset and an `-esc` among the vasm `args` is
+honoured instead; `-esc` is added to the arguments when this is true. The linter uses it to size string
+data and to decide whether to warn about escapes that would not mean what they say.
+
+```json
+{
+  "escapeSequences": true
+}
+```
+
+Default: unset (off unless `-esc` is in the vasm arguments)
+
 ### Case Sensitivity:
 
 Whether `Foo` and `foo` are different symbols (labels, constants and macros). They are, unless vasm is

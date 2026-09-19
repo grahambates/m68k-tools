@@ -24,6 +24,12 @@ export interface Config {
    */
   caseSensitive?: boolean;
   /**
+   * Whether the assembler reads backslash escapes in strings, so `"a\n"` holds a
+   * newline. Not unless vasm is given `-esc`, so this defaults to that; leave it
+   * unset and an `-esc` in the vasm arguments is honoured instead.
+   */
+  escapeSequences?: boolean;
+  /**
    * The directory relative paths in the source resolve from, and vasm is run in.
    * Relative to the config file it is in, or the workspace folder when set by
    * the client. Unset means each file's own directory.
@@ -86,6 +92,15 @@ export function symbolsCaseSensitive(config: Config): boolean {
   );
 }
 
+/** Whether strings read backslash escapes: the setting, else whether vasm was told to. */
+export function escapeSequencesOn(config: Config): boolean {
+  return (
+    config.escapeSequences ??
+    optionsFromVasmArgs(config.vasm.args).escapeSequences ??
+    false
+  );
+}
+
 /**
  * The vasm arguments to run with: the custom ones, then those that follow from the
  * options written in the friendly form, so `includePaths`, `processors` and
@@ -97,6 +112,7 @@ export function assemblerArgs(config: Config): string[] {
       includePaths: config.includePaths,
       processors: config.processors,
       caseSensitive: symbolsCaseSensitive(config),
+      escapeSequences: escapeSequencesOn(config),
     },
     config.vasm.args,
   );

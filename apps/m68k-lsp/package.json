@@ -365,6 +365,14 @@
           "default": null,
           "markdownDescription": "Whether `Foo` and `foo` are different symbols. They are unless vasm is given `-nocase`. Leave unset to follow a `-nocase` in `m68k.vasm.args`."
         },
+        "m68k.escapeSequences": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "default": null,
+          "markdownDescription": "Whether the assembler reads backslash escapes in strings (`vasm -esc`), so `\"a\\n\"` holds a newline. Leave unset to follow an `-esc` in `m68k.vasm.args`."
+        },
         "m68k.sourceRoot": {
           "type": [
             "string",

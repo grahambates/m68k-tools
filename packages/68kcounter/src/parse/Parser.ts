@@ -75,18 +75,23 @@ export default class Parser {
   /** Whether `Foo` and `foo` are different symbols, as an assembler has them unless told not to. */
   private readonly caseSensitive: boolean;
 
+  /** Whether strings read backslash escapes, so string data is shorter than it is written. */
+  private readonly escapeSequences: boolean;
+
   constructor(
     options: {
       cpu?: Cpu;
       cacheModel?: CacheModel;
       caseSensitive?: boolean;
+      escapeSequences?: boolean;
     } = {},
   ) {
     this.defaultCpu = options.cpu ?? defaultCpu;
     this.cpu = this.defaultCpu;
     this.cacheModel = options.cacheModel ?? defaultCacheModel;
     this.caseSensitive = options.caseSensitive ?? true;
-    this.vars = createVariables(this.caseSensitive);
+    this.escapeSequences = options.escapeSequences ?? false;
+    this.vars = createVariables(this.caseSensitive, this.escapeSequences);
   }
 
   // Directive groups:
@@ -127,7 +132,7 @@ export default class Parser {
     // Now do processing to add size/timing info and expand macros:
 
     // Reset state
-    this.vars = createVariables(this.caseSensitive);
+    this.vars = createVariables(this.caseSensitive, this.escapeSequences);
     this.macros = {};
     this.uniqueId = 0;
 

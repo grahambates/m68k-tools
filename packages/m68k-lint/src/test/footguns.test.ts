@@ -266,3 +266,51 @@ describe("correctness and suspicious footgun rules", () => {
     expect(ids(source)).toContain("suspicious/partial-register-write");
   });
 });
+
+describe("suspicious/string-escape-sequence", () => {
+  const RULE = "suspicious/string-escape-sequence";
+  const found = (source: string) =>
+    lintSource(source).filter((d) => d.ruleId === RULE);
+
+  test("flags an escape sequence in string data", () => {
+    const [d] = found('\tdc.b "Hello\\n",0');
+    expect(d).toBeDefined();
+    expect(d.message).toContain("\\n");
+    expect(d.suggestion?.description).toContain("\\n is 10");
+  });
+
+  test("flags each kind of escape once per string", () => {
+    const [d, ...rest] = found('\tdc.b "a\\tb\\tc\\r"');
+    expect(rest).toEqual([]);
+    expect(d.message).toContain("\\t");
+    expect(d.message).toContain("\\r");
+  });
+
+  test("covers single-quoted strings and the sized forms", () => {
+    expect(found("\tdc.b 'x\\0'")).toHaveLength(1);
+    expect(found('\tdb "x\\n"')).toHaveLength(1);
+  });
+
+  test("is quiet when the assembler reads escapes", () => {
+    const source = '\tdc.b "Hello\\n",0';
+    const on = lintSource(source, {
+      processors: ["mc68000"],
+      escapeSequences: true,
+    });
+    expect(on.filter((d) => d.ruleId === RULE)).toEqual([]);
+  });
+
+  test("leaves strings with no escape alone", () => {
+    expect(found('\tdc.b "Hello",10,0')).toEqual([]);
+    expect(found('\tdc.b "C:\\dir"')).toEqual([]);
+  });
+
+  test("leaves a macro body alone, where a backslash starts a parameter", () => {
+    const source = ["M: macro", '\tdc.b "\\1\\n"', "\tendm"].join("\n");
+    expect(found(source)).toEqual([]);
+  });
+
+  test("does not report a string outside data directives", () => {
+    expect(found('\tinclude "dir\\name.i"')).toEqual([]);
+  });
+});

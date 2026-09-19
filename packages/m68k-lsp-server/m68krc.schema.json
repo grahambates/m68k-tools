@@ -40,6 +40,10 @@
       "description": "Whether Foo and foo are different symbols (labels, constants, macros). Unset follows a -nocase in vasm.args, else true. Instruction and directive names are always matched without regard to case.",
       "type": "boolean"
     },
+    "escapeSequences": {
+      "description": "Whether the assembler reads backslash escapes in strings, so \"a\\n\" holds a newline (vasm -esc). Unset follows an -esc in vasm.args, else false. It decides how long string data is, and turns off the linter's string-escape-sequence rule.",
+      "type": "boolean"
+    },
     "sourceRoot": {
       "description": "The directory relative paths in the source, such as an include, resolve from, and vasm is run in: the directory a build is run from. Relative to this file. Unset means each file's own directory.",
       "type": "string"

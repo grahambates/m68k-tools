@@ -42,6 +42,12 @@ export interface LintConfig {
    * a project assembled with case folded.
    */
   caseSensitive?: boolean;
+  /**
+   * Whether the assembler reads backslash escapes in strings (`vasm -esc`), so
+   * `"a\n"` holds a newline. Off unless it was asked to, which nothing in the
+   * source says.
+   */
+  escapeSequences?: boolean;
   rules?: Record<string, RuleSetting>;
   categories?: Partial<Record<RuleCategory, boolean>>;
 }

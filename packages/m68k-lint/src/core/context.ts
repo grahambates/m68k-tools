@@ -12,7 +12,11 @@ import {
 } from "../analysis/symbols.js";
 import { analyzeFlags, type FlagAnalysis } from "../analysis/flags.js";
 import { prepareMacros } from "../analysis/macros.js";
-import { nameKey, setCaseSensitive } from "../analysis/case-mode.js";
+import {
+  nameKey,
+  setCaseSensitive,
+  setEscapeSequences,
+} from "../analysis/case-mode.js";
 import {
   conditionalAssembly,
   prepareConditionals,
@@ -331,6 +335,7 @@ export class DefaultRuleContext implements RuleContext {
     this.sourceLines = source.split(/\r?\n/);
     // Before anything looks a name up: the symbol table and every analysis read it.
     setCaseSensitive(file, config.caseSensitive ?? true);
+    setEscapeSequences(file, config.escapeSequences ?? false);
     this.symbols = new DefaultSymbolTable(file, external);
     this.settleConditionals(file, external);
     // Before the analyses, which read what each macro call expands to.

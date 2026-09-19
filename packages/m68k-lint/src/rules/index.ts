@@ -121,6 +121,7 @@ import { unusedLocalLabel } from "./suspicious/unused-local-label.js";
 import { unusedGlobalLabel } from "./suspicious/unused-global-label.js";
 import { unusedConstant } from "./suspicious/unused-constant.js";
 import { unusedMacro } from "./suspicious/unused-macro.js";
+import { stringEscapeSequence } from "./suspicious/string-escape-sequence.js";
 import { includeCase } from "./portability/include-case.js";
 import { unreachableCode } from "./suspicious/unreachable-code.js";
 import { infiniteLoop } from "./suspicious/infinite-loop.js";
@@ -232,6 +233,7 @@ export {
   unusedGlobalLabel,
   unusedConstant,
   unusedMacro,
+  stringEscapeSequence,
   includeCase,
   unreachableCode,
   infiniteLoop,
@@ -494,6 +496,7 @@ export const defaultRules: readonly Rule[] = [
   unusedGlobalLabel,
   unusedConstant,
   unusedMacro,
+  stringEscapeSequence,
   includeCase,
   unreachableCode,
   infiniteLoop,

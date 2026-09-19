@@ -50,6 +50,10 @@ async function copyServer() {
     join(serverDir, "m68krc.schema.json"),
     join(clientOut, "m68krc.schema.json"),
   );
+  await copyFile(
+    join(root, "packages/m68k-formatter/m68k-format.schema.json"),
+    join(clientOut, "m68k-format.schema.json"),
+  );
   if (args.has("--sourcemap"))
     await copySourceMap(
       join(serverOut, "server.js"),

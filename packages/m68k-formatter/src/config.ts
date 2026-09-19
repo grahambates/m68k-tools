@@ -40,6 +40,7 @@ const object =
 const casing = choice("upper", "lower", "any");
 const colon = choice("on", "off", "notInline", "onlyInline", "any");
 const valid = object({
+  $schema: (value) => typeof value === "string",
   case: (value) =>
     casing(value) ||
     object(
@@ -93,5 +94,8 @@ export async function loadConfig(path: string): Promise<FormatterOptions> {
   const value: unknown = JSON.parse(await readFile(path, "utf8"));
   if (!valid(value))
     throw new Error(`Invalid formatter configuration: ${path}`);
-  return value as FormatterOptions;
+  const { $schema: _schema, ...options } = value as FormatterOptions & {
+    $schema?: string;
+  };
+  return options;
 }

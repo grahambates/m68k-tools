@@ -55,6 +55,10 @@ searching upwards from the source file's directory. Stdin searches from the work
 directory, or from `--stdin-filepath` when supplied. `--config` overrides discovery.
 Only the nearest file is loaded; ancestor configuration files are not merged.
 
+A JSON schema for the file is published as `m68k-format.schema.json` in this package
+and bundled with the VS Code extension. Elsewhere, reference it with `$schema`:
+`"$schema": "https://cdn.jsdelivr.net/npm/m68k-formatter@0/m68k-format.schema.json"`.
+
 The file contains formatter options directly, without a `format` wrapper:
 
 ```json

@@ -6,7 +6,19 @@ const schema = JSON.parse(
   readFileSync(join(__dirname, "../m68krc.schema.json"), "utf8"),
 );
 
+const formatSchema = JSON.parse(
+  readFileSync(
+    join(__dirname, "../../m68k-formatter/m68k-format.schema.json"),
+    "utf8",
+  ),
+);
+
 describe("m68krc.schema.json", () => {
+  it("describes the formatter options as the formatter's own schema does", () => {
+    const { $schema: _ignored, ...options } = formatSchema.properties;
+    expect(schema.$defs.format.properties).toEqual(options);
+  });
+
   it("describes every config setting", () => {
     const keys = Object.keys(schema.properties);
     for (const key of [...Object.keys(defaultConfig), "caseSensitive"]) {

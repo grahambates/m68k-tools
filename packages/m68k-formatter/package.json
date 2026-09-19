@@ -15,6 +15,7 @@
   "files": [
     "out",
     "cli.js",
+    "m68k-format.schema.json",
     "README.md",
     "LICENSE.md"
   ],

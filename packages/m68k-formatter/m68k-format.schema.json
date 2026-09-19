@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cdn.jsdelivr.net/npm/m68k-formatter/m68k-format.schema.json",
+  "title": "m68k-format configuration",
+  "description": "Options for the m68k formatter, in .m68k-format.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "case": {
+      "oneOf": [
+        {
+          "enum": ["upper", "lower", "any"]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "instruction": {
+              "enum": ["upper", "lower", "any"]
+            },
+            "directive": {
+              "enum": ["upper", "lower", "any"]
+            },
+            "control": {
+              "enum": ["upper", "lower", "any"]
+            },
+            "register": {
+              "enum": ["upper", "lower", "any"]
+            },
+            "sectionType": {
+              "enum": ["upper", "lower", "any"]
+            },
+            "hex": {
+              "enum": ["upper", "lower", "any"]
+            }
+          }
+        }
+      ]
+    },
+    "labelColon": {
+      "oneOf": [
+        {
+          "enum": ["on", "off", "notInline", "onlyInline", "any"]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "global": {
+              "enum": ["on", "off", "notInline", "onlyInline", "any"]
+            },
+            "local": {
+              "enum": ["on", "off", "notInline", "onlyInline", "any"]
+            }
+          }
+        }
+      ]
+    },
+    "quotes": {
+      "enum": ["double", "single", "any"]
+    },
+    "operandSpace": {
+      "enum": ["on", "off", "any"]
+    },
+    "trimWhitespace": {
+      "type": "boolean"
+    },
+    "finalNewLine": {
+      "type": "boolean"
+    },
+    "endOfLine": {
+      "enum": ["lf", "cr", "crlf"]
+    },
+    "align": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mnemonic": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "operands": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "comment": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "operator": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "value": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "indentConditional": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "indentRept": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "indentMacro": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tabSize": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "indentStyle": {
+          "enum": ["space", "tab"]
+        },
+        "autoExtend": {
+          "enum": ["line", "file", "block"]
+        },
+        "standaloneComment": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "enum": [
+                "ignore",
+                "nearest",
+                "label",
+                "mnemonic",
+                "operands",
+                "comment",
+                "operator",
+                "value"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

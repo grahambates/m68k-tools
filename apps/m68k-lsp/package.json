@@ -54,6 +54,12 @@
           ".m68krc.json"
         ],
         "url": "./out/m68krc.schema.json"
+      },
+      {
+        "fileMatch": [
+          ".m68k-format.json"
+        ],
+        "url": "./out/m68k-format.schema.json"
       }
     ],
     "views": {

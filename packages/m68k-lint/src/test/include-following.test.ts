@@ -1,6 +1,7 @@
 import { dirname, resolve } from "node:path";
 import {
   configIncludePaths,
+  entryDirectories,
   followIncludes,
   includeCaseOnDisk,
   type IncludeFs,
@@ -46,6 +47,57 @@ describe("followIncludes", () => {
     );
     expect(paths(found)).toEqual([resolve("/p/hw.i")]);
     expect(found[0].source).toBe("HW equ 1");
+  });
+
+  test("finds what a nested include names from the main source's directory", async () => {
+    // vasm looks in the directory of the main source, not beside the file that
+    // includes: checked with vasm, lib/a.i naming "c.i" finds src/c.i there.
+    const fs = memoryFs({
+      "/p/lib/a.i": '\tinclude "c.i"',
+      "/p/src/c.i": "C equ 1",
+    });
+    const found = await followIncludes(
+      [
+        { path: "/p/src/main.s", source: '\tinclude "../lib/a.i"' },
+        { path: "/p/lib/a.i", source: '\tinclude "c.i"' },
+      ],
+      { includePaths: [], fs },
+    );
+    expect(paths(found)).toEqual([resolve("/p/src/c.i")]);
+  });
+
+  test("follows an incdir named in a source", async () => {
+    // Checked with vasm: incdir "inc" then include "e.i" opens inc/e.i.
+    const fs = memoryFs({ "/p/inc/e.i": "E equ 1" });
+    const found = await followIncludes(
+      [{ path: "/p/main.s", source: '\tincdir "inc"\n\tinclude "e.i"' }],
+      { includePaths: [], fs },
+    );
+    expect(paths(found)).toEqual([resolve("/p/inc/e.i")]);
+  });
+
+  test("an incdir in one file serves includes in another", async () => {
+    const fs = memoryFs({ "/p/inc/e.i": "E equ 1" });
+    const found = await followIncludes(
+      [
+        { path: "/p/main.s", source: '\tincdir "inc"\n\tinclude "lib/a.i"' },
+        { path: "/p/lib/a.i", source: '\tinclude "e.i"' },
+      ],
+      { includePaths: [], fs },
+    );
+    expect(paths(found)).toEqual([resolve("/p/inc/e.i")]);
+  });
+
+  test("a file that is included is not taken for a main source", async () => {
+    const fs = memoryFs({ "/p/lib/x.i": "X equ 1", "/p/lib/a.i": "" });
+    const dirs = await entryDirectories(
+      [
+        { path: "/p/src/main.s", source: '\tinclude "../lib/a.i"' },
+        { path: "/p/lib/a.i", source: "" },
+      ],
+      { includePaths: [], fs },
+    );
+    expect(dirs).toEqual([resolve("/p/src")]);
   });
 
   test("finds one through an include path, outside the project", async () => {

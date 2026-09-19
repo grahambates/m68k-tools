@@ -14,6 +14,7 @@ import type { RuleCategory } from "../core/diagnostic.js";
 export { addIgnoreToConfigText, newConfigText } from "./config-edit.js";
 export { alwaysIgnored, isIgnored } from "./ignores.js";
 export {
+  entryDirectories,
   followIncludes,
   includeCaseOnDisk,
   nodeIncludeFs,

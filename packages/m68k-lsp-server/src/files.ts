@@ -62,7 +62,17 @@ export async function* resolveIncludesGen(
   );
   // Where the assembler runs comes first, as it looks there first.
   const sourceRoot = sourceRootOf(ctx.config, workspaceRoots);
-  const roots = [...(sourceRoot ? [sourceRoot] : []), ...workspaceRoots];
+  // The directory of the program being assembled is searched too: vasm looks
+  // there, and never beside the file that names the include, so a nested include
+  // written from the main source's directory is found there.
+  const programDirs = getEntryPointsFor(documentUri, ctx).map((uri) =>
+    dirname(URI.parse(uri).fsPath),
+  );
+  const roots = [
+    ...(sourceRoot ? [sourceRoot] : []),
+    ...programDirs,
+    ...workspaceRoots,
+  ];
   roots.push(dirname(URI.parse(documentUri).fsPath));
 
   // Only incdirs the document can actually see: its own and those of the

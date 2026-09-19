@@ -226,9 +226,14 @@ has:
 ```
 
 Paths are absolute or relative to the config file. The linter follows each
-`include` it finds, looking beside the file that names it and then in each
-include path in order, as an assembler would, and keeps going through what those
-files include. Case is left to the file system, as it would be for the assembler
+`include` it finds and keeps going through what those files include. vasm looks in
+the directory it is run in (`sourceRoot`), then the directory of the main source,
+then the `-I` paths, then any `incdir`; it never looks beside the file that names
+the include. The linter looks in all of those, and beside the file as well, so it
+finds everything vasm does and sometimes a file vasm would not, which the assembler
+reports itself. The main sources are the files nothing else includes. A relative
+`-I` that only resolves from the main source's directory, with vasm run somewhere
+else, is not found. Case is left to the file system, as it would be for the assembler
 run there: an include in the wrong case is found on macOS and Windows and not on
 Linux, so use the file's real case if the project is shared between developers on
 different systems. The files it reaches are read for the constants and macros they define and the names they refer to, and

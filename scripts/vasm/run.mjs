@@ -14,7 +14,12 @@ if (!findVasm()) {
 }
 
 let failed = false;
-for (const check of ["check-sizes", "check-suggestions", "check-syntax"]) {
+for (const check of [
+  "check-sizes",
+  "check-suggestions",
+  "check-syntax",
+  "check-includes",
+]) {
   console.log(`\n== ${check}`);
   const result = spawnSync(
     process.execPath,

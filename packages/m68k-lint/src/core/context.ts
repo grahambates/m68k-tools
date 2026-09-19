@@ -11,6 +11,11 @@ import {
   type SymbolTable,
 } from "../analysis/symbols.js";
 import { analyzeFlags, type FlagAnalysis } from "../analysis/flags.js";
+import { prepareMacros } from "../analysis/macros.js";
+import {
+  conditionalAssembly,
+  prepareConditionals,
+} from "../analysis/conditionals.js";
 import {
   analyzeRegisters,
   type RegisterAnalysis,
@@ -300,7 +305,8 @@ function attachComments(
 export class DefaultRuleContext implements RuleContext {
   private readonly diagnostics: Diagnostic[] = [];
   private readonly sourceLines: string[];
-  public readonly symbols: SymbolTable;
+  /** Rebuilt while conditional assembly is settled; fixed once construction ends. */
+  public symbols: SymbolTable;
   public readonly flags: FlagAnalysis;
   public readonly registers: RegisterAnalysis;
 
@@ -313,11 +319,52 @@ export class DefaultRuleContext implements RuleContext {
   ) {
     this.sourceLines = source.split(/\r?\n/);
     this.symbols = new DefaultSymbolTable(file, external);
+    this.settleConditionals(file, external);
+    // Before the analyses, which read what each macro call expands to.
+    prepareMacros(file, source, external, (expr) => {
+      const result = this.evaluate(expr);
+      return result.known ? result.value : undefined;
+    });
     this.flags = analyzeFlags(file);
     this.registers = analyzeRegisters(file, (name) => {
       const result = this.symbols.evaluate(name);
       return result.known ? result.value : undefined;
     });
+  }
+
+  /**
+   * Leave out the arms of conditional assembly that are not assembled.
+   *
+   * A constant defined only inside an arm can decide a later condition, and
+   * dropping an arm can make a constant unambiguous, so this repeats until
+   * nothing changes, which a few rounds always reaches in practice.
+   */
+  private settleConditionals(
+    file: ParsedFile,
+    external: ExternalSymbols | undefined,
+  ): void {
+    const value = (expr: ExpressionNode) => {
+      const result = this.evaluate(expr);
+      return result.known ? result.value : undefined;
+    };
+    const signature = () =>
+      conditionalAssembly(file)
+        .unassembled.map((left) => (left ? "1" : "0"))
+        .join("");
+
+    let last = "";
+    for (let round = 0; round < 4; round++) {
+      prepareConditionals(file, value);
+      const now = signature();
+      if (now === last || !now.includes("1")) break;
+      last = now;
+      const { unassembled } = conditionalAssembly(file);
+      this.symbols = new DefaultSymbolTable(
+        file,
+        external,
+        (index) => unassembled[index],
+      );
+    }
   }
 
   report(diagnostic: Diagnostic): void {

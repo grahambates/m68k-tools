@@ -4,16 +4,15 @@ import {
   registerOrdinal,
   type Register,
 } from "../semantics/registers.js";
+import { expansionOf } from "../semantics/macro-expansions.js";
 import { semanticMnemonic } from "../semantics/mnemonics.js";
 import { instructionSize, operand } from "../util/ast.js";
 
 /**
  * Whether a line pushes registers to the stack or pops them back.
  *
- * `PUSHM` and `POPM` are the conventional macros for it (`movem.l list,-(sp)`
- * and `movem.l (sp)+,list`), so they are read as the instructions they stand
- * for. Their long size is the convention rather than something the source
- * states, and a project defining them differently would be misread.
+ * `PUSHM` and `POPM` from the Amiga NDK are read as the `movem.l` they stand
+ * for, whether or not the file defines them itself; see `prepareMacros`.
  */
 export interface StackSave {
   kind: "push" | "pop";
@@ -56,17 +55,13 @@ function isStack(op: ReturnType<typeof operand>): boolean {
 export function stackSave(line: ParsedLine): StackSave | undefined {
   const mnemonic = line.mnemonic;
 
+  // A macro that expands to exactly one save or restore is one. This covers
+  // PUSHM and POPM in both forms, by way of the expansion made for them.
   if (mnemonic?.type === "macro") {
-    const name = mnemonic.macro.toLowerCase();
-    if (name !== "pushm" && name !== "popm") return undefined;
-    const registers = registersOf(operand(line, 0));
-    if (!registers || line.operands?.length !== 1) return undefined;
-    return {
-      kind: name === "pushm" ? "push" : "pop",
-      registers: registers.filter((r) => r !== "a7"),
-      bytesEach: 4,
-      viaMacro: true,
-    };
+    const expansion = expansionOf(line);
+    if (expansion?.length !== 1) return undefined;
+    const save = stackSave(expansion[0]);
+    return save && { ...save, viaMacro: true };
   }
 
   if (semanticMnemonic(line) !== "movem") return undefined;

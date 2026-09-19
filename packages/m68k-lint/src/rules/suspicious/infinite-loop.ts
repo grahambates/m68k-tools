@@ -4,7 +4,7 @@ import type { Rule } from "../../core/rule.js";
 import { getFlagSemantics } from "../../semantics/flags.js";
 import { semanticMnemonic } from "../../semantics/mnemonics.js";
 import { getRegisterSemantics } from "../../semantics/registers.js";
-import { isMacroInvocation } from "../../util/ast.js";
+import { isMacroInvocation, isOpaqueMacro } from "../../util/ast.js";
 
 /** An operand that names no memory: what a register-only test is made of. */
 function touchesOnlyRegisters(line: ParsedLine): boolean {
@@ -61,7 +61,7 @@ export const infiniteLoop: Rule = {
         const semantics = getRegisterSemantics(line);
         const control = getFlagSemantics(line).controlFlow;
         if (
-          isMacroInvocation(line) ||
+          isOpaqueMacro(line) ||
           semantics.unknownEffects ||
           semantics.call ||
           control === "call" ||
@@ -100,6 +100,7 @@ export const infiniteLoop: Rule = {
 
             const producer = ctx.file.lines[def.index];
             if (
+              isMacroInvocation(producer) ||
               !touchesOnlyRegisters(producer) ||
               getFlagSemantics(producer).reads.size > 0
             ) {

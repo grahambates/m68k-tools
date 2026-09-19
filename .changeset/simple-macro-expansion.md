@@ -1,0 +1,5 @@
+---
+"m68k-lint": minor
+---
+
+See through simple macro calls. A macro defined in the same file is now expanded, using the shared expansion in m68k-parser, and when it expands to a straight run of instructions the register, flag and stack analyses use those instead of treating the call as opaque. This sharpens every rule built on them, such as `dead-register-write`, `stale-condition-code`, `unbalanced-stack`, `unused-comparison` and `unneeded-register-save`. Expansion is by text substitution as the assembler does it, so parameters that build names (`d\1`), `NARG` and nested macro calls all work. Calls that cannot be expanded (macros from includes, expansions containing labels, branches, conditional assembly or calls to unknown macros, too few arguments, or self-recursion) stay opaque exactly as before. The Amiga NDK's `PUSHM` and `POPM` are understood as `movem.l` to and from the stack, including `POPM` with no register list, which restores what the matching `PUSHM` saved; `suspicious/movem-restore-mismatch` now compares their lists too.

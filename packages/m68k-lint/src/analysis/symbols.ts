@@ -1,4 +1,9 @@
-import type { ExpressionNode, ParsedFile, ParsedLine } from "m68k-parser";
+import type {
+  ExpressionNode,
+  MacroDefinition,
+  ParsedFile,
+  ParsedLine,
+} from "m68k-parser";
 import { evaluateConstant, type ConstantResult } from "./constants.js";
 import { isInMacroDefinition, scanBlocks } from "./blocks.js";
 
@@ -26,6 +31,17 @@ export interface SymbolTable {
  */
 export interface ExternalSymbols {
   lookup(name: string): { value: number; origin: string } | undefined;
+  /**
+   * A macro the project defines, for calls this file cannot resolve itself.
+   * Answered only where the whole project agrees on one definition.
+   */
+  macro?(name: string): ExternalMacro | undefined;
+}
+
+export interface ExternalMacro {
+  definition: MacroDefinition;
+  /** Where it is defined, for telling the user. */
+  origin: string;
 }
 
 /** A constant this file used but did not define. */
@@ -103,13 +119,21 @@ export class DefaultSymbolTable implements SymbolTable {
   private readonly origins = new Map<string, string>();
   private readonly used = new Map<string, ExternalUse>();
 
-  constructor(file: ParsedFile, external?: ExternalSymbols) {
+  /**
+   * @param skip lines to leave out, such as those in an arm of conditional
+   *   assembly that is not assembled
+   */
+  constructor(
+    file: ParsedFile,
+    external?: ExternalSymbols,
+    skip?: (lineIndex: number) => boolean,
+  ) {
     this.external = external;
     const blocks = scanBlocks(file);
 
     file.lines.forEach((line, lineIndex) => {
       const definition = constantDefinition(line);
-      if (!definition) return;
+      if (!definition || skip?.(lineIndex)) return;
       // A definition inside a macro body belongs to each expansion, not to the
       // file. Taking it as a file-global constant attributed a value to a name
       // that may not exist at all until the macro is invoked, and may differ

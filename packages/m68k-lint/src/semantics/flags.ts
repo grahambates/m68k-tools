@@ -1,6 +1,7 @@
 import type { ParsedLine } from "m68k-parser";
 import { semanticMnemonic, canonicalMnemonicName } from "./mnemonics.js";
 import { isMacroInvocation } from "../util/ast.js";
+import { expansionOf } from "./macro-expansions.js";
 
 export const FLAGS = ["X", "N", "Z", "V", "C"] as const;
 export type Flag = (typeof FLAGS)[number];
@@ -97,12 +98,44 @@ export function isAddressRegisterWriteWithoutCCR(line: ParsedLine): boolean {
 }
 
 /**
+ * The combined effect of instructions run one after another: a flag is read if
+ * some instruction reads it before any has set it, and ends up written or
+ * undefined according to whichever touched it last.
+ */
+function foldFlagSemantics(lines: readonly ParsedLine[]): FlagSemantics {
+  const reads = none();
+  const writes = none();
+  const undefinedFlags = none();
+  for (const line of lines) {
+    const step = getFlagSemantics(line);
+    for (const flag of step.reads)
+      if (!writes.has(flag) && !undefinedFlags.has(flag)) reads.add(flag);
+    for (const flag of step.writes) {
+      writes.add(flag);
+      undefinedFlags.delete(flag);
+    }
+    for (const flag of step.undefined) {
+      undefinedFlags.add(flag);
+      writes.delete(flag);
+    }
+  }
+  return {
+    reads,
+    writes,
+    undefined: undefinedFlags,
+    controlFlow: "fallthrough",
+  };
+}
+
+/**
  * Conservative, deliberately incomplete instruction flag semantics.
  * Unknown instructions preserve our knowledge of existing flags rather than
  * pretending to write them. As the table expands, callers automatically get
  * more precise answers without rule changes.
  */
 export function getFlagSemantics(line: ParsedLine): FlagSemantics {
+  const expansion = isMacroInvocation(line) ? expansionOf(line) : undefined;
+  if (expansion) return foldFlagSemantics(expansion);
   // A macro's body is invisible here, so treat the condition codes the way a
   // JSR is treated: not written to anything knowable, and no longer trustworthy.
   // Execution continues to the next line, since a macro that branches away is

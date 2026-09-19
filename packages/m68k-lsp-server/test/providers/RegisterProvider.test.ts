@@ -505,6 +505,28 @@ Helper:
       expect(byName.get("d3")?.references[0].access).toBe("read");
     });
 
+    it("expands a macro defined with the name as an operand", async () => {
+      const textDocument = await createDoc(
+        "macro-operand-form.s",
+        ` macro Paint
+ move.w \\1,d2
+ endm
+ Paint d4
+`,
+      );
+
+      const result = provider.onRegisterUsage({
+        textDocument,
+        range: range(3, 0, 4, 0),
+      });
+      const byName = new Map(
+        result?.registers.map((usage) => [usage.name, usage]),
+      );
+
+      expect(byName.get("d4")?.references[0].access).toBe("read");
+      expect(byName.get("d2")?.references[0].access).toBe("write");
+    });
+
     it("preserves argument provenance through nested macro calls", async () => {
       const textDocument = await createDoc(
         "nested-macro.s",

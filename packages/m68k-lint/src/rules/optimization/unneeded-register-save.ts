@@ -7,7 +7,8 @@ import {
   getRegisterSemantics,
   type Register,
 } from "../../semantics/registers.js";
-import { isMacroInvocation } from "../../util/ast.js";
+import { isOpaqueMacro } from "../../util/ast.js";
+import { expansionOf } from "../../semantics/macro-expansions.js";
 import { formatRegisterList } from "../suspicious/movem-restore-mismatch.js";
 
 /** Whether an operand mentions the stack pointer, reading the slots the save made. */
@@ -115,7 +116,7 @@ export const unneededRegisterSave: Rule = {
           // Another save is harmless. Another restore writes its registers.
           if (found.kind === "pop")
             for (const register of found.registers) modified.add(register);
-        } else if (isMacroInvocation(current)) {
+        } else if (isOpaqueMacro(current)) {
           followable = false;
           break;
         } else {
@@ -129,9 +130,11 @@ export const unneededRegisterSave: Rule = {
             control === "dynamic-jump" ||
             mnemonic.startsWith("trap") ||
             mnemonic === "illegal" ||
-            mnemonic === "link" ||
-            mnemonic === "unlk" ||
-            usesStackByOffset(current)
+            (expansionOf(current) ?? [current]).some(
+              (step) =>
+                usesStackByOffset(step) ||
+                ["link", "unlk"].includes(semanticMnemonic(step) ?? ""),
+            )
           ) {
             followable = false;
             break;

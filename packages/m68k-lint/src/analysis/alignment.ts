@@ -1,6 +1,8 @@
 import type { ExpressionNode, ParsedFile, ParsedLine } from "m68k-parser";
 import { analyzeLocalLabelScopes } from "./local-label-scopes.js";
+import { expansionOf } from "../semantics/macro-expansions.js";
 import { scanBlocks } from "./blocks.js";
+import { conditionalAssembly } from "./conditionals.js";
 
 /** Whether an address is even (0) or odd (1); undefined when it cannot be told. */
 export type Parity = 0 | 1 | undefined;
@@ -90,6 +92,7 @@ export function analyzeAlignment(
   evaluate: (expr: ExpressionNode) => number | undefined,
 ): AlignmentAnalysis {
   const blocks = scanBlocks(file);
+  const assembly = conditionalAssembly(file);
   const scopes = analyzeLocalLabelScopes(file);
   const before: Parity[] = [];
   const source: (number | undefined)[] = [];
@@ -123,6 +126,12 @@ export function analyzeAlignment(
     before[index] = inMacro ? undefined : parity;
     source[index] = inMacro ? undefined : oddAt;
     if (inMacro) return;
+    // Not assembled, so it takes no space and defines nothing.
+    if (assembly.unassembled[index]) {
+      before[index] = undefined;
+      source[index] = undefined;
+      return;
+    }
 
     if (line.label) {
       const key = scopes.keyOf(index, line.label.label);
@@ -132,7 +141,9 @@ export function analyzeAlignment(
     const mnemonic = line.mnemonic;
     if (!mnemonic) return;
     if (mnemonic.type === "instruction") return;
-    if (mnemonic.type === "macro") return set(undefined);
+    // A macro that expands to instructions takes an even number of bytes.
+    if (mnemonic.type === "macro")
+      return expansionOf(line) ? undefined : set(undefined);
     if (mnemonic.type !== "directive") return;
 
     const directive = mnemonic.directive.toLowerCase();
@@ -144,6 +155,10 @@ export function analyzeAlignment(
       return first?.type === "value" ? evaluate(first.value) : undefined;
     };
 
+    // A conditional whose outcome is known is not a choice: the arm taken
+    // simply follows.
+    if (assembly.decided[index] && /^(if|else|end[cif])/.test(directive))
+      return;
     if (CONDITIONAL_OR_REPEAT.test(directive)) return set(undefined);
     if (NON_EMITTING.has(directive)) return;
 

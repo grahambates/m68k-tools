@@ -1,8 +1,12 @@
-import { parseFile } from "m68k-parser";
+import { collectMacroDefinitions, parseBlocks, parseFile } from "m68k-parser";
 import type { ExpressionNode } from "m68k-parser";
 import { evaluateConstant } from "./constants.js";
 import { isInMacroDefinition, scanBlocks } from "./blocks.js";
-import { constantDefinition, type ExternalSymbols } from "./symbols.js";
+import {
+  constantDefinition,
+  type ExternalMacro,
+  type ExternalSymbols,
+} from "./symbols.js";
 
 /**
  * Constants gathered from every file in the project, for the very common case
@@ -23,6 +27,12 @@ import { constantDefinition, type ExternalSymbols } from "./symbols.js";
  *
  * Definitions inside macro bodies are skipped for the same reason they are
  * skipped per-file: they belong to an expansion, not to a file.
+ *
+ * Macro definitions follow the same rule as constants. A macro is answered
+ * only when every definition of that name in the project has the same body, so
+ * a header that is only included on one target, or two variants of a macro for
+ * different configurations, leave the call opaque rather than expanded as
+ * whichever came first.
  */
 export interface ProjectSymbols extends ExternalSymbols {
   /** Names the project defines inconsistently, and so cannot answer for. */
@@ -39,6 +49,11 @@ export interface ProjectSourceFile {
 interface Definition {
   expression: ExpressionNode;
   origin: string;
+}
+
+interface MacroEntry extends ExternalMacro {
+  /** The body as written, for telling whether two definitions agree. */
+  key: string;
 }
 
 function sameExpression(a: ExpressionNode, b: ExpressionNode): boolean {
@@ -62,6 +77,8 @@ export function buildProjectSymbols(
 ): ProjectSymbols {
   const definitions = new Map<string, Definition>();
   const conflicted = new Set<string>();
+  const macros = new Map<string, MacroEntry>();
+  const conflictedMacros = new Set<string>();
 
   for (const { path, source } of files) {
     let parsed;
@@ -73,6 +90,34 @@ export function buildProjectSymbols(
       continue;
     }
     const blocks = scanBlocks(parsed);
+
+    // A macro defined inside another macro's body belongs to its expansions.
+    const found = collectMacroDefinitions(
+      parsed,
+      source.split(/\r?\n/),
+      parseBlocks(parsed),
+    );
+    for (const macro of found) {
+      if (
+        found.some(
+          (o) => o !== macro && o.start < macro.start && macro.end < o.end,
+        )
+      )
+        continue;
+      const key = macro.name.toLowerCase();
+      if (conflictedMacros.has(key)) continue;
+      const entry: MacroEntry = {
+        definition: macro,
+        origin: path,
+        key: macro.body.map((line) => line.trimEnd()).join("\n"),
+      };
+      const existing = macros.get(key);
+      if (existing && existing.key !== entry.key) {
+        conflictedMacros.add(key);
+        macros.delete(key);
+      } else if (!existing) macros.set(key, entry);
+    }
+
     parsed.lines.forEach((line, lineIndex) => {
       const definition = constantDefinition(line);
       if (!definition) return;
@@ -116,6 +161,10 @@ export function buildProjectSymbols(
       const value = resolve(name, new Set());
       if (value === undefined) return undefined;
       return { value, origin: definitions.get(name.toLowerCase())!.origin };
+    },
+    macro(name) {
+      const entry = macros.get(name.toLowerCase());
+      return entry && { definition: entry.definition, origin: entry.origin };
     },
   };
 }

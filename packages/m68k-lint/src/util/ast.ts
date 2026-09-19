@@ -7,6 +7,7 @@ import type {
   ParsedLine,
   Size,
 } from "m68k-parser";
+import { expansionOf } from "../semantics/macro-expansions.js";
 import {
   canonicalMnemonicName,
   instructionFamily,
@@ -132,6 +133,15 @@ export function isAddqDestination(
  */
 export function isMacroInvocation(line: ParsedLine | undefined): boolean {
   return line?.mnemonic?.type === "macro";
+}
+
+/**
+ * A macro call whose effect cannot be worked out: no visible definition, or one
+ * too involved to expand. Calls that expand to plain instructions are not
+ * opaque, and their semantics reflect what they expand to.
+ */
+export function isOpaqueMacro(line: ParsedLine | undefined): boolean {
+  return isMacroInvocation(line) && expansionOf(line) === undefined;
 }
 
 /**

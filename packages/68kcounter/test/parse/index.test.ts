@@ -296,6 +296,47 @@ a:    macro
       expect(lines[4].timing?.values).toEqual([[4, 1, 0]]);
     });
 
+    test("macro invocation: size qualifier as \\0", () => {
+      const lines = parse(`
+m:    macro
+      move.\\0 #1,d0
+      endm
+      m.w
+      m.l`);
+      expect(lines[4].bytes).toEqual(4);
+      expect(lines[5].bytes).toEqual(6);
+    });
+
+    test("macro invocation: NARG is the number of arguments", () => {
+      const lines = parse(`
+n:    macro
+      dcb.b NARG,0
+      endm
+      n a,b,c`);
+      expect(lines[4].bytes).toEqual(3);
+    });
+
+    test("macro invocation: a missing argument is empty", () => {
+      const lines = parse(`
+p:    macro
+      dcb.b \\1\\2,0
+      endm
+      p 1
+      p 1,2`);
+      // \\1\\2 is 1 with one argument and 12 with two.
+      expect(lines[4].bytes).toEqual(1);
+      expect(lines[5].bytes).toEqual(12);
+    });
+
+    test("macro invocation: \\10 is \\1 followed by a zero", () => {
+      const lines = parse(`
+q:    macro
+      dcb.b \\10,0
+      endm
+      q 3`);
+      expect(lines[4].bytes).toEqual(30);
+    });
+
     test("rept", () => {
       const lines = parse(`
       rept 4

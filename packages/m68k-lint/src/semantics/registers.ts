@@ -3,6 +3,7 @@ import { getFlagSemantics } from "./flags.js";
 import { semanticMnemonic } from "./mnemonics.js";
 import { instructionSize } from "../util/ast.js";
 import { isMacroInvocation } from "../util/ast.js";
+import { expansionOf } from "./macro-expansions.js";
 
 export const DATA_REGISTERS = [
   "d0",
@@ -477,7 +478,41 @@ function partialWritesOf(
   return partial;
 }
 
+/**
+ * The combined effect of instructions run one after another.
+ *
+ * A register read after an earlier instruction wrote it does not read the value
+ * the sequence started with, so it is not a read of the sequence. A partial
+ * write leaves the rest of the register as it was, so it kills nothing.
+ */
+function foldRegisterSemantics(
+  lines: readonly ParsedLine[],
+): RegisterSemantics {
+  const reads = none();
+  const writes = none();
+  const partialWrites = none();
+  let unknownEffects = false;
+  let call = false;
+  for (const line of lines) {
+    const step = getRegisterSemantics(line);
+    for (const register of step.reads)
+      if (!writes.has(register)) reads.add(register);
+    for (const register of step.writes) {
+      writes.add(register);
+      partialWrites.delete(register);
+    }
+    for (const register of step.partialWrites)
+      if (!writes.has(register)) partialWrites.add(register);
+    unknownEffects ||= step.unknownEffects;
+    call ||= step.call;
+  }
+  return { reads, writes, partialWrites, unknownEffects, call };
+}
+
 export function getRegisterSemantics(line: ParsedLine): RegisterSemantics {
+  const expansion = isMacroInvocation(line) ? expansionOf(line) : undefined;
+  if (expansion) return foldRegisterSemantics(expansion);
+
   const semantics = computeRegisterSemantics(line);
   if (semantics.unknownEffects) return semantics;
 

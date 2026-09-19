@@ -3,6 +3,7 @@ import { getFlagSemantics } from "../semantics/flags.js";
 import { canonicalMnemonic } from "../semantics/mnemonics.js";
 import { isExecutableLine } from "../util/ast.js";
 import { scanBlocks, type ConditionalBlock } from "./blocks.js";
+import { conditionalAssembly } from "./conditionals.js";
 import { analyzeLocalLabelScopes } from "./local-label-scopes.js";
 
 export interface ControlFlowGraph {
@@ -37,7 +38,17 @@ function isExecutable(line: ParsedLine | undefined): line is ParsedLine {
 }
 
 export function buildControlFlowGraph(file: ParsedFile): ControlFlowGraph {
-  const { region, repeats: repeatBlocks, conditionals } = scanBlocks(file);
+  const blocks = scanBlocks(file);
+  const { region, repeats: repeatBlocks } = blocks;
+
+  // Code in an arm that is not assembled is not part of the program, and a
+  // conditional whose outcome is known is not a choice between arms.
+  const assembly = conditionalAssembly(file);
+  const conditionals = blocks.conditionals.filter(
+    (block) => !assembly.decided[block.start],
+  );
+  const executable = (index: number) =>
+    isExecutable(file.lines[index]) && !assembly.unassembled[index];
 
   // Convert each REPT's directive bounds into the executable lines it encloses.
   const repeats: { first: number; last: number }[] = [];
@@ -45,7 +56,7 @@ export function buildControlFlowGraph(file: ParsedFile): ControlFlowGraph {
     let head: number | undefined;
     let tail: number | undefined;
     for (let i = start + 1; i < end; i++) {
-      if (!isExecutable(file.lines[i])) continue;
+      if (!executable(i)) continue;
       head ??= i;
       tail = i;
     }
@@ -102,7 +113,7 @@ export function buildControlFlowGraph(file: ParsedFile): ControlFlowGraph {
       const closed = conditionalArmEndingAt.get(i);
       if (closed) return fallthroughTargets(closed.end, seen);
 
-      if (isExecutable(file.lines[i])) return [i];
+      if (executable(i)) return [i];
     }
     return [];
   };
@@ -124,7 +135,8 @@ export function buildControlFlowGraph(file: ParsedFile): ControlFlowGraph {
   for (let i = 0; i < file.lines.length; i++) {
     const label = file.lines[i]?.label?.label;
     if (!label) continue;
-    const target = isExecutable(file.lines[i]) ? i : nextExecutableIndex(i);
+    if (assembly.unassembled[i]) continue;
+    const target = executable(i) ? i : nextExecutableIndex(i);
     if (target !== undefined) labels.set(labelKey(i, label), target);
   }
 
@@ -134,6 +146,12 @@ export function buildControlFlowGraph(file: ParsedFile): ControlFlowGraph {
   for (let i = 0; i < file.lines.length; i++) {
     const line = file.lines[i];
     if (!isExecutable(line)) continue;
+    // Not assembled: nothing is known about what it does, and nothing flows
+    // through it.
+    if (assembly.unassembled[i]) {
+      escapes[i] = true;
+      continue;
+    }
 
     const semantics = getFlagSemantics(line);
     const fallthrough = fallthroughTargets(i);
@@ -180,7 +198,7 @@ export function buildControlFlowGraph(file: ParsedFile): ControlFlowGraph {
   // The last line of a REPT body is followed by the first, so a value written
   // late in the body and read early in it stays live across the iteration.
   for (const { first, last } of repeats) {
-    if (isExecutable(file.lines[last])) successors[last].add(first);
+    if (executable(last)) successors[last].add(first);
   }
 
   // A macro body's last line has nowhere to fall through to, since the region

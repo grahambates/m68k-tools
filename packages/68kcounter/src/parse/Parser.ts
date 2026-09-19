@@ -1,3 +1,4 @@
+import { substituteMacroParameters } from "m68k-parser";
 import { type InstructionTiming, instructionTimings } from "../timings";
 import {
   type CacheModel,
@@ -247,21 +248,23 @@ export default class Parser {
     const macroName = statement.opcode.op.text;
     const definition = this.macros[macroName];
     if (definition) {
-      const args = statement.operands.map((o) => o.text);
-      // Each invocation gets a distinct value for `\@` unique labels
-      const unique = String(this.uniqueId++);
-      const macroStatements = definition.map(({ text }): StatementNode => {
-        // Substitute all `\1`..`\n` argument references (handles repeated and
-        // multi-digit references) and `\@` unique markers in a single pass.
-        const expanded = text.replace(/\\(@|\d+)/g, (match, key) => {
-          if (key === "@") {
-            return unique;
-          }
-          const arg = args[Number(key) - 1];
-          return arg !== undefined ? arg : match;
-        });
-        return new StatementNode(expanded);
-      });
+      // Arguments are substituted into each body line as text, by the same
+      // routine every other tool here uses, so `\0`, NARG, `\?n`, `\#` and
+      // the CARG selectors behave as they do in the assembler. Each invocation
+      // gets a distinct value for `\@` unique labels, and the selectors keep
+      // their position across the lines of one call.
+      const invocation = {
+        arguments: statement.operands.map((o) => ({ text: o.text })),
+        qualifier: statement.opcode?.qualifier
+          ? { text: statement.opcode.qualifier.text }
+          : undefined,
+        carg: 1,
+        unique: String(this.uniqueId++),
+      };
+      const macroStatements = definition.map(
+        ({ text }): StatementNode =>
+          new StatementNode(substituteMacroParameters(text, invocation).text),
+      );
       line.macroLines = this.processStatements(macroStatements);
     } else if (cachedOnlyCpu(this.cpu)) {
       line.timingUnavailable = `${this.cpu}: no cached timing available for this instruction form or unknown macro.`;

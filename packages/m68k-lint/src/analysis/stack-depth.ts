@@ -10,6 +10,7 @@ import {
 } from "../util/ast.js";
 import { buildControlFlowGraph } from "./cfg.js";
 import { stackSave } from "./register-saves.js";
+import { expansionOf } from "../semantics/macro-expansions.js";
 
 /**
  * How far the stack pointer has moved from where the routine found it, in bytes
@@ -69,6 +70,15 @@ function transfer(
           save.registers.length *
           save.bytesEach,
     };
+  const expansion = expansionOf(line);
+  if (expansion) {
+    let current: State | undefined = state;
+    for (const step of expansion) {
+      current = current && transfer(step, current, evaluate);
+      if (!current) return undefined;
+    }
+    return current;
+  }
   if (isMacroInvocation(line)) return undefined;
   const mnemonic = semanticMnemonic(line);
   if (!mnemonic) return undefined;

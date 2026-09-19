@@ -1,7 +1,7 @@
 import type { Rule } from "../../core/rule.js";
 import { FLAGS, getFlagSemantics } from "../../semantics/flags.js";
 import { semanticMnemonic } from "../../semantics/mnemonics.js";
-import { isMacroInvocation } from "../../util/ast.js";
+import { isOpaqueMacro } from "../../util/ast.js";
 
 /** Instructions whose only effect is to set the condition codes. */
 const COMPARISONS = new Set(["cmp", "cmpi", "cmpa", "cmpm", "tst", "btst"]);
@@ -51,9 +51,9 @@ export const unusedComparison: Rule = {
     if (!written.every((flag) => ctx.flags.isLiveAfter(index, flag) === "dead"))
       return;
 
-    // The flag analysis treats a macro as clobbering the flags, but it may as
-    // easily branch on them. Any macro reached before they are overwritten
-    // makes the answer unknown.
+    // The flag analysis treats a macro it cannot expand as clobbering the
+    // flags, but it may as easily branch on them. Any such macro reached before
+    // the flags are overwritten makes the answer unknown.
     const { cfg } = ctx.registers;
     const seen = new Set<number>([index]);
     const pending = [...cfg.successors[index]];
@@ -62,7 +62,7 @@ export const unusedComparison: Rule = {
       if (seen.has(at)) continue;
       seen.add(at);
       const next = ctx.file.lines[at];
-      if (isMacroInvocation(next)) return;
+      if (isOpaqueMacro(next)) return;
       const effect = getFlagSemantics(next);
       const overwritten = written.every(
         (flag) => effect.writes.has(flag) || effect.undefined.has(flag),

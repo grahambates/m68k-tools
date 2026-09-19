@@ -1,5 +1,9 @@
-import { parseBlocks, parseFile } from "m68k-parser";
-import type { Block, BlockStructure, ParsedFile } from "m68k-parser";
+import {
+  collectMacroDefinitions as collectDefinitions,
+  parseBlocks,
+  parseFile,
+} from "m68k-parser";
+import type { BlockStructure, MacroDefinition, ParsedFile } from "m68k-parser";
 import { type TextDocument } from "vscode-languageserver-textdocument";
 
 import { readDocumentFromUri, resolveReferencedUris } from "./files";
@@ -18,11 +22,6 @@ export interface IndexedDocument {
   symbols: Symbols;
   referencedUris: string[];
   macros: Map<string, MacroDefinition>;
-}
-
-export interface MacroDefinition {
-  name: string;
-  body: string[];
 }
 
 /**
@@ -77,7 +76,7 @@ export default class DocumentProcessor {
       blocks,
       symbols: processSymbols(document.uri, parsed, blocks, text),
       referencedUris: [],
-      macros: collectMacroDefinitions(blocks, text),
+      macros: collectMacroDefinitions(parsed, blocks, text),
     };
 
     this.ctx.store.set(document.uri, processed);
@@ -119,7 +118,7 @@ export default class DocumentProcessor {
       uri,
       symbols: processSymbols(uri, parsed, blocks, text),
       referencedUris: [],
-      macros: collectMacroDefinitions(blocks, text),
+      macros: collectMacroDefinitions(parsed, blocks, text),
     };
 
     this.ctx.store.set(uri, indexed);
@@ -189,25 +188,18 @@ export default class DocumentProcessor {
   }
 }
 
+/** Definitions by lower-cased name; where a name is defined twice, the later wins. */
 function collectMacroDefinitions(
-  structure: BlockStructure,
+  parsed: ParsedFile,
+  blocks: BlockStructure,
   text: string,
 ): Map<string, MacroDefinition> {
   const definitions = new Map<string, MacroDefinition>();
-  const lines = text.split(/\r?\n/g);
-
-  const visit = (blocks: Block[]) => {
-    for (const block of blocks) {
-      if (block.kind === "macro" && block.name && block.end !== undefined) {
-        definitions.set(block.name.toLowerCase(), {
-          name: block.name,
-          body: lines.slice(block.start + 1, block.end),
-        });
-      }
-      visit(block.children);
-    }
-  };
-  visit(structure.blocks);
-
+  for (const definition of collectDefinitions(
+    parsed,
+    text.split(/\r?\n/g),
+    blocks,
+  ))
+    definitions.set(definition.name.toLowerCase(), definition);
   return definitions;
 }

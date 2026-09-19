@@ -2,6 +2,7 @@ import type { ParsedLine, Size } from "m68k-parser";
 import type { Rule } from "../../core/rule.js";
 import { instructionSize, operand } from "../../util/ast.js";
 import { semanticMnemonic } from "../../semantics/mnemonics.js";
+import { stackSave } from "../../analysis/register-saves.js";
 
 const DATA = ["d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7"];
 const ADDRESS = ["a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7"];
@@ -101,8 +102,11 @@ export const movemRestoreMismatch: Rule = {
     const pending = new Map<string, Pending[]>();
 
     ctx.file.lines.forEach((line, index) => {
-      if (line.mnemonic?.type !== "instruction") return;
-      const mnemonic = semanticMnemonic(line);
+      // PUSHM and POPM are a save and restore through the stack like MOVEM.
+      const macro =
+        line.mnemonic?.type === "macro" ? stackSave(line) : undefined;
+      if (line.mnemonic?.type !== "instruction" && !macro) return;
+      const mnemonic = macro ? "movem" : semanticMnemonic(line);
       if (!mnemonic) return;
 
       // A return ends the routine's stack discipline. Anything still pending
@@ -114,11 +118,19 @@ export const movemRestoreMismatch: Rule = {
       }
       if (mnemonic !== "movem") return;
 
-      const size = instructionSize(line);
+      const size: Size | undefined = macro
+        ? macro.bytesEach === 4
+          ? "l"
+          : "w"
+        : instructionSize(line);
 
-      const savedTo = stackRegister(line, 1, "predec");
+      const savedTo = macro
+        ? macro.kind === "push"
+          ? "a7"
+          : undefined
+        : stackRegister(line, 1, "predec");
       if (savedTo) {
-        const registers = registerOperand(line, 0);
+        const registers = macro ? macro.registers : registerOperand(line, 0);
         if (registers) {
           const stack = pending.get(savedTo) ?? [];
           stack.push({ index, size, registers });
@@ -127,9 +139,13 @@ export const movemRestoreMismatch: Rule = {
         return;
       }
 
-      const restoredFrom = stackRegister(line, 0, "postinc");
+      const restoredFrom = macro
+        ? macro.kind === "pop"
+          ? "a7"
+          : undefined
+        : stackRegister(line, 0, "postinc");
       if (!restoredFrom) return;
-      const restored = registerOperand(line, 1);
+      const restored = macro ? macro.registers : registerOperand(line, 1);
       if (!restored) return;
 
       const stack = pending.get(restoredFrom);
@@ -178,7 +194,7 @@ export const movemRestoreMismatch: Rule = {
             ? "high"
             : "certain",
         message: `MOVEM saves ${formatRegisterList(saved)} but restores ${formatRegisterList(restored)}: ${detail.join(", ")}`,
-        loc: line.mnemonic.loc,
+        loc: line.mnemonic!.loc,
         notes: [
           saved.length !== restored.length || top.size !== size
             ? {

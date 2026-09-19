@@ -1,5 +1,6 @@
 import { decodeStringEscapes } from "../string-escapes.js";
 import { directiveSize } from "../directive-size.js";
+import { evaluateConstant } from "../evaluate.js";
 import { parseLine } from "../line-parser.js";
 
 /**
@@ -78,5 +79,22 @@ describe("directiveSize with escape sequences", () => {
     expect(directiveSize(line('\tdc.b "a\\n",0'), options)).toBe(3);
     expect(directiveSize(line('\tdc.w "a\\n"'), options)).toBe(4);
     expect(directiveSize(line('\tdc.b "\\x41\\101"'), options)).toBe(2);
+  });
+});
+
+describe("a character constant in an operand", () => {
+  const value = (text: string) => {
+    const operand = parseLine(text).value.operands?.[0];
+    const expr = operand?.type === "immediate" ? operand.value : undefined;
+    return expr && evaluateConstant(expr);
+  };
+
+  test("takes the operators that follow it", () => {
+    expect(value("\tmove.b #'A'+1,d0")).toEqual({ known: true, value: 66 });
+    expect(value("\tmove.b #'a'-'A',d0")).toEqual({ known: true, value: 32 });
+  });
+
+  test("a doubled quote is one quote", () => {
+    expect(value("\tmove.b #'''',d0")).toEqual({ known: true, value: 39 });
   });
 });

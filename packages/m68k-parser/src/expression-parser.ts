@@ -55,8 +55,8 @@ export function parseExpression(
     if (token.type === "eof") {
       tokenLength = 0;
     } else if (token.type === "string") {
-      // Include the surrounding quotes
-      tokenLength = token.value.length + 2;
+      // As written, with the surrounding quotes
+      tokenLength = token.length;
     } else if (token.type === "macro-parameter") {
       // The tokenizer strips the leading backslash from the value
       tokenLength = token.value.length + 1;

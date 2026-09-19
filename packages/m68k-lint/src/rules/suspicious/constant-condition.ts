@@ -79,7 +79,7 @@ function codesAfter(ctx: RuleContext, index: number): Codes | undefined {
   const valueOf = (op: ParsedLine["operands"], at: number, bits: number) => {
     const node = op?.[at];
     let value: number | undefined;
-    if (node?.type === "immediate" && node.value.type !== "string-literal") {
+    if (node?.type === "immediate") {
       const known = ctx.evaluate(node.value);
       value = known.known ? known.value : undefined;
     } else if (

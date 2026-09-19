@@ -32,6 +32,15 @@ describe("optimization rules", () => {
     expect(ids("move.w #1,d0")).not.toContain("optimization/prefer-moveq");
   });
 
+  test("a character constant followed by an operator is its value, not the string", () => {
+    // 'A'+1 is 66, which fits MOVEQ; read as the string "A'+1" it would not.
+    expect(
+      lint("move.l #'A'+1,d5").find(
+        (d) => d.ruleId === "optimization/prefer-moveq",
+      )?.suggestion?.replacement,
+    ).toBe("\tmoveq #'A'+1,d5");
+  });
+
   test("prefers MOVEQ for a character constant, keeping it as written", () => {
     const replacement = (source: string) =>
       lint(source).find((d) => d.ruleId === "optimization/prefer-moveq")

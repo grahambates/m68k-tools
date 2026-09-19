@@ -1217,8 +1217,31 @@ function expandFPURegisterRange(spec: string): FPUDataRegister[] {
   return [];
 }
 
-const isStringLiteral = (text: string) =>
-  text.startsWith('"') || text.startsWith("'") || text.startsWith("<");
+/**
+ * Where a quoted string starting at the beginning of `text` ends, a doubled
+ * quote inside being one quote character, or undefined if it is not closed.
+ */
+function quotedStringEnd(text: string): number | undefined {
+  const quote = text[0];
+  for (let i = 1; i < text.length; i++) {
+    if (text[i] !== quote) continue;
+    if (text[i + 1] === quote) i++;
+    else return i;
+  }
+  return undefined;
+}
+
+/**
+ * Whether an operand is a string literal in its own right. One that is closed
+ * before the end of the operand is the start of an expression instead, such as
+ * `'A'+1`. A string never closed is one still, as it always was.
+ */
+const isStringLiteral = (text: string) => {
+  if (text.startsWith("<")) return true;
+  if (!text.startsWith('"') && !text.startsWith("'")) return false;
+  const end = quotedStringEnd(text);
+  return end === undefined || end === text.length - 1;
+};
 
 function parseStringLiteral(
   text: string,
@@ -1227,10 +1250,9 @@ function parseStringLiteral(
   const quote = text.startsWith("<") ? ("<>" as const) : (text[0] as '"' | "'");
   const endQuote = quote === "<>" ? ">" : quote;
   const hasEndQuote = text.endsWith(endQuote);
-  const quoteStartLength = quote === "<>" ? 1 : 1;
-  const content = hasEndQuote
-    ? text.slice(quoteStartLength, -1)
-    : text.slice(quoteStartLength);
+  const raw = hasEndQuote ? text.slice(1, -1) : text.slice(1);
+  // A doubled quote is the quote character itself.
+  const content = quote === "<>" ? raw : raw.replaceAll(quote + quote, quote);
 
   return {
     value: {

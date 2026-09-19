@@ -26,6 +26,8 @@ export type ExpressionToken =
       value: string;
       quote: '"' | "'";
       position: number;
+      /** Length as written, quotes and doubled quotes included. */
+      length: number;
     }
   | { type: "operator"; value: string; position: number }
   | { type: "macro-parameter"; value: string; position: number }
@@ -246,8 +248,16 @@ export function tokenizeExpression(
       const quote = char as '"' | "'";
       i++; // opening quote
       let value = "";
-      while (i < expr.length && expr[i] !== quote) {
-        value += expr[i++];
+      // A doubled quote inside is one quote character, as the assembler reads it.
+      while (i < expr.length) {
+        if (expr[i] === quote && expr[i + 1] === quote) {
+          value += quote;
+          i += 2;
+        } else if (expr[i] === quote) {
+          break;
+        } else {
+          value += expr[i++];
+        }
       }
       if (i < expr.length) {
         i++; // closing quote
@@ -260,7 +270,13 @@ export function tokenizeExpression(
           }),
         );
       }
-      tokens.push({ type: "string", value, quote, position });
+      tokens.push({
+        type: "string",
+        value,
+        quote,
+        position,
+        length: i - position,
+      });
       continue;
     }
 

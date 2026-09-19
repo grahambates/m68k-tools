@@ -85,3 +85,22 @@ describe("directiveSize", () => {
     expect(size("move.l d0,d1")).toBeUndefined();
   });
 });
+
+describe("quoted strings", () => {
+  // Expected sizes and values are what vasm assembles for the same lines.
+  it("counts a doubled quote inside a string as one character", () => {
+    expect(size('dc.b "a""b"')).toBe(3);
+    expect(size("dc.b 'it''s'")).toBe(4);
+  });
+
+  it("reads a string followed by an operator as an expression", () => {
+    // vasm: dc.b "a"+1 is the single byte 'b'.
+    expect(size('dc.b "a"+1')).toBe(1);
+    expect(size("dc.b 'A'+1,0")).toBe(2);
+    expect(size("ds.b 'A'+1")).toBe(66);
+  });
+
+  it("still takes a string with no closing quote as one", () => {
+    expect(size('dc.b "abc')).toBe(3);
+  });
+});

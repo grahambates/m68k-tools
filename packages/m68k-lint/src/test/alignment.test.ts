@@ -90,10 +90,11 @@ describe("suspicious/missing-even", () => {
     ).toHaveLength(0);
   });
 
-  test("a string with an escape has no known length", () => {
-    expect(
-      found(RULE, ['dc.b "hi\\n"', "moveq #0,d0"].join("\n")),
-    ).toHaveLength(0);
+  test("a backslash in a string is a character, so it counts", () => {
+    // "a\n" is three bytes, which leaves the address odd.
+    expect(found(RULE, ['dc.b "a\\n"', "moveq #0,d0"].join("\n"))).toHaveLength(
+      1,
+    );
   });
 
   test("wider data with a count that is not known leaves the address alone", () => {

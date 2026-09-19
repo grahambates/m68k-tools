@@ -3,9 +3,9 @@
 Extensible static analysis and linting for Motorola 68k assembly, built on
 [`m68k-parser`](https://github.com/grahambates/m68k-tools/tree/main/packages/m68k-parser).
 
-142 built-in rules across correctness, suspicious-construct, optimization and
-style checks, backed by condition-code liveness, register liveness and constant
-propagation. Optimization suggestions on `mc68000` carry **exact** measured
+155 built-in rules across correctness, suspicious-construct, optimization and
+style checks, backed by condition-code liveness, register liveness, constant
+propagation, stack depth and byte-alignment tracking, and macro expansion. Optimization suggestions on `mc68000` carry **exact** measured
 size and cycle deltas from [`68kcounter`](https://github.com/grahambates/m68k-tools/tree/main/packages/68kcounter),
 so a claimed improvement is a measured one.
 
@@ -205,7 +205,55 @@ notes:
  - Resolved from outside this file: SHIFT_COUNT = 32 (from include/hardware.i).
 ```
 
-Set `"projectSymbols": false` to analyse each file strictly on its own.
+Set `"projectSymbols": false` to analyse each file strictly on its own. That
+turns off macros from other files too (see below).
+
+## Macros
+
+A macro call is a line the linter cannot see into, and most rules have to stand
+down around one. So where it can, m68k-lint expands the call the way the
+assembler does: the arguments are substituted into the macro body as text and
+the result is parsed as ordinary lines. That handles `\1`-`\9`, `\a`-`\z`,
+`\0` (the size the macro was called with), `NARG`, `\#`, `\?n`, `\.`/`\+`/`\-`
+and `\@`, a parameter that builds a name (`d\1`), and calls to other macros. A
+numbered argument the call does not supply is empty.
+
+A macro is defined in the file itself, or in another file of the project. For a
+name the file does not define, the project index answers only when every
+definition of that name in the project has the same body, the same rule as for
+constants above; a macro defined two ways is left alone. This is a match by name
+across the project, not a walk of the include graph, so a header included on only
+some targets is treated as always applying.
+
+What the linter then does with an expansion is deliberately narrow. It is used
+only when it comes to a straight run of instructions, after any conditional
+assembly in the body has been settled from the arguments and constants the file
+knows (`if narg>1`, `ifb \2`). A body with labels, branches, other directives, a
+call to a macro that cannot be expanded, a condition that cannot be settled, a
+missing operand or a macro that calls itself leaves the call opaque, exactly as if
+macros were not expanded. `WAITBLIT`, with its loop, is the usual example.
+
+The Amiga NDK's `PUSHM` and `POPM` are understood as `movem.l` to and from the
+stack, whether or not the project defines them, including `POPM` with no list,
+which restores what the matching `PUSHM` saved.
+
+A macro named like an instruction is the instruction; the linter does not look
+for a definition of it.
+
+## Conditional assembly
+
+Only the arm an assembler would take is code. `IF`, `IFEQ`, `IFNE`, `IFGT`,
+`IFGE`, `IFLT`, `IFLE` and `ELSEIF` are decided when their expression evaluates
+from literals and constants the file (or the project index) resolves, and `IFD`,
+`IFND`, `IFMACROD` and `IFMACROND` when the file defines the name earlier. The
+arms not taken take no part in control flow, register values or the constants the
+file defines, so a constant set one way in an `IF` arm and another in its `ELSE`
+arm is no longer a conflict, and a write in an arm that is not assembled is not
+called dead.
+
+A condition that cannot be settled -- a name defined elsewhere or on the
+assembler's command line, `IFC` string comparisons, the pass number -- leaves the
+block alone: its arms are treated as alternatives, as they always were.
 
 ## Rules
 
@@ -215,8 +263,8 @@ See [`docs/rules.md`](docs/rules.md) for the full generated table, or run
 | Category       | Count | Purpose                                                     |
 | -------------- | ----- | ----------------------------------------------------------- |
 | `correctness`  | 3     | Valid assembly with a provable semantic or runtime problem  |
-| `suspicious`   | 12    | Valid code that may be intentional but is easy to misread   |
-| `optimization` | 110   | Smaller or faster equivalents, gated on target and liveness |
+| `suspicious`   | 24    | Valid code that may be intentional but is easy to misread   |
+| `optimization` | 121   | Smaller or faster equivalents, gated on target and liveness |
 | `style`        | 7     | Subjective conventions, opt-in                              |
 
 `severity`, `confidence` and `applicability` are independent. Applicability is
@@ -245,6 +293,12 @@ and its correctness rests on something statable but unprovable — a callee that
 must not read arguments relative to SP, a device that must tolerate a wider
 access — that is `conditional`, and the replacement is given along with the
 condition.
+
+Three rules are off by default because "nothing refers to it" is only evidence
+when the whole project has been read: `suspicious/unused-global-label`,
+`suspicious/unused-constant` and `suspicious/unused-macro`. They report only when
+the project index is available, and a name with no reference the index can see
+may still be an entry point, a vector-table slot or something a build step uses.
 
 ## Overlapping optimizations
 
@@ -467,8 +521,11 @@ inability to prove a fact yields `unknown`, never an optimistic assumption.
   deliberately excluded because it is mutable and order-sensitive.
 - **Control flow** — instruction-level successors and predecessors for
   fallthrough and direct branches, with direct `JMP label` resolved in-file.
-  `RTS`, `RTE`, `RTR`, `STOP`, unresolved branches and indirect jumps are escape
-  points. Calls keep their fallthrough edge but are opaque CCR boundaries.
+  `RTS`, `RTE`, `RTR`, `RTD`, `STOP`, unresolved branches and indirect jumps are
+  escape points. Calls keep their fallthrough edge but are opaque CCR boundaries.
+  A local label (`.loop`, `loop$`) belongs to the routine that defines it, so two
+  routines can each have their own; a label that only defines a symbol, such as
+  one on an `equ` line, does not start a new routine.
 - **Condition codes** — `X`, `N`, `Z`, `V` and `C` modelled individually, with
   liveness and reaching definitions.
 - **Registers** — per-register liveness, definite constants, constant and copy
@@ -477,8 +534,18 @@ inability to prove a fact yields `unknown`, never an optimistic assumption.
   scratch-register optimisations.
 - **Blocks** — macro bodies, `REPT` and the arms of an `IF`/`ELSE` are separate
   regions rather than straight-line code, so a sequence is never matched across
-  a boundary the assembler may not lay out that way, and a macro invocation is
-  treated as code whose effects are unknown.
+  a boundary the assembler may not lay out that way. A macro invocation is
+  expanded where it can be (see [Macros](#macros)) and is otherwise treated as
+  code whose effects are unknown; the arms of a conditional whose condition is
+  settled are resolved (see [Conditional assembly](#conditional-assembly)).
+- **Stack depth** — how much a routine has pushed, through `-(sp)`, `(sp)+`,
+  `MOVEM`, `PEA`, `LINK`/`UNLK` and adjustments of `SP`, from each global label.
+  Calls and traps are taken to leave the stack as they found it. It goes
+  unknown at anything it cannot follow and stays unknown.
+- **Byte alignment** — whether each address is odd or even, from the size of the
+  `dc`, `dcb` and `ds` data before it, restarted by `even`, `cnop`, `align` and a
+  new section. Unknown after an `INCLUDE`, `INCBIN`, an unexpanded macro or an
+  undecided conditional.
 
 Two conservative cases worth knowing, because they surprise people:
 

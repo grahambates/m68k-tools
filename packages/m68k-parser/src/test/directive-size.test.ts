@@ -29,9 +29,8 @@ describe("directiveSize", () => {
       expect(size("dc.b")).toBe(0);
     });
 
-    it("has no known length for a string with an escape, unless asked", () => {
-      expect(size('dc.b "a\\n"')).toBeUndefined();
-      expect(size('dc.b "a\\n"', { escapes: "literal" })).toBe(3);
+    it("counts a backslash as the character it is", () => {
+      expect(size('dc.b "a\\n"')).toBe(3);
     });
 
     it("has the same directives under their other names", () => {

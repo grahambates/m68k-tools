@@ -56,6 +56,23 @@ Available as <a href="https://marketplace.visualstudio.com/items?itemName=gigaba
 
 ![Output window screenshot](https://raw.githubusercontent.com/grahambates/m68k-tools/main/apps/68kcounter-vscode/images/demo.gif)
 
+## Macros and repeats
+
+A macro defined in the file is expanded where it is called, and the expansion is
+counted, with each expanded line shown against the call. Arguments are
+substituted as text, as the assembler does: `\1`-`\9`, `\0` (the size the macro
+was called with), `NARG`, `\#`, `\?n`, the `\.`, `\+` and `\-` selectors and `\@`
+for a label unique to each call. A numbered argument the call does not give is
+empty, and `\10` is `\1` followed by a zero: arguments past nine are `\a` to `\z`
+and only in Devpac mode. `REPT` bodies are counted once per repetition.
+
+Conditional assembly is not evaluated, so both arms of an `IF` are counted. A macro
+defined in another file is not seen: a call to one adds nothing to the totals, and
+only on the 68040 and 68060 is it flagged as untimed.
+
+`dc`, `dcb` and `ds` written without a size are words. A count that is not a
+number, or a constant the file does not define, is counted as nothing.
+
 ## Limitations:
 
 - Because it analyses your pre-assembled source, it can't take into account

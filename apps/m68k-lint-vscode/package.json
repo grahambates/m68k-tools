@@ -161,7 +161,7 @@
         "m68kLint.defaults.projectSymbols": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Resolve constants a file does not define by indexing the rest of the workspace. Turn off to analyse each file strictly alone."
+          "markdownDescription": "Resolve constants and macros a file does not define by indexing the rest of the workspace. Turn off to analyse each file strictly alone."
         }
       }
     }

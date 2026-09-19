@@ -39,7 +39,7 @@
     },
     "projectSymbols": {
       "type": "boolean",
-      "description": "Resolve constants a file does not define by indexing the rest of the project. A name is used only where every file that defines it agrees on one value. Set false to analyse each file strictly alone."
+      "description": "Resolve constants and macros a file does not define by indexing the rest of the project. A name is used only where every file that defines it agrees on one definition. Set false to analyse each file strictly alone."
     },
     "presets": {
       "type": "array",

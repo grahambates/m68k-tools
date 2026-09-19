@@ -24,7 +24,8 @@ family assembly, using [m68k-parser](https://github.com/grahambates/m68k-tools/t
 - Document Highlights
 - Document Links
 - Document Symbols
-- Register usage and availability analysis, navigation, swapping and remapping
+- Register usage and availability analysis, navigation, swapping and remapping;
+  macro calls are expanded, including macros defined in included files
 - Workspace indexing and assembly-unit-aware symbol lookup
 - Find References
 - Go to definition

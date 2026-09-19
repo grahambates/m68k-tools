@@ -44,7 +44,7 @@ Settings, under the `m68kLint` section:
     "goal": "balanced",
     "presets": ["recommended"],
     "measureImpact": true,
-    "projectSymbols": true,
+    "projectSymbols": true, // constants and macros defined in other files
   },
 }
 ```

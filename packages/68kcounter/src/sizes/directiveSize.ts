@@ -12,8 +12,7 @@ import { type DirectiveStatement, type StatementNode } from "../parse/nodes";
  *
  * The parser says what `dc`, `dcb`, `ds` and their aliases emit, so counts
  * agree with every other tool here. A count that cannot be worked out is
- * counted as nothing rather than guessed. A backslash in a string counts as the
- * character it is written as.
+ * counted as nothing rather than guessed.
  */
 export default function directiveSize(
   statement: StatementNode & DirectiveStatement,
@@ -27,8 +26,5 @@ export default function directiveSize(
       ? result.value
       : undefined;
   };
-  return (
-    sizeOf(parseLine(statement.text).value, { evaluate, escapes: "literal" }) ??
-    0
-  );
+  return sizeOf(parseLine(statement.text).value, { evaluate }) ?? 0;
 }

@@ -256,3 +256,83 @@ if (parsed.errors.length === 0) {
 Precedence follows [vasm's expression rules](https://github.com/StarWolf3000/vasm-mirror/blob/master/doc/vasm_main.texi): shifts and bitwise operators bind more tightly than arithmetic. Comparisons and logical binary operators return -1 for true and 0 for false, matching Motorola syntax; unary `!` returns 1 or 0. Division truncates towards zero; `%` and the Motorola-syntax `//` alias calculate remainders. Unknown symbols, address-dependent expressions and unsupported nodes return `{ known: false, reason }`. Check parse errors before evaluating a recovered AST.
 
 Evaluation uses JavaScript numbers and 32-bit bitwise operations; it does not emulate every target-width overflow or assembler compatibility option. Symbol lookup, forward references and cycle detection remain the caller's responsibility.
+
+## Macros
+
+Macro expansion works by text substitution, the way an assembler does it: a
+call's arguments are substituted into each line of the macro body, and the result
+is parsed as an ordinary line. `d\1`, `\1(a0)` and a parameter that stands for a
+size all come out right because the assembler sees nothing but text either.
+
+```ts
+import {
+  parseFile,
+  parseLine,
+  collectMacroDefinitions,
+  expandMacro,
+  macroInvocation,
+} from "m68k-parser";
+
+const source = "Clear macro\n\tmoveq #0,d\\1\n\tendm\n";
+const definitions = collectMacroDefinitions(
+  parseFile(source),
+  source.split("\n"),
+);
+
+const call = "\tClear 3";
+const { lines, incomplete } = expandMacro(
+  definitions[0],
+  macroInvocation(parseLine(call).value, call),
+  { resolve: (name) => definitions.find((d) => d.name === name) },
+);
+// lines[0].text === "\tmoveq #0,d3"; lines[0].line is its parsed form
+```
+
+- `collectMacroDefinitions(file, sourceLines)` lists every complete definition in
+  source order, named either by label (`Name: macro`) or by operand
+  (`macro Name`). A name defined twice is listed twice, so a caller that needs an
+  unambiguous answer can tell.
+- `macroInvocation(line, lineText)` takes a call's arguments as source text by
+  position, so a bracketed or quoted argument stays whole.
+- `expandMacro(definition, invocation, { resolve })` expands one call, following
+  calls to other macros through `resolve`, which is how a caller decides where
+  definitions come from: one file, a file and its includes, or a whole project.
+  `incomplete` is set if a macro called itself or the output hit a limit
+  (`maxDepth`, `maxLines`). `unique` supplies the value for `\@`.
+- `substituteMacroParameters(text, invocation)` substitutes into one line.
+
+It handles `\0`-`\9`, `\a`-`\z`, `\?n`, `\#`, `\.`, `\+`, `\-`, `\@`, `NARG`
+and `CARG`. A numbered argument the call did not supply is empty; a lettered one is
+left as written, since outside Devpac mode `\n` in a string is not a parameter.
+Each substituted stretch of text can carry an `origin` you supplied for the
+argument, and it is traced through nested calls, so a tool can point back at where
+an argument was written.
+
+## Other helpers
+
+Small pieces that several tools need, kept here so they agree:
+
+- **Blocks** — `parseBlocks(file)` pairs each `macro`, `rept` and `if` with its
+  terminator and nests them; `blockRole`, `blockAt` and `enclosingBlocks` ask
+  about a single line. `isBlockDirective(name)` and `isSectionDirective(name)`
+  classify a directive, and `sectionTypeNames` lists what a section can be given
+  as its type.
+- **Local labels** — `isLocalLabelName(name)` (`.loop`, `loop$`),
+  `bareLocalName`, and `analyzeLocalLabelScopes(file)`, which ties each local label
+  to the global label whose routine it is in. A label that only defines a symbol
+  (`equ` and the other assignments) does not start a routine, and neither does one
+  inside a macro body or conditional block.
+- **Operands and mnemonics** — `addressingMode(operand)` names the addressing mode
+  an operand is written in. `canonicalConditionMnemonic(name)` reads `HS`, `LO` and
+  `DBRA` as `CC`, `CS` and `DBF`, and `addressRegisterForm(name)` gives `MOVEA`,
+  `ADDA`, `SUBA` or `CMPA` for the generic spelling of an instruction on an address
+  register.
+- **Data sizes** — `directiveSize(line, { evaluate })` is the number of bytes a
+  `dc`, `dcb` or `ds` (and `db`, `dw`, `dl`, `blk`) emits, or `undefined` when it is
+  not known. Without a size they take a word, and every character of a string
+  counts as written, so `"a\n"` is three bytes.
+- **Walking and ranges** — `walkLine`, `walkFile`, `childNodes`, `lineNodes` and
+  `descendants` traverse a tree structurally, so a node type added later is walked
+  without a change. `locationAsRange`, `containsPosition` and `containsRange` work
+  on zero-based positions in the shape the language server protocol uses, without
+  depending on it.

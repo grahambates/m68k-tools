@@ -19,13 +19,6 @@ export interface DirectiveSizeOptions {
    * number is understood, so a `ds` sized by a constant is unknown.
    */
   evaluate?: (expr: ExpressionNode) => number | undefined;
-  /**
-   * What a backslash in a string means. Whether `\n` is one character or two
-   * depends on whether the assembler was asked to process escape sequences, so
-   * by default a string containing one has no known length. Pass `"literal"`
-   * to count every character as written.
-   */
-  escapes?: "unknown" | "literal";
 }
 
 /**
@@ -33,10 +26,13 @@ export interface DirectiveSizeOptions {
  * not known.
  *
  * Covers `dc` (and `db`, `dw`, `dl`), `dcb` and `ds` (and `blk`). Without a
- * size they take a word, as an assembler does. Undefined also covers what has
- * no fixed size, such as a count that is not a known number, and everything
- * that is not one of these directives: a caller decides for itself what
- * `equ` or `even` amount to.
+ * size they take a word, as an assembler does. Every character of a string is
+ * one element as written, so `"a\n"` is three bytes: a backslash is not an
+ * escape.
+ *
+ * Undefined also covers what has no fixed size, such as a count that is not a
+ * known number, and everything that is not one of these directives: a caller
+ * decides for itself what `equ` or `even` amount to.
  */
 export function directiveSize(
   line: ParsedLine,
@@ -71,8 +67,6 @@ export function directiveSize(
       let elements = 0;
       for (const operand of operands) {
         if (operand.type === "string-literal") {
-          if (options.escapes !== "literal" && operand.content.includes("\\"))
-            return undefined;
           elements += operand.content.length;
         } else if (operand.type === "value") {
           elements++;

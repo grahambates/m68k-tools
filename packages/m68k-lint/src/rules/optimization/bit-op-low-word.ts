@@ -27,7 +27,7 @@ function makeRule(kind: "bset" | "bclr" | "bchg"): Rule {
       if (size && size !== "l") return;
       const bitOp = immediateOperand(line, 0);
       const dest = dataRegisterOperand(line, 1);
-      if (!bitOp || bitOp.value.type === "string-literal" || !dest) return;
+      if (!bitOp || !dest) return;
       const bit = ctx.evaluate(bitOp.value);
       if (!bit.known || bit.value < 0 || bit.value > 15) return;
       if (

@@ -41,7 +41,7 @@ export const longShiftSequence: Rule = {
 
     const imm = immediateOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
-    if (!imm || !dest || imm.value.type === "string-literal") return;
+    if (!imm || !dest) return;
     const amount = ctx.evaluate(imm.value);
     if (!amount.known || amount.value < 16 || amount.value >= 32) return;
 

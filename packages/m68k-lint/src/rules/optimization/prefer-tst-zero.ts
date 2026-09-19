@@ -20,7 +20,7 @@ export const preferTstZero: Rule = {
   checkLine(ctx, line) {
     if (!isInstruction(line, "cmp")) return;
     const imm = immediateOperand(line, 0);
-    if (!imm || imm.value.type === "string-literal") return;
+    if (!imm) return;
     const value = ctx.evaluate(imm.value);
     if (!value.known || value.value !== 0) return;
     const dest = operand(line, 1);

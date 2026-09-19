@@ -36,7 +36,7 @@ export const moveImmediateAddressToLea: Rule = {
     if (size !== "w" && size !== "l") return;
     const imm = immediateOperand(line, 0);
     const dest = addressRegisterOperand(line, 1);
-    if (!imm || !dest || imm.value.type === "string-literal") return;
+    if (!imm || !dest) return;
     // Anything loaded into an address register is an address, whether it folds
     // to a constant or stays a link-time symbol. Zero has its own rules.
     const value = ctx.evaluate(imm.value);
@@ -110,8 +110,7 @@ export const moveAddressThenAddToLea: Rule = {
     if (
       !imm ||
       !addDest ||
-      addDest.register.toLowerCase() !== dest.register.toLowerCase() ||
-      imm.value.type === "string-literal"
+      addDest.register.toLowerCase() !== dest.register.toLowerCase()
     )
       return;
     const value = ctx.evaluate(imm.value);

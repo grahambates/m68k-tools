@@ -102,8 +102,8 @@ export function valueText(
  * parentheses are dropped, because a displacement that opens with `(` reads
  * like an addressing mode: `(SCREEN_BW*2)(a3)` is ambiguous where
  * `SCREEN_BW*2(a3)` is not. Neither changes what the expression means; 68k
- * expression syntax has no token in which a space is significant, once string
- * literals are excluded, which every caller already does.
+ * expression syntax has no token in which a space is significant outside a quoted
+ * string, and blanks inside one are kept.
  */
 function operandText(
   ctx: RuleContext,
@@ -111,8 +111,27 @@ function operandText(
 ): string | undefined {
   let node = expression;
   while (node?.type === "group") node = node.expression;
-  const text = ctx.sourceTextOf(node)?.replace(/\s+/g, "");
+  const text = withoutBlanks(ctx.sourceTextOf(node));
   return text ? text : undefined;
+}
+
+/** Text with its blanks removed, except inside a quoted string, where they are characters. */
+function withoutBlanks(text: string | undefined): string | undefined {
+  if (text === undefined) return undefined;
+  let result = "";
+  let quote: string | undefined;
+  for (const char of text) {
+    if (quote) {
+      if (char === quote) quote = undefined;
+      result += char;
+    } else if (char === '"' || char === "'") {
+      quote = char;
+      result += char;
+    } else if (!/\s/.test(char)) {
+      result += char;
+    }
+  }
+  return result;
 }
 
 /**

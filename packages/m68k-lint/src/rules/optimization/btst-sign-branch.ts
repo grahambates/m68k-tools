@@ -53,7 +53,7 @@ export const btstSignBranch: Rule = {
     if (!isInstruction(line, "btst")) return;
     const bitOp = immediateOperand(line, 0);
     const rawDest = operand(line, 1);
-    if (!bitOp || bitOp.value.type === "string-literal" || !rawDest) return;
+    if (!bitOp || !rawDest) return;
     const bit = ctx.evaluate(bitOp.value);
     if (!bit.known) return;
 

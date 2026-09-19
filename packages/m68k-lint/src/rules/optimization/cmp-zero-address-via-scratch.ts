@@ -33,7 +33,7 @@ export const cmpZeroAddressViaScratch: Rule = {
     if (instructionSize(line) !== "l") return;
     const source = immediateOperand(line, 0);
     const dest = addressRegisterOperand(line, 1);
-    if (!source || source.value.type === "string-literal" || !dest) return;
+    if (!source || !dest) return;
     const value = ctx.evaluate(source.value);
     if (!value.known || value.value !== 0) return;
     // Verified with 68kcounter: MOVE.L through a scratch register is

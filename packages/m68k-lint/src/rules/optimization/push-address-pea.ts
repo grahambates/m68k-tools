@@ -72,7 +72,7 @@ export const pushAddressPea: Rule = {
       return;
 
     const imm = immediateOperand(next.line, 0);
-    if (!imm || imm.value.type === "string-literal") return;
+    if (!imm) return;
     const value = ctx.evaluate(imm.value);
     if (!value.known) return;
 

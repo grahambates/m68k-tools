@@ -11,8 +11,8 @@ import { valueText } from "./helpers.js";
  * The immediate as a signed long, or undefined if it does not fit in one.
  *
  * MOVE.L's immediate is 32 bits, so `$ffffff80` and `-128` name the same
- * value. Rejecting the unsigned spelling would miss every negative constant
- * written as a bit pattern, which is how masks are usually written.
+ * value, and evaluation already wraps to 32 bits as the assembler does. A value
+ * that has not wrapped, from a caller that does not, is folded here too.
  */
 function signedLong(value: number): number | undefined {
   if (value >= -0x80000000 && value <= 0x7fffffff) return value;
@@ -37,18 +37,20 @@ export const preferMoveq: Rule = {
     const source = immediateOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
     if (!source || !dest) return;
-    if (source.value.type === "string-literal") return;
 
     const value = ctx.evaluate(source.value);
     if (!value.known) return;
     const signed = signedLong(value.value);
     if (signed === undefined || signed < -128 || signed > 127) return;
 
-    // MOVEQ's operand field is a signed byte, and assemblers reject the
-    // unsigned spelling of a negative constant there, so the replacement has
-    // to give the signed form even where that loses a symbol name.
+    // MOVEQ's operand field is a signed byte. vasm takes `$ffffff80` for -128,
+    // as it wraps to 32 bits, but the signed form is the one every assembler
+    // takes and the one that says what is meant, so a literal written the
+    // unsigned way is given as a signed number, losing nothing but the spelling.
+    const spelledUnsigned =
+      source.value.type === "numeric-literal" && source.value.value !== signed;
     const written =
-      signed === value.value
+      signed === value.value && !spelledUnsigned
         ? valueText(ctx, source.value, value.value)
         : String(signed);
 

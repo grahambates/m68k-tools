@@ -255,6 +255,8 @@ if (parsed.errors.length === 0) {
 
 Precedence follows [vasm's expression rules](https://github.com/StarWolf3000/vasm-mirror/blob/master/doc/vasm_main.texi): shifts and bitwise operators bind more tightly than arithmetic. Comparisons and logical binary operators return -1 for true and 0 for false, matching Motorola syntax; unary `!` returns 1 or 0. Division truncates towards zero; `%` and the Motorola-syntax `//` alias calculate remainders. Unknown symbols, address-dependent expressions and unsupported nodes return `{ known: false, reason }`. Check parse errors before evaluating a recovered AST.
 
+Values are 32-bit signed, as vasm has them: `$ffffffff` is -1, so it is less than 5, an overflowing product wraps, and shift counts are taken modulo 32. A character constant of up to four characters (`'A'`, `"AB"`) is its bytes packed big-endian, so `'AB'` is `$4142`; a longer one is not evaluated. The third argument, `{ escapeSequences: true }`, reads backslash escapes in character constants as `vasm -esc` does. All of this was checked against vasm's output, along with the precedence table, using a differential test over several thousand generated expressions. Where vasm differs, ours is the more regular reading, and the assembler reports the mistake itself: consecutive unary operators (`--5`, `~-1`, `!!x`) are errors in vasm and evaluate here, and a chain of comparisons that starts with `<=` or `>=` (`1<=0<0`) gives vasm's own answer only when parenthesised.
+
 Evaluation uses JavaScript numbers and 32-bit bitwise operations; it does not emulate every target-width overflow or assembler compatibility option. Symbol lookup, forward references and cycle detection remain the caller's responsibility.
 
 ## Macros

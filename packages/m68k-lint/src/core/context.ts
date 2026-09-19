@@ -596,10 +596,14 @@ export class DefaultRuleContext implements RuleContext {
   }
 
   evaluate(expr: ExpressionNode): ConstantResult {
-    return evaluateConstant(expr, (name) => {
-      const result = this.symbols.evaluate(name);
-      return result.known ? result.value : undefined;
-    });
+    return evaluateConstant(
+      expr,
+      (name) => {
+        const result = this.symbols.evaluate(name);
+        return result.known ? result.value : undefined;
+      },
+      { escapeSequences: this.config.escapeSequences },
+    );
   }
 
   line(index: number): ParsedLine | undefined {

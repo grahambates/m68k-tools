@@ -21,7 +21,7 @@ export const preferMoveWordAddress: Rule = {
     if (!isInstruction(line, "movea") || instructionSize(line) !== "l") return;
     const imm = immediateOperand(line, 0);
     const dest = addressRegisterOperand(line, 1);
-    if (!imm || imm.value.type === "string-literal" || !dest) return;
+    if (!imm || !dest) return;
     const value = ctx.evaluate(imm.value);
     if (
       !value.known ||

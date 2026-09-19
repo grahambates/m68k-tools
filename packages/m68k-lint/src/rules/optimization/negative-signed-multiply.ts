@@ -44,7 +44,7 @@ export const vasmNegativeSignedMultiply: Rule = {
     const size = instructionSize(line);
     const imm = immediateOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
-    if (!imm || !dest || imm.value.type === "string-literal") return;
+    if (!imm || !dest) return;
     const evaluated = ctx.evaluate(imm.value);
     if (!evaluated.known || evaluated.value >= 0) return;
 

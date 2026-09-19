@@ -138,8 +138,7 @@ export const amigaBitMaskConstants: Rule = {
 
     for (let i = 0; i < (line.operands?.length ?? 0); i++) {
       const op = operand(line, i);
-      if (op?.type !== "immediate" || op.value.type === "string-literal")
-        continue;
+      if (op?.type !== "immediate") continue;
       const uses = collectConstants(op.value);
       if (!uses.length) continue;
 

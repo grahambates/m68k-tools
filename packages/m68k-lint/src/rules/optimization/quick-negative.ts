@@ -30,12 +30,7 @@ function quickNegative(
       const imm = immediateOperand(line, 0);
       const dest = operand(line, 1);
       const size = instructionSize(line);
-      if (
-        !imm ||
-        imm.value.type === "string-literal" ||
-        !isAddqDestination(dest, size)
-      )
-        return;
+      if (!imm || !isAddqDestination(dest, size)) return;
       const value = ctx.evaluate(imm.value);
       if (!value.known || value.value < -8 || value.value > -1) return;
       // The value is the same either way, but the carry is not: ADD sets C on a

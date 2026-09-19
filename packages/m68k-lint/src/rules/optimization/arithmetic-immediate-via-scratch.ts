@@ -63,8 +63,7 @@ export const arithmeticImmediateViaScratch: Rule = {
 
     const immediate = immediateOperand(line, 0);
     const destination = dataRegisterOperand(line, 1);
-    if (!immediate || immediate.value.type === "string-literal" || !destination)
-      return;
+    if (!immediate || !destination) return;
 
     const value = ctx.evaluate(immediate.value);
     if (!value.known || value.value < -128 || value.value > 127) return;

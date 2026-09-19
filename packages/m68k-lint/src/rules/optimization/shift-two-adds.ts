@@ -32,7 +32,7 @@ export const shiftTwoAdds: Rule = {
     if (size !== "b" && size !== "w") return;
     const count = immediateOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
-    if (!count || count.value.type === "string-literal" || !dest) return;
+    if (!count || !dest) return;
     const value = ctx.evaluate(count.value);
     if (!value.known || value.value !== 2) return;
 

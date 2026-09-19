@@ -66,7 +66,7 @@ export const combineConsecutiveShift: Rule = {
     if (size !== "b" && size !== "w" && size !== "l") return;
     const firstImm = immediateOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
-    if (!firstImm || firstImm.value.type === "string-literal" || !dest) return;
+    if (!firstImm || !dest) return;
     const n = ctx.evaluate(firstImm.value);
     if (!n.known || n.value < 1 || n.value > 8) return;
 
@@ -79,8 +79,7 @@ export const combineConsecutiveShift: Rule = {
       return;
     const secondImm = immediateOperand(next.line, 0);
     const nextDest = dataRegisterOperand(next.line, 1);
-    if (!secondImm || secondImm.value.type === "string-literal" || !nextDest)
-      return;
+    if (!secondImm || !nextDest) return;
     if (nextDest.register.toLowerCase() !== dest.register.toLowerCase()) return;
     const m = ctx.evaluate(secondImm.value);
     if (!m.known || m.value < 1 || m.value > 8) return;

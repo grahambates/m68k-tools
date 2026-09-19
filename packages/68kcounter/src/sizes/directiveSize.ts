@@ -23,7 +23,13 @@ export default function directiveSize(
   vars: Variables,
 ): number {
   const evaluate = (expr: ExpressionNode): number | undefined => {
-    const result = evaluateConstant(expr, (name) => lookupVariable(vars, name));
+    const result = evaluateConstant(
+      expr,
+      (name) => lookupVariable(vars, name),
+      {
+        escapeSequences: readsEscapes(vars),
+      },
+    );
     return result.known && Number.isFinite(result.value)
       ? result.value
       : undefined;

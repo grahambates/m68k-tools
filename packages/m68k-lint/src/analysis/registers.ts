@@ -61,9 +61,7 @@ function immediateExpr(
   index: number,
 ): ExpressionNode | undefined {
   const op = line.operands?.[index];
-  return op?.type === "immediate" && op.value.type !== "string-literal"
-    ? op.value
-    : undefined;
+  return op?.type === "immediate" ? op.value : undefined;
 }
 function directRegister(line: ParsedLine, index: number): Register | undefined {
   const op = line.operands?.[index];

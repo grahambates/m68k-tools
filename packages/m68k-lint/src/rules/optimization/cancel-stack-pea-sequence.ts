@@ -66,7 +66,7 @@ function quickAmount(
   const size = instructionSize(line);
   if (size !== "w" && size !== "l") return undefined;
   const imm = immediateOperand(line, 0);
-  if (!imm || imm.value.type === "string-literal") return undefined;
+  if (!imm) return undefined;
   const value = ctx.evaluate(imm.value);
   return value.known ? value.value : undefined;
 }

@@ -150,7 +150,6 @@ export const negateAddMaskToEor: Rule = {
     const dest = dataRegisterOperand(next.line, 1);
     if (
       imm?.type !== "immediate" ||
-      imm.value.type === "string-literal" ||
       !dest ||
       dest.register.toLowerCase() !== reg.register.toLowerCase()
     )

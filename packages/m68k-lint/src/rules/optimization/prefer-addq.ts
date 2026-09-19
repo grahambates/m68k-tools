@@ -24,7 +24,7 @@ export const preferAddq: Rule = {
     const immediate = immediateOperand(line, 0);
     const destination = operand(line, 1);
     const size = instructionSize(line);
-    if (!immediate || immediate.value.type === "string-literal") return;
+    if (!immediate) return;
     if (!isAddqDestination(destination, size)) return;
 
     const value = ctx.evaluate(immediate.value);

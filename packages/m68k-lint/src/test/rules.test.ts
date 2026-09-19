@@ -32,6 +32,17 @@ describe("optimization rules", () => {
     expect(ids("move.w #1,d0")).not.toContain("optimization/prefer-moveq");
   });
 
+  test("prefers MOVEQ for a character constant, keeping it as written", () => {
+    const replacement = (source: string) =>
+      lint(source).find((d) => d.ruleId === "optimization/prefer-moveq")
+        ?.suggestion?.replacement;
+    expect(replacement("move.l #'A',d5")).toBe("\tmoveq #'A',d5");
+    // The blank inside the quotes is a character, not spacing to tidy away.
+    expect(replacement("move.l #' ',d5")).toBe("\tmoveq #' ',d5");
+    // Four characters do not fit a signed byte.
+    expect(ids("move.l #'AB',d5")).not.toContain("optimization/prefer-moveq");
+  });
+
   test("prefers MOVEQ for negative immediates written as unsigned longs", () => {
     const diagnostic = lint("move.l #$ffffff80,d5").find(
       (d) => d.ruleId === "optimization/prefer-moveq",

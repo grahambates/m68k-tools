@@ -53,7 +53,7 @@ export const zeroArithmeticToTst: Rule = {
     const imm = immediateOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
     const size = instructionSize(line);
-    if (!imm || !dest || !size || imm.value.type === "string-literal") return;
+    if (!imm || !dest || !size) return;
     const value = ctx.evaluate(imm.value);
     if (!value.known || value.value !== 0) return;
 

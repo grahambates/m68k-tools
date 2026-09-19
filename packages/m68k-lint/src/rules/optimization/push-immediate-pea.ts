@@ -25,12 +25,7 @@ export const pushImmediatePea: Rule = {
     if (!isInstruction(line, "move") || instructionSize(line) !== "l") return;
     const source = immediateOperand(line, 0);
     const dest = operand(line, 1);
-    if (
-      !source ||
-      source.value.type === "string-literal" ||
-      !dest ||
-      dest.type !== "address-register-indirect-predec"
-    )
+    if (!source || !dest || dest.type !== "address-register-indirect-predec")
       return;
     if (
       dest.register.type !== "address-register" ||

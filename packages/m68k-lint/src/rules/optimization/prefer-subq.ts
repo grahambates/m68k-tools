@@ -22,12 +22,7 @@ export const preferSubq: Rule = {
     const imm = immediateOperand(line, 0);
     const dest = operand(line, 1);
     const size = instructionSize(line);
-    if (
-      !imm ||
-      imm.value.type === "string-literal" ||
-      !isAddqDestination(dest, size)
-    )
-      return;
+    if (!imm || !isAddqDestination(dest, size)) return;
     const value = ctx.evaluate(imm.value);
     if (!value.known || value.value < 1 || value.value > 8) return;
     const suffix = size ? `.${size}` : "";

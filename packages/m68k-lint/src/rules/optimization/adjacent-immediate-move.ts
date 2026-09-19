@@ -14,7 +14,7 @@ function immediate(
   line: Parameters<NonNullable<Rule["checkLine"]>>[1],
 ): number | undefined {
   const op = immediateOperand(line, 0);
-  if (!op || op.value.type === "string-literal") return undefined;
+  if (!op) return undefined;
   const result = ctx.evaluate(op.value);
   return result.known ? result.value : undefined;
 }

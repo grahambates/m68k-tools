@@ -37,7 +37,7 @@ export const multiplyLongByOne: Rule = {
       return;
     const imm = immediateOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
-    if (!imm || !dest || imm.value.type === "string-literal") return;
+    if (!imm || !dest) return;
     const value = ctx.evaluate(imm.value);
     if (!value.known || value.value !== 1) return;
 

@@ -95,8 +95,7 @@ function immediateWorthFolding(
 ): boolean {
   if (isInstruction(line, "moveq")) return false;
   if (size !== "l") return true;
-  if (source.type !== "immediate" || source.value.type === "string-literal")
-    return false;
+  if (source.type !== "immediate") return false;
   const value = ctx.evaluate(source.value);
   return !value.known || value.value < -128 || value.value > 127;
 }

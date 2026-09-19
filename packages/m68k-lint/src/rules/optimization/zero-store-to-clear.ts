@@ -53,7 +53,7 @@ export const zeroStoreToClear: Rule = {
     if (size !== "b" && size !== "w" && size !== "l") return;
 
     const immediate = immediateOperand(line, 0);
-    if (!immediate || immediate.value.type === "string-literal") return;
+    if (!immediate) return;
     const value = ctx.evaluate(immediate.value);
     if (!value.known || value.value !== 0) return;
     // A zero that arrived as a named constant still folds. CLR has no operand

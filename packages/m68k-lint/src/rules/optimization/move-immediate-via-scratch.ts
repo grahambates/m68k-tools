@@ -42,12 +42,7 @@ export const moveImmediateViaScratch: Rule = {
     if (!isInstruction(line, "move") || instructionSize(line) !== "l") return;
     const source = immediateOperand(line, 0);
     const dest = operand(line, 1);
-    if (
-      !source ||
-      source.value.type === "string-literal" ||
-      !isMemoryDestination(dest)
-    )
-      return;
+    if (!source || !isMemoryDestination(dest)) return;
     const value = ctx.evaluate(source.value);
     if (!value.known || value.value < -128 || value.value > 127) return;
     // Verified with 68kcounter: a clean win through 68030; 68040/68060 were

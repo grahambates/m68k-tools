@@ -43,8 +43,7 @@ export const preferStMinusOne: Rule = {
     if (!isInstruction(line, "move") || instructionSize(line) !== "b") return;
     const imm = immediateOperand(line, 0);
     const dest = operand(line, 1);
-    if (!imm || imm.value.type === "string-literal" || !isStDestination(dest))
-      return;
+    if (!imm || !isStDestination(dest)) return;
     const value = ctx.evaluate(imm.value);
     if (!value.known || value.value !== -1) return;
 

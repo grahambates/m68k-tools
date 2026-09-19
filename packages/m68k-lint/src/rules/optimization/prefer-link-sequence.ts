@@ -73,7 +73,7 @@ export const preferLinkSequence: Rule = {
     )
       return;
     const imm = immediateOperand(third.line, 0);
-    if (!imm || imm.value.type === "string-literal") return;
+    if (!imm) return;
     const value = ctx.evaluate(imm.value);
     if (!value.known || value.value < -32768 || value.value > 32767) return;
 

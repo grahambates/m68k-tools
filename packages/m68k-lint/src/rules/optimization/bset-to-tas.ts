@@ -58,7 +58,7 @@ export const bsetToTas: Rule = {
     if (!isInstruction(line, "bset")) return;
     const bitOp = immediateOperand(line, 0);
     const dest = operand(line, 1);
-    if (!bitOp || bitOp.value.type === "string-literal" || !dest) return;
+    if (!bitOp || !dest) return;
     const bit = ctx.evaluate(bitOp.value);
     if (!bit.known || bit.value !== 7) return;
 

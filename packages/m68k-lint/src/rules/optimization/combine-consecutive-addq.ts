@@ -39,8 +39,7 @@ export const combineConsecutiveAddq: Rule = {
     if (!isInstruction(line, "addq") || instructionSize(line) !== "l") return;
     const firstReg = directRegisterName(line);
     const firstImm = immediateOperand(line, 0);
-    if (!firstReg || !firstImm || firstImm.value.type === "string-literal")
-      return;
+    if (!firstReg || !firstImm) return;
     const n = ctx.evaluate(firstImm.value);
     if (!n.known || n.value < 1 || n.value > 8) return;
 
@@ -50,7 +49,7 @@ export const combineConsecutiveAddq: Rule = {
       return;
     if (directRegisterName(next.line) !== firstReg) return;
     const secondImm = immediateOperand(next.line, 0);
-    if (!secondImm || secondImm.value.type === "string-literal") return;
+    if (!secondImm) return;
     const m = ctx.evaluate(secondImm.value);
     if (!m.known || m.value < 1 || m.value > 8) return;
 

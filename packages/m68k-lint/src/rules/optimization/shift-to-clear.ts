@@ -28,7 +28,7 @@ export const shiftToClear: Rule = {
     if (!size) return;
     const imm = immediateOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
-    if (!imm || !dest || imm.value.type === "string-literal") return;
+    if (!imm || !dest) return;
     const v = ctx.evaluate(imm.value);
     if (!v.known) return;
     const width = size === "b" ? 8 : size === "w" ? 16 : 32;

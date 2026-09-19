@@ -33,7 +33,7 @@ function bitRule(kind: "or" | "and"): Rule {
       if (!isInstruction(line, kind) || instructionSize(line) !== "l") return;
       const imm = immediateOperand(line, 0);
       const dest = dataRegisterOperand(line, 1);
-      if (!imm || !dest || imm.value.type === "string-literal") return;
+      if (!imm || !dest) return;
       const raw = ctx.evaluate(imm.value);
       if (!raw.known) return;
       // Verified with 68kcounter: both stay a clean win through 68030 and on

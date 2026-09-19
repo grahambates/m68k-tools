@@ -63,6 +63,8 @@ export default class ConfiguratonProvider implements Provider {
         );
         // Relative paths mean relative to the file, as they do to the linter,
         // wherever the file is found and wherever vasm is run from.
+        if (typeof config.sourceRoot === "string")
+          config.sourceRoot = resolve(dirname(found), config.sourceRoot);
         if (Array.isArray(config.includePaths))
           config.includePaths = config.includePaths.map((path) =>
             resolve(dirname(found), path),

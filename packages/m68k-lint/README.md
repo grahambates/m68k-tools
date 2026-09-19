@@ -146,6 +146,7 @@ named rule. File and ignore patterns are relative to the config file's directory
   "files": ["src/**", "include/**"],
   "ignores": ["generated/**", "vendor/**"],
   "includePaths": ["../shared/include"],
+  "sourceRoot": ".",
   "caseSensitive": true,
   "categories": { "style": false },
   "rules": {
@@ -156,7 +157,9 @@ named rule. File and ignore patterns are relative to the config file's directory
 ```
 
 `includePaths` are the directories the assembler searches for includes; see
-[Includes outside the project](#includes-outside-the-project). `files` is used when no
+[Includes outside the project](#includes-outside-the-project). `sourceRoot` is the directory the
+assembler is run from, so an include named from there (`include "lib/defs.i"`) is found; it is looked in after the
+including file's own directory and before the include paths. `files` is used when no
 input path is given on the command line. `include` and
 `ignorePatterns` are accepted as aliases of `files` and `ignores`.
 `node_modules/**` and `.git/**` are always ignored during discovery.
@@ -241,7 +244,7 @@ is followed with no configuration. An `INCDIR` in the source is not used yet.
 
 ## Shared `.m68krc.json`
 
-The options that describe how the source is assembled, `processors`, `includePaths` and `caseSensitive`, are also read from a `.m68krc.json` (or `.m68krc`) found by walking up from the linted path, so the assembly server and the linter can share one file. From highest precedence: the lint config, the `.m68krc.json`, then `-nocase`, `-I` and `-m` among its `vasm.args`, then the defaults. Include paths from all of them are combined. Other keys in the file are ignored, and `--no-config` skips it.
+The options that describe how the source is assembled, `processors`, `includePaths`, `caseSensitive` and `sourceRoot`, are also read from a `.m68krc.json` (or `.m68krc`) found by walking up from the linted path, so the assembly server and the linter can share one file. From highest precedence: the lint config, the `.m68krc.json`, then `-nocase`, `-I` and `-m` among its `vasm.args`, then the defaults. Include paths from all of them are combined. `sourceRoot` is the directory the assembler is run from, so an include named from there, such as `lib/defs.i`, is found; it is looked in after the including file's own directory and before the include paths. Other keys in the file are ignored, and `--no-config` skips it.
 
 ## Symbol case
 

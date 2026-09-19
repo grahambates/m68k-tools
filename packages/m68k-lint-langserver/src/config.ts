@@ -4,6 +4,7 @@ import { defaultConfig, type LintConfig } from "m68k-lint";
 import {
   configIgnores,
   configIncludePaths,
+  configSourceRoot,
   findProjectConfig,
   isIgnored,
   knownProcessors,
@@ -14,6 +15,7 @@ import {
   findAssemblyConfig,
   loadAssemblyOptions,
   mergeOptions,
+  searchPaths,
   type AssemblyOptions,
 } from "@m68k-lsp/assembly-options";
 
@@ -60,7 +62,7 @@ export interface ResolvedConfig {
   error?: string;
   /** The config's `ignores`: files it leaves out of linting. */
   ignores?: readonly string[];
-  /** The include paths that apply: the config's and the shared file's, as absolute directories. */
+  /** Where includes are looked for after the file's own directory: the source root, then the config's and the shared file's include paths, all absolute. */
   includePaths?: readonly string[];
   /** Things about the config files worth telling the user that are not errors. */
   warnings?: readonly string[];
@@ -143,7 +145,11 @@ export class ConfigResolver {
       configPath = undefined;
     }
     if (!configPath)
-      return { config: base, includePaths: shared.includePaths, warnings };
+      return {
+        config: base,
+        includePaths: searchPaths(shared.includePaths, shared.sourceRoot),
+        warnings,
+      };
 
     try {
       const project = await loadProjectConfig(configPath);
@@ -154,10 +160,13 @@ export class ConfigResolver {
         config: { ...base, ...overrides },
         configPath,
         ignores: configIgnores(project),
-        includePaths: mergeOptions(
-          { includePaths: configIncludePaths(project, dirname(configPath)) },
-          { includePaths: shared.includePaths },
-        ).includePaths,
+        includePaths: searchPaths(
+          mergeOptions(
+            { includePaths: configIncludePaths(project, dirname(configPath)) },
+            { includePaths: shared.includePaths },
+          ).includePaths,
+          configSourceRoot(project, dirname(configPath)) ?? shared.sourceRoot,
+        ),
         warnings,
       };
     } catch (error) {

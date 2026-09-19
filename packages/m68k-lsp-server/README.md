@@ -135,6 +135,22 @@ include anything you pass to vasm `-I` arguments. Can be absolute or relative; i
 
 Default: `[]`
 
+### Source root:
+
+The directory that relative paths in the source, such as `include "lib/defs.i"`, resolve from. It is
+where vasm is run, so it should be where your build runs it, usually the project root. Relative to the
+`.m68krc.json` it is in (or the workspace folder, from editor settings). Unset, each file's own directory is
+used, which is also where vasm is run. The linter and its language server look here for includes too,
+after the file's own directory and before the include paths.
+
+```json
+{
+  "sourceRoot": "."
+}
+```
+
+Default: unset
+
 ### Case Sensitivity:
 
 Whether `Foo` and `foo` are different symbols (labels, constants and macros). They are, unless vasm is

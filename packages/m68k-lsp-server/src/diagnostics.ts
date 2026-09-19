@@ -4,10 +4,10 @@ import { URI } from "vscode-uri";
 import which from "which";
 import * as cp from "child_process";
 import { tmpdir } from "os";
-import { basename, dirname, join, relative } from "path";
+import { basename, dirname, isAbsolute, join, relative } from "path";
 import { minimatch } from "minimatch";
 
-import { assemblerArgs } from "./config";
+import { assemblerArgs, sourceRootOf } from "./config";
 import { type Context } from "./context";
 import { getEntryPointsFor } from "./files";
 import { instructionDocs } from "./docs";
@@ -57,20 +57,35 @@ export default class DiagnosticProcessor {
       }
     }
 
+    // vasm is run where the config says relative paths in the source resolve
+    // from, else beside the file. The file is named relative to that so its
+    // messages can be matched back to it; one outside it cannot be, so falls
+    // back to its own directory.
+    const root = sourceRootOf(
+      conf,
+      this.ctx.workspaceFolders.map((f) => URI.parse(f.uri).fsPath),
+    );
+    const fromRoot = root ? relative(root, srcPath) : undefined;
+    const cwd =
+      root && fromRoot && !fromRoot.startsWith("..") && !isAbsolute(fromRoot)
+        ? root
+        : dirname(srcPath);
+    const fileArg = cwd === dirname(srcPath) ? basename(srcPath) : fromRoot!;
+
     const args = [
       // Custom args, and those that follow from the options in the main config
       // (include paths, processors, case):
       ...assemblerArgs(conf),
-      // Filename of source file:
-      // Command will be run from same dir to get relative paths in error messages
-      basename(srcPath),
+      // Filename of source file, relative to the directory it is run from, to
+      // get relative paths in error messages:
+      fileArg,
       // Don't actually need the output - just assembling to get error list
       "-o",
       join(tmpdir(), "a.out"),
     ];
 
     const options: cp.SpawnOptionsWithoutStdio = {
-      cwd: dirname(srcPath),
+      cwd,
       stdio: "pipe",
     };
 

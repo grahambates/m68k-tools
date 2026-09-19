@@ -93,6 +93,11 @@
         "minLength": 1
       }
     },
+    "sourceRoot": {
+      "description": "The directory relative paths in the source, such as an include, resolve from: where the assembler is run. Absolute, or relative to this file. Looked in for includes before includePaths. Overrides sourceRoot in .m68krc.json.",
+      "type": "string",
+      "minLength": 1
+    },
     "ignorePatterns": {
       "type": "array",
       "items": {

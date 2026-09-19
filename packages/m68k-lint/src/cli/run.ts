@@ -34,10 +34,12 @@ import {
   findAssemblyConfig,
   loadAssemblyOptions,
   mergeOptions,
+  searchPaths,
   type AssemblyOptions,
 } from "@m68k-lsp/assembly-options";
 import {
   configIncludePaths,
+  configSourceRoot,
   findProjectConfig,
   followIncludes,
   knownProcessors,
@@ -536,7 +538,9 @@ export async function run(argv: string[]): Promise<number> {
     processors: projectConfig.processors ?? knownProcessors(shared.processors),
     caseSensitive: projectConfig.caseSensitive ?? shared.caseSensitive,
   });
-  const includePaths =
+  // Where an include is looked for after the including file's own directory:
+  // the source root, where the assembler runs, then the include paths.
+  const includePaths = searchPaths(
     mergeOptions(
       {
         includePaths: projectConfigPath
@@ -544,7 +548,11 @@ export async function run(argv: string[]): Promise<number> {
           : [],
       },
       { includePaths: shared.includePaths },
-    ).includePaths ?? [];
+    ).includePaths,
+    (projectConfigPath
+      ? configSourceRoot(projectConfig, dirname(projectConfigPath))
+      : undefined) ?? shared.sourceRoot,
+  );
 
   if (options.fixInteractive) {
     return runInteractiveFixes(inputFiles, config, {

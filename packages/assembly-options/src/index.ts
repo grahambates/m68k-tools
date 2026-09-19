@@ -16,6 +16,12 @@ export interface AssemblyOptions {
   includePaths?: string[];
   /** Whether `Foo` and `foo` are different symbols. They are unless vasm was given `-nocase`. */
   caseSensitive?: boolean;
+  /**
+   * The directory relative paths in the source, such as an `include`, resolve
+   * from: the directory the assembler is run in. Absolute. Unset means each
+   * file's own directory.
+   */
+  sourceRoot?: string;
 }
 
 /** A project config file: a name containing `.m68krc`, as the assembly server matches it. */
@@ -107,6 +113,7 @@ export function mergeOptions(
     if (layer.processors) merged.processors = layer.processors;
     if (layer.caseSensitive !== undefined)
       merged.caseSensitive = layer.caseSensitive;
+    if (layer.sourceRoot !== undefined) merged.sourceRoot = layer.sourceRoot;
     for (const path of layer.includePaths ?? [])
       if (!paths.includes(path)) paths.push(path);
   }
@@ -154,6 +161,8 @@ export async function loadAssemblyOptions(
     stated.includePaths = json.includePaths.map((p) => resolve(dir, p));
   if (typeof json.caseSensitive === "boolean")
     stated.caseSensitive = json.caseSensitive;
+  if (typeof json.sourceRoot === "string")
+    stated.sourceRoot = resolve(dir, json.sourceRoot);
 
   if (stated.caseSensitive === true && fromArgs.caseSensitive === false)
     warnings.push(
@@ -161,6 +170,19 @@ export async function loadAssemblyOptions(
     );
 
   return { options: mergeOptions(fromArgs, stated), warnings };
+}
+
+/**
+ * The directories to look in for an include after the including file's own:
+ * the source root, where the assembler runs and so looks first, then the
+ * include paths in order, each once.
+ */
+export function searchPaths(
+  includePaths: readonly string[] = [],
+  sourceRoot?: string,
+): string[] {
+  const paths = sourceRoot ? [sourceRoot, ...includePaths] : [...includePaths];
+  return paths.filter((path, i) => paths.indexOf(path) === i);
 }
 
 /**

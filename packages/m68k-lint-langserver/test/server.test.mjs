@@ -567,4 +567,16 @@ describe("the shared .m68krc.json", () => {
       "the constant from the include the shared file points at resolved",
     );
   });
+
+  it("finds an include named from the source root", async () => {
+    const client = withClient();
+    await client.initialize(fixture("sourceroot/proj"));
+    const { diagnostics } = await client.open(
+      fixture("sourceroot/proj/src/main.s"),
+    );
+    assert.ok(
+      diagnostics.some((d) => d.code === "optimization/prefer-moveq"),
+      "the constant resolved through the source root",
+    );
+  });
 });

@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import {
   findAssemblyConfig,
   findAssemblyConfigSync,
+  searchPaths,
   loadAssemblyOptions,
   mergeOptions,
   optionsFromVasmArgs,
@@ -169,6 +170,23 @@ describe("the project config file", () => {
       caseSensitive: false,
     });
     expect(warnings).toEqual([]);
+  });
+
+  it("takes the source root from its directory", async () => {
+    const dir = await project({
+      ".m68krc.json": JSON.stringify({ sourceRoot: "src" }),
+    });
+    const { options } = await loadAssemblyOptions(join(dir, ".m68krc.json"));
+    expect(options).toEqual({ sourceRoot: resolve(dir, "src") });
+  });
+
+  it("searches the source root before the include paths, each once", () => {
+    expect(searchPaths(["/a", "/root", "/b"], "/root")).toEqual([
+      "/root",
+      "/a",
+      "/b",
+    ]);
+    expect(searchPaths(["/a"])).toEqual(["/a"]);
   });
 
   it("leaves the tool's own keys alone, and never fails on them", async () => {

@@ -90,6 +90,12 @@ export interface ProjectConfig {
    * read for the constants and macros they define, never linted.
    */
   includePaths?: string[];
+  /**
+   * The directory relative paths in the source resolve from, where the assembler
+   * is run. Absolute, or relative to the config file. Looked in for includes
+   * before the include paths.
+   */
+  sourceRoot?: string;
   include?: string[];
 }
 
@@ -171,6 +177,7 @@ export async function loadProjectConfig(path: string): Promise<ProjectConfig> {
     "include",
     "ignorePatterns",
     "includePaths",
+    "sourceRoot",
   ]);
   for (const field of Object.keys(config)) {
     if (!knownFields.has(field))
@@ -220,6 +227,8 @@ export async function loadProjectConfig(path: string): Promise<ProjectConfig> {
     typeof config.measureImpact !== "boolean"
   )
     throw new Error("measureImpact must be a boolean");
+  if (config.sourceRoot !== undefined && typeof config.sourceRoot !== "string")
+    throw new Error("sourceRoot must be a string");
   if (
     config.caseSensitive !== undefined &&
     typeof config.caseSensitive !== "boolean"
@@ -298,4 +307,12 @@ export function configIncludePaths(
   configDir: string,
 ): string[] {
   return (config.includePaths ?? []).map((path) => resolve(configDir, path));
+}
+
+/** The config's source root as an absolute directory, a relative one taken from the config's own. */
+export function configSourceRoot(
+  config: ProjectConfig,
+  configDir: string,
+): string | undefined {
+  return config.sourceRoot ? resolve(configDir, config.sourceRoot) : undefined;
 }

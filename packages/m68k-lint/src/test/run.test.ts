@@ -557,4 +557,51 @@ describe("symbol case and the shared config", () => {
     const { out } = await capture([join(root, "proj")]);
     expect(out).toContain("HW_ONE = 1");
   });
+
+  test("the lint config's source root wins over the shared file's", async () => {
+    const root = await mkdtemp(join(tmpdir(), "m68k-lint-source-root-cfg-"));
+    await mkdir(join(root, "src"));
+    await mkdir(join(root, "lib"));
+    await mkdir(join(root, "other"));
+    await writeFile(join(root, "lib", "hw.i"), "HW_ONE equ 1\n", "utf8");
+    await writeFile(
+      join(root, "src", "main.s"),
+      '\tinclude "lib/hw.i"\nmain:\n\tmove.l #HW_ONE,d0\n\trts\n',
+      "utf8",
+    );
+    const write = (name: string, config: object) =>
+      writeFile(join(root, name), JSON.stringify(config), "utf8");
+    // The shared file points somewhere useless; the lint config says where.
+    await write(".m68krc.json", { sourceRoot: "other" });
+    await write("m68k-lint.json", { sourceRoot: "." });
+    const { out } = await capture([
+      "--config",
+      join(root, "m68k-lint.json"),
+      join(root, "src"),
+    ]);
+    expect(out).toContain("HW_ONE = 1");
+  });
+
+  test("an include named from the source root is found there", async () => {
+    // As a build run from the project root would find it, though nothing beside
+    // main.s says so.
+    const root = await mkdtemp(join(tmpdir(), "m68k-lint-source-root-"));
+    await mkdir(join(root, "src"));
+    await mkdir(join(root, "lib"));
+    await writeFile(join(root, "lib", "hw.i"), "HW_ONE equ 1\n", "utf8");
+    await writeFile(
+      join(root, "src", "main.s"),
+      '\tinclude "lib/hw.i"\nmain:\n\tmove.l #HW_ONE,d0\n\trts\n',
+      "utf8",
+    );
+    const rc = (config: object) =>
+      writeFile(join(root, ".m68krc.json"), JSON.stringify(config), "utf8");
+
+    await rc({});
+    expect((await capture([join(root, "src")])).out).not.toContain(
+      "HW_ONE = 1",
+    );
+    await rc({ sourceRoot: "." });
+    expect((await capture([join(root, "src")])).out).toContain("HW_ONE = 1");
+  });
 });

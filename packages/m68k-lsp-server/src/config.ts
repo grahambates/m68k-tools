@@ -1,6 +1,7 @@
 import { type Processor } from "./docs";
 import { type FormatterOptions, defaultOptions } from "m68k-formatter";
 import * as os from "os";
+import { isAbsolute, resolve } from "path";
 import { optionsFromVasmArgs, vasmArgs } from "@m68k-lsp/assembly-options";
 import { type VasmOptions } from "./diagnostics";
 
@@ -22,6 +23,12 @@ export interface Config {
    * the vasm arguments is honoured instead.
    */
   caseSensitive?: boolean;
+  /**
+   * The directory relative paths in the source resolve from, and vasm is run in.
+   * Relative to the config file it is in, or the workspace folder when set by
+   * the client. Unset means each file's own directory.
+   */
+  sourceRoot?: string;
   processors: Processor[];
   vasm: VasmOptions;
   inlayHints: InlayHintOptions;
@@ -93,4 +100,20 @@ export function assemblerArgs(config: Config): string[] {
     },
     config.vasm.args,
   );
+}
+
+/**
+ * The absolute source root, or undefined to work from each file's own
+ * directory. A relative one is taken from the first workspace folder.
+ */
+export function sourceRootOf(
+  config: Config,
+  workspaceRoots: readonly string[],
+): string | undefined {
+  if (!config.sourceRoot) return undefined;
+  return workspaceRoots.length
+    ? resolve(workspaceRoots[0], config.sourceRoot)
+    : isAbsolute(config.sourceRoot)
+      ? config.sourceRoot
+      : undefined;
 }

@@ -7,6 +7,7 @@ import { dirname } from "path";
 import { isAssemblySource, walkFiles } from "@m68k-lsp/workspace-files";
 
 import { type Context } from "./context";
+import { sourceRootOf } from "./config";
 
 const { readFile, access } = fsp;
 
@@ -56,7 +57,12 @@ export async function* resolveIncludesGen(
   path: string | undefined,
   ctx: ResolveContext,
 ): AsyncGenerator<string> {
-  const roots = ctx.workspaceFolders.map((f) => URI.parse(f.uri).fsPath);
+  const workspaceRoots = ctx.workspaceFolders.map(
+    (f) => URI.parse(f.uri).fsPath,
+  );
+  // Where the assembler runs comes first, as it looks there first.
+  const sourceRoot = sourceRootOf(ctx.config, workspaceRoots);
+  const roots = [...(sourceRoot ? [sourceRoot] : []), ...workspaceRoots];
   roots.push(dirname(URI.parse(documentUri).fsPath));
 
   // Only incdirs the document can actually see: its own and those of the

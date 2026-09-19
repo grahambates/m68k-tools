@@ -21,7 +21,11 @@ describe("m68krc.schema.json", () => {
 
   it("describes every config setting", () => {
     const keys = Object.keys(schema.properties);
-    for (const key of [...Object.keys(defaultConfig), "caseSensitive"]) {
+    for (const key of [
+      ...Object.keys(defaultConfig),
+      "caseSensitive",
+      "sourceRoot",
+    ]) {
       expect(keys).toContain(key);
     }
   });

@@ -367,6 +367,14 @@
           "default": null,
           "markdownDescription": "Whether `Foo` and `foo` are different symbols. They are unless vasm is given `-nocase`. Leave unset to follow a `-nocase` in `m68k.vasm.args`."
         },
+        "m68k.sourceRoot": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "markdownDescription": "The directory relative paths in the source (such as an `include`) resolve from, and vasm is run in, relative to the first workspace folder. Leave unset to use each file's own directory."
+        },
         "m68k.includePaths": {
           "type": "array",
           "items": {

@@ -176,6 +176,51 @@ describe("macro expansion", () => {
       expect(writes(optional, "M x,d5").writes).toEqual(["d5"]);
     });
 
+    test("ifc and ifnc compare the arguments given", () => {
+      const compare = [
+        "M: macro",
+        "ifc \\1,\\2",
+        "moveq #0,d1",
+        "else",
+        "moveq #0,d2",
+        "endc",
+        "endm",
+      ];
+      expect(writes(compare, "M x,x").writes).toEqual(["d1"]);
+      expect(writes(compare, "M x,y").writes).toEqual(["d2"]);
+      expect(writes(compare, 'M "x",x').writes).toEqual(["d1"]);
+      const differ = ["M: macro", "ifnc \\1,", "moveq #0,d1", "endc", "endm"];
+      expect(writes(differ, "M x").writes).toEqual(["d1"]);
+    });
+
+    test('the common test for a missing argument, ifnc "\\1",""', () => {
+      const optional = [
+        "M: macro",
+        'ifnc "\\1",""',
+        "moveq #0,\\1",
+        "else",
+        "moveq #0,d7",
+        "endc",
+        "endm",
+      ];
+      expect(writes(optional, "M d3").writes).toEqual(["d3"]);
+      expect(writes(optional, "M").writes).toEqual(["d7"]);
+      const single = [
+        "M: macro",
+        "ifc '\\1',''",
+        "moveq #0,d7",
+        "endc",
+        "endm",
+      ];
+      expect(writes(single, "M").writes).toEqual(["d7"]);
+      expect(writes(single, "M d3").writes).toEqual([]);
+    });
+
+    test("an ifc that cannot be read leaves the call opaque", () => {
+      const compare = ["M: macro", "ifc a b,c", "nop", "endc", "endm"];
+      expect(writes(compare, "M").expansion).toBeUndefined();
+    });
+
     test("code in an arm not taken is not looked at", () => {
       // \2 is not supplied, so that arm could not be read, but it is not taken.
       expect(writes(macro, "M a").expansion).toBeDefined();

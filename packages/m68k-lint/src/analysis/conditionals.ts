@@ -21,7 +21,7 @@ import { constantDefinition } from "./symbols.js";
  * Deliberately limited to conditions the file itself can settle: an expression
  * that evaluates from literals and known constants, or a symbol the file
  * defines earlier. Anything else -- a name defined elsewhere, or by an option on
- * the assembler's command line, a string comparison, the pass number -- leaves
+ * the assembler's command line, the pass number -- leaves
  * the block undecided, and undecided blocks are treated exactly as before, as
  * alternatives that may each be assembled.
  */
@@ -58,18 +58,71 @@ const COMPARISONS: Record<string, (value: number) => boolean> = {
 };
 
 /**
+ * Whether the two strings of an IFC line are the same, compared exactly, or
+ * undefined if the line cannot be read with confidence.
+ *
+ * Read from the line's text, not its operands: the parser keeps only what it
+ * takes for an expression, and drops unquoted text with spaces in it. Each
+ * string is quoted, or a bare run of characters up to the comma; a quoted
+ * string and the same text unquoted are taken to match, as the quotes only
+ * delimit. An empty string, such as an argument left blank, is allowed.
+ */
+export function stringsSame(text: string | undefined): boolean | undefined {
+  const rest =
+    text === undefined
+      ? undefined
+      : /^[^;]*?\bifn?c\b[ \t]+(.*)$/i.exec(text)?.[1];
+  // A parameter still in the text has not been substituted yet.
+  if (!rest || rest.includes("\\")) return undefined;
+
+  const strings: string[] = [];
+  let at = 0;
+  for (;;) {
+    const quote = rest[at] === '"' || rest[at] === "'" ? rest[at] : undefined;
+    let value: string;
+    if (quote) {
+      const close = rest.indexOf(quote, at + 1);
+      if (close < 0) return undefined;
+      value = rest.slice(at + 1, close);
+      at = close + 1;
+    } else {
+      const bare = /^[^,;\s"']*/.exec(rest.slice(at))![0];
+      value = bare;
+      at += bare.length;
+    }
+    strings.push(value);
+    // A gap before the comma or the end is not part of the string.
+    while (rest[at] === " " || rest[at] === "\t") at++;
+    if (strings.length === 2 || rest[at] !== ",") break;
+    at++;
+    while (rest[at] === " " || rest[at] === "\t") at++;
+  }
+  if (strings.length !== 2) return undefined;
+  const tail = rest.slice(at);
+  if (tail !== "" && !tail.startsWith(";")) return undefined;
+  return strings[0] === strings[1];
+}
+
+/**
  * Whether a condition holds, for the forms that depend only on an expression's
- * value or on whether an argument was given. Undefined for any other directive.
+ * value, on whether an argument was given, or on whether two strings match. Undefined for any other directive.
  */
 export function evaluateCondition(
   directive: string,
   operands: readonly OperandNode[] | undefined,
   evaluate: (expr: ExpressionNode) => number | undefined,
+  text?: string,
 ): Arm | undefined {
   // IFB and IFNB ask whether an argument is blank, which is only meaningful
   // once a macro's arguments have been substituted in.
   if (directive === "ifb") return operands?.length ? "no" : "yes";
   if (directive === "ifnb") return operands?.length ? "yes" : "no";
+
+  if (directive === "ifc" || directive === "ifnc") {
+    const same = stringsSame(text);
+    if (same === undefined) return "maybe";
+    return same === (directive === "ifc") ? "yes" : "no";
+  }
 
   const compare = COMPARISONS[directive];
   if (!compare) return undefined;
@@ -89,12 +142,14 @@ export function evaluateCondition(
  * Work out which arms of each conditional block are assembled.
  *
  * @param evaluate the value of an expression, when it is known
+ * @param sourceLines the file's text, for the conditions that compare strings
  * @returns whether anything was left out, so a caller can redo what depended
  *   on those lines
  */
 export function prepareConditionals(
   file: ParsedFile,
   evaluate: (expr: ExpressionNode) => number | undefined,
+  sourceLines: readonly string[] = [],
 ): boolean {
   const regions = scanBlocks(file);
   const unassembled = new Array<boolean>(file.lines.length).fill(false);
@@ -126,7 +181,12 @@ export function prepareConditionals(
     if (!name) return "maybe";
     const first = file.lines[index].operands?.[0];
 
-    const decided = evaluateCondition(name, first ? [first] : [], evaluate);
+    const decided = evaluateCondition(
+      name,
+      file.lines[index].operands,
+      evaluate,
+      sourceLines[index],
+    );
     if (decided && name !== "ifb" && name !== "ifnb") return decided;
 
     // Defined earlier in this file is a fact; not defined is not, since the

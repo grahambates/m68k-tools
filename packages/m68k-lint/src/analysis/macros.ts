@@ -184,7 +184,12 @@ function expandSimply(
         const arm =
           directive === "else"
             ? "yes"
-            : evaluateCondition(directive, line.operands, evaluate);
+            : evaluateCondition(
+                directive,
+                line.operands,
+                evaluate,
+                expanded.text,
+              );
         if (arm === undefined || arm === "maybe") return undefined;
         frame.active = arm === "yes";
         frame.taken = frame.active;
@@ -195,7 +200,12 @@ function expandSimply(
           frames.push({ active: false, taken: true });
           continue;
         }
-        const arm = evaluateCondition(directive, line.operands, evaluate);
+        const arm = evaluateCondition(
+          directive,
+          line.operands,
+          evaluate,
+          expanded.text,
+        );
         if (arm === undefined || arm === "maybe") return undefined;
         frames.push({ active: arm === "yes", taken: arm === "yes" });
         continue;

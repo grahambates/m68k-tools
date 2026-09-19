@@ -40,6 +40,20 @@ describe("conditional assembly", () => {
       expect(arm("IFLE", 1)).toBe(false);
     });
 
+    test("IFC and IFNC on strings", () => {
+      const left = (text: string) =>
+        leftOut([`\t${text}`, "\tnop", "\tENDC"].join("\n")).length > 0;
+      expect(left('ifc "a","a"')).toBe(false);
+      expect(left('ifc "a","b"')).toBe(true);
+      expect(left("ifc a,a")).toBe(false);
+      expect(left("ifc a,b")).toBe(true);
+      expect(left('ifc "a",a')).toBe(false);
+      expect(left("ifnc a,b")).toBe(false);
+      expect(left("ifnc a,a")).toBe(true);
+      // Compared exactly, so case matters.
+      expect(left("ifc a,A")).toBe(true);
+    });
+
     test("a constant the file defines", () => {
       const source = ["DEBUG equ 0", "IF DEBUG", "nop", "ENDC"].join("\n");
       expect(leftOut(source)).toEqual([3]);
@@ -126,6 +140,15 @@ describe("conditional assembly", () => {
       ).toEqual([]);
     });
 
+    test("IFC on text the parse does not keep whole", () => {
+      expect(
+        leftOut(['\tifc "a b",c d', "\tnop", "\tENDC"].join("\n")),
+      ).toEqual([]);
+      expect(leftOut(["\tifc \\1,a", "\tnop", "\tENDC"].join("\n"))).toEqual(
+        [],
+      );
+    });
+
     test("IFD on a name not defined here, which may come from the command line", () => {
       expect(leftOut(["IFD DEBUG", "nop", "ENDC"].join("\n"))).toEqual([]);
       expect(leftOut(["IFND DEBUG", "nop", "ENDC"].join("\n"))).toEqual([]);
@@ -157,7 +180,8 @@ describe("conditional assembly", () => {
     });
 
     test("string comparisons", () => {
-      expect(leftOut(['IFC "a","b"', "nop", "ENDC"].join("\n"))).toEqual([]);
+      // Not settled without the text of the line, as in a hand-built parse.
+      expect(leftOut(["IFC a b,c", "nop", "ENDC"].join("\n"))).toEqual([]);
     });
 
     test("a block inside a macro definition", () => {

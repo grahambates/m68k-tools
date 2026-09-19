@@ -301,7 +301,7 @@ some targets is treated as always applying.
 What the linter then does with an expansion is deliberately narrow. It is used
 only when it comes to a straight run of instructions, after any conditional
 assembly in the body has been settled from the arguments and constants the file
-knows (`if narg>1`, `ifb \2`). A body with labels, branches, other directives, a
+knows (`if narg>1`, `ifb \2`, `ifc \1,\2`). A body with labels, branches, other directives, a
 call to a macro that cannot be expanded, a condition that cannot be settled, a
 missing operand or a macro that calls itself leaves the call opaque, exactly as if
 macros were not expanded. `WAITBLIT`, with its loop, is the usual example.
@@ -325,7 +325,7 @@ arm is no longer a conflict, and a write in an arm that is not assembled is not
 called dead.
 
 A condition that cannot be settled -- a name defined elsewhere or on the
-assembler's command line, `IFC` string comparisons, the pass number -- leaves the
+assembler's command line, the pass number -- leaves the
 block alone: its arms are treated as alternatives, as they always were.
 
 ## Rules

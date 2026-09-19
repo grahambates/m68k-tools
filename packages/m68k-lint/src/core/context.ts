@@ -367,7 +367,7 @@ export class DefaultRuleContext implements RuleContext {
 
     let last = "";
     for (let round = 0; round < 4; round++) {
-      prepareConditionals(file, value);
+      prepareConditionals(file, value, this.sourceLines);
       const now = signature();
       if (now === last || !now.includes("1")) break;
       last = now;

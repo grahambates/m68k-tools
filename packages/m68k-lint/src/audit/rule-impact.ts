@@ -444,6 +444,11 @@ export const ruleImpactAuditCases: readonly RuleImpactAuditCase[] = [
     ruleId: "optimization/negative-signed-multiply",
     exempt: "68020+ long MUL form; 68kcounter is 68000-only",
   },
+  {
+    ruleId: "optimization/unneeded-register-save",
+    exempt:
+      "manual-only suggestion with no replacement: it trims a register list across a whole routine, so there is no before/after instruction pair to measure",
+  },
 ];
 
 const casesByRule = new Map<string, RuleImpactAuditCase[]>();

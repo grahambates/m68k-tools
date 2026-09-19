@@ -192,4 +192,15 @@ describe("suspicious/unbalanced-stack", () => {
       ),
     ).toHaveLength(0);
   });
+
+  test("understands PUSHM and POPM", () => {
+    expect(
+      found(
+        ["f:", "PUSHM d0-d3", "moveq #1,d0", "POPM d0-d3", "rts"].join("\n"),
+      ),
+    ).toHaveLength(0);
+    expect(
+      found(["f:", "PUSHM d0-d3", "moveq #1,d0", "rts"].join("\n")),
+    ).toHaveLength(1);
+  });
 });

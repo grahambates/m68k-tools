@@ -9,6 +9,7 @@ import {
   isMacroInvocation,
 } from "../util/ast.js";
 import { buildControlFlowGraph } from "./cfg.js";
+import { stackSave } from "./register-saves.js";
 
 /**
  * How far the stack pointer has moved from where the routine found it, in bytes
@@ -58,6 +59,16 @@ function transfer(
   state: State,
   evaluate: (expr: ExpressionNode) => number | undefined,
 ): State | undefined {
+  const save = stackSave(line);
+  if (save)
+    return {
+      ...state,
+      depth:
+        state.depth +
+        (save.kind === "push" ? 1 : -1) *
+          save.registers.length *
+          save.bytesEach,
+    };
   if (isMacroInvocation(line)) return undefined;
   const mnemonic = semanticMnemonic(line);
   if (!mnemonic) return undefined;
@@ -105,31 +116,6 @@ function transfer(
     })();
     if (amount === undefined) return undefined;
     return { ...state, depth: state.depth + amount };
-  }
-
-  if (mnemonic === "movem") {
-    const listIndex = operands.findIndex(
-      (op) =>
-        op.type === "register-list" ||
-        op.type === "data-register" ||
-        op.type === "address-register",
-    );
-    const list = operands[listIndex];
-    const count =
-      list?.type === "register-list" ? list.registers.length : list ? 1 : 0;
-    const per = size === "l" ? 4 : size === "w" ? 2 : undefined;
-    const other = operands[listIndex === 0 ? 1 : 0];
-    if (per === undefined || !count) return undefined;
-    if (
-      other?.type === "address-register-indirect-predec" &&
-      isStackPointer(other)
-    )
-      return { ...state, depth: state.depth + per * count };
-    if (
-      other?.type === "address-register-indirect-postinc" &&
-      isStackPointer(other)
-    )
-      return { ...state, depth: state.depth - per * count };
   }
 
   // Ordinary pushes and pops through -(sp) and (sp)+.

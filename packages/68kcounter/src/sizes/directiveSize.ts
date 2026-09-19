@@ -1,69 +1,34 @@
-import evaluate, { type Variables } from "../parse/evaluate";
-import { type DirectiveStatement, type Node, StringNode } from "../parse/nodes";
-import { Directives, type Qualifier, Qualifiers } from "../syntax";
+import {
+  directiveSize as sizeOf,
+  evaluateConstant,
+  parseLine,
+  type ExpressionNode,
+} from "m68k-parser";
+import { type Variables } from "../parse/evaluate";
+import { type DirectiveStatement, type StatementNode } from "../parse/nodes";
 
 /**
  * Get byte size of directive statement
+ *
+ * The parser says what `dc`, `dcb`, `ds` and their aliases emit, so counts
+ * agree with every other tool here. A count that cannot be worked out is
+ * counted as nothing rather than guessed. A backslash in a string counts as the
+ * character it is written as.
  */
 export default function directiveSize(
-  { opcode: { op, qualifier }, operands }: DirectiveStatement,
+  statement: StatementNode & DirectiveStatement,
   vars: Variables,
 ): number {
-  // DC:
-  if (op.name === Directives.DC && qualifier) {
-    if (qualifier.name === Qualifiers.B) {
-      return operandBytes(operands);
-    }
-    return operands.length * qualifierBytes[qualifier.name];
-  }
-  if (op.name === Directives.DB) {
-    return operandBytes(operands);
-  }
-  if (op.name === Directives.DW) {
-    return operands.length * 2;
-  }
-  if (op.name === Directives.DL) {
-    return operands.length * 4;
-  }
-
-  // DCB / DS:
-  if (
-    (op.name === Directives.DCB || op.name === Directives.DS) &&
-    qualifier &&
-    operands[0]
-  ) {
-    const n = evaluate(operands[0].text, vars);
-    if (n !== undefined) {
-      const bytes = qualifierBytes[qualifier.name];
-      return bytes * n;
-    }
-  }
-  return 0;
-}
-
-const qualifierBytes: Record<Qualifier, number> = {
-  B: 1,
-  W: 2,
-  L: 4,
-  S: 4,
-  D: 8,
-  Q: 8,
-  X: 12,
-};
-
-/**
- * Get byte count for a list of operands on dc.b / db
- *
- * Handles quoted strings as well as individual byte values.
- */
-function operandBytes(operands: Node[]): number {
-  let count = 0;
-  for (const arg of operands) {
-    if (arg instanceof StringNode) {
-      count += arg.value.length;
-    } else {
-      count++;
-    }
-  }
-  return count;
+  const evaluate = (expr: ExpressionNode): number | undefined => {
+    const result = evaluateConstant(expr, (name) =>
+      Object.hasOwn(vars, name) ? vars[name] : undefined,
+    );
+    return result.known && Number.isFinite(result.value)
+      ? result.value
+      : undefined;
+  };
+  return (
+    sizeOf(parseLine(statement.text).value, { evaluate, escapes: "literal" }) ??
+    0
+  );
 }

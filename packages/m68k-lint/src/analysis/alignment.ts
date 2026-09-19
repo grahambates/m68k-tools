@@ -1,4 +1,9 @@
-import type { ExpressionNode, ParsedFile, ParsedLine } from "m68k-parser";
+import {
+  directiveSize,
+  type ExpressionNode,
+  type ParsedFile,
+  type ParsedLine,
+} from "m68k-parser";
 import { analyzeLocalLabelScopes } from "./local-label-scopes.js";
 import { expansionOf } from "../semantics/macro-expansions.js";
 import { scanBlocks } from "./blocks.js";
@@ -62,19 +67,6 @@ const NON_EMITTING = new Set([
 
 /** Directives that open or close code which may or may not be assembled. */
 const CONDITIONAL_OR_REPEAT = /^(if|else|end[cif]|rept|endr|irp|irpc)/;
-
-function sizeBytes(size: string | undefined): number | undefined {
-  switch (size) {
-    case "b":
-      return 1;
-    case "w":
-    case undefined:
-      return 2;
-    default:
-      // l, s, d, x, p, q: all an even number of bytes per element.
-      return 4;
-  }
-}
 
 /**
  * Track whether each address is odd or even by counting the bytes that data
@@ -198,22 +190,25 @@ export function analyzeAlignment(
           return set(undefined);
         return set((offset & 1) as Parity);
       }
-      case "dc": {
-        if ((sizeBytes(size) ?? 0) % 2 === 0) return;
-        let bytes = 0;
-        for (const op of operands) {
-          if (op.type === "value") bytes += 1;
-          else if (op.type === "string-literal" && !op.content.includes("\\"))
-            bytes += op.content.length;
-          else return advance(undefined, index);
-        }
-        return advance(bytes, index);
-      }
+      case "db":
+      case "dw":
+      case "dl":
+      case "dc":
       case "ds":
-      case "dcb": {
-        if (sizeBytes(size) !== 1) return;
-        const value = count();
-        return advance(value, index);
+      case "dcb":
+      case "blk": {
+        // Only byte-sized data changes the parity. Anything wider is an even
+        // number of bytes whatever the count, so it is known without one.
+        const width =
+          directive === "db"
+            ? "b"
+            : directive === "dw"
+              ? "w"
+              : directive === "dl"
+                ? "l"
+                : (size ?? "w");
+        if (width !== "b") return;
+        return advance(directiveSize(line, { evaluate }), index);
       }
       default:
         return set(undefined);

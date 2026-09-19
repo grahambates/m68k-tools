@@ -6,13 +6,7 @@ import {
   isInstruction,
 } from "../../util/ast.js";
 import { changedFlagsApplicability, isPowerOfTwo } from "./helpers.js";
-
-function allTargets(
-  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
-  allowed: readonly string[],
-): boolean {
-  return ctx.config.processors.every((cpu) => allowed.includes(cpu));
-}
+import { targetsOnly } from "../../core/config.js";
 
 function longMulMatch(
   ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
@@ -75,7 +69,7 @@ export const multiplyLongSmallConstant: Rule = {
 
     if (factor === 2) {
       if (
-        !allTargets(ctx, [
+        !targetsOnly(ctx.config, [
           "mc68000",
           "mc68010",
           "mc68020",
@@ -111,7 +105,13 @@ export const multiplyLongSmallConstant: Rule = {
     const recipe = recipes[factor];
     if (!recipe) return;
     if (
-      !allTargets(ctx, ["mc68000", "mc68010", "mc68020", "mc68030", "mc68040"])
+      !targetsOnly(ctx.config, [
+        "mc68000",
+        "mc68010",
+        "mc68020",
+        "mc68030",
+        "mc68040",
+      ])
     )
       return;
     const scratch = scratchAfter(ctx, index, d);
@@ -163,7 +163,7 @@ export const multiplyLongLargePowerOfTwo: Rule = {
     const shift = Math.log2(match.value);
     if (!Number.isInteger(shift) || shift <= 9 || shift >= 14) return;
     if (
-      !allTargets(ctx, [
+      !targetsOnly(ctx.config, [
         "mc68000",
         "mc68010",
         "mc68020",
@@ -220,7 +220,7 @@ export const multiplySignedLong060: Rule = {
     if (
       !isInstruction(line, "muls") ||
       instructionSize(line) !== "l" ||
-      !allTargets(ctx, ["mc68020", "mc68030", "mc68040", "mc68060"])
+      !targetsOnly(ctx.config, ["mc68020", "mc68030", "mc68040", "mc68060"])
     )
       return;
     const expr = immediateExpressionOperand(line, 0);

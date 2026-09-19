@@ -1,22 +1,18 @@
-import type { ParsedFile } from "m68k-parser";
+import { isSectionDirective, type ParsedFile } from "m68k-parser";
 import { getFlagSemantics } from "../semantics/flags.js";
 import { isExecutableLine, isMacroInvocation } from "../util/ast.js";
 import { isBlockBoundary, scanBlocks } from "./blocks.js";
 import { buildControlFlowGraph } from "./cfg.js";
 import type { LocalLabelScopes } from "./local-label-scopes.js";
 
-/** Directives that start code somewhere the flow above does not lead. */
-const SECTION_DIRECTIVES = new Set([
-  "section",
-  "org",
-  "code",
-  "data",
-  "bss",
-  "text",
-  "offset",
-  "cseg",
-  "dseg",
-]);
+/**
+ * Directives that start code somewhere the flow above does not lead: a new
+ * section, or a new origin or offset.
+ */
+const startsElsewhere = (directive: string) =>
+  isSectionDirective(directive) ||
+  directive === "org" ||
+  directive === "offset";
 
 /**
  * Instructions that nothing can reach.
@@ -64,10 +60,7 @@ export function findUnreachableLines(
       line.mnemonic?.type === "directive"
         ? line.mnemonic.directive.toLowerCase()
         : undefined;
-    if (
-      isBlockBoundary(line) ||
-      (directive && SECTION_DIRECTIVES.has(directive))
-    )
+    if (isBlockBoundary(line) || (directive && startsElsewhere(directive)))
       boundary = true;
     if (line.label) pendingLabels.push({ index, name: line.label.label });
     if (!isExecutableLine(line)) return;

@@ -1,6 +1,27 @@
-import { parseLine } from "m68k-parser";
-import type { OperandNode } from "m68k-parser";
+import { addressingMode, parseLine } from "m68k-parser";
+import type { AddressingModeName, OperandNode } from "m68k-parser";
 import { type AddressingMode, AddressingModes } from "../syntax";
+
+/** How the parser's mode names read in our timing and size tables. */
+const modes: Record<AddressingModeName, AddressingMode> = {
+  dn: AddressingModes.Dn,
+  an: AddressingModes.An,
+  anIndirect: AddressingModes.AnIndir,
+  anPostInc: AddressingModes.AnPostInc,
+  anPreDec: AddressingModes.AnPreDec,
+  anOffset: AddressingModes.AnDisp,
+  anIdx: AddressingModes.AnDispIx,
+  pcOffset: AddressingModes.PcDisp,
+  pcIdx: AddressingModes.PcDispIx,
+  absW: AddressingModes.AbsW,
+  absL: AddressingModes.AbsL,
+  imm: AddressingModes.Imm,
+  memIndirect: AddressingModes.MemIndir,
+  regList: AddressingModes.RegList,
+  ccr: AddressingModes.CCR,
+  sr: AddressingModes.SR,
+  usp: AddressingModes.USP,
+};
 
 /**
  * Map a parsed m68k-parser operand node to our internal AddressingMode.
@@ -10,47 +31,6 @@ import { type AddressingMode, AddressingModes } from "../syntax";
  */
 export function nodeAddressingMode(node: OperandNode): AddressingMode {
   switch (node.type) {
-    case "data-register":
-      return AddressingModes.Dn;
-    case "address-register":
-      return AddressingModes.An;
-    case "special-register":
-      switch (node.register) {
-        case "ccr":
-          return AddressingModes.CCR;
-        case "sr":
-          return AddressingModes.SR;
-        case "usp":
-          return AddressingModes.USP;
-        default:
-          return AddressingModes.AbsL;
-      }
-    case "address-register-indirect":
-      return AddressingModes.AnIndir;
-    case "address-register-indirect-postinc":
-      return AddressingModes.AnPostInc;
-    case "address-register-indirect-predec":
-      return AddressingModes.AnPreDec;
-    case "address-register-indirect-displacement":
-      return AddressingModes.AnDisp;
-    case "address-register-indirect-index":
-      return AddressingModes.AnDispIx;
-    case "pc-relative":
-      return AddressingModes.PcDisp;
-    case "pc-relative-index":
-      return AddressingModes.PcDispIx;
-    case "absolute-address":
-      return node.addressSize &&
-        "size" in node.addressSize &&
-        node.addressSize.size === "w"
-        ? AddressingModes.AbsW
-        : AddressingModes.AbsL;
-    case "immediate":
-      return AddressingModes.Imm;
-    case "register-list":
-      return AddressingModes.RegList;
-    case "memory-indirect":
-      return AddressingModes.MemIndir;
     case "bitfield":
       // The mode is that of the effective address the bitfield applies to
       // (e.g. `d0` in `d0{4:8}`); on its own it defaults to a data register.
@@ -59,8 +39,10 @@ export function nodeAddressingMode(node: OperandNode): AddressingMode {
       // 64-bit mul/div result pairs and cas2 register pairs behave, for timing
       // purposes, like a data register operand.
       return AddressingModes.Dn;
-    default:
-      return AddressingModes.AbsL;
+    default: {
+      const mode = addressingMode(node);
+      return mode ? modes[mode] : AddressingModes.AbsL;
+    }
   }
 }
 

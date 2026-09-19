@@ -5,6 +5,7 @@ import { isInMacroDefinition, scanBlocks } from "./blocks.js";
 import {
   constantDefinition,
   type ExternalMacro,
+  sameExpression,
   type ExternalSymbols,
 } from "./symbols.js";
 
@@ -54,22 +55,6 @@ interface Definition {
 interface MacroEntry extends ExternalMacro {
   /** The body as written, for telling whether two definitions agree. */
   key: string;
-}
-
-function sameExpression(a: ExpressionNode, b: ExpressionNode): boolean {
-  return JSON.stringify(strip(a)) === JSON.stringify(strip(b));
-}
-
-function strip(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(strip);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>)
-        .filter(([key]) => key !== "loc")
-        .map(([key, inner]) => [key, strip(inner)]),
-    );
-  }
-  return value;
 }
 
 export function buildProjectSymbols(

@@ -6,6 +6,7 @@ import {
   isInstruction,
 } from "../../util/ast.js";
 import { changedFlagsApplicability, embeddedValueText } from "./helpers.js";
+import { targetsOnly } from "../../core/config.js";
 
 function makeRule(kind: "bset" | "bclr" | "bchg"): Rule {
   return {
@@ -30,9 +31,7 @@ function makeRule(kind: "bset" | "bclr" | "bchg"): Rule {
       const bit = ctx.evaluate(bitOp.value);
       if (!bit.known || bit.value < 0 || bit.value > 15) return;
       if (
-        !ctx.config.processors.every((cpu) =>
-          ["mc68000", "mc68010", "mc68030", "mc68040"].includes(cpu),
-        )
+        !targetsOnly(ctx.config, ["mc68000", "mc68010", "mc68030", "mc68040"])
       )
         return;
 

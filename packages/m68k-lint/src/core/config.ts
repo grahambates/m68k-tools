@@ -50,3 +50,24 @@ export const defaultConfig: LintConfig = {
   projectSymbols: true,
   presets: ["recommended"],
 };
+
+/**
+ * Whether every processor being targeted is one of these.
+ *
+ * A rewrite is only worth offering when it holds on all the targets, so rules
+ * list the processors they were verified on and stand down for any other.
+ */
+export function targetsOnly(
+  config: Pick<LintConfig, "processors">,
+  allowed: readonly Processor[],
+): boolean {
+  return config.processors.every((cpu) => allowed.includes(cpu));
+}
+
+/** Whether any processor being targeted is one of these. */
+export function targetsAny(
+  config: Pick<LintConfig, "processors">,
+  listed: readonly Processor[],
+): boolean {
+  return config.processors.some((cpu) => listed.includes(cpu));
+}

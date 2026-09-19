@@ -1,5 +1,5 @@
 import { Position } from "vscode-languageserver-types";
-import * as geometry from "../src/geometry";
+import * as geometry from "m68k-parser";
 import { range } from "./helpers";
 
 describe("geometry", () => {

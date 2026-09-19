@@ -5,6 +5,7 @@ import {
   instructionSize,
   isInstruction,
 } from "../../util/ast.js";
+import { targetsOnly } from "../../core/config.js";
 
 export const cmpaZeroToTst030: Rule = {
   meta: {
@@ -25,12 +26,7 @@ export const cmpaZeroToTst030: Rule = {
     },
   },
   checkLine(ctx, line) {
-    if (
-      !ctx.config.processors.every((cpu) =>
-        ["mc68020", "mc68030"].includes(cpu),
-      )
-    )
-      return;
+    if (!targetsOnly(ctx.config, ["mc68020", "mc68030"])) return;
     if (!isInstruction(line, "cmpa") || instructionSize(line) !== "l") return;
     const expr = immediateExpressionOperand(line, 0);
     const dest = addressRegisterOperand(line, 1);

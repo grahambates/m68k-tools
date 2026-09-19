@@ -1,10 +1,11 @@
-import type { ParsedLine } from "m68k-parser";
+import { descendants, type OperandNode, type ParsedLine } from "m68k-parser";
 import type { Rule } from "../../core/rule.js";
 import { stackSave } from "../../analysis/register-saves.js";
 import { getFlagSemantics } from "../../semantics/flags.js";
 import { semanticMnemonic } from "../../semantics/mnemonics.js";
 import {
   getRegisterSemantics,
+  isStackPointerRegister,
   type Register,
 } from "../../semantics/registers.js";
 import { isOpaqueMacro } from "../../util/ast.js";
@@ -12,20 +13,11 @@ import { expansionOf } from "../../semantics/macro-expansions.js";
 import { formatRegisterList } from "../suspicious/movem-restore-mismatch.js";
 
 /** Whether an operand mentions the stack pointer, reading the slots the save made. */
-function mentionsStackPointer(node: unknown): boolean {
-  if (!node || typeof node !== "object") return false;
-  const candidate = node as { type?: string; register?: unknown };
-  if (
-    candidate.type === "address-register" &&
-    typeof candidate.register === "string"
-  ) {
-    const name = candidate.register.toLowerCase();
-    if (name === "a7" || name === "sp") return true;
-  }
-  return Object.values(node).some((value) =>
-    Array.isArray(value)
-      ? value.some(mentionsStackPointer)
-      : mentionsStackPointer(value),
+function mentionsStackPointer(operand: OperandNode): boolean {
+  return [operand, ...descendants(operand)].some(
+    (node) =>
+      node.type === "address-register" &&
+      isStackPointerRegister(String((node as { register?: unknown }).register)),
   );
 }
 

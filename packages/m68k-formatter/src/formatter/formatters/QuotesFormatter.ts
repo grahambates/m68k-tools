@@ -1,6 +1,6 @@
 import { type TextEdit } from "vscode-languageserver-types";
-import { walkLine } from "../../ast";
-import { locationAsRange } from "../../geometry";
+import { walkLine } from "m68k-parser";
+import { locationAsRange } from "m68k-parser";
 import { type FormatContext, type Formatter } from "../DocumentFormatter";
 
 export type QuotesOptions = "double" | "single" | "any";

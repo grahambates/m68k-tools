@@ -1,7 +1,9 @@
 import type { ParsedLine } from "m68k-parser";
 import type { RuleContext } from "../../../core/context.js";
 import type { Rule } from "../../../core/rule.js";
+import { isReturn } from "../../../semantics/flags.js";
 import { semanticMnemonic } from "../../../semantics/mnemonics.js";
+import { isStackPointerRegister } from "../../../semantics/registers.js";
 import {
   immediateExpressionOperand,
   instructionSize,
@@ -30,12 +32,9 @@ const NON_RETURNING_GEMDOS = new Map<number, string>([
   [0x4c, "Pterm"],
 ]);
 
-const RETURNS = new Set(["rts", "rte", "rtr", "rtd"]);
-
 function isStackPointer(line: ParsedLine, index: number): boolean {
   const register = predecrementAddressRegister(line, index);
-  const name = register?.register.toLowerCase();
-  return name === "a7" || name === "sp";
+  return !!register && isStackPointerRegister(register.register);
 }
 
 /** Bytes a single instruction pushes, or undefined when it is not a plain push. */
@@ -62,9 +61,7 @@ function pushedBytes(line: ParsedLine): number | undefined {
 
 function isStackPointerOperand(line: ParsedLine, index: number): boolean {
   const op = operand(line, index);
-  if (op?.type !== "address-register") return false;
-  const name = op.register.toLowerCase();
-  return name === "a7" || name === "sp";
+  return op?.type === "address-register" && isStackPointerRegister(op.register);
 }
 
 /** Bytes a single instruction removes from the stack, or undefined. */
@@ -88,8 +85,7 @@ function releasedBytes(ctx: RuleContext, line: ParsedLine): number | undefined {
     if (source?.type !== "address-register-indirect-displacement")
       return undefined;
     if (source.register.type !== "address-register") return undefined;
-    const base = source.register.register.toLowerCase();
-    if (base !== "a7" && base !== "sp") return undefined;
+    if (!isStackPointerRegister(source.register.register)) return undefined;
     const value = ctx.evaluate(source.displacement);
     return value.known && value.value > 0 ? value.value : undefined;
   }
@@ -178,7 +174,7 @@ export const atariTrapStackCleanup: Rule = {
       const mnemonic = semanticMnemonic(line);
       if (!mnemonic) return;
 
-      if (RETURNS.has(mnemonic)) {
+      if (isReturn(line)) {
         report(undefined);
         reset();
         return;

@@ -1,12 +1,12 @@
-import type { Location, ParsedLine } from "m68k-parser";
+import type { Location, ParsedFile, ParsedLine } from "./types.js";
 
 /**
- * Any node in an m68k-parser syntax tree.
+ * Any node in a syntax tree.
  *
  * The parser exports a closed union of around forty node interfaces which
  * share no common base beyond `type` and `loc`, and that union grows with each
- * parser release. Traversal below is therefore structural rather than a switch
- * over the union: a node type added upstream is walked without a change here.
+ * release. Traversal here is therefore structural rather than a switch over
+ * the union: a node type added later is walked without a change.
  */
 export interface AstNode {
   type: string;
@@ -54,6 +54,15 @@ export function childNodes(node: AstNode): AstNode[] {
   return collectNodes(node);
 }
 
+/** Every node beneath a node, parents before children. */
+export function descendants(node: AstNode): AstNode[] {
+  const out: AstNode[] = [];
+  for (const child of childNodes(node)) {
+    out.push(child, ...descendants(child));
+  }
+  return out;
+}
+
 /**
  * Top level components of a line (label, mnemonic, qualifier, operands,
  * comment), in source order. A `ParsedLine` is a plain record rather than a
@@ -73,5 +82,18 @@ export function walkLine(line: ParsedLine): AstNode[] {
     }
   };
   visit(lineNodes(line));
+  return out;
+}
+
+/** Every node in a file, paired with the line it belongs to. */
+export function walkFile(
+  file: ParsedFile,
+): Array<{ node: AstNode; line: ParsedLine }> {
+  const out: Array<{ node: AstNode; line: ParsedLine }> = [];
+  for (const line of file.lines) {
+    for (const node of walkLine(line)) {
+      out.push({ node, line });
+    }
+  }
   return out;
 }

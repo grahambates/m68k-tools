@@ -4,12 +4,12 @@ import type {
   ParsedLine,
   SymbolNode,
 } from "m68k-parser";
-import { blockAt } from "m68k-parser";
+import { blockAt, isLocalLabelName } from "m68k-parser";
 import * as lsp from "vscode-languageserver";
-import { type AstNode, childNodes } from "./ast";
+import { type AstNode, childNodes, descendants } from "./ast";
 import { getUnitFilesByDistance } from "./files";
 import { isProcessed } from "./DocumentProcessor";
-import { containsPosition, locationAsRange } from "./geometry";
+import { containsPosition, locationAsRange } from "m68k-parser";
 import { type Context } from "./context";
 
 export interface NamedSymbol {
@@ -441,14 +441,6 @@ function symbolIn(operand: AstNode): SymbolNode | undefined {
   return undefined;
 }
 
-function descendants(node: AstNode): AstNode[] {
-  const out: AstNode[] = [];
-  for (const child of childNodes(node)) {
-    out.push(child, ...descendants(child));
-  }
-  return out;
-}
-
 /**
  * Process path string - removes quotes and handles escaped chars
  */
@@ -519,9 +511,8 @@ export function definitionAtPosition(
   }
 }
 
-export function isLocalLabel(label: string): boolean {
-  return label.startsWith(".") || label.endsWith("$");
-}
+/** Whether a label name is local; the parser decides what spelling makes it so. */
+export const isLocalLabel = isLocalLabelName;
 
 /**
  * Get references to symbol at position

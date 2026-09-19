@@ -6,6 +6,7 @@ import {
   instructionSize,
   isInstructionFamily,
 } from "../../util/ast.js";
+import { targetsOnly } from "../../core/config.js";
 
 export const cmpZeroAddressViaScratch: Rule = {
   meta: {
@@ -38,16 +39,14 @@ export const cmpZeroAddressViaScratch: Rule = {
     // Verified with 68kcounter: MOVE.L through a scratch register is
     // cycle-equal-or-faster than CMPA.L #0,An on every target checked.
     if (
-      !ctx.config.processors.every((cpu) =>
-        [
-          "mc68000",
-          "mc68010",
-          "mc68020",
-          "mc68030",
-          "mc68040",
-          "mc68060",
-        ].includes(cpu),
-      )
+      !targetsOnly(ctx.config, [
+        "mc68000",
+        "mc68010",
+        "mc68020",
+        "mc68030",
+        "mc68040",
+        "mc68060",
+      ])
     )
       return;
 

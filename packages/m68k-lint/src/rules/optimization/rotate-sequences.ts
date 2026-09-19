@@ -7,6 +7,7 @@ import {
   isInstruction,
 } from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
+import { targetsOnly } from "../../core/config.js";
 
 function m68000Only(ctx: RuleContext): boolean {
   return ctx.config.processors.every((cpu) => cpu === "mc68000");
@@ -76,16 +77,14 @@ export const simplifyKnownRegisterRotate: Rule = {
   },
   checkLine(ctx, line, index) {
     if (
-      !ctx.config.processors.every((cpu) =>
-        [
-          "mc68000",
-          "mc68010",
-          "mc68020",
-          "mc68030",
-          "mc68040",
-          "mc68060",
-        ].includes(cpu),
-      )
+      !targetsOnly(ctx.config, [
+        "mc68000",
+        "mc68010",
+        "mc68020",
+        "mc68030",
+        "mc68040",
+        "mc68060",
+      ])
     )
       return;
     const direction = isInstruction(line, "rol")
@@ -188,9 +187,13 @@ export const roxlToAddx: Rule = {
   },
   checkLine(ctx, line, index) {
     if (
-      !ctx.config.processors.every((cpu) =>
-        ["mc68000", "mc68010", "mc68020", "mc68030", "mc68040"].includes(cpu),
-      ) ||
+      !targetsOnly(ctx.config, [
+        "mc68000",
+        "mc68010",
+        "mc68020",
+        "mc68030",
+        "mc68040",
+      ]) ||
       !isInstruction(line, "roxl")
     )
       return;

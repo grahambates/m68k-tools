@@ -9,18 +9,25 @@ import type {
   RoutineRangeResult,
 } from "@m68k-lsp/protocol";
 import * as lsp from "vscode-languageserver";
-import { expandMacro, macroInvocation } from "m68k-parser";
+import {
+  analyzeLocalLabelScopes,
+  canonicalConditionMnemonic,
+  expandMacro,
+  isLocalLabelName,
+  macroInvocation,
+} from "m68k-parser";
 import type {
   Block,
   ExpandedMacroLine,
   MacroDefinition,
+  ParsedFile,
   ParsedLine,
 } from "m68k-parser";
-import { type AstNode, childNodes, walkFile, walkLine } from "./ast";
+import { type AstNode, descendants, walkFile, walkLine } from "./ast";
 import { type Context } from "./context";
 import { isProcessed } from "./DocumentProcessor";
 import { getUnitFilesByDistance } from "./files";
-import { locationAsRange } from "./geometry";
+import { locationAsRange } from "m68k-parser";
 
 const registerNodeTypes = new Set([
   "data-register",
@@ -70,6 +77,7 @@ const writeOnlyDestinations = new Set([
   "move",
   "movea",
   "moveq",
+  "movep",
   "sf",
   "st",
   "scc",
@@ -203,7 +211,7 @@ export function analyzeRegisterUsage(
 
   const reachability = params.position
     ? reachableLinesAfterPosition(
-        document.parsed.lines,
+        document.parsed,
         params.range,
         params.position,
       )
@@ -314,17 +322,18 @@ function isNonLocalCodeLabel(line: ParsedLine): boolean {
 }
 
 function reachableLinesAfterPosition(
-  lines: ParsedLine[],
+  file: ParsedFile,
   scope: lsp.Range,
   position: lsp.Position,
 ): { lines: Set<number>; touched: Set<string>; unknown: boolean } {
+  const { lines } = file;
   const startLine = Math.max(scope.start.line, position.line + 1);
   const endLine = Math.min(scope.end.line, lines.length - 1);
   if (startLine > endLine) {
     return { lines: new Set(), touched: new Set(), unknown: false };
   }
 
-  const labels = collectControlFlowLabels(lines, 0, lines.length - 1);
+  const labels = collectControlFlowLabels(file);
   const reachable = new Set<number>();
   const touched = new Set<string>();
   let unknown = false;
@@ -348,9 +357,7 @@ function reachableLinesAfterPosition(
     if (mnemonic === "bsr" || mnemonic === "jsr") {
       const target = controlFlowTarget(line);
       const targetLine =
-        target === undefined
-          ? undefined
-          : labels.get(labelKey(target, labels.globalAt[lineIndex]));
+        target === undefined ? undefined : labels.resolve(target, lineIndex);
       if (targetLine === undefined) {
         unknown = true;
       } else {
@@ -361,9 +368,7 @@ function reachableLinesAfterPosition(
       if (mnemonic && isBranchMnemonic(mnemonic)) {
         const target = branchTarget(line);
         const targetLine =
-          target === undefined
-            ? undefined
-            : labels.get(labelKey(target, labels.globalAt[lineIndex]));
+          target === undefined ? undefined : labels.resolve(target, lineIndex);
         if (targetLine === undefined) {
           return {
             lines: new Set(
@@ -408,38 +413,37 @@ function addTouchedRegisters(line: ParsedLine, touched: Set<string>): void {
   }
 }
 
-interface ControlFlowLabels extends Map<string, number> {
-  globalAt: Array<string | undefined>;
+interface ControlFlowLabels {
+  /** The line a label name refers to, as seen from the line that names it. */
+  resolve(name: string, fromLine: number): number | undefined;
 }
 
-function collectControlFlowLabels(
-  lines: ParsedLine[],
-  startLine: number,
-  endLine: number,
-): ControlFlowLabels {
-  const labels = new Map<string, number>() as ControlFlowLabels;
-  labels.globalAt = [];
-  let global: string | undefined;
-  for (let index = startLine; index <= endLine; index++) {
-    const label = lines[index].label;
-    if (label) {
-      if (label.scope === "local") {
-        labels.set(labelKey(label.label, global), index);
-      } else if (isNonLocalCodeLabel(lines[index])) {
-        global = label.label.toLowerCase();
-        labels.set(global, index);
-      }
+/**
+ * Where each label the flow can reach is defined.
+ *
+ * A local label is found through the scope of the line that names it, which is
+ * worked out once for every tool by the parser; a global one by its name.
+ */
+function collectControlFlowLabels(file: ParsedFile): ControlFlowLabels {
+  const scopes = analyzeLocalLabelScopes(file);
+  const labels = new Map<string, number>();
+  file.lines.forEach((line, index) => {
+    const label = line.label;
+    if (!label) return;
+    if (label.scope === "local") {
+      labels.set(scopes.keyOf(index, label.label), index);
+    } else if (isNonLocalCodeLabel(line)) {
+      labels.set(label.label.toLowerCase(), index);
     }
-    labels.globalAt[index] = global;
-  }
-  return labels;
-}
-
-function labelKey(label: string, global?: string): string {
-  const name = label.toLowerCase();
-  return name.startsWith(".") || name.endsWith("$")
-    ? `${global ?? ""}:${name}`
-    : name;
+  });
+  return {
+    resolve: (name, fromLine) =>
+      labels.get(
+        isLocalLabelName(name)
+          ? scopes.keyOf(fromLine, name)
+          : name.toLowerCase(),
+      ),
+  };
 }
 
 function branchTarget(line: ParsedLine): string | undefined {
@@ -474,14 +478,6 @@ function isBranchMnemonic(mnemonic: string): boolean {
     mnemonic.startsWith("cpb") ||
     mnemonic.startsWith("cpdb")
   );
-}
-
-function descendants(node: AstNode): AstNode[] {
-  const result: AstNode[] = [];
-  for (const child of childNodes(node)) {
-    result.push(child, ...descendants(child));
-  }
-  return result;
 }
 
 export function registerName(node: AstNode) {
@@ -636,9 +632,10 @@ function summariseUsage(
 }
 
 function registerAccess(node: AstNode, line: ParsedLine): RegisterAccess {
+  // The synonym spellings (SHS, SLO, DBRA) are the instructions they stand for.
   const mnemonic =
     line.mnemonic?.type === "instruction"
-      ? line.mnemonic.instruction.toLowerCase()
+      ? canonicalConditionMnemonic(line.mnemonic.instruction)
       : undefined;
   const operands = line.operands ?? [];
   const operandIndex = operands.findIndex((operand) =>

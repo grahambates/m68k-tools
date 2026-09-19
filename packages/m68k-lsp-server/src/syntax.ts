@@ -14,27 +14,6 @@ export type AddressingMode =
   | "pcIdx"
   | "imm";
 
-export const sectionTypes = [
-  "bss",
-  "bss_c",
-  "bss_f",
-  "bss_p",
-  "text",
-  "text_c",
-  "text_f",
-  "text_p",
-  "code",
-  "code_c",
-  "code_f",
-  "code_p",
-  "cseg",
-  "data",
-  "data_c",
-  "data_f",
-  "data_p",
-  "dseg",
-];
-
 export const registerNames: RegisterName[] = ["pc", "sr", "ccr", "usp", "vbr"]; // exclude sp
 
 export const cpuTypes = [

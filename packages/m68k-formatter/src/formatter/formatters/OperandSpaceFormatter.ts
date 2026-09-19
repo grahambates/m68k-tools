@@ -1,5 +1,5 @@
 import { type TextEdit } from "vscode-languageserver-types";
-import { locationAsRange } from "../../geometry";
+import { locationAsRange } from "m68k-parser";
 import { type FormatContext, type Formatter } from "../DocumentFormatter";
 
 export type OperandSpaceOptions = "on" | "off" | "any";

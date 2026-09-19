@@ -1,23 +1,24 @@
 import type { ParsedLine, Size } from "m68k-parser";
 import type { Rule } from "../../core/rule.js";
 import { instructionSize, operand } from "../../util/ast.js";
+import { isReturn } from "../../semantics/flags.js";
 import { semanticMnemonic } from "../../semantics/mnemonics.js";
+import {
+  ADDRESS_REGISTERS,
+  DATA_REGISTERS,
+  normalizeRegister,
+  REGISTERS,
+} from "../../semantics/registers.js";
 import { stackSave } from "../../analysis/register-saves.js";
-
-const DATA = ["d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7"];
-const ADDRESS = ["a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7"];
-const ORDER = [...DATA, ...ADDRESS];
-
-function normalize(register: string): string {
-  const lower = register.toLowerCase();
-  return lower === "sp" ? "a7" : lower;
-}
 
 /** Collapse a register set back into the `d0-d3/a0/a6` spelling a reader expects. */
 export function formatRegisterList(registers: readonly string[]): string {
   const present = new Set(registers);
   const groups: string[] = [];
-  for (const bank of [DATA, ADDRESS]) {
+  for (const bank of [
+    DATA_REGISTERS,
+    ADDRESS_REGISTERS,
+  ] as readonly (readonly string[])[]) {
     let run: string[] = [];
     const flush = () => {
       if (!run.length) return;
@@ -33,6 +34,11 @@ export function formatRegisterList(registers: readonly string[]): string {
     flush();
   }
   return groups.join("/");
+}
+
+/** A register's canonical name; `sp` is `a7`. Anything else is kept as written. */
+function normalize(register: string): string {
+  return normalizeRegister(register) ?? register.toLowerCase();
 }
 
 function registerOperand(
@@ -76,12 +82,10 @@ function sameRegisters(a: readonly string[], b: readonly string[]): boolean {
 
 function missingFrom(from: readonly string[], to: readonly string[]): string[] {
   const set = new Set(to);
-  return ORDER.filter(
+  return REGISTERS.filter(
     (register) => from.includes(register) && !set.has(register),
   );
 }
-
-const RETURNS = new Set(["rts", "rte", "rtr", "rtd"]);
 
 export const movemRestoreMismatch: Rule = {
   meta: {
@@ -112,7 +116,7 @@ export const movemRestoreMismatch: Rule = {
       // A return ends the routine's stack discipline. Anything still pending
       // belonged to a path we cannot follow, and keeping it would let one
       // routine's leftovers be blamed on the next.
-      if (RETURNS.has(mnemonic)) {
+      if (isReturn(line)) {
         pending.clear();
         return;
       }

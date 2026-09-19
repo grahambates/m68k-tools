@@ -73,6 +73,16 @@ function conditionFromMnemonic(mnemonic: string): string | undefined {
   return undefined;
 }
 
+/** The condition an instruction tests (`eq`, `hi`...), for Bcc, DBcc and Scc. */
+export function conditionCode(mnemonic: string): string | undefined {
+  return conditionFromMnemonic(mnemonic);
+}
+
+/** Whether an instruction ends the routine by returning to its caller. */
+export function isReturn(line: ParsedLine): boolean {
+  return getFlagSemantics(line).controlFlow === "return";
+}
+
 export function flagsReadByCondition(mnemonic: string): ReadonlySet<Flag> {
   const cc = conditionFromMnemonic(mnemonic);
   return cc ? new Set(conditionReads[cc] ?? []) : none();
@@ -160,7 +170,12 @@ export function getFlagSemantics(line: ParsedLine): FlagSemantics {
 
   const conditionReadsSet = flagsReadByCondition(mnemonic);
 
-  if (mnemonic === "rts" || mnemonic === "rte" || mnemonic === "rtr") {
+  if (
+    mnemonic === "rts" ||
+    mnemonic === "rte" ||
+    mnemonic === "rtr" ||
+    mnemonic === "rtd"
+  ) {
     return {
       reads: none(),
       writes: none(),

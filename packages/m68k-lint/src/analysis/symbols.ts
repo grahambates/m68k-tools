@@ -93,7 +93,7 @@ export function constantDefinition(
  * repeating an identical `equ` (common where a header is included twice
  * without a guard) is not treated as a conflict.
  */
-function sameExpression(a: ExpressionNode, b: ExpressionNode): boolean {
+export function sameExpression(a: ExpressionNode, b: ExpressionNode): boolean {
   return (
     JSON.stringify(stripLocations(a)) === JSON.stringify(stripLocations(b))
   );

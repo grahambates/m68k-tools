@@ -3,7 +3,7 @@ import * as lsp from "vscode-languageserver";
 import { type Provider } from ".";
 import { type Context } from "../context";
 import { isProcessed } from "../DocumentProcessor";
-import { locationAsRange } from "../geometry";
+import { locationAsRange } from "m68k-parser";
 
 /** Directives whose operand is a constant expression to evaluate. */
 const constantDirectives = new Set(["equ", "fequ", "=", "set"]);

@@ -7,6 +7,7 @@ import {
 } from "../../util/ast.js";
 import { isAdjacentLocation, locationOf } from "./adjacent-location.js";
 import { sourceOperand } from "./helpers.js";
+import { hex } from "../../util/format.js";
 
 function immediate(
   ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
@@ -79,7 +80,7 @@ function movePair(
       const [hi, lo] = a.kind === "predec" ? [y, x] : [x, y];
       const combined = ((hi & mask) * 2 ** shift + (lo & mask)) >>> 0;
       const hexWidth = toSize === "w" ? 4 : 8;
-      const literal = `$${combined.toString(16).padStart(hexWidth, "0")}`;
+      const literal = hex(combined, hexWidth, { uppercase: false });
 
       ctx.report({
         ruleId: id,

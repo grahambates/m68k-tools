@@ -1,3 +1,4 @@
+import { isLocalLabelName } from "./labels.js";
 import { isInterpolated } from "./tokenizer-utils.js";
 import {
   type ParsedLine,
@@ -210,7 +211,7 @@ function parseLabel(
   let scope: "global" | "local" | "external";
   if (hasDoubleColon) {
     scope = "external";
-  } else if (label.startsWith(".") || label.endsWith("$")) {
+  } else if (isLocalLabelName(label)) {
     scope = "local";
   } else {
     scope = "global";

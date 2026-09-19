@@ -3,7 +3,7 @@ import { type Provider } from ".";
 import { nodeAtPosition, walkFile } from "../ast";
 import { type Context } from "../context";
 import { isProcessed } from "../DocumentProcessor";
-import { locationAsRange } from "../geometry";
+import { locationAsRange } from "m68k-parser";
 import { registerName } from "../registerAnalysis";
 import { symbolAtPosition } from "../symbols";
 

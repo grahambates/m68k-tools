@@ -6,6 +6,7 @@ import {
   operand,
 } from "../../util/ast.js";
 import { changedFlagsApplicability, valueText } from "./helpers.js";
+import { targetsOnly } from "../../core/config.js";
 
 export const pushImmediatePea: Rule = {
   meta: {
@@ -39,16 +40,14 @@ export const pushImmediatePea: Rule = {
     const value = ctx.evaluate(source.value);
     if (!value.known || value.value < -32768 || value.value > 32767) return;
     if (
-      !ctx.config.processors.every((cpu) =>
-        [
-          "mc68000",
-          "mc68010",
-          "mc68020",
-          "mc68030",
-          "mc68040",
-          "mc68060",
-        ].includes(cpu),
-      )
+      !targetsOnly(ctx.config, [
+        "mc68000",
+        "mc68010",
+        "mc68020",
+        "mc68030",
+        "mc68040",
+        "mc68060",
+      ])
     )
       return;
 

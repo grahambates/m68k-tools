@@ -4,10 +4,7 @@ import type { Rule } from "../../core/rule.js";
 import { semanticMnemonic } from "../../semantics/mnemonics.js";
 import { getRegisterSemantics } from "../../semantics/registers.js";
 import { isExecutableLine, operand } from "../../util/ast.js";
-
-function hex(value: number, digits: number): string {
-  return `$${value.toString(16).toUpperCase().padStart(digits, "0")}`;
-}
+import { hex } from "../../util/format.js";
 
 /** Index of the label a backward DBcc branches to, searching upwards like a local label lookup. */
 function loopStart(

@@ -1,4 +1,9 @@
-import type { ExpressionNode, ParsedFile, ParsedLine } from "m68k-parser";
+import {
+  isLocalLabelName,
+  type ExpressionNode,
+  type ParsedFile,
+  type ParsedLine,
+} from "m68k-parser";
 import { getFlagSemantics } from "../semantics/flags.js";
 import { canonicalMnemonic } from "../semantics/mnemonics.js";
 import { isExecutableLine } from "../util/ast.js";
@@ -128,8 +133,7 @@ export function buildControlFlowGraph(file: ParsedFile): ControlFlowGraph {
   const scopes = analyzeLocalLabelScopes(file);
   const labelKey = (index: number, name: string): string => {
     const lower = name.toLowerCase();
-    const local = lower.startsWith(".") || lower.endsWith("$");
-    return `${region[index]}:${local ? scopes.keyOf(index, lower) : lower}`;
+    return `${region[index]}:${isLocalLabelName(lower) ? scopes.keyOf(index, lower) : lower}`;
   };
   const labels = new Map<string, number>();
   for (let i = 0; i < file.lines.length; i++) {

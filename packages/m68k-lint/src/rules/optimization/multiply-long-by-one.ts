@@ -6,6 +6,7 @@ import {
   isInstruction,
 } from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
+import { targetsOnly } from "../../core/config.js";
 
 export const multiplyLongByOne: Rule = {
   meta: {
@@ -26,9 +27,7 @@ export const multiplyLongByOne: Rule = {
   checkLine(ctx, line, index) {
     if (
       ctx.config.processors.length === 0 ||
-      !ctx.config.processors.every((cpu) =>
-        ["mc68020", "mc68030", "mc68040", "mc68060"].includes(cpu),
-      )
+      !targetsOnly(ctx.config, ["mc68020", "mc68030", "mc68040", "mc68060"])
     )
       return;
     if (

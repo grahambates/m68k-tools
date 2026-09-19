@@ -456,3 +456,26 @@ foo=4
     });
   });
 });
+
+describe("directive sizes", () => {
+  test("dc without a size is a word", () => {
+    const [line] = parse("      dc 1,2,3");
+    expect(line.bytes).toEqual(6);
+  });
+
+  test("ds and dcb without a size are words", () => {
+    const lines = parse("      ds 4\n      dcb 3,0");
+    expect(lines[0].bytes).toEqual(8);
+    expect(lines[1].bytes).toEqual(6);
+  });
+
+  test("a count that is not known is nothing", () => {
+    const [line] = parse("      ds.b unknown_count");
+    expect(line.bytes).toEqual(0);
+  });
+
+  test("a count from a constant defined earlier", () => {
+    const lines = parse("SIZE = 16\n      ds.b SIZE");
+    expect(lines[1].bytes).toEqual(16);
+  });
+});

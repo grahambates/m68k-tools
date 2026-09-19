@@ -6,6 +6,7 @@ import {
   isInstruction,
 } from "../../util/ast.js";
 import { changedFlagsApplicability, isPowerOfTwo } from "./helpers.js";
+import { targetsOnly } from "../../core/config.js";
 
 // Verified with 68kcounter: MULS.W/MULU.W by 0 or 1 costs the same fixed 31
 // cycles on 68020 regardless of the immediate, so removing/replacing it is
@@ -114,11 +115,7 @@ export const multiplyUnsignedWordByOne: Rule = {
   },
   checkLine(ctx, line) {
     if (!isInstruction(line, "mulu") || instructionSize(line) !== "w") return;
-    if (
-      !ctx.config.processors.every((cpu) =>
-        ["mc68000", "mc68010", "mc68030", "mc68040"].includes(cpu),
-      )
-    )
+    if (!targetsOnly(ctx.config, ["mc68000", "mc68010", "mc68030", "mc68040"]))
       return;
     const imm = immediateOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
@@ -164,9 +161,13 @@ export const multiplySignedWordPowerOfTwo: Rule = {
     if (
       !isInstruction(line, "muls") ||
       instructionSize(line) !== "w" ||
-      !ctx.config.processors.every((cpu) =>
-        ["mc68000", "mc68010", "mc68020", "mc68030", "mc68040"].includes(cpu),
-      )
+      !targetsOnly(ctx.config, [
+        "mc68000",
+        "mc68010",
+        "mc68020",
+        "mc68030",
+        "mc68040",
+      ])
     )
       return;
     const imm = immediateOperand(line, 0);

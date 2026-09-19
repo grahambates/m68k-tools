@@ -1,3 +1,5 @@
+import { canonicalConditionMnemonic } from "m68k-parser";
+
 type Values<T> = T[keyof T];
 
 /**
@@ -461,14 +463,13 @@ export function isDirective(v: string): v is Directive {
  * Map alternate to canonical mnemonics used in our mappings.
  */
 export const aliases: Record<string, string> = {
-  // Non-standard mnemonics
-  BLO: Mnemonics.BCS,
-  DBLO: Mnemonics.DBCS,
-  SLO: Mnemonics.SCS,
-  DBRA: Mnemonics.DBF,
-  BHS: Mnemonics.BCC,
-  DBHS: Mnemonics.DBCC,
-  SHS: Mnemonics.SCC,
+  // Non-standard mnemonics, read the way every other tool here reads them.
+  ...Object.fromEntries(
+    ["BLO", "DBLO", "SLO", "DBRA", "BHS", "DBHS", "SHS"].map((name) => [
+      name,
+      canonicalConditionMnemonic(name).toUpperCase(),
+    ]),
+  ),
   BLK: Directives.DCB,
 };
 

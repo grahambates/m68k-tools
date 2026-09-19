@@ -4,6 +4,7 @@ import {
   instructionSize,
   isInstruction,
 } from "../../util/ast.js";
+import { targetsOnly } from "../../core/config.js";
 
 /** ASP68K: EXT.W Dn + EXT.L Dn -> EXTB.L Dn, available from the 68020 on. */
 export const combineExtByte: Rule = {
@@ -23,11 +24,7 @@ export const combineExtByte: Rule = {
   },
 
   checkLine(ctx, line, index) {
-    if (
-      !ctx.config.processors.every((cpu) =>
-        ["mc68020", "mc68030", "mc68040", "mc68060"].includes(cpu),
-      )
-    )
+    if (!targetsOnly(ctx.config, ["mc68020", "mc68030", "mc68040", "mc68060"]))
       return;
     if (!isInstruction(line, "ext") || instructionSize(line) !== "w") return;
     const first = dataRegisterOperand(line, 0);

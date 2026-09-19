@@ -1,6 +1,6 @@
 import type { ParsedFile } from "m68k-parser";
 import { type TextEdit, type Range } from "vscode-languageserver-types";
-import { containsRange } from "../geometry";
+import { containsRange } from "m68k-parser";
 import AlignFormatter, { type AlignOptions } from "./formatters/AlignFormatter";
 import CaseFormatter, { type CaseOptions } from "./formatters/CaseFormatter";
 import EndOfLineFormatter from "./formatters/EndOfLineFormatter";

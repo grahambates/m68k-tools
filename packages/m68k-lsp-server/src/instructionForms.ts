@@ -1,4 +1,4 @@
-import type { OperandNode } from "m68k-parser";
+import { addressingMode, type OperandNode } from "m68k-parser";
 import type { AddressingModes, InstructionDoc } from "./docs";
 import type { AddressingMode } from "./syntax";
 
@@ -32,36 +32,27 @@ function forms(signature: string): string[][] {
   return [splitOperands(text)];
 }
 
+/** The modes an instruction's documentation describes. */
+const documented = new Set<string>([
+  "dn",
+  "an",
+  "anIndirect",
+  "anPostInc",
+  "anPreDec",
+  "anOffset",
+  "anIdx",
+  "absW",
+  "absL",
+  "pcOffset",
+  "pcIdx",
+  "imm",
+]);
+
 function mode(operand: OperandNode): AddressingMode | undefined {
-  switch (operand.type) {
-    case "absolute-address":
-      return operand.addressSize?.type === "size" &&
-        operand.addressSize.size === "w"
-        ? "absW"
-        : "absL";
-    case "data-register":
-      return "dn";
-    case "address-register":
-      return "an";
-    case "immediate":
-      return "imm";
-    case "address-register-indirect":
-      return "anIndirect";
-    case "address-register-indirect-postinc":
-      return "anPostInc";
-    case "address-register-indirect-predec":
-      return "anPreDec";
-    case "address-register-indirect-displacement":
-      return "anOffset";
-    case "address-register-indirect-index":
-      return "anIdx";
-    case "pc-relative":
-      return "pcOffset";
-    case "pc-relative-index":
-      return "pcIdx";
-    default:
-      return undefined;
-  }
+  const found = addressingMode(operand);
+  // Anything else -- a register list, a special register, memory indirect --
+  // is not one of the documented modes, so it has none here.
+  return found && documented.has(found) ? (found as AddressingMode) : undefined;
 }
 
 function allowed(operand: OperandNode, modes?: AddressingModes): Match {

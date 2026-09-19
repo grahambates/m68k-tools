@@ -10,7 +10,7 @@ import { minimatch } from "minimatch";
 import { type Context } from "./context";
 import { getEntryPointsFor } from "./files";
 import { instructionDocs } from "./docs";
-import { locationAsRange } from "./geometry";
+import { locationAsRange } from "m68k-parser";
 
 const wasmPath = join(__dirname, "..", "wasm", "vasmm68k_mot");
 

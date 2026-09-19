@@ -12,6 +12,7 @@ import {
   embeddedValueText,
   hasLabelBetween,
 } from "./helpers.js";
+import { hex } from "../../util/format.js";
 
 type BitKind = "bset" | "bclr" | "bchg";
 const KINDS: readonly BitKind[] = ["bset", "bclr", "bchg"];
@@ -129,8 +130,8 @@ export const combineConsecutiveBitOps: Rule = {
     // an opaque mask that no longer tracks the constant it came from.
     // `& limit` works on a signed 32-bit value, so the unsigned coercion has to
     // come after it or a mask reaching bit 31 renders as a negative number.
-    const hex = (value: number) =>
-      `$${((value & limit) >>> 0).toString(16).padStart(width, "0")}`;
+    const literal = (value: number) =>
+      hex(value & limit, width, { uppercase: false });
     const symbolic = members.some((m) => containsSymbol(m.op.expression));
     // Each shift is parenthesised so the mask does not depend on the assembler
     // agreeing with C about how `<<` and `|` bind.
@@ -141,10 +142,10 @@ export const combineConsecutiveBitOps: Rule = {
       first.kind === "bclr"
         ? symbolic
           ? `~(${bits})`
-          : hex(~mask)
+          : literal(~mask)
         : symbolic
           ? bits
-          : hex(mask);
+          : literal(mask);
 
     const operation = MERGED[first.kind];
     const last = members[members.length - 1];

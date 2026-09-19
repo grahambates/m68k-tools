@@ -4,7 +4,10 @@ import type { Rule } from "../../../core/rule.js";
 import { semanticMnemonic } from "../../../semantics/mnemonics.js";
 import { operand } from "../../../util/ast.js";
 import { replaceOperandInLine } from "../../optimization/helpers.js";
-import { amigaEffectiveAddress } from "./custom-register-access.js";
+import {
+  amigaCustomRegisters,
+  amigaEffectiveAddress,
+} from "./custom-register-access.js";
 
 type Family = "dma" | "int";
 type Kind = "bit" | "mask";
@@ -63,15 +66,29 @@ function collectConstants(
 
 const BIT_INSTRUCTIONS = new Set(["btst", "bset", "bclr", "bchg"]);
 
-/** Registers whose value is built from these constants, and which family they take. */
-const REGISTER_FAMILY = new Map<number, { name: string; family: Family }>([
-  [0xdff002, { name: "DMACONR", family: "dma" }],
-  [0xdff096, { name: "DMACON", family: "dma" }],
-  [0xdff01c, { name: "INTENAR", family: "int" }],
-  [0xdff01e, { name: "INTREQR", family: "int" }],
-  [0xdff09a, { name: "INTENA", family: "int" }],
-  [0xdff09c, { name: "INTREQ", family: "int" }],
-]);
+/** Which family of flag constants each of these registers takes. */
+const FAMILY_BY_NAME: Readonly<Record<string, Family>> = {
+  DMACONR: "dma",
+  DMACON: "dma",
+  INTENAR: "int",
+  INTREQR: "int",
+  INTENA: "int",
+  INTREQ: "int",
+};
+
+/**
+ * Registers whose value is built from these constants. The addresses come from
+ * the one table of custom registers, so this can only name a register that
+ * table knows.
+ */
+const REGISTER_FAMILY = new Map<number, { name: string; family: Family }>(
+  [...amigaCustomRegisters]
+    .filter(([, register]) => register.name in FAMILY_BY_NAME)
+    .map(([address, { name }]) => [
+      address,
+      { name, family: FAMILY_BY_NAME[name] },
+    ]),
+);
 
 /**
  * The target register of a bit or value operation, if it is one of these.

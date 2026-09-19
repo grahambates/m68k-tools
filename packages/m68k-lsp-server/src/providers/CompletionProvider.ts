@@ -2,7 +2,12 @@ import * as lsp from "vscode-languageserver";
 import { promises as fsp } from "fs";
 import { relative } from "path";
 import { fileURLToPath } from "url";
-import { memoryTypes, sizes } from "m68k-parser";
+import {
+  bareLocalName,
+  memoryTypes,
+  sectionTypeNames,
+  sizes,
+} from "m68k-parser";
 import type { Size } from "m68k-parser";
 
 import { type Provider } from ".";
@@ -121,7 +126,7 @@ export default class CompletionProvider implements Provider {
           case "<path>":
             return this.completePath(mnemonic, value, textDocument.uri);
           case "<sec_type>":
-            return enumValues(syntax.sectionTypes);
+            return enumValues(sectionTypeNames);
           case "<mem_type>":
             return enumValues(memoryTypes);
           case "<cpu_type>":
@@ -276,7 +281,7 @@ export default class CompletionProvider implements Provider {
     definitions: Map<string, Definition>,
   ): lsp.CompletionItem[] {
     return Array.from(definitions.values()).map((def) => {
-      const unprefixed = def.name.replace(/^\./, "");
+      const unprefixed = bareLocalName(def.name);
       return {
         label: def.name,
         kind: typeMappings[def.type],

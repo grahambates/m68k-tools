@@ -1,5 +1,5 @@
 import { matchesInstructionForms } from "./instructionForms";
-import { parseFile, type ParsedLine } from "m68k-parser";
+import { addressRegisterForm, parseFile, type ParsedLine } from "m68k-parser";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import type { TextEdit } from "vscode-languageserver";
 import { instructionDocs, type Processor } from "./docs";
@@ -14,11 +14,11 @@ function issues(line: ParsedLine, processors: readonly Processor[]): string[] {
   const destination = operands.at(-1);
   // Assemblers accept the generic spellings for address-register arithmetic.
   if (
-    ["move", "add", "sub", "cmp"].includes(name) &&
+    addressRegisterForm(name) &&
     destination?.type === "address-register" &&
     operands[0]?.type !== "special-register"
   )
-    name += "a";
+    name = addressRegisterForm(name) ?? name;
   const doc = instructionDocs[name];
   const laterTst =
     name === "tst" &&

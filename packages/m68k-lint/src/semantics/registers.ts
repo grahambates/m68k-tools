@@ -1,5 +1,5 @@
 import type { OperandNode, ParsedLine } from "m68k-parser";
-import { getFlagSemantics } from "./flags.js";
+import { conditionCode, getFlagSemantics } from "./flags.js";
 import { semanticMnemonic } from "./mnemonics.js";
 import { instructionSize } from "../util/ast.js";
 import { isMacroInvocation } from "../util/ast.js";
@@ -33,6 +33,11 @@ export function normalizeRegister(register: string): Register | undefined {
   return (REGISTERS as readonly string[]).includes(r)
     ? (r as Register)
     : undefined;
+}
+
+/** Whether a register name is the stack pointer, however it is spelled. */
+export function isStackPointerRegister(register: string): boolean {
+  return normalizeRegister(register) === "a7";
 }
 
 /**
@@ -147,6 +152,31 @@ function addEaSideEffectWrite(
     op.register.type === "address-register" ? op.register.register : "",
   );
   if (r) writes.add(r);
+}
+
+const SHIFTS = new Set([
+  "asl",
+  "asr",
+  "lsl",
+  "lsr",
+  "rol",
+  "ror",
+  "roxl",
+  "roxr",
+]);
+
+/** The result of an instruction with no partial writes, calls or unknown effects. */
+function plainEffects(
+  reads: Set<Register>,
+  writes: Set<Register>,
+): RegisterSemantics {
+  return {
+    reads,
+    writes,
+    partialWrites: new Set<Register>(),
+    unknownEffects: false,
+    call: false,
+  };
 }
 
 function computeRegisterSemantics(line: ParsedLine): RegisterSemantics {
@@ -363,9 +393,17 @@ function computeRegisterSemantics(line: ParsedLine): RegisterSemantics {
       "roxr",
     ].includes(mnemonic)
   ) {
-    read(0);
-    read(1);
-    writeDirect(1);
+    // A shift or rotate written with one operand, `lsr.w d0`, acts on that
+    // operand alone, by one place. Reading it as a count and finding no
+    // destination lost the write, and constants held in the register survived.
+    if (ops.length === 1 && SHIFTS.has(mnemonic)) {
+      read(0);
+      writeDirect(0);
+    } else {
+      read(0);
+      read(1);
+      writeDirect(1);
+    }
     return {
       reads,
       writes,
@@ -423,6 +461,56 @@ function computeRegisterSemantics(line: ParsedLine): RegisterSemantics {
       unknownEffects: false,
       call: false,
     };
+  }
+
+  // Scc sets the byte of its destination to all ones or all zeros, reading
+  // nothing of what was there.
+  const condition = conditionCode(mnemonic);
+  if (condition && mnemonic.startsWith("s") && !mnemonic.startsWith("db")) {
+    if (!directRegister(ops[0])) read(0);
+    writeDirect(0);
+    return plainEffects(reads, writes);
+  }
+  // PEA reads the registers its address is made from and pushes through A7.
+  if (mnemonic === "pea") {
+    read(0);
+    reads.add("a7");
+    writes.add("a7");
+    return plainEffects(reads, writes);
+  }
+  // CHK compares its two operands and may trap; it writes nothing.
+  if (mnemonic === "chk") {
+    read(0);
+    read(1);
+    return plainEffects(reads, writes);
+  }
+  // NBCD works on its destination in place.
+  if (mnemonic === "nbcd") {
+    read(0);
+    writeDirect(0);
+    return plainEffects(reads, writes);
+  }
+  // The extended and decimal arithmetic forms take a source and update a
+  // destination that is also an input, through registers or -(Ax),-(Ay).
+  if (["addx", "subx", "abcd", "sbcd"].includes(mnemonic)) {
+    read(0);
+    read(1);
+    writeDirect(1);
+    return plainEffects(reads, writes);
+  }
+  // CMPM compares two postincremented memory operands; the increments are
+  // applied to both address registers by the caller.
+  if (mnemonic === "cmpm") {
+    read(0);
+    read(1);
+    return plainEffects(reads, writes);
+  }
+  // MOVEP moves alternate bytes between a data register and memory.
+  if (mnemonic === "movep") {
+    read(0);
+    if (ops[0]?.type === "data-register") read(1);
+    else writeDirect(1);
+    return plainEffects(reads, writes);
   }
 
   // Uncommon/system/FPU instructions are intentionally conservative for now.

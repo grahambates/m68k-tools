@@ -1,4 +1,8 @@
-import type { ParsedLine } from "m68k-parser";
+import {
+  addressRegisterForm,
+  canonicalConditionMnemonic,
+  type ParsedLine,
+} from "m68k-parser";
 
 /** Canonicalise source-level assembler aliases which are unconditionally equivalent. */
 export function canonicalMnemonicName(name: string): string {
@@ -14,18 +18,9 @@ export function canonicalMnemonicName(name: string): string {
   };
   mnemonic = immediateAliases[mnemonic] ?? mnemonic;
 
-  if (mnemonic === "dbra") return "dbf";
-
-  // Condition-code synonyms: HS == CC, LO == CS. Apply consistently to
-  // Bcc, DBcc and Scc spellings without touching unrelated B*/S* opcodes.
-  for (const prefix of ["db", "b", "s"] as const) {
-    if (!mnemonic.startsWith(prefix)) continue;
-    const cc = mnemonic.slice(prefix.length);
-    if (cc === "hs") return `${prefix}cc`;
-    if (cc === "lo") return `${prefix}cs`;
-  }
-
-  return mnemonic;
+  // Condition-code synonyms (HS is CC, LO is CS) and DBRA, decided by the
+  // parser for every tool alike.
+  return canonicalConditionMnemonic(mnemonic);
 }
 
 /** Canonical source spelling, before operand-sensitive instruction selection. */
@@ -51,12 +46,8 @@ export function semanticMnemonic(line: ParsedLine): string | undefined {
   const mnemonic = canonicalMnemonic(line);
   if (!mnemonic) return undefined;
 
-  if (hasAddressRegisterDestination(line)) {
-    if (mnemonic === "move") return "movea";
-    if (mnemonic === "add") return "adda";
-    if (mnemonic === "sub") return "suba";
-    if (mnemonic === "cmp") return "cmpa";
-  }
+  if (hasAddressRegisterDestination(line))
+    return addressRegisterForm(mnemonic) ?? mnemonic;
 
   return mnemonic;
 }

@@ -1,9 +1,10 @@
 import type { Rule } from "../../core/rule.js";
 import { analyzeAlignment } from "../../analysis/alignment.js";
 import { isExecutableLine } from "../../util/ast.js";
+import { targetsAny, type Processor } from "../../core/config.js";
 
 /** Processors that fault on a word or long access at an odd address. */
-const STRICT_ALIGNMENT = ["mc68000", "mc68010", "cpu32"];
+const STRICT_ALIGNMENT: Processor[] = ["mc68000", "mc68010", "cpu32"];
 
 /**
  * Word-sized code or data straight after an odd number of bytes.
@@ -36,9 +37,7 @@ export const missingEven: Rule = {
       const result = ctx.evaluate(expr);
       return result.known ? result.value : undefined;
     });
-    const strict = ctx.config.processors.some((cpu) =>
-      STRICT_ALIGNMENT.includes(cpu),
-    );
+    const strict = targetsAny(ctx.config, STRICT_ALIGNMENT);
 
     let reportedFor: number | undefined;
     ctx.file.lines.forEach((line, index) => {

@@ -6,6 +6,7 @@ import {
   instructionSize,
   isInstruction,
 } from "../../util/ast.js";
+import { targetsOnly } from "../../core/config.js";
 
 function sameRegister(a: string, b: string): boolean {
   return a.toLowerCase() === b.toLowerCase();
@@ -50,9 +51,13 @@ export const foldAddressArithmeticToIndexedLea: Rule = {
     // target except 68040, where the folded LEA costs one cycle more than
     // the pair it replaces.
     if (
-      !ctx.config.processors.every((cpu) =>
-        ["mc68000", "mc68010", "mc68020", "mc68030", "mc68060"].includes(cpu),
-      )
+      !targetsOnly(ctx.config, [
+        "mc68000",
+        "mc68010",
+        "mc68020",
+        "mc68030",
+        "mc68060",
+      ])
     )
       return;
     const add = isInstruction(line, "adda");

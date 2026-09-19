@@ -6,6 +6,7 @@ import {
   isInstruction,
 } from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
+import { targetsOnly } from "../../core/config.js";
 
 export const preferAddForShiftOne: Rule = {
   meta: {
@@ -38,9 +39,13 @@ export const preferAddForShiftOne: Rule = {
     // ASP68K marks 060 as no win and leaves 020 unknown ("?" in its table).
     // Verified with 68kcounter: 020 is in fact a real win too (1 cycle).
     if (
-      !ctx.config.processors.every((cpu) =>
-        ["mc68000", "mc68010", "mc68020", "mc68030", "mc68040"].includes(cpu),
-      )
+      !targetsOnly(ctx.config, [
+        "mc68000",
+        "mc68010",
+        "mc68020",
+        "mc68030",
+        "mc68040",
+      ])
     )
       return;
 

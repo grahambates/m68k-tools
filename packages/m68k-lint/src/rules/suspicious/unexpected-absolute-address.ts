@@ -7,6 +7,7 @@ import {
   platformLabels,
 } from "../../platforms/address-ranges.js";
 import { operand } from "../../util/ast.js";
+import { hex } from "../../util/format.js";
 
 // Deliberately conservative: these are instructions where an absolute source
 // EA is valid and an immediate source is also a plausible intent.  We avoid
@@ -45,10 +46,6 @@ function isPureNumericExpression(expr: ExpressionNode): boolean {
     default:
       return false;
   }
-}
-
-function hex(value: number): string {
-  return `$${(value >>> 0).toString(16).toUpperCase()}`;
 }
 
 export const unexpectedAbsoluteAddress: Rule = {

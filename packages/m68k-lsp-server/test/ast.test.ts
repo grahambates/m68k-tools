@@ -11,7 +11,7 @@ import {
   walkFile,
   walkLine,
 } from "../src/ast";
-import { locationAsRange } from "../src/geometry";
+import { locationAsRange } from "m68k-parser";
 
 const line = (text: string) => parseLine(text).value;
 

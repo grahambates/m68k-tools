@@ -74,6 +74,34 @@ describe("suspicious/missing-even", () => {
     ).toHaveLength(0);
   });
 
+  test("db, blk.b and an unsized dc are understood too", () => {
+    expect(found(RULE, ["db 1", "moveq #0,d0"].join("\n"))).toHaveLength(1);
+    expect(found(RULE, ["blk.b 3", "moveq #0,d0"].join("\n"))).toHaveLength(1);
+    // An unsized dc is a word, so it leaves the address as it was.
+    expect(found(RULE, ["dc 1,2,3", "moveq #0,d0"].join("\n"))).toHaveLength(0);
+  });
+
+  test("a count from a constant the file defines", () => {
+    expect(
+      found(RULE, ["N equ 3", "ds.b N", "moveq #0,d0"].join("\n")),
+    ).toHaveLength(1);
+    expect(
+      found(RULE, ["N equ 4", "ds.b N", "moveq #0,d0"].join("\n")),
+    ).toHaveLength(0);
+  });
+
+  test("a string with an escape has no known length", () => {
+    expect(
+      found(RULE, ['dc.b "hi\\n"', "moveq #0,d0"].join("\n")),
+    ).toHaveLength(0);
+  });
+
+  test("wider data with a count that is not known leaves the address alone", () => {
+    expect(
+      found(RULE, ["dc.b 1", "ds.w count", "moveq #0,d0"].join("\n")),
+    ).toHaveLength(1);
+  });
+
   test("word data is left alone on a 68020", () => {
     const config = { processors: ["mc68020" as const] };
     expect(found(RULE, ["dc.b 1", "dc.w 1"].join("\n"), config)).toHaveLength(

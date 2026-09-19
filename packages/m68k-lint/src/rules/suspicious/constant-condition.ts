@@ -2,7 +2,11 @@ import type { ParsedLine } from "m68k-parser";
 import type { RuleContext } from "../../core/context.js";
 import type { Rule } from "../../core/rule.js";
 import { scanBlocks } from "../../analysis/blocks.js";
-import { getFlagSemantics, type Flag } from "../../semantics/flags.js";
+import {
+  conditionCode,
+  flagsReadByCondition,
+  getFlagSemantics,
+} from "../../semantics/flags.js";
 import { semanticMnemonic } from "../../semantics/mnemonics.js";
 import { instructionSize } from "../../util/ast.js";
 
@@ -12,29 +16,6 @@ interface Codes {
   V: boolean;
   C: boolean;
 }
-
-const CONDITIONS = "hi|ls|cc|hs|cs|lo|ne|eq|vc|vs|pl|mi|ge|lt|gt|le";
-const BRANCH = new RegExp(`^b(${CONDITIONS})$`);
-const SET = new RegExp(`^s(${CONDITIONS})$`);
-
-const READS: Record<string, readonly Flag[]> = {
-  hi: ["C", "Z"],
-  ls: ["C", "Z"],
-  cc: ["C"],
-  hs: ["C"],
-  cs: ["C"],
-  lo: ["C"],
-  ne: ["Z"],
-  eq: ["Z"],
-  vc: ["V"],
-  vs: ["V"],
-  pl: ["N"],
-  mi: ["N"],
-  ge: ["N", "V"],
-  lt: ["N", "V"],
-  gt: ["N", "V", "Z"],
-  le: ["N", "V", "Z"],
-};
 
 function holds(condition: string, f: Codes): boolean {
   switch (condition) {
@@ -189,16 +170,18 @@ export const constantCondition: Rule = {
       const mnemonic = semanticMnemonic(line);
       if (!mnemonic) return;
 
-      const branch = BRANCH.exec(mnemonic);
-      const set = SET.exec(mnemonic);
-      const condition = branch?.[1] ?? set?.[1];
-      if (!condition) return;
-      if (branch && getFlagSemantics(line).controlFlow !== "conditional-branch")
-        return;
+      // Bcc and Scc only: DBcc has a counter as well, and BRA, BSR, ST and SF
+      // have no condition to settle.
+      const condition = conditionCode(mnemonic);
+      if (!condition || condition === "t" || condition === "f") return;
+      if (mnemonic.startsWith("db")) return;
+      const branch =
+        getFlagSemantics(line).controlFlow === "conditional-branch";
+      if (!branch && !mnemonic.startsWith("s")) return;
 
       // Every flag the condition reads must come from the same instructions.
       let sources: number[] | undefined;
-      for (const flag of READS[condition]) {
+      for (const flag of flagsReadByCondition(mnemonic)) {
         const definitions = ctx.flags.reachingDefinitionsBefore(index, flag);
         if (definitions.length === 0) return;
         const indices: number[] = [];

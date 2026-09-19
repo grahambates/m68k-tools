@@ -1,4 +1,14 @@
-import type { ParsedLine } from "m68k-parser";
+import { descendants, type OperandNode, type ParsedLine } from "m68k-parser";
+
+/** Every symbol name in an operand, as written, however deeply it is nested. */
+export function symbolNamesIn(operand: OperandNode): string[] {
+  const names: string[] = [];
+  for (const node of [operand, ...descendants(operand)]) {
+    const { name } = node as { name?: unknown };
+    if (node.type === "symbol" && typeof name === "string") names.push(name);
+  }
+  return names;
+}
 
 /**
  * Symbol names referenced by a line's operands, lower-cased.
@@ -13,17 +23,8 @@ export function collectReferencedSymbols(
   lines: readonly ParsedLine[],
   into: Set<string> = new Set(),
 ): Set<string> {
-  const walk = (node: unknown): void => {
-    if (!node || typeof node !== "object") return;
-    const candidate = node as { type?: string; name?: string };
-    if (candidate.type === "symbol" && typeof candidate.name === "string")
-      into.add(candidate.name.toLowerCase());
-    for (const value of Object.values(node)) {
-      if (Array.isArray(value)) value.forEach(walk);
-      else if (value && typeof value === "object") walk(value);
-    }
-  };
   for (const line of lines)
-    for (const operand of line.operands ?? []) walk(operand);
+    for (const operand of line.operands ?? [])
+      for (const name of symbolNamesIn(operand)) into.add(name.toLowerCase());
   return into;
 }

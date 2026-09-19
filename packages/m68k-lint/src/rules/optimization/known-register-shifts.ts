@@ -8,6 +8,8 @@ import {
 } from "../../util/ast.js";
 import { canonicalMnemonic } from "../../semantics/mnemonics.js";
 import { changedFlagsApplicability } from "./helpers.js";
+import { hex } from "../../util/format.js";
+import { targetsOnly } from "../../core/config.js";
 
 function m68000Only(ctx: RuleContext): boolean {
   return ctx.config.processors.every((cpu) => cpu === "mc68000");
@@ -356,7 +358,7 @@ export const knownRegisterShiftReduction: Rule = {
     let replacement: string;
     if (size === "w") {
       const mask = ~((1 << count) - 1) & 0xffff;
-      const maskText = `$${mask.toString(16).toUpperCase().padStart(4, "0")}`;
+      const maskText = hex(mask, 4);
       const rotate = 16 - count;
       replacement =
         mnemonic === "lsr"
@@ -366,13 +368,13 @@ export const knownRegisterShiftReduction: Rule = {
       const x = count - 24;
       const rotate = 8 - x;
       const mask = ~((1 << (8 + x)) - 1) & 0xffff;
-      const maskText = `$${mask.toString(16).toUpperCase().padStart(4, "0")}`;
+      const maskText = hex(mask, 4);
       replacement = `ror.w #${rotate},${reg}\nandi.w #${maskText},${reg}\nswap ${reg}\nclr.w ${reg}`;
     } else if (mnemonic === "lsr" && count >= 25) {
       const x = count - 24;
       const rotate = 8 - x;
       const mask = ~((1 << (8 + x)) - 1) & 0xffff;
-      const maskText = `$${mask.toString(16).toUpperCase().padStart(4, "0")}`;
+      const maskText = hex(mask, 4);
       replacement = `clr.w ${reg}\nswap ${reg}\nandi.w #${maskText},${reg}\nrol.w #${rotate},${reg}`;
     } else if (mnemonic === "lsl" || mnemonic === "asl") {
       replacement =
@@ -650,9 +652,13 @@ export const knownRegisterAsrSaturate: Rule = {
   },
   checkLine(ctx, line, index) {
     if (
-      !ctx.config.processors.every((cpu) =>
-        ["mc68000", "mc68010", "mc68020", "mc68030", "mc68040"].includes(cpu),
-      ) ||
+      !targetsOnly(ctx.config, [
+        "mc68000",
+        "mc68010",
+        "mc68020",
+        "mc68030",
+        "mc68040",
+      ]) ||
       !isInstruction(line, "asr")
     )
       return;

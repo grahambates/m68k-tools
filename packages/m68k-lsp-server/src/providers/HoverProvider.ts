@@ -11,7 +11,7 @@ import * as lsp from "vscode-languageserver";
 import { type TextDocument } from "vscode-languageserver-textdocument";
 import { type Provider } from ".";
 import { type AstNode, nodeAtPosition } from "../ast";
-import { locationAsRange } from "../geometry";
+import { locationAsRange } from "m68k-parser";
 import { resolveInclude } from "../files";
 import { DefinitionType, getDefinitions } from "../symbols";
 import { mnemonicDocs, registerDocs, sizeDocs } from "../docs/index";

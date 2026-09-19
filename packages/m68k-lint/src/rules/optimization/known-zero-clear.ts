@@ -3,6 +3,7 @@ import type { Rule } from "../../core/rule.js";
 import { DATA_REGISTERS } from "../../semantics/registers.js";
 import { instructionSize, isInstruction, operand } from "../../util/ast.js";
 import { sourceOperand } from "./helpers.js";
+import { targetsOnly } from "../../core/config.js";
 
 /**
  * Every memory-destination CLR form measures slower than the equivalent MOVE
@@ -44,11 +45,7 @@ export const knownZeroClear: Rule = {
     if (!supportedDestination(dest)) return;
     // Verified with 68kcounter: a clean win on every target checked except
     // 68040/68060, where it ties (0 delta) rather than improves.
-    if (
-      !ctx.config.processors.every((cpu) =>
-        ["mc68000", "mc68010", "mc68020", "mc68030"].includes(cpu),
-      )
-    )
+    if (!targetsOnly(ctx.config, ["mc68000", "mc68010", "mc68020", "mc68030"]))
       return;
 
     const zero = DATA_REGISTERS.find(

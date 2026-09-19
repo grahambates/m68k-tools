@@ -1,5 +1,6 @@
 import type { ParsedLine } from "m68k-parser";
 import {
+  isStackPointerRegister,
   normalizeRegister,
   registerOrdinal,
   type Register,
@@ -23,7 +24,9 @@ export interface StackSave {
   viaMacro: boolean;
 }
 
-function registersOf(op: ReturnType<typeof operand>): Register[] | undefined {
+export function registersOf(
+  op: ReturnType<typeof operand>,
+): Register[] | undefined {
   const names =
     op?.type === "register-list"
       ? op.registers
@@ -48,7 +51,7 @@ function isStack(op: ReturnType<typeof operand>): boolean {
     return false;
   return (
     op.register.type === "address-register" &&
-    normalizeRegister(op.register.register) === "a7"
+    isStackPointerRegister(op.register.register)
   );
 }
 

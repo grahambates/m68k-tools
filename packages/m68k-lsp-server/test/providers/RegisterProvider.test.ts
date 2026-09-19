@@ -505,6 +505,48 @@ Helper:
       expect(byName.get("d3")?.references[0].access).toBe("read");
     });
 
+    it("reads the synonym spellings of Scc as the instruction they stand for", async () => {
+      const textDocument = await createDoc(
+        "scc-synonyms.s",
+        ` shs.b d0
+ slo.b d1
+ scc.b d2
+`,
+      );
+
+      const result = provider.onRegisterUsage({
+        textDocument,
+        range: range(0, 0, 3, 0),
+      });
+      const byName = new Map(
+        result?.registers.map((usage) => [usage.name, usage]),
+      );
+
+      // Scc only writes its destination, however it is spelled.
+      for (const name of ["d0", "d1", "d2"]) {
+        expect(byName.get(name)?.references[0].access).toBe("write");
+      }
+    });
+
+    it("treats the register destination of MOVEP as written, not read", async () => {
+      const textDocument = await createDoc(
+        "movep-destination.s",
+        ` movep.w 4(a0),d3
+`,
+      );
+
+      const result = provider.onRegisterUsage({
+        textDocument,
+        range: range(0, 0, 1, 0),
+      });
+      const byName = new Map(
+        result?.registers.map((usage) => [usage.name, usage]),
+      );
+
+      expect(byName.get("d3")?.references[0].access).toBe("write");
+      expect(byName.get("a0")?.references[0].access).toBe("read");
+    });
+
     it("expands a macro defined with the name as an operand", async () => {
       const textDocument = await createDoc(
         "macro-operand-form.s",

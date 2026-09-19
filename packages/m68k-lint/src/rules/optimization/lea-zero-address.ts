@@ -4,6 +4,7 @@ import {
   isInstruction,
   operand,
 } from "../../util/ast.js";
+import { targetsOnly } from "../../core/config.js";
 
 export const leaZeroAddress: Rule = {
   meta: {
@@ -31,9 +32,13 @@ export const leaZeroAddress: Rule = {
     // Verified with 68kcounter: a clean win on every target checked except
     // 68040, where SUBA costs one cycle more than LEA.
     if (
-      !ctx.config.processors.every((cpu) =>
-        ["mc68000", "mc68010", "mc68020", "mc68030", "mc68060"].includes(cpu),
-      )
+      !targetsOnly(ctx.config, [
+        "mc68000",
+        "mc68010",
+        "mc68020",
+        "mc68030",
+        "mc68060",
+      ])
     )
       return;
 

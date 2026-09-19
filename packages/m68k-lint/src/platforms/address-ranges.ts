@@ -1,4 +1,5 @@
 import type { Platform } from "../core/config.js";
+import { hex } from "../util/format.js";
 
 export interface ExpectedAbsoluteAddressRange {
   start: number;
@@ -106,11 +107,11 @@ export function expectedAbsoluteAddressRange(
 
 /** Ranges rendered for diagnostic text, e.g. "$FF8201-$FFFA23 (Atari hardware registers)". */
 export function describeExpectedRanges(platform: Platform): string {
-  const hex = (value: number) =>
-    `$${value.toString(16).toUpperCase().padStart(6, "0")}`;
+  const show = (value: number) => hex(value, 6);
   return expectedAbsoluteAddressRanges[platform]
     .map(
-      (range) => `${hex(range.start)}-${hex(range.end)} (${range.description})`,
+      (range) =>
+        `${show(range.start)}-${show(range.end)} (${range.description})`,
     )
     .join(", ");
 }

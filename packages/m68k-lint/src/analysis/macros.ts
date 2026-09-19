@@ -13,8 +13,8 @@ import { getFlagSemantics } from "../semantics/flags.js";
 import { setExpansion } from "../semantics/macro-expansions.js";
 import { evaluateCondition } from "./conditionals.js";
 import type { ExternalSymbols } from "./symbols.js";
-import { normalizeRegister, registerOrdinal } from "../semantics/registers.js";
 import { scanBlocks } from "./blocks.js";
+import { registersOf } from "./register-saves.js";
 
 /**
  * Work out what macro calls stand for, so the register, flag and stack
@@ -256,24 +256,5 @@ function movem(
 function registerList(
   operands: readonly OperandNode[] | undefined,
 ): string[] | undefined {
-  if (operands?.length !== 1) return undefined;
-  const op = operands[0];
-  const names =
-    op.type === "register-list"
-      ? op.registers
-      : op.type === "data-register" || op.type === "address-register"
-        ? [op.register]
-        : undefined;
-  if (!names) return undefined;
-  const registers = new Set<string>();
-  for (const name of names) {
-    const register = normalizeRegister(name);
-    if (!register) return undefined;
-    registers.add(register);
-  }
-  return [...registers].sort(
-    (a, b) =>
-      registerOrdinal(a as Parameters<typeof registerOrdinal>[0]) -
-      registerOrdinal(b as Parameters<typeof registerOrdinal>[0]),
-  );
+  return operands?.length === 1 ? registersOf(operands[0]) : undefined;
 }

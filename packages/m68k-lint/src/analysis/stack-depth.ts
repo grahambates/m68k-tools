@@ -1,7 +1,10 @@
 import type { ExpressionNode, ParsedFile, ParsedLine } from "m68k-parser";
-import { getFlagSemantics } from "../semantics/flags.js";
+import { isReturn } from "../semantics/flags.js";
 import { semanticMnemonic } from "../semantics/mnemonics.js";
-import { getRegisterSemantics } from "../semantics/registers.js";
+import {
+  getRegisterSemantics,
+  isStackPointerRegister,
+} from "../semantics/registers.js";
 import {
   immediateExpressionOperand,
   instructionSize,
@@ -27,20 +30,16 @@ export type StackFinding =
   | { kind: "leftover"; index: number; depth: number }
   | { kind: "conflict"; index: number; depths: [number, number] };
 
-const RETURNS = new Set(["rts", "rte", "rtr"]);
-
 function isStackPointer(op: unknown): boolean {
   const node = op as { type?: string; register?: unknown } | undefined;
   if (!node) return false;
-  if (node.type === "address-register") {
-    const name = String((node as { register: string }).register).toLowerCase();
-    return name === "a7" || name === "sp";
-  }
+  if (node.type === "address-register")
+    return isStackPointerRegister(String(node.register));
   const base = node.register as
     { type?: string; register?: string } | undefined;
   return (
     base?.type === "address-register" &&
-    ["a7", "sp"].includes(base.register?.toLowerCase() ?? "")
+    isStackPointerRegister(base.register ?? "")
   );
 }
 
@@ -232,13 +231,7 @@ export function findStackImbalances(
   file.lines.forEach((line, index) => {
     const state = before[index];
     if (typeof state !== "object" || state.depth <= 0) return;
-    const mnemonic = semanticMnemonic(line);
-    if (
-      line.mnemonic?.type === "instruction" &&
-      mnemonic &&
-      RETURNS.has(mnemonic) &&
-      getFlagSemantics(line).controlFlow === "return"
-    )
+    if (line.mnemonic?.type === "instruction" && isReturn(line))
       findings.push({ kind: "leftover", index, depth: state.depth });
   });
   findings.sort((a, b) => a.index - b.index);

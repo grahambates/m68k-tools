@@ -41,3 +41,44 @@ export type {
   MacroExpansion,
   MacroInvocation,
 } from "./macro-expansion.js";
+
+export {
+  childNodes,
+  descendants,
+  isAstNode,
+  lineNodes,
+  walkFile,
+  walkLine,
+} from "./ast-walk.js";
+export type { AstNode } from "./ast-walk.js";
+export {
+  containsPosition,
+  containsRange,
+  isBeforeOrEqual,
+  locationAsRange,
+} from "./geometry.js";
+export type { TextPosition, TextRange } from "./geometry.js";
+
+export {
+  analyzeLocalLabelScopes,
+  bareLocalName,
+  isLocalLabelName,
+} from "./labels.js";
+export type { LocalLabelScopes } from "./labels.js";
+
+export { addressingMode } from "./addressing-mode.js";
+export type { AddressingModeName } from "./addressing-mode.js";
+
+export {
+  addressRegisterForm,
+  canonicalConditionMnemonic,
+} from "./mnemonic-aliases.js";
+
+export {
+  isBlockDirective,
+  isSectionDirective,
+  sectionTypeNames,
+} from "./directive-kinds.js";
+
+export { directiveSize } from "./directive-size.js";
+export type { DirectiveSizeOptions } from "./directive-size.js";

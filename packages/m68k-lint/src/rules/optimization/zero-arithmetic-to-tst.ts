@@ -6,6 +6,7 @@ import {
   isInstruction,
 } from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
+import { targetsOnly } from "../../core/config.js";
 
 /** ASP68K: ADD/SUB #0,Dn can use TST on CPUs where that is a timing/size win.
  *  ADD/SUB #0 and TST agree on N/Z/V/C, but ADD/SUB update X while TST preserves it.
@@ -38,16 +39,14 @@ export const zeroArithmeticToTst: Rule = {
     // 040/060 tie on cycles but TST still drops the immediate word, so all
     // three are a clean win by the same bar the other targets are held to.
     if (
-      !ctx.config.processors.every((cpu) =>
-        [
-          "mc68000",
-          "mc68010",
-          "mc68020",
-          "mc68030",
-          "mc68040",
-          "mc68060",
-        ].includes(cpu),
-      )
+      !targetsOnly(ctx.config, [
+        "mc68000",
+        "mc68010",
+        "mc68020",
+        "mc68030",
+        "mc68040",
+        "mc68060",
+      ])
     )
       return;
 

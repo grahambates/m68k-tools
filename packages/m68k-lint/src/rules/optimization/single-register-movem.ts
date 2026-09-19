@@ -2,6 +2,7 @@ import type { OperandNode } from "m68k-parser";
 import type { Rule } from "../../core/rule.js";
 import { instructionSize, isInstruction, operand } from "../../util/ast.js";
 import { changedFlagsApplicability, sourceOperand } from "./helpers.js";
+import { targetsOnly } from "../../core/config.js";
 
 function singleRegister(op: OperandNode | undefined): string | undefined {
   if (!op) return undefined;
@@ -33,9 +34,13 @@ export const singleRegisterMovem: Rule = {
     // 68060; 68020 could not be verified (68kcounter has no timing entry for
     // this MOVEM form on that target) and stays excluded pending that.
     if (
-      !ctx.config.processors.every((cpu) =>
-        ["mc68000", "mc68010", "mc68030", "mc68040", "mc68060"].includes(cpu),
-      )
+      !targetsOnly(ctx.config, [
+        "mc68000",
+        "mc68010",
+        "mc68030",
+        "mc68040",
+        "mc68060",
+      ])
     )
       return;
     const size = instructionSize(line) ?? "l";

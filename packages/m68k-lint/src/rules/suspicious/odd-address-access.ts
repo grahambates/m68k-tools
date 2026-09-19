@@ -9,9 +9,11 @@ import {
 import { semanticMnemonic } from "../../semantics/mnemonics.js";
 import { normalizeRegister } from "../../semantics/registers.js";
 import { instructionSize } from "../../util/ast.js";
+import { hex } from "../../util/format.js";
+import { targetsAny, type Processor } from "../../core/config.js";
 
 /** Processors that take an address error on a word or long access at an odd address. */
-const STRICT_ALIGNMENT = ["mc68000", "mc68010", "cpu32"];
+const STRICT_ALIGNMENT: Processor[] = ["mc68000", "mc68010", "cpu32"];
 
 /** Instructions whose operands are not accessed at the instruction's size. */
 const NO_SIZED_ACCESS = new Set([
@@ -107,7 +109,7 @@ function addressOf(
     if (!value.known) return undefined;
     return {
       parity: (value.value & 1) as Parity,
-      text: `$${(value.value >>> 0).toString(16).toUpperCase()}`,
+      text: hex(value.value),
       origin: "value",
     };
   };
@@ -135,7 +137,7 @@ function addressOf(
       const address = base + displacement;
       return {
         parity: (address & 1) as Parity,
-        text: `${name.toUpperCase()} = $${(base >>> 0).toString(16).toUpperCase()}`,
+        text: `${name.toUpperCase()} = ${hex(base)}`,
         origin: "value",
       };
     }
@@ -170,8 +172,7 @@ export const oddAddressAccess: Rule = {
   },
 
   checkFile(ctx) {
-    if (!ctx.config.processors.some((cpu) => STRICT_ALIGNMENT.includes(cpu)))
-      return;
+    if (!targetsAny(ctx.config, STRICT_ALIGNMENT)) return;
     const alignment = analyzeAlignment(ctx.file, (expr) => {
       const result = ctx.evaluate(expr);
       return result.known ? result.value : undefined;

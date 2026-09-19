@@ -1,7 +1,17 @@
 import { type TextEdit } from "vscode-languageserver-types";
-import { walkLine } from "../../ast";
-import { locationAsRange } from "../../geometry";
-import { controlMnemonics, sectionTypes } from "../../syntax";
+import { walkLine } from "m68k-parser";
+import { locationAsRange } from "m68k-parser";
+import { isBlockDirective, sectionTypeNames } from "m68k-parser";
+
+/**
+ * Directives that control assembly flow rather than emitting data. The parser
+ * classifies all of these as directives, but the formatter offers a separate
+ * case option for them (`m68k.format.case.control`). The block structure comes
+ * from the parser; these are the flow directives that are not blocks.
+ */
+const FLOW_EXTRAS = new Set(["iif", "rem", "erem", "end"]);
+const isControlMnemonic = (directive: string) =>
+  isBlockDirective(directive) || FLOW_EXTRAS.has(directive);
 import { type FormatContext, type Formatter } from "../DocumentFormatter";
 
 export type CaseOptions = Case | Partial<Record<CaseType, Case>>;
@@ -75,7 +85,7 @@ class CaseFormatter implements Formatter {
         } else if (mnemonic.type === "directive") {
           // m68k-parser makes no distinction between assembly-flow directives
           // and the rest, but the formatter offers a separate option for them.
-          mnemonicCase = controlMnemonics.has(mnemonic.directive.toLowerCase())
+          mnemonicCase = isControlMnemonic(mnemonic.directive.toLowerCase())
             ? typeCases.control
             : typeCases.directive;
         }
@@ -104,7 +114,7 @@ class CaseFormatter implements Formatter {
           mnemonic?.type === "directive" &&
           mnemonic.directive.toLowerCase() === "section" &&
           parsedLine.operands?.length === 1 &&
-          sectionTypes.includes(
+          (sectionTypeNames as readonly string[]).includes(
             ((node as { name?: string }).name ?? "").toLowerCase(),
           )
         ) {

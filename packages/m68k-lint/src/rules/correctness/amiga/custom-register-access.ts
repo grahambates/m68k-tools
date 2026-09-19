@@ -10,6 +10,7 @@ import {
   type Register,
 } from "../../../semantics/registers.js";
 import { semanticMnemonic } from "../../../semantics/mnemonics.js";
+import { hex } from "../../../util/format.js";
 
 type Access = "read" | "write" | "readwrite";
 type RegisterAccess = "read-only" | "write-only";
@@ -317,7 +318,7 @@ export const amigaCustomRegisterAccess: Rule = {
         loc: op?.loc ?? line.mnemonic!.loc,
         notes: [
           {
-            message: `${register.name} at $${address.toString(16).toUpperCase()} is documented as ${register.access}.`,
+            message: `${register.name} at ${hex(address)} is documented as ${register.access}.`,
           },
         ],
       });

@@ -48,10 +48,21 @@ export const moveImmediateAddressToLea: Rule = {
     // be pinned: without the suffix the assembler could pick absolute long and
     // turn #$8000 into $00008000 rather than $FFFF8000. MOVEA.L has no such
     // constraint, so it is left bare for the assembler to relax.
+    // A value written as an unsigned word, $8000 to $ffff, is a negative
+    // address here, and vasm refuses it as an absolute short one, so it is
+    // given signed. Checked with vasm: `lea $8000.w` is an error, `lea -32768.w`
+    // is the same $FFFF8000 the MOVEA.W loads.
+    const target =
+      size === "w" &&
+      value.known &&
+      value.value >= 0x8000 &&
+      value.value <= 0xffff
+        ? String(value.value - 0x10000)
+        : stripImmediate(text);
     const replacement =
       size === "w"
-        ? `lea ${stripImmediate(text)}.w,${dest.register}`
-        : `lea ${stripImmediate(text)},${dest.register}`;
+        ? `lea ${target}.w,${dest.register}`
+        : `lea ${target},${dest.register}`;
     ctx.report({
       ruleId: this.meta.id,
       category: this.meta.category,

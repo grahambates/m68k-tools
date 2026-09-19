@@ -17,6 +17,7 @@ describe("instructionSize", () => {
     ["move.l 70000(a0,d0.l),d1", 8],
     ["move.l ([16,a0,d0.l],32),d1", 8],
     ["move.l ([70000,a0,d0.l],70000),d1", 12],
+    ["trap #7", 2],
   ])("sizes %s as %i bytes", (source, bytes) => {
     const [result] = parse(` ${source}`);
     expect(result.bytes).toBe(bytes);

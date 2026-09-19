@@ -47,6 +47,7 @@ pnpm check
 
 - Add focused regression tests for changed behaviour, especially parser locations, instruction encodings, timing arithmetic and fixes applied to source. Avoid tests that only restate implementation details.
 - Most unit tests use Vitest. Keep existing transport and VS Code integration runners for their respective suites.
+- `pnpm check:vasm` compares sizes, lint suggestions and line syntax with a real vasm binary (`VASM=/path/to/vasmm68k_mot`, after building). It is optional and skips itself without one; see `scripts/vasm/README.md`. Use it when changing instruction sizes, replacement text or parsing.
 - After changing published exports or package contents, build and run `pnpm check:packages` to test isolated npm archives.
 - `pnpm package` builds and packages all three extensions; `pnpm package:assembly`, `pnpm package:lint` and `pnpm package:counter` package individual extensions after building. Packaging does not publish.
 - `pnpm test:extension-host` runs the counter's VS Code host tests and needs a display or Xvfb on Linux. Report whether verification used unit tests, staging or an actual extension host; they are different checks.

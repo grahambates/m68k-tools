@@ -32,9 +32,11 @@ export interface DirectiveSizeOptions {
  * not known.
  *
  * Covers `dc` (and `db`, `dw`, `dl`), `dcb` and `ds` (and `blk`). Without a
- * size they take a word, as an assembler does. Every character of a string is
- * one element as written, so `"a\n"` is three bytes: a backslash is not an
- * escape, unless `escapeSequences` says the assembler reads them.
+ * size they take a word, as an assembler does. In `dc.b` every character of a
+ * string is one element as written, so `"a\n"` is three bytes: a backslash is
+ * not an escape, unless `escapeSequences` says the assembler reads them. In a
+ * wider `dc` a string is a single character constant, one element whatever its
+ * length. Both checked against vasm.
  *
  * Undefined also covers what has no fixed size, such as a count that is not a
  * known number, and everything that is not one of these directives: a caller
@@ -73,9 +75,15 @@ export function directiveSize(
       let elements = 0;
       for (const operand of operands) {
         if (operand.type === "string-literal") {
-          elements += options.escapeSequences
-            ? decodeStringEscapes(operand.content).elements.length
-            : operand.content.length;
+          // Bytes take a character each. Any wider element takes the whole
+          // string as one character constant, so `dc.w "ab"` is one word, and
+          // one too long for it is the assembler's error, not a longer size.
+          elements +=
+            size !== "b"
+              ? 1
+              : options.escapeSequences
+                ? decodeStringEscapes(operand.content).elements.length
+                : operand.content.length;
         } else if (operand.type === "value") {
           elements++;
         } else {

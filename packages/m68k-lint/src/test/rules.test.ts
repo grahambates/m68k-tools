@@ -52,6 +52,17 @@ describe("optimization rules", () => {
     expect(ids("move.l #'AB',d5")).not.toContain("optimization/prefer-moveq");
   });
 
+  test("LEA for MOVEA.W gives an unsigned word address as the negative one it loads", () => {
+    const replacement = (source: string) =>
+      lint(source).find(
+        (d) => d.ruleId === "optimization/movea-immediate-to-lea",
+      )?.suggestion?.replacement;
+    // vasm rejects `lea $8000.w`; `lea -32768.w` is the $FFFF8000 MOVEA.W loads.
+    expect(replacement("movea.w #$8000,a0")).toBe("\tlea -32768.w,a0");
+    expect(replacement("movea.w #$ffff,a0")).toBe("\tlea -1.w,a0");
+    expect(replacement("movea.w #$7fff,a0")).toBe("\tlea $7fff.w,a0");
+  });
+
   test("prefers MOVEQ for negative immediates written as unsigned longs", () => {
     const diagnostic = lint("move.l #$ffffff80,d5").find(
       (d) => d.ruleId === "optimization/prefer-moveq",

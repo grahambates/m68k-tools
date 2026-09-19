@@ -77,7 +77,7 @@ describe("directiveSize with escape sequences", () => {
   test("an escape is one element when they are", () => {
     const options = { escapeSequences: true };
     expect(directiveSize(line('\tdc.b "a\\n",0'), options)).toBe(3);
-    expect(directiveSize(line('\tdc.w "a\\n"'), options)).toBe(4);
+    expect(directiveSize(line('\tdc.w "a\\n"'), options)).toBe(2);
     expect(directiveSize(line('\tdc.b "\\x41\\101"'), options)).toBe(2);
   });
 });

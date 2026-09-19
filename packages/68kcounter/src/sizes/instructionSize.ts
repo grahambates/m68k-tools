@@ -30,11 +30,12 @@ const branchOps: Mnemonic[] = [
   ...mnemonicGroups.BCC,
 ];
 // Instructions whose immediate operand is embedded in the opcode word (no
-// extra extension word): the 68000 quick forms plus 68020 BKPT.
+// extra extension word): the 68000 quick forms, TRAP's vector, and 68020 BKPT.
 const quick: Mnemonic[] = [
   Mnemonics.MOVEQ,
   Mnemonics.ADDQ,
   Mnemonics.SUBQ,
+  Mnemonics.TRAP,
   Mnemonics.BKPT,
 ];
 const doubles: Mnemonic[] = [

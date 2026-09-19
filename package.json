@@ -35,6 +35,7 @@
     "version-packages": "changeset version && pnpm install --lockfile-only",
     "package:counter": "pnpm --filter 68kcounter-vscode package",
     "check:packages": "node scripts/check-packages.mjs",
+    "check:vasm": "node scripts/vasm/run.mjs",
     "test:extension-host": "pnpm --filter 68kcounter-vscode test:extension-host",
     "package:extensions": "pnpm run build && pnpm run package:assembly && pnpm run package:lint && pnpm run package:counter",
     "package:assembly": "pnpm --filter m68k-lsp package",

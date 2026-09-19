@@ -19,10 +19,14 @@ describe("directiveSize", () => {
       expect(size("dc 1,2,3")).toBe(6);
     });
 
-    it("counts each character of a string", () => {
+    it("counts each character of a string in bytes, one element in anything wider", () => {
       expect(size("dc.b 'abc'")).toBe(3);
       expect(size('dc.b "abc",0')).toBe(4);
-      expect(size("dc.w 'ab'")).toBe(4);
+      // vasm: dc.w "ab" is the single word $6162, and dc.l "abcd" one long.
+      expect(size("dc.w 'ab'")).toBe(2);
+      expect(size('dc.l "abcd"')).toBe(4);
+      expect(size('dc.w "a","b"')).toBe(4);
+      expect(size('dc.l "ab",1')).toBe(8);
     });
 
     it("is zero with no operands", () => {

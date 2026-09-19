@@ -41,8 +41,6 @@
     "m68k"
   ],
   "activationEvents": [
-    "onCommand:m68k.toggleRegisterColours",
-    "onLanguage:m68k",
     "onLanguage:vasmmot",
     "workspaceContains:**/*.{s,S,asm,ASM}"
   ],

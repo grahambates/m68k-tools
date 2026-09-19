@@ -73,7 +73,7 @@ describe("the single-file table does not guess", () => {
 describe("the project index", () => {
   test("answers for a name only one file defines, and says where from", () => {
     const symbols = index({ "include/hw.i": "CUSTOM equ $dff000" });
-    expect(symbols.lookup("custom")).toEqual({
+    expect(symbols.lookup("CUSTOM")).toEqual({
       value: 0xdff000,
       origin: "include/hw.i",
     });
@@ -84,7 +84,7 @@ describe("the project index", () => {
       "a.i": "BASE equ $dff000",
       "b.i": "DMACON equ BASE+$96",
     });
-    expect(symbols.lookup("dmacon")?.value).toBe(0xdff096);
+    expect(symbols.lookup("DMACON")?.value).toBe(0xdff096);
   });
 
   test("refuses a name two files define differently", () => {
@@ -92,24 +92,24 @@ describe("the project index", () => {
       "release.i": "DEBUG equ 0",
       "debug.i": "DEBUG equ 1",
     });
-    expect(symbols.lookup("debug")).toBeUndefined();
-    expect(symbols.conflicts).toContain("debug");
+    expect(symbols.lookup("DEBUG")).toBeUndefined();
+    expect(symbols.conflicts).toContain("DEBUG");
   });
 
   test("a header included by two files is not a conflict with itself", () => {
     const symbols = index({ "a.i": "FOO equ 5", "b.i": "FOO equ 5" });
-    expect(symbols.lookup("foo")?.value).toBe(5);
+    expect(symbols.lookup("FOO")?.value).toBe(5);
   });
 
   test("ignores definitions inside macro bodies", () => {
     expect(
-      index({ "m.i": "M macro\nFOO equ 7\n\tendm" }).lookup("foo"),
+      index({ "m.i": "M macro\nFOO equ 7\n\tendm" }).lookup("FOO"),
     ).toBeUndefined();
   });
 
   test("a cyclic definition terminates instead of resolving", () => {
     expect(
-      index({ "a.i": "A equ B", "b.i": "B equ A" }).lookup("a"),
+      index({ "a.i": "A equ B", "b.i": "B equ A" }).lookup("A"),
     ).toBeUndefined();
   });
 
@@ -118,7 +118,7 @@ describe("the project index", () => {
       "good.i": "FOO equ 1",
       "bad.s": "   ((( unparseable",
     });
-    expect(symbols.lookup("foo")?.value).toBe(1);
+    expect(symbols.lookup("FOO")?.value).toBe(1);
   });
 });
 
@@ -171,5 +171,41 @@ describe("using the index while linting", () => {
     expect(
       lintSource(source, { processors: ["mc68000"] }).map((d) => d.ruleId),
     ).not.toContain(ruleId);
+  });
+});
+
+describe("the project index and case", () => {
+  const files = (a: string, b: string) => [
+    { path: "a.i", source: a },
+    { path: "b.i", source: b },
+  ];
+
+  test("keeps Foo and foo apart by default, as an assembler does", () => {
+    const symbols = buildProjectSymbols(files("Foo equ 1", "foo equ 2"));
+    expect(symbols.lookup("Foo")?.value).toBe(1);
+    expect(symbols.lookup("foo")?.value).toBe(2);
+    expect(symbols.conflicts).toEqual([]);
+  });
+
+  test("does not find a name in the wrong case by default", () => {
+    const symbols = buildProjectSymbols(files("Foo equ 1", ""));
+    expect(symbols.lookup("foo")).toBeUndefined();
+  });
+
+  test("treats them as one name when case is folded", () => {
+    const symbols = buildProjectSymbols(files("Foo equ 1", "foo equ 2"), {
+      caseSensitive: false,
+    });
+    // Two values for one name is a conflict, so neither answers.
+    expect(symbols.lookup("Foo")).toBeUndefined();
+    expect(symbols.conflicts).toEqual(["foo"]);
+  });
+
+  test("finds a name in either case when case is folded", () => {
+    const symbols = buildProjectSymbols(files("Foo equ 1", ""), {
+      caseSensitive: false,
+    });
+    expect(symbols.lookup("FOO")?.value).toBe(1);
+    expect(symbols.lookup("foo")?.value).toBe(1);
   });
 });

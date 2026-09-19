@@ -11,6 +11,7 @@ import {
 } from "m68k-parser";
 import { getFlagSemantics } from "../semantics/flags.js";
 import { setExpansion } from "../semantics/macro-expansions.js";
+import { nameKey } from "./case-mode.js";
 import { evaluateCondition } from "./conditionals.js";
 import type { ExternalSymbols } from "./symbols.js";
 import { scanBlocks } from "./blocks.js";
@@ -67,13 +68,13 @@ export function prepareMacros(
     sourceLines,
     structure,
   )) {
-    const key = definition.name.toLowerCase();
+    const key = nameKey(file, definition.name);
     definitions.set(key, definitions.has(key) ? null : definition);
   }
   // The file's own definition wins. A name it does not define may be one the
   // project does, in an include, which is taken to come before every call.
   const defined = (name: string, before: number) => {
-    const key = name.toLowerCase();
+    const key = nameKey(file, name);
     if (!definitions.has(key)) return external?.macro?.(name)?.definition;
     const definition = definitions.get(key);
     return definition && definition.start < before ? definition : undefined;
@@ -84,12 +85,13 @@ export function prepareMacros(
 
   file.lines.forEach((line, index) => {
     if (line.mnemonic?.type !== "macro" || regions[index] !== 0) return;
-    const name = line.mnemonic.macro.toLowerCase();
+    const written = line.mnemonic.macro;
+    const name = nameKey(file, written);
 
     const projectDefinition =
-      !definitions.has(name) && external?.macro?.(name) !== undefined;
+      !definitions.has(name) && external?.macro?.(written) !== undefined;
     if (definitions.has(name) || projectDefinition) {
-      const definition = defined(name, index);
+      const definition = defined(written, index);
       const lines =
         definition &&
         expandSimply(
@@ -107,11 +109,14 @@ export function prepareMacros(
     // PUSHM and POPM come with the Amiga NDK. POPM takes a register list like
     // MOVEM, or none and restores what the matching PUSHM saved. That pairing
     // is made at assembly time, in source order, which is the order walked here.
-    if (name === "pushm") {
+    // These are the NDK's names for its own macros, matched as they are
+    // conventionally written whatever case the project's symbols keep.
+    const ndk = written.toLowerCase();
+    if (ndk === "pushm") {
       const registers = registerList(line.operands);
       saves.push(registers);
       if (registers) setExpansion(line, [movem(line, registers, "push")]);
-    } else if (name === "popm") {
+    } else if (ndk === "popm") {
       if (!line.operands?.length) {
         const registers = saves.pop();
         if (registers) setExpansion(line, [movem(line, registers, "pop")]);

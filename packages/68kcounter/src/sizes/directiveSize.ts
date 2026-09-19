@@ -4,7 +4,7 @@ import {
   parseLine,
   type ExpressionNode,
 } from "m68k-parser";
-import { type Variables } from "../parse/evaluate";
+import { type Variables, lookupVariable } from "../parse/variables";
 import { type DirectiveStatement, type StatementNode } from "../parse/nodes";
 
 /**
@@ -19,9 +19,7 @@ export default function directiveSize(
   vars: Variables,
 ): number {
   const evaluate = (expr: ExpressionNode): number | undefined => {
-    const result = evaluateConstant(expr, (name) =>
-      Object.hasOwn(vars, name) ? vars[name] : undefined,
-    );
+    const result = evaluateConstant(expr, (name) => lookupVariable(vars, name));
     return result.known && Number.isFinite(result.value)
       ? result.value
       : undefined;

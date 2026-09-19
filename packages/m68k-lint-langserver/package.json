@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "m68k-lint": "workspace:^",
+    "@m68k-lsp/assembly-options": "workspace:^",
     "@m68k-lsp/workspace-files": "workspace:^"
   },
   "scripts": {

@@ -1,4 +1,9 @@
-import { descendants, type OperandNode, type ParsedLine } from "m68k-parser";
+import {
+  descendants,
+  symbolKey,
+  type OperandNode,
+  type ParsedLine,
+} from "m68k-parser";
 
 /** Every symbol name in an operand, as written, however deeply it is nested. */
 export function symbolNamesIn(operand: OperandNode): string[] {
@@ -22,9 +27,11 @@ export function symbolNamesIn(operand: OperandNode): string[] {
 export function collectReferencedSymbols(
   lines: readonly ParsedLine[],
   into: Set<string> = new Set(),
+  caseSensitive = true,
 ): Set<string> {
   for (const line of lines)
     for (const operand of line.operands ?? [])
-      for (const name of symbolNamesIn(operand)) into.add(name.toLowerCase());
+      for (const name of symbolNamesIn(operand))
+        into.add(symbolKey(name, caseSensitive));
   return into;
 }

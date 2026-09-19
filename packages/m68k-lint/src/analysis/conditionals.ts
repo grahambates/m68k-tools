@@ -6,6 +6,7 @@ import {
   type ParsedFile,
 } from "m68k-parser";
 import { scanBlocks, type ConditionalBlock } from "./blocks.js";
+import { nameKey } from "./case-mode.js";
 import { constantDefinition } from "./symbols.js";
 
 /**
@@ -106,13 +107,13 @@ export function prepareConditionals(
     for (const name of [line.label?.label, constantDefinition(line)?.name] as (
       string | undefined
     )[])
-      if (name && !symbols.has(name.toLowerCase()))
-        symbols.set(name.toLowerCase(), index);
+      if (name && !symbols.has(nameKey(file, name)))
+        symbols.set(nameKey(file, name), index);
   });
   const macros = new Map<string, number>();
   for (const macro of collectMacroDefinitions(file, [], parseBlocks(file)))
-    if (!macros.has(macro.name.toLowerCase()))
-      macros.set(macro.name.toLowerCase(), macro.start);
+    if (!macros.has(nameKey(file, macro.name)))
+      macros.set(nameKey(file, macro.name), macro.start);
 
   const directive = (index: number) =>
     file.lines[index].mnemonic?.type === "directive"
@@ -132,7 +133,7 @@ export function prepareConditionals(
     // assembler may have been given the name on its command line.
     const symbolName =
       first?.type === "value" && first.value.type === "symbol"
-        ? first.value.name.toLowerCase()
+        ? nameKey(file, first.value.name)
         : undefined;
     if (!symbolName) return "maybe";
     if (name === "ifd" || name === "ifnd") {

@@ -12,6 +12,22 @@ export function isLocalLabelName(name: string): boolean {
   return name.startsWith(".") || name.endsWith("$");
 }
 
+/**
+ * How a symbol name is compared with another.
+ *
+ * An assembler treats `Foo` and `foo` as two symbols unless it was asked not to
+ * (`-nocase` for vasm, or `opt c-` in the source), so the default is that case
+ * matters. Where it does not, both spellings are one name and this reduces them
+ * to the same key. The name of a label, constant or macro should be compared
+ * through this and never by lower-casing it directly.
+ *
+ * Instruction and directive names, and register names, are not symbols and are
+ * matched without regard to case regardless.
+ */
+export function symbolKey(name: string, caseSensitive = true): string {
+  return caseSensitive ? name : name.toLowerCase();
+}
+
 /** A local name without its distinguishing dot, so `.loop` and `loop$` are alike. */
 export function bareLocalName(name: string): string {
   return name.startsWith(".") ? name.slice(1) : name;
@@ -70,7 +86,11 @@ export interface LocalLabelScopes {
  * boundary risks splitting a definition and its reference across two computed
  * scopes even though the assembler kept them in one).
  */
-export function analyzeLocalLabelScopes(file: ParsedFile): LocalLabelScopes {
+export function analyzeLocalLabelScopes(
+  file: ParsedFile,
+  options: { caseSensitive?: boolean } = {},
+): LocalLabelScopes {
+  const normalize = (name: string) => symbolKey(name, options.caseSensitive);
   const skipped = new Array<boolean>(file.lines.length).fill(false);
   const mark = (blocks: readonly Block[]) => {
     for (const block of blocks) {
@@ -98,7 +118,7 @@ export function analyzeLocalLabelScopes(file: ParsedFile): LocalLabelScopes {
       label?.scope === "global" &&
       !(directive && SYMBOL_DEFINING.has(directive))
     ) {
-      currentKey = label.label.toLowerCase();
+      currentKey = normalize(label.label);
       currentName = label.label;
     }
     key[index] = currentKey;
@@ -108,6 +128,6 @@ export function analyzeLocalLabelScopes(file: ParsedFile): LocalLabelScopes {
   return {
     scopeOf: (index) => name[index],
     keyOf: (index, label) =>
-      `${key[index] ?? "<file>"}.${bareLocalName(label.toLowerCase())}`,
+      `${key[index] ?? "<file>"}.${bareLocalName(normalize(label))}`,
   };
 }

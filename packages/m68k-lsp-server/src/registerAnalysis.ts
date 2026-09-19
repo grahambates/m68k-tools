@@ -15,6 +15,7 @@ import {
   expandMacro,
   isLocalLabelName,
   macroInvocation,
+  symbolKey,
 } from "m68k-parser";
 import type {
   Block,
@@ -25,6 +26,7 @@ import type {
 } from "m68k-parser";
 import { type AstNode, descendants, walkFile, walkLine } from "./ast";
 import { type Context } from "./context";
+import { symbolsCaseSensitive } from "./config";
 import { isProcessed } from "./DocumentProcessor";
 import { getUnitFilesByDistance } from "./files";
 import { locationAsRange } from "m68k-parser";
@@ -214,6 +216,7 @@ export function analyzeRegisterUsage(
         document.parsed,
         params.range,
         params.position,
+        symbolsCaseSensitive(ctx.config),
       )
     : undefined;
   return {
@@ -325,6 +328,7 @@ function reachableLinesAfterPosition(
   file: ParsedFile,
   scope: lsp.Range,
   position: lsp.Position,
+  caseSensitive: boolean,
 ): { lines: Set<number>; touched: Set<string>; unknown: boolean } {
   const { lines } = file;
   const startLine = Math.max(scope.start.line, position.line + 1);
@@ -333,7 +337,7 @@ function reachableLinesAfterPosition(
     return { lines: new Set(), touched: new Set(), unknown: false };
   }
 
-  const labels = collectControlFlowLabels(file);
+  const labels = collectControlFlowLabels(file, caseSensitive);
   const reachable = new Set<number>();
   const touched = new Set<string>();
   let unknown = false;
@@ -424,8 +428,11 @@ interface ControlFlowLabels {
  * A local label is found through the scope of the line that names it, which is
  * worked out once for every tool by the parser; a global one by its name.
  */
-function collectControlFlowLabels(file: ParsedFile): ControlFlowLabels {
-  const scopes = analyzeLocalLabelScopes(file);
+function collectControlFlowLabels(
+  file: ParsedFile,
+  caseSensitive: boolean,
+): ControlFlowLabels {
+  const scopes = analyzeLocalLabelScopes(file, { caseSensitive });
   const labels = new Map<string, number>();
   file.lines.forEach((line, index) => {
     const label = line.label;
@@ -433,7 +440,7 @@ function collectControlFlowLabels(file: ParsedFile): ControlFlowLabels {
     if (label.scope === "local") {
       labels.set(scopes.keyOf(index, label.label), index);
     } else if (isNonLocalCodeLabel(line)) {
-      labels.set(label.label.toLowerCase(), index);
+      labels.set(symbolKey(label.label, caseSensitive), index);
     }
   });
   return {
@@ -441,7 +448,7 @@ function collectControlFlowLabels(file: ParsedFile): ControlFlowLabels {
       labels.get(
         isLocalLabelName(name)
           ? scopes.keyOf(fromLine, name)
-          : name.toLowerCase(),
+          : symbolKey(name, caseSensitive),
       ),
   };
 }
@@ -531,7 +538,7 @@ function findMacroDefinition(
   documentUri: string,
   ctx: Context,
 ): MacroDefinition | undefined {
-  const key = name.toLowerCase();
+  const key = symbolKey(name, symbolsCaseSensitive(ctx.config));
   for (const uri of [
     documentUri,
     ...getUnitFilesByDistance(documentUri, ctx),

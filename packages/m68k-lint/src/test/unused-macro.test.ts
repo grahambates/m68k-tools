@@ -10,12 +10,13 @@ const ENABLED: LintConfig = {
   rules: { [RULE_ID]: "warning" },
 };
 
-const references = (files: Record<string, string>) =>
+const references = (files: Record<string, string>, caseSensitive?: boolean) =>
   buildProjectReferences(
     Object.entries(files).map(([path, source]) => ({
       path,
       source: fixture(source),
     })),
+    { caseSensitive },
   );
 
 const lint = (
@@ -28,7 +29,7 @@ const lint = (
     config,
     undefined,
     undefined,
-    files ? references(files) : undefined,
+    files ? references(files, config.caseSensitive) : undefined,
   );
 
 const ids = (...args: Parameters<typeof lint>) =>
@@ -72,7 +73,7 @@ describe("suspicious/unused-macro", () => {
     expect(ids(source, ENABLED, { "main.s": source })).not.toContain(RULE_ID);
   });
 
-  test("matches an invocation without regard to case", () => {
+  test("does not match an invocation in another case by default", () => {
     const source = [
       "macro PUSH",
       "move.l \\1,-(sp)",
@@ -81,7 +82,24 @@ describe("suspicious/unused-macro", () => {
       "push d0",
       "rts",
     ].join("\n");
-    expect(ids(source, ENABLED, { "main.s": source })).not.toContain(RULE_ID);
+    // Macro names keep case as symbols do, so `push` is not a call to PUSH.
+    expect(ids(source, ENABLED, { "main.s": source })).toContain(RULE_ID);
+  });
+
+  test("matches an invocation in another case when case is folded", () => {
+    const source = [
+      "macro PUSH",
+      "move.l \\1,-(sp)",
+      "endm",
+      "start:",
+      "push d0",
+      "rts",
+    ].join("\n");
+    const folded: LintConfig = { ...ENABLED, caseSensitive: false };
+    const files = { "main.s": source };
+    expect(lint(source, folded, files).map((d) => d.ruleId)).not.toContain(
+      RULE_ID,
+    );
   });
 
   test("does not flag a macro invoked from another file", () => {

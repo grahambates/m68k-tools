@@ -8,6 +8,7 @@ import { getFlagSemantics } from "../semantics/flags.js";
 import { canonicalMnemonic } from "../semantics/mnemonics.js";
 import { isExecutableLine } from "../util/ast.js";
 import { scanBlocks, type ConditionalBlock } from "./blocks.js";
+import { nameKey } from "./case-mode.js";
 import { conditionalAssembly } from "./conditionals.js";
 import { analyzeLocalLabelScopes } from "./local-label-scopes.js";
 
@@ -18,7 +19,7 @@ export interface ControlFlowGraph {
 }
 
 function symbolFromExpression(expr: ExpressionNode): string | undefined {
-  if (expr.type === "symbol") return expr.name.toLowerCase();
+  if (expr.type === "symbol") return expr.name;
   if (expr.type === "group") return symbolFromExpression(expr.expression);
   return undefined;
 }
@@ -131,10 +132,8 @@ export function buildControlFlowGraph(file: ParsedFile): ControlFlowGraph {
   // defines it: two routines can each have a `.loop`, and a branch reaches the
   // one in its own.
   const scopes = analyzeLocalLabelScopes(file);
-  const labelKey = (index: number, name: string): string => {
-    const lower = name.toLowerCase();
-    return `${region[index]}:${isLocalLabelName(lower) ? scopes.keyOf(index, lower) : lower}`;
-  };
+  const labelKey = (index: number, name: string): string =>
+    `${region[index]}:${isLocalLabelName(name) ? scopes.keyOf(index, name) : nameKey(file, name)}`;
   const labels = new Map<string, number>();
   for (let i = 0; i < file.lines.length; i++) {
     const label = file.lines[i]?.label?.label;

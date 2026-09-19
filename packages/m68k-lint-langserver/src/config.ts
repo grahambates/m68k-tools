@@ -6,9 +6,16 @@ import {
   configIncludePaths,
   findProjectConfig,
   isIgnored,
+  knownProcessors,
   loadProjectConfig,
   lintConfigFromProject,
 } from "m68k-lint/project-config";
+import {
+  findAssemblyConfig,
+  loadAssemblyOptions,
+  mergeOptions,
+  type AssemblyOptions,
+} from "@m68k-lsp/assembly-options";
 
 /**
  * Editor settings, under the `m68kLint` section.
@@ -53,8 +60,10 @@ export interface ResolvedConfig {
   error?: string;
   /** The config's `ignores`: files it leaves out of linting. */
   ignores?: readonly string[];
-  /** The config's `includePaths` as absolute directories. */
+  /** The include paths that apply: the config's and the shared file's, as absolute directories. */
   includePaths?: readonly string[];
+  /** Things about the config files worth telling the user that are not errors. */
+  warnings?: readonly string[];
 }
 
 /**
@@ -110,10 +119,20 @@ export class ConfigResolver {
   }
 
   private async load(dir: string): Promise<ResolvedConfig> {
-    const base: LintConfig = {
+    // Layered, each over the one before: the editor's defaults, how the source is
+    // assembled (from the shared .m68krc.json), then the lint config itself.
+    const editor: LintConfig = {
       ...defaultConfig,
       fixAnnotate: this.settings.quickFix.annotate,
       ...this.settings.defaults,
+    };
+    const { shared, warnings } = await this.loadShared(dir);
+    const base: LintConfig = {
+      ...editor,
+      ...defined({
+        processors: knownProcessors(shared.processors),
+        caseSensitive: shared.caseSensitive,
+      }),
     };
 
     let configPath: string | undefined;
@@ -123,7 +142,8 @@ export class ConfigResolver {
       // An unreadable directory on the way up is not worth failing the file for.
       configPath = undefined;
     }
-    if (!configPath) return { config: base };
+    if (!configPath)
+      return { config: base, includePaths: shared.includePaths, warnings };
 
     try {
       const project = await loadProjectConfig(configPath);
@@ -134,13 +154,40 @@ export class ConfigResolver {
         config: { ...base, ...overrides },
         configPath,
         ignores: configIgnores(project),
-        includePaths: configIncludePaths(project, dirname(configPath)),
+        includePaths: mergeOptions(
+          { includePaths: configIncludePaths(project, dirname(configPath)) },
+          { includePaths: shared.includePaths },
+        ).includePaths,
+        warnings,
       };
     } catch (error) {
       return {
         config: base,
         configPath,
         error: error instanceof Error ? error.message : String(error),
+        warnings,
+      };
+    }
+  }
+
+  /** The shared options for how the source is assembled, if there is a file for them. */
+  private async loadShared(
+    dir: string,
+  ): Promise<{ shared: AssemblyOptions; warnings: string[] }> {
+    try {
+      const found = await findAssemblyConfig(dir);
+      if (!found) return { shared: {}, warnings: [] };
+      const { options, warnings } = await loadAssemblyOptions(found);
+      return {
+        shared: options,
+        warnings: warnings.map((w) => `${found}: ${w}`),
+      };
+    } catch (error) {
+      // A shared file that cannot be read is worth saying, but not worth
+      // withholding findings over.
+      return {
+        shared: {},
+        warnings: [error instanceof Error ? error.message : String(error)],
       };
     }
   }

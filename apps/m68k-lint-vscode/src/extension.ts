@@ -33,8 +33,9 @@ export async function activate(context: ExtensionContext): Promise<void> {
       // matter as much as sources: a constant's value lives in one, and every
       // file that uses it is affected when it changes.
       fileEvents: [
+        // The lint config, and the shared .m68krc.json it layers over.
         workspace.createFileSystemWatcher(
-          "**/{m68k-lint.json,.m68klintrc.json}",
+          "**/{m68k-lint.json,.m68klintrc.json,.m68krc.json}",
         ),
         workspace.createFileSystemWatcher("**/*.{s,S,i,I,inc,asm,ASM,a68,h}"),
       ],

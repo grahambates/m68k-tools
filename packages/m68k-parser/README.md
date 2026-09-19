@@ -317,6 +317,10 @@ Small pieces that several tools need, kept here so they agree:
   about a single line. `isBlockDirective(name)` and `isSectionDirective(name)`
   classify a directive, and `sectionTypeNames` lists what a section can be given
   as its type.
+- **Symbol case** — `symbolKey(name, caseSensitive = true)` is what a symbol name is
+  compared by: the name itself, or lower-cased where the assembler was told to fold
+  case (`vasm -nocase`). Compare labels, constants and macros through it. It is
+  the default that case matters, as it is for an assembler.
 - **Local labels** — `isLocalLabelName(name)` (`.loop`, `loop$`),
   `bareLocalName`, and `analyzeLocalLabelScopes(file)`, which ties each local label
   to the global label whose routine it is in. A label that only defines a symbol

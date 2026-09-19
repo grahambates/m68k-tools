@@ -146,6 +146,7 @@ named rule. File and ignore patterns are relative to the config file's directory
   "files": ["src/**", "include/**"],
   "ignores": ["generated/**", "vendor/**"],
   "includePaths": ["../shared/include"],
+  "caseSensitive": true,
   "categories": { "style": false },
   "rules": {
     "suspicious/nop": "off",
@@ -237,6 +238,19 @@ for text read from standard input.
 
 An include with a path that names its own way, such as `include "../shared/hw.i"`,
 is followed with no configuration. An `INCDIR` in the source is not used yet.
+
+## Shared `.m68krc.json`
+
+The options that describe how the source is assembled, `processors`, `includePaths` and `caseSensitive`, are also read from a `.m68krc.json` (or `.m68krc`) found by walking up from the linted path, so the assembly server and the linter can share one file. From highest precedence: the lint config, the `.m68krc.json`, then `-nocase`, `-I` and `-m` among its `vasm.args`, then the defaults. Include paths from all of them are combined. Other keys in the file are ignored, and `--no-config` skips it.
+
+## Symbol case
+
+`Foo` and `foo` are different symbols unless the assembler was given `-nocase`, so the
+linter keeps case by default, for constants, labels, local labels and macros alike. Nothing in
+the source says `-nocase` was used, so a project assembled that way sets `"caseSensitive": false`
+in the config, and the linter then treats both spellings as one name. It does not yet read `opt c-`
+from the source. Instruction, directive and register names are always matched without regard
+to case.
 
 ## Constants from other files
 

@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { pathToFileURL } from "url";
@@ -30,6 +30,22 @@ describe("ConfigurationProvider", () => {
     );
     new ConfigurationProvider(ctx);
     expect(ctx.config.processors).toEqual(["mc68020"]);
+  });
+
+  it("finds a config above the workspace folder", async () => {
+    await writeFile(
+      join(dir, ".m68krc.json"),
+      JSON.stringify({ processors: ["mc68030"] }),
+    );
+    await mkdir(join(dir, "game"));
+    const ctx = await createContext(
+      [{ uri: pathToFileURL(join(dir, "game")).toString(), name: "game" }],
+      new NullLogger(),
+      {} as lsp.Connection,
+      {},
+    );
+    new ConfigurationProvider(ctx);
+    expect(ctx.config.processors).toEqual(["mc68030"]);
   });
 
   it("resets removed client settings while retaining workspace overrides", async () => {

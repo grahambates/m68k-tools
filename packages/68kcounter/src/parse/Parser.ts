@@ -1,4 +1,4 @@
-import { substituteMacroParameters } from "m68k-parser";
+import { substituteMacroParameters, symbolKey } from "m68k-parser";
 import { type InstructionTiming, instructionTimings } from "../timings";
 import {
   type CacheModel,
@@ -17,7 +17,8 @@ import {
   type MacroStatement,
   StatementNode,
 } from "./nodes";
-import evaluate, { type Variables } from "./evaluate";
+import evaluate from "./evaluate";
+import { createVariables, setVariable, type Variables } from "./variables";
 import statementSize from "../sizes";
 import { calculateTotals } from "../totals";
 
@@ -39,7 +40,7 @@ export interface Line {
 
 export default class Parser {
   /** Variable/constants state */
-  private vars: Variables = {};
+  private vars: Variables;
 
   /** Macro definitions */
   private macros: Record<string, StatementNode[]> = {};
@@ -71,10 +72,21 @@ export default class Parser {
   /** 020/030 cache case (uncached by default); 040/060 always use cached references */
   private readonly cacheModel: CacheModel;
 
-  constructor(options: { cpu?: Cpu; cacheModel?: CacheModel } = {}) {
+  /** Whether `Foo` and `foo` are different symbols, as an assembler has them unless told not to. */
+  private readonly caseSensitive: boolean;
+
+  constructor(
+    options: {
+      cpu?: Cpu;
+      cacheModel?: CacheModel;
+      caseSensitive?: boolean;
+    } = {},
+  ) {
     this.defaultCpu = options.cpu ?? defaultCpu;
     this.cpu = this.defaultCpu;
     this.cacheModel = options.cacheModel ?? defaultCacheModel;
+    this.caseSensitive = options.caseSensitive ?? true;
+    this.vars = createVariables(this.caseSensitive);
   }
 
   // Directive groups:
@@ -115,7 +127,7 @@ export default class Parser {
     // Now do processing to add size/timing info and expand macros:
 
     // Reset state
-    this.vars = {};
+    this.vars = createVariables(this.caseSensitive);
     this.macros = {};
     this.uniqueId = 0;
 
@@ -239,14 +251,15 @@ export default class Parser {
   private processLabel(statement: StatementNode & LabelStatement) {
     // Assign running total of bytes to labels names
     // This allows expressions to get byte count from ranges e.g. `dcb.b END-START`
-    this.vars[statement.label.text] = this.totalBytes;
+    setVariable(this.vars, statement.label.text, this.totalBytes);
     return { statement, bytes: 0, bss: this.bss };
   }
 
   private processMacro(statement: StatementNode & MacroStatement) {
     const line: Line = { statement };
-    const macroName = statement.opcode.op.text;
-    const definition = this.macros[macroName];
+    // The name as written, without a size: macros keep their case as symbols do.
+    const written = statement.opcode.text.split(".")[0];
+    const definition = this.macros[symbolKey(written, this.caseSensitive)];
     if (definition) {
       // Arguments are substituted into each body line as text, by the same
       // routine every other tool here uses, so `\0`, NARG, `\?n`, `\#` and
@@ -283,7 +296,7 @@ export default class Parser {
     ) {
       const value = evaluate(statement.operands[0].text, this.vars);
       if (value !== undefined) {
-        this.vars[statement.label.text] = value;
+        setVariable(this.vars, statement.label.text, value);
       }
     }
 
@@ -293,7 +306,7 @@ export default class Parser {
         ? statement.label.text
         : statement.operands[0]?.text;
       if (macroName) {
-        this.currentMacro = macroName.toUpperCase();
+        this.currentMacro = symbolKey(macroName, this.caseSensitive);
         this.macros[this.currentMacro] = [];
       }
     }

@@ -2,6 +2,7 @@ import {
   expandMacro,
   macroInvocation,
   parseFile,
+  symbolKey,
   type ParsedLine,
 } from "m68k-parser";
 import { scanBlocks } from "./blocks.js";
@@ -44,10 +45,13 @@ export interface ProjectReferences {
 
 export function buildProjectReferences(
   files: readonly ProjectSourceFile[],
+  options: { caseSensitive?: boolean } = {},
 ): ProjectReferences {
+  const caseSensitive = options.caseSensitive ?? true;
+  const keyOf = (name: string) => symbolKey(name, caseSensitive);
   const referenced = new Set<string>();
   const invoked = new Set<string>();
-  const macros = new ProjectMacros();
+  const macros = new ProjectMacros(caseSensitive);
   // Calls are expanded once every file has been read, since the macro may be
   // defined in one that comes later.
   const calls: { line: ParsedLine; text: string }[] = [];
@@ -59,14 +63,14 @@ export function buildProjectReferences(
     } catch {
       continue;
     }
-    collectReferencedSymbols(parsed.lines, referenced);
+    collectReferencedSymbols(parsed.lines, referenced, caseSensitive);
     macros.add(path, parsed, source);
 
     const regions = scanBlocks(parsed).region;
     const text = source.split(/\r?\n/);
     parsed.lines.forEach((line, index) => {
       if (line.mnemonic?.type !== "macro") return;
-      invoked.add(line.mnemonic.macro.toLowerCase());
+      invoked.add(keyOf(line.mnemonic.macro));
       // A call in a macro body is expanded with the macro that contains it.
       if (regions[index] === 0) calls.push({ line, text: text[index] ?? "" });
     });
@@ -87,12 +91,11 @@ export function buildProjectReferences(
     );
     for (const expanded of expansion.lines)
       for (const operand of expanded.line.operands ?? [])
-        for (const name of symbolNamesIn(operand))
-          referenced.add(name.toLowerCase());
+        for (const name of symbolNamesIn(operand)) referenced.add(keyOf(name));
   }
 
   return {
-    references: (name) => referenced.has(name.toLowerCase()),
-    invokes: (name) => invoked.has(name.toLowerCase()),
+    references: (name) => referenced.has(keyOf(name)),
+    invokes: (name) => invoked.has(keyOf(name)),
   };
 }

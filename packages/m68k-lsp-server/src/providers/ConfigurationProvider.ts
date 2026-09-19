@@ -2,10 +2,19 @@ import type * as lsp from "vscode-languageserver";
 import { DidChangeConfigurationNotification } from "vscode-languageserver";
 import { URI } from "vscode-uri";
 import { type Provider } from ".";
-import { type Config, defaultConfig, mergeConfig } from "../config";
+import {
+  type Config,
+  defaultConfig,
+  mergeConfig,
+  symbolsCaseSensitive,
+} from "../config";
+import { reprocessAll } from "../DocumentProcessor";
+import {
+  findAssemblyConfigSync,
+  optionsFromVasmArgs,
+} from "@m68k-lsp/assembly-options";
 import { type Context } from "../context";
-import { join } from "path";
-import { readdirSync, readFileSync, watch } from "fs";
+import { readFileSync, watch } from "fs";
 
 export default class ConfiguratonProvider implements Provider {
   protected clientConfig: Config;
@@ -16,27 +25,42 @@ export default class ConfiguratonProvider implements Provider {
   }
 
   updateConfig() {
+    const before = symbolsCaseSensitive(this.ctx.config);
     const workspaceConfig = this.findWorkspaceConfig();
     this.ctx.config = workspaceConfig
       ? mergeConfig(workspaceConfig, this.clientConfig)
       : this.clientConfig;
+
+    const { caseSensitive, vasm } = this.ctx.config;
+    if (
+      caseSensitive === true &&
+      optionsFromVasmArgs(vasm.args).caseSensitive === false
+    )
+      this.ctx.logger.warn(
+        "caseSensitive is true but the vasm arguments include -nocase: symbols are analysed with case kept, and vasm folds it",
+      );
+
+    // Every document's symbols were keyed under the old setting, and nothing
+    // else would notice: names that were one symbol are now two, or the reverse.
+    if (symbolsCaseSensitive(this.ctx.config) !== before)
+      void reprocessAll(this.ctx).catch((error: unknown) =>
+        this.ctx.logger.error(
+          `Unable to reprocess documents: ${String(error)}`,
+        ),
+      );
   }
 
+  /** The first workspace folder's project config, found by walking up as the linter does. */
   findWorkspaceConfig(): Partial<Config> | null {
     for (const { uri } of this.ctx.workspaceFolders) {
-      const path = URI.parse(uri).fsPath;
-      const contents = readdirSync(path);
-      const foundPath = contents.find((file) => file.match(/\.m68krc/i));
-
-      if (foundPath) {
-        this.ctx.logger.info("Found workspace config " + foundPath);
-        try {
-          const configJson = readFileSync(join(path, foundPath)).toString();
-          return JSON.parse(configJson);
-        } catch (err) {
-          if (err instanceof Error) {
-            this.ctx.logger.error("Error loading config: " + err.message);
-          }
+      const found = findAssemblyConfigSync(URI.parse(uri).fsPath);
+      if (!found) continue;
+      this.ctx.logger.info("Found workspace config " + found);
+      try {
+        return JSON.parse(readFileSync(found).toString());
+      } catch (err) {
+        if (err instanceof Error) {
+          this.ctx.logger.error("Error loading config: " + err.message);
         }
       }
     }

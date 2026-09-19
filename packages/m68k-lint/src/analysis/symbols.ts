@@ -4,6 +4,8 @@ import type {
   ParsedFile,
   ParsedLine,
 } from "m68k-parser";
+import { symbolKey } from "m68k-parser";
+import { isCaseSensitive } from "./case-mode.js";
 import { evaluateConstant, type ConstantResult } from "./constants.js";
 import { isInMacroDefinition, scanBlocks } from "./blocks.js";
 
@@ -49,12 +51,6 @@ export interface ExternalUse {
   name: string;
   value: number;
   origin: string;
-}
-
-function normalizeSymbol(name: string): string {
-  // Most 68k assembler source treats symbols case-insensitively. If the
-  // parser/toolchain later exposes a case-sensitive mode, make this configurable.
-  return name.toLowerCase();
 }
 
 function expressionOperand(line: ParsedLine): ExpressionNode | undefined {
@@ -123,12 +119,20 @@ export class DefaultSymbolTable implements SymbolTable {
    * @param skip lines to leave out, such as those in an arm of conditional
    *   assembly that is not assembled
    */
+  /** Whether `Foo` and `foo` are different names, as the file was told to treat them. */
+  private readonly caseSensitive: boolean;
+
+  private normalize(name: string): string {
+    return symbolKey(name, this.caseSensitive);
+  }
+
   constructor(
     file: ParsedFile,
     external?: ExternalSymbols,
     skip?: (lineIndex: number) => boolean,
   ) {
     this.external = external;
+    this.caseSensitive = isCaseSensitive(file);
     const blocks = scanBlocks(file);
 
     file.lines.forEach((line, lineIndex) => {
@@ -140,7 +144,7 @@ export class DefaultSymbolTable implements SymbolTable {
       // between invocations.
       if (isInMacroDefinition(blocks, lineIndex)) return;
 
-      const normalizedName = normalizeSymbol(definition.name);
+      const normalizedName = this.normalize(definition.name);
       const existing = this.constants.get(normalizedName);
       if (
         existing &&
@@ -163,7 +167,7 @@ export class DefaultSymbolTable implements SymbolTable {
   }
 
   getConstant(name: string): ConstantSymbol | undefined {
-    const normalized = normalizeSymbol(name);
+    const normalized = this.normalize(name);
     return this.conflicted.has(normalized)
       ? undefined
       : this.constants.get(normalized);
@@ -180,7 +184,7 @@ export class DefaultSymbolTable implements SymbolTable {
   }
 
   originOf(name: string): string | undefined {
-    return this.origins.get(normalizeSymbol(name));
+    return this.origins.get(this.normalize(name));
   }
 
   /** Constants answered from outside this file since the last `forgetExternalUses`. */
@@ -193,7 +197,7 @@ export class DefaultSymbolTable implements SymbolTable {
   }
 
   private evaluateInternal(name: string, stack: Set<string>): ConstantResult {
-    const normalizedName = normalizeSymbol(name);
+    const normalizedName = this.normalize(name);
     if (this.conflicted.has(normalizedName))
       return { known: false, reason: "unknown-symbol" };
     const symbol = this.constants.get(normalizedName);

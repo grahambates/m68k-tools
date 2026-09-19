@@ -52,6 +52,7 @@ export async function buildIndex(
   overrides: ReadonlyMap<string, string>,
   needsReferences: boolean,
   includePaths: readonly string[] = [],
+  caseSensitive = true,
 ): Promise<ProjectIndex | undefined> {
   const paths = await discoverAssemblyFiles(root, {
     extensions: EXTENSIONS,
@@ -87,8 +88,10 @@ export async function buildIndex(
     files.push({ path: relative(root, path) || path, source });
 
   return {
-    symbols: buildProjectSymbols(files),
-    references: needsReferences ? buildProjectReferences(files) : undefined,
+    symbols: buildProjectSymbols(files, { caseSensitive }),
+    references: needsReferences
+      ? buildProjectReferences(files, { caseSensitive })
+      : undefined,
   };
 }
 
@@ -113,22 +116,32 @@ export class ProjectIndexCache {
   private withReferences = new Set<string>();
 
   /**
-   * One index per root and set of include paths: two configs under one root can
-   * name different include paths, and each must get an index that read them.
+   * One index per root, set of include paths and case mode: two configs under
+   * one root can differ in any of them, and each must get an index built to
+   * match, since the mode decides which names are the same name.
    */
   get(
     root: string,
     overrides: ReadonlyMap<string, string>,
     needsReferences: boolean,
     includePaths: readonly string[] = [],
+    caseSensitive = true,
   ): Promise<ProjectIndex | undefined> {
-    const key = [root, ...includePaths].join("\0");
+    const key = [root, caseSensitive ? "case" : "nocase", ...includePaths].join(
+      "\0",
+    );
     const cached = this.cache.get(key);
     if (cached && (!needsReferences || this.withReferences.has(key)))
       return cached;
 
     if (needsReferences) this.withReferences.add(key);
-    const index = buildIndex(root, overrides, needsReferences, includePaths);
+    const index = buildIndex(
+      root,
+      overrides,
+      needsReferences,
+      includePaths,
+      caseSensitive,
+    );
     this.cache.set(key, index);
     return index;
   }

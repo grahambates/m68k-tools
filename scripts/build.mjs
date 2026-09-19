@@ -44,6 +44,12 @@ async function copyAssets() {
 async function copyServer() {
   await mkdir(clientOut, { recursive: true });
   await copyFile(join(serverOut, "server.js"), join(clientOut, "server.js"));
+  // Referenced by the extension's jsonValidation, so .m68krc.json validates
+  // offline against the schema that matches the bundled server.
+  await copyFile(
+    join(serverDir, "m68krc.schema.json"),
+    join(clientOut, "m68krc.schema.json"),
+  );
   if (args.has("--sourcemap"))
     await copySourceMap(
       join(serverOut, "server.js"),

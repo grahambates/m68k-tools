@@ -517,3 +517,54 @@ describe("an include in the wrong case", () => {
     );
   });
 });
+
+describe("symbol case", () => {
+  const moveq = (diagnostics) =>
+    diagnostics.filter((d) => d.code === "optimization/prefer-moveq");
+
+  it("keeps Foo and foo apart by default, so each constant resolves", async () => {
+    const client = withClient();
+    await client.initialize(fixture("casedefault"));
+    const { diagnostics } = await client.open(fixture("casedefault/main.s"));
+    assert.equal(moveq(diagnostics).length, 2);
+  });
+
+  it("treats them as one symbol when the config says case is folded", async () => {
+    const client = withClient();
+    await client.initialize(fixture("casefolded"));
+    const { diagnostics } = await client.open(fixture("casefolded/main.s"));
+    // Two values for one name is a conflict, so neither constant resolves.
+    assert.equal(moveq(diagnostics).length, 0);
+  });
+});
+
+describe("the shared .m68krc.json", () => {
+  const moveq = (diagnostics) =>
+    diagnostics.filter((d) => d.code === "optimization/prefer-moveq");
+
+  it("supplies the case setting when there is no lint config", async () => {
+    const client = withClient();
+    await client.initialize(fixture("sharedcase"));
+    const { diagnostics } = await client.open(fixture("sharedcase/main.s"));
+    // Case is folded, so Foo and foo conflict and neither constant resolves.
+    // The file's other keys, which belong to another tool, are not an error.
+    assert.equal(moveq(diagnostics).length, 0);
+  });
+
+  it("is overridden by the lint config", async () => {
+    const client = withClient();
+    await client.initialize(fixture("sharedprec"));
+    const { diagnostics } = await client.open(fixture("sharedprec/main.s"));
+    assert.equal(moveq(diagnostics).length, 2);
+  });
+
+  it("supplies include paths", async () => {
+    const client = withClient();
+    await client.initialize(fixture("sharedinc/proj"));
+    const { diagnostics } = await client.open(fixture("sharedinc/proj/main.s"));
+    assert.ok(
+      diagnostics.some((d) => d.code === "optimization/prefer-moveq"),
+      "the constant from the include the shared file points at resolved",
+    );
+  });
+});

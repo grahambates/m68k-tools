@@ -63,6 +63,7 @@ export {
   analyzeLocalLabelScopes,
   bareLocalName,
   isLocalLabelName,
+  symbolKey,
 } from "./labels.js";
 export type { LocalLabelScopes } from "./labels.js";
 

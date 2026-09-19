@@ -473,3 +473,88 @@ describe("an include in the wrong case", () => {
     expect(out).not.toContain("portability/include-case");
   });
 });
+
+describe("symbol case and the shared config", () => {
+  const SOURCE =
+    "Foo equ 1\nfoo equ 2\nstart:\n\tmove.l #Foo,d0\n\tmove.l #foo,d1\n\trts\n";
+  /** Files for a project, and the directory to lint. */
+  async function project(files: Record<string, object>) {
+    const dir = await mkdtemp(join(tmpdir(), "m68k-lint-shared-"));
+    await writeFile(join(dir, "main.s"), SOURCE, "utf8");
+    for (const [name, json] of Object.entries(files))
+      await writeFile(join(dir, name), JSON.stringify(json), "utf8");
+    return dir;
+  }
+  /** How many constants resolved: MOVEQ is only suggested for one that did. */
+  const resolved = (out: string) =>
+    (out.match(/optimization\/prefer-moveq/g) ?? []).length;
+  const lint = (dir: string, ...extra: string[]) => capture([...extra, dir]);
+
+  test("keeps case by default", async () => {
+    const dir = await project({});
+    expect(resolved((await lint(dir)).out)).toBe(2);
+  });
+
+  test("the lint config's caseSensitive is honoured", async () => {
+    const dir = await project({ "m68k-lint.json": { caseSensitive: false } });
+    const { out } = await lint(dir, "--config", join(dir, "m68k-lint.json"));
+    expect(resolved(out)).toBe(0);
+  });
+
+  test("case is folded by the shared file alone", async () => {
+    const dir = await project({ ".m68krc.json": { caseSensitive: false } });
+    expect(resolved((await lint(dir)).out)).toBe(0);
+  });
+
+  test("and by -nocase among its vasm arguments", async () => {
+    const dir = await project({
+      ".m68krc.json": { vasm: { args: ["-nocase"] } },
+    });
+    expect(resolved((await lint(dir)).out)).toBe(0);
+  });
+
+  test("the lint config wins over the shared file", async () => {
+    const dir = await project({
+      ".m68krc.json": { caseSensitive: false },
+      "m68k-lint.json": { caseSensitive: true },
+    });
+    const { out } = await lint(dir, "--config", join(dir, "m68k-lint.json"));
+    expect(resolved(out)).toBe(2);
+  });
+
+  test("--no-config leaves the shared file out", async () => {
+    const dir = await project({ ".m68krc.json": { caseSensitive: false } });
+    expect(resolved((await lint(dir, "--no-config")).out)).toBe(2);
+  });
+
+  test("the shared file's other keys are none of its business", async () => {
+    const dir = await project({
+      ".m68krc.json": {
+        format: { case: "lower" },
+        inlayHints: { enabled: false },
+      },
+    });
+    const { code, err } = await lint(dir);
+    expect(err).not.toContain("Unknown config field");
+    expect(code).toBeLessThan(2);
+  });
+
+  test("include paths come from the shared file too", async () => {
+    const root = await mkdtemp(join(tmpdir(), "m68k-lint-shared-inc-"));
+    await mkdir(join(root, "proj"));
+    await mkdir(join(root, "shared"));
+    await writeFile(join(root, "shared", "hw.i"), "HW_ONE equ 1\n", "utf8");
+    await writeFile(
+      join(root, "proj", "main.s"),
+      '\tinclude "hw.i"\nmain:\n\tmove.l #HW_ONE,d0\n\trts\n',
+      "utf8",
+    );
+    await writeFile(
+      join(root, "proj", ".m68krc.json"),
+      JSON.stringify({ includePaths: ["../shared"] }),
+      "utf8",
+    );
+    const { out } = await capture([join(root, "proj")]);
+    expect(out).toContain("HW_ONE = 1");
+  });
+});

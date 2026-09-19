@@ -26,7 +26,7 @@ const setD1 = ["SETD1: macro", "moveq #5,d1", "endm"].join("\n");
 
 describe("project macro index", () => {
   test("answers a macro defined once", () => {
-    const found = index({ "macros.i": setD1 }).macro?.("setd1");
+    const found = index({ "macros.i": setD1 }).macro?.("SETD1");
     expect(found?.origin).toBe("macros.i");
     expect(found?.definition.name).toBe("SETD1");
   });
@@ -120,5 +120,20 @@ describe("macros defined in another file", () => {
       "rts",
     ].join("\n");
     expect(run(dead, source, { "macros.i": header })).toHaveLength(1);
+  });
+});
+
+describe("project macro index and case", () => {
+  test("does not find a macro in another case by default", () => {
+    expect(index({ "a.i": setD1 }).macro?.("setd1")).toBeUndefined();
+  });
+
+  test("finds it in either case when case is folded", () => {
+    const symbols = buildProjectSymbols(
+      [{ path: "a.i", source: fixture(setD1) }],
+      { caseSensitive: false },
+    );
+    expect(symbols.macro?.("setd1")).toBeDefined();
+    expect(symbols.macro?.("SETD1")).toBeDefined();
   });
 });

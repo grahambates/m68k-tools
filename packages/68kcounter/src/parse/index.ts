@@ -9,6 +9,11 @@ export interface ParseOptions {
   cpu?: Cpu;
   /** 020/030 cache case (default worst); 040/060 currently always use cached references */
   cacheModel?: CacheModel;
+  /**
+   * Whether `Foo` and `foo` are different symbols, constants and macros alike
+   * (default true, as an assembler has it; false for `vasm -nocase`).
+   */
+  caseSensitive?: boolean;
 }
 
 /**

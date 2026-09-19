@@ -41,13 +41,16 @@ export const nullBranch: Rule = {
     const target = branchTarget(line);
     if (!target) return;
 
-    const normalizedTarget = target.toLowerCase();
+    const normalizedTarget = ctx.nameKey(target);
 
     for (let i = index + 1; i < ctx.file.lines.length; i++) {
       const candidate = ctx.file.lines[i];
       if (!candidate) break;
 
-      if (candidate.label?.label.toLowerCase() === normalizedTarget) {
+      if (
+        candidate.label &&
+        ctx.nameKey(candidate.label.label) === normalizedTarget
+      ) {
         const canDeleteWholeLine = !line.label && !line.comment;
         ctx.report({
           ruleId: this.meta.id,

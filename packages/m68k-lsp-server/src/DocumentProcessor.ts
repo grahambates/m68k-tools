@@ -2,6 +2,7 @@ import {
   collectMacroDefinitions as collectDefinitions,
   parseBlocks,
   parseFile,
+  symbolKey,
 } from "m68k-parser";
 import type { BlockStructure, MacroDefinition, ParsedFile } from "m68k-parser";
 import { type TextDocument } from "vscode-languageserver-textdocument";
@@ -9,6 +10,7 @@ import { type TextDocument } from "vscode-languageserver-textdocument";
 import { readDocumentFromUri, resolveReferencedUris } from "./files";
 import { processSymbols, type Symbols } from "./symbols";
 import { type Context } from "./context";
+import { symbolsCaseSensitive } from "./config";
 
 /**
  * What every file in the workspace contributes to resolution.
@@ -74,9 +76,20 @@ export default class DocumentProcessor {
       document,
       parsed,
       blocks,
-      symbols: processSymbols(document.uri, parsed, blocks, text),
+      symbols: processSymbols(
+        document.uri,
+        parsed,
+        blocks,
+        text,
+        symbolsCaseSensitive(this.ctx.config),
+      ),
       referencedUris: [],
-      macros: collectMacroDefinitions(parsed, blocks, text),
+      macros: collectMacroDefinitions(
+        parsed,
+        blocks,
+        text,
+        symbolsCaseSensitive(this.ctx.config),
+      ),
     };
 
     this.ctx.store.set(document.uri, processed);
@@ -116,9 +129,20 @@ export default class DocumentProcessor {
 
     const indexed: IndexedDocument = {
       uri,
-      symbols: processSymbols(uri, parsed, blocks, text),
+      symbols: processSymbols(
+        uri,
+        parsed,
+        blocks,
+        text,
+        symbolsCaseSensitive(this.ctx.config),
+      ),
       referencedUris: [],
-      macros: collectMacroDefinitions(parsed, blocks, text),
+      macros: collectMacroDefinitions(
+        parsed,
+        blocks,
+        text,
+        symbolsCaseSensitive(this.ctx.config),
+      ),
     };
 
     this.ctx.store.set(uri, indexed);
@@ -193,6 +217,7 @@ function collectMacroDefinitions(
   parsed: ParsedFile,
   blocks: BlockStructure,
   text: string,
+  caseSensitive: boolean,
 ): Map<string, MacroDefinition> {
   const definitions = new Map<string, MacroDefinition>();
   for (const definition of collectDefinitions(
@@ -200,6 +225,19 @@ function collectMacroDefinitions(
     text.split(/\r?\n/g),
     blocks,
   ))
-    definitions.set(definition.name.toLowerCase(), definition);
+    definitions.set(symbolKey(definition.name, caseSensitive), definition);
   return definitions;
+}
+
+/**
+ * Process every document again, for a setting that changes what every document
+ * yields, such as whether symbol names keep their case. Open documents are
+ * processed from what the editor holds; the rest are read again from disk.
+ */
+export async function reprocessAll(ctx: Context): Promise<void> {
+  const processor = new DocumentProcessor(ctx);
+  for (const [uri, document] of Array.from(ctx.store)) {
+    if (isProcessed(document)) await processor.process(document.document);
+    else await processor.index(uri);
+  }
 }

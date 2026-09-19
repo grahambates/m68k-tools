@@ -376,6 +376,8 @@ importers:
         specifier: 5.0.0
         version: 5.0.0(@types/node@22.18.0)(@vitest/coverage-v8@5.0.0)(jsdom@29.1.1)(vite@8.3.0(@types/node@22.18.0)(esbuild@0.25.12)(yaml@2.9.0))
 
+  packages/assembly-options: {}
+
   packages/m68k-formatter:
     dependencies:
       glob:
@@ -413,6 +415,9 @@ importers:
         specifier: workspace:^
         version: link:../m68k-parser
     devDependencies:
+      '@m68k-lsp/assembly-options':
+        specifier: workspace:^
+        version: link:../assembly-options
       '@m68k-lsp/workspace-files':
         specifier: workspace:^
         version: link:../workspace-files
@@ -447,6 +452,9 @@ importers:
         specifier: ^3.0.8
         version: 3.2.0
     devDependencies:
+      '@m68k-lsp/assembly-options':
+        specifier: workspace:^
+        version: link:../assembly-options
       '@m68k-lsp/workspace-files':
         specifier: workspace:^
         version: link:../workspace-files
@@ -484,6 +492,9 @@ importers:
         specifier: ^4.0.0
         version: 4.0.0
     devDependencies:
+      '@m68k-lsp/assembly-options':
+        specifier: workspace:^
+        version: link:../assembly-options
       '@m68k-lsp/protocol':
         specifier: workspace:^
         version: link:../protocol

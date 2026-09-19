@@ -33,6 +33,11 @@
     "measureImpact": {
       "type": "boolean"
     },
+    "caseSensitive": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether Foo and foo are different symbols. They are unless the assembler was given -nocase (or the source says `opt c-`), so leave this on unless the project is assembled with case folded."
+    },
     "inlineConfig": {
       "type": "boolean",
       "description": "Honor m68k-lint directives embedded in assembly comments."

@@ -36,6 +36,12 @@ export interface LintConfig {
    * project. On by default; set false to analyse each file strictly alone.
    */
   projectSymbols?: boolean;
+  /**
+   * Whether `Foo` and `foo` are different symbols. They are unless the assembler
+   * was asked otherwise (`vasm -nocase`), so this is on by default. Set false for
+   * a project assembled with case folded.
+   */
+  caseSensitive?: boolean;
   rules?: Record<string, RuleSetting>;
   categories?: Partial<Record<RuleCategory, boolean>>;
 }

@@ -1,4 +1,4 @@
-import { parseFile } from "m68k-parser";
+import { parseFile, symbolKey } from "m68k-parser";
 import type { ExpressionNode } from "m68k-parser";
 import { evaluateConstant } from "./constants.js";
 import { ProjectMacros } from "./project-macros.js";
@@ -54,10 +54,13 @@ interface Definition {
 
 export function buildProjectSymbols(
   files: readonly ProjectSourceFile[],
+  options: { caseSensitive?: boolean } = {},
 ): ProjectSymbols {
+  const caseSensitive = options.caseSensitive ?? true;
+  const keyOf = (name: string) => symbolKey(name, caseSensitive);
   const definitions = new Map<string, Definition>();
   const conflicted = new Set<string>();
-  const macros = new ProjectMacros();
+  const macros = new ProjectMacros(caseSensitive);
 
   for (const { path, source } of files) {
     let parsed;
@@ -77,7 +80,7 @@ export function buildProjectSymbols(
       if (!definition) return;
       if (isInMacroDefinition(blocks, lineIndex)) return;
 
-      const name = definition.name.toLowerCase();
+      const name = keyOf(definition.name);
       if (conflicted.has(name)) return;
       const existing = definitions.get(name);
       if (
@@ -97,7 +100,7 @@ export function buildProjectSymbols(
   }
 
   const resolve = (name: string, stack: Set<string>): number | undefined => {
-    const key = name.toLowerCase();
+    const key = keyOf(name);
     if (stack.has(key)) return undefined;
     const definition = definitions.get(key);
     if (!definition) return undefined;
@@ -114,7 +117,7 @@ export function buildProjectSymbols(
     lookup(name) {
       const value = resolve(name, new Set());
       if (value === undefined) return undefined;
-      return { value, origin: definitions.get(name.toLowerCase())!.origin };
+      return { value, origin: definitions.get(keyOf(name))!.origin };
     },
     macro: (name) => macros.get(name),
   };

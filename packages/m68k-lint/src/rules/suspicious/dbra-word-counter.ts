@@ -12,9 +12,11 @@ function loopStart(
   dbra: number,
   name: string,
 ): number | undefined {
-  const wanted = name.toLowerCase();
-  for (let i = dbra; i >= 0; i--)
-    if (ctx.file.lines[i].label?.label.toLowerCase() === wanted) return i;
+  const wanted = ctx.nameKey(name);
+  for (let i = dbra; i >= 0; i--) {
+    const label = ctx.file.lines[i].label;
+    if (label && ctx.nameKey(label.label) === wanted) return i;
+  }
   return undefined;
 }
 

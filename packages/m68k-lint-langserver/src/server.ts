@@ -82,8 +82,12 @@ async function lintDocument(
   // the command line. Its symbols are still indexed for everything else.
   if (await configs.isIgnored(uri.fsPath)) return [];
 
-  const { config, error, includePaths } = await configs.resolve(uri.fsPath);
+  const { config, error, includePaths, warnings } = await configs.resolve(
+    uri.fsPath,
+  );
   if (error) connection.console.warn(`m68k-lint: ${error}`);
+  for (const warning of warnings ?? [])
+    connection.console.warn(`m68k-lint: ${warning}`);
 
   const root =
     config.projectSymbols === false ? undefined : rootFor(uri.fsPath);
@@ -93,6 +97,7 @@ async function lintDocument(
         openDocumentText(),
         needsProjectReferences(config),
         includePaths,
+        config.caseSensitive ?? true,
       )
     : undefined;
 
@@ -339,6 +344,7 @@ connection.onCodeAction(async (params: CodeActionParams) => {
         openDocumentText(),
         needsProjectReferences(config),
         includePaths,
+        config.caseSensitive ?? true,
       )
     : undefined;
 

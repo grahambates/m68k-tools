@@ -31,9 +31,16 @@ import { runRuleImpactAudit } from "../audit/rule-impact.js";
 import { defaultAssemblyExtensions, discoverFiles } from "./file-discovery.js";
 import { alwaysIgnored } from "./ignores.js";
 import {
+  findAssemblyConfig,
+  loadAssemblyOptions,
+  mergeOptions,
+  type AssemblyOptions,
+} from "@m68k-lsp/assembly-options";
+import {
   configIncludePaths,
   findProjectConfig,
   followIncludes,
+  knownProcessors,
   includeCaseOnDisk,
   loadProjectConfig,
   nodeIncludeFs,
@@ -66,6 +73,7 @@ export function buildConfig(
     processors:
       options.processors ?? project.processors ?? defaultConfig.processors,
     platform: options.platform ?? project.platform ?? defaultConfig.platform,
+    caseSensitive: project.caseSensitive ?? defaultConfig.caseSensitive,
     goal: options.goal ?? project.goal ?? defaultConfig.goal,
     measureImpact:
       options.measureImpact ??
@@ -240,6 +248,7 @@ async function buildProjectIndex(
   extensions: readonly string[],
   needsReferences: boolean,
   includePaths: readonly string[],
+  caseSensitive: boolean,
 ): Promise<ProjectIndex | undefined> {
   let paths: string[];
   try {
@@ -276,8 +285,10 @@ async function buildProjectIndex(
     files.push({ path: relative(root, path) || path, source });
 
   return {
-    symbols: buildProjectSymbols(files),
-    references: needsReferences ? buildProjectReferences(files) : undefined,
+    symbols: buildProjectSymbols(files, { caseSensitive }),
+    references: needsReferences
+      ? buildProjectReferences(files, { caseSensitive })
+      : undefined,
   };
 }
 
@@ -498,7 +509,42 @@ export async function run(argv: string[]): Promise<number> {
     return 2;
   }
 
-  const config = buildConfig(options, projectConfig);
+  // How the source is assembled -- processors, include paths, case -- is shared
+  // with the other tools through .m68krc.json. The lint config, where it says
+  // anything, wins; --no-config leaves both out.
+  let shared: AssemblyOptions = {};
+  if (options.useConfig) {
+    const start = projectConfigPath
+      ? dirname(projectConfigPath)
+      : inputRoot(rawInputs, projectRoot);
+    const found = await findAssemblyConfig(start);
+    if (found) {
+      try {
+        const loaded = await loadAssemblyOptions(found);
+        shared = loaded.options;
+        for (const warning of loaded.warnings)
+          console.error(`m68k-lint: ${found}: ${warning}`);
+      } catch (error) {
+        console.error(
+          `m68k-lint: ${found}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+  }
+  const config = buildConfig(options, {
+    ...projectConfig,
+    processors: projectConfig.processors ?? knownProcessors(shared.processors),
+    caseSensitive: projectConfig.caseSensitive ?? shared.caseSensitive,
+  });
+  const includePaths =
+    mergeOptions(
+      {
+        includePaths: projectConfigPath
+          ? configIncludePaths(projectConfig, dirname(projectConfigPath))
+          : [],
+      },
+      { includePaths: shared.includePaths },
+    ).includePaths ?? [];
 
   if (options.fixInteractive) {
     return runInteractiveFixes(inputFiles, config, {
@@ -508,9 +554,6 @@ export async function run(argv: string[]): Promise<number> {
     });
   }
 
-  const includePaths = projectConfigPath
-    ? configIncludePaths(projectConfig, dirname(projectConfigPath))
-    : [];
   const projectIndex =
     config.projectSymbols === false
       ? undefined
@@ -519,6 +562,7 @@ export async function run(argv: string[]): Promise<number> {
           extensions,
           needsProjectReferences(config),
           includePaths,
+          config.caseSensitive ?? true,
         );
 
   const results: LintResult[] = [];

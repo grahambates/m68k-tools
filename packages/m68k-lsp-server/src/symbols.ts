@@ -4,13 +4,14 @@ import type {
   ParsedLine,
   SymbolNode,
 } from "m68k-parser";
-import { blockAt, isLocalLabelName } from "m68k-parser";
+import { blockAt, isLocalLabelName, symbolKey } from "m68k-parser";
 import * as lsp from "vscode-languageserver";
 import { type AstNode, childNodes, descendants } from "./ast";
 import { getUnitFilesByDistance } from "./files";
 import { isProcessed } from "./DocumentProcessor";
 import { containsPosition, locationAsRange } from "m68k-parser";
 import { type Context } from "./context";
+import { symbolsCaseSensitive } from "./config";
 
 export interface NamedSymbol {
   location: lsp.Location;
@@ -232,6 +233,14 @@ function commentFor(
 }
 
 /**
+ * The key a symbol name is stored and looked up by: the name itself, or its
+ * lower-case form where the project folds case (see `symbolsCaseSensitive`).
+ */
+export function keyFor(ctx: Context, name: string): string {
+  return symbolKey(name, symbolsCaseSensitive(ctx.config));
+}
+
+/**
  * Process symbols in document
  */
 export function processSymbols(
@@ -239,7 +248,9 @@ export function processSymbols(
   parsed: ParsedFile,
   blocks: BlockStructure,
   text: string,
+  caseSensitive = true,
 ): Symbols {
+  const keyOf = (name: string) => symbolKey(name, caseSensitive);
   const symbols: Symbols = {
     definitions: new Map<string, Definition>(),
     references: new Map<string, NamedSymbol[]>(),
@@ -260,7 +271,7 @@ export function processSymbols(
     index: number,
   ) {
     // Already defined in this doc?
-    if (symbols.definitions.has(name)) {
+    if (symbols.definitions.has(keyOf(name))) {
       return;
     }
 
@@ -289,7 +300,7 @@ export function processSymbols(
     if (type === DefinitionType.Label) {
       if (isLocalLabel(name)) {
         if (lastGlobalLabel) {
-          lastGlobalLabel.locals?.set(name, def);
+          lastGlobalLabel.locals?.set(keyOf(name), def);
           return;
         }
       } else {
@@ -298,17 +309,17 @@ export function processSymbols(
       }
     }
 
-    symbols.definitions.set(name, def);
+    symbols.definitions.set(keyOf(name), def);
   }
 
   function addReference(name: string, range: lsp.Range, interpolated: boolean) {
     if (interpolated) {
       return;
     }
-    let refs = symbols.references.get(name);
+    let refs = symbols.references.get(keyOf(name));
     if (!refs) {
       refs = [];
-      symbols.references.set(name, refs);
+      symbols.references.set(keyOf(name), refs);
     }
     refs.push({ name, location: { uri, range } });
   }
@@ -541,7 +552,7 @@ export async function getReferences(
       currentDoc.symbols,
       isProcessed(currentDoc) ? currentDoc.document.lineCount : Infinity,
     );
-    const refs = currentDoc.symbols.references.get(symbol.name);
+    const refs = currentDoc.symbols.references.get(keyFor(ctx, symbol.name));
     if (refs) {
       results.push(
         ...refs.filter((ref) =>
@@ -550,19 +561,19 @@ export async function getReferences(
       );
     }
     if (includeDeclaration) {
-      const def = startLabel?.locals?.get(symbol.name);
+      const def = startLabel?.locals?.get(keyFor(ctx, symbol.name));
       if (def) {
         results.push(def);
       }
     }
   } else {
     // Current doc
-    const refs = currentDoc.symbols.references.get(symbol.name);
+    const refs = currentDoc.symbols.references.get(keyFor(ctx, symbol.name));
     if (refs) {
       results.push(...refs);
     }
     if (includeDeclaration) {
-      const def = currentDoc.symbols.definitions.get(symbol.name);
+      const def = currentDoc.symbols.definitions.get(keyFor(ctx, symbol.name));
       if (def) {
         results.push(def);
       }
@@ -585,12 +596,16 @@ export async function getReferences(
     for (const depUri of scope) {
       const dependentDoc = ctx.store.get(depUri);
       if (dependentDoc) {
-        const refs = dependentDoc.symbols.references.get(symbol.name);
+        const refs = dependentDoc.symbols.references.get(
+          keyFor(ctx, symbol.name),
+        );
         if (refs) {
           results.push(...refs);
         }
         if (includeDeclaration) {
-          const def = dependentDoc.symbols.definitions.get(symbol.name);
+          const def = dependentDoc.symbols.definitions.get(
+            keyFor(ctx, symbol.name),
+          );
           if (def) {
             results.push(def);
           }
@@ -628,12 +643,12 @@ export async function getDefinitions(
 
   if (isLocalLabel(symbol.name)) {
     const globalLabel = labelBeforePosition(processed.symbols, position);
-    const def = globalLabel?.locals?.get(symbol.name);
+    const def = globalLabel?.locals?.get(keyFor(ctx, symbol.name));
     return def ? [def] : [];
   }
 
   // Definition in current doc
-  const def = processed.symbols.definitions.get(symbol.name);
+  const def = processed.symbols.definitions.get(keyFor(ctx, symbol.name));
   if (def) {
     return [def];
   }
@@ -645,7 +660,9 @@ export async function getDefinitions(
   // defined in more than one place the closest one is offered first rather
   // than whichever happened to be indexed earliest.
   for (const depUri of getUnitFilesByDistance(uri, ctx)) {
-    const def = ctx.store.get(depUri)?.symbols.definitions.get(symbol.name);
+    const def = ctx.store
+      .get(depUri)
+      ?.symbols.definitions.get(keyFor(ctx, symbol.name));
     if (def) {
       defs.push(def);
     }
@@ -664,12 +681,14 @@ export function resolveDefinitionByName(
   name: string,
   ctx: Context,
 ): Definition | undefined {
-  const def = ctx.store.get(uri)?.symbols.definitions.get(name);
+  const def = ctx.store.get(uri)?.symbols.definitions.get(keyFor(ctx, name));
   if (def) {
     return def;
   }
   for (const depUri of getUnitFilesByDistance(uri, ctx)) {
-    const def = ctx.store.get(depUri)?.symbols.definitions.get(name);
+    const def = ctx.store
+      .get(depUri)
+      ?.symbols.definitions.get(keyFor(ctx, name));
     if (def) {
       return def;
     }

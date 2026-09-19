@@ -51,6 +51,16 @@ const categories = new Set<RuleCategory>([
   "style",
 ]);
 
+/** The names in a list that are processors this linter knows, or undefined if there are none. */
+export function knownProcessors(
+  names: readonly string[] | undefined,
+): Processor[] | undefined {
+  const known = (names ?? []).filter((name): name is Processor =>
+    processors.has(name as Processor),
+  );
+  return known.length ? known : undefined;
+}
+
 export interface ProjectConfig {
   fixAnnotate?: FixAnnotation;
   processors?: Processor[];
@@ -58,6 +68,12 @@ export interface ProjectConfig {
   goal?: OptimizationGoal;
   measureImpact?: boolean;
   inlineConfig?: boolean;
+  /**
+   * Whether `Foo` and `foo` are different symbols. They are unless the assembler
+   * was given `-nocase`, which nothing in the source says, so this is here.
+   * True if omitted.
+   */
+  caseSensitive?: boolean;
   presets?: RulePreset[];
   rules?: Record<string, RuleSetting>;
   categories?: Partial<Record<RuleCategory, boolean>>;
@@ -145,6 +161,7 @@ export async function loadProjectConfig(path: string): Promise<ProjectConfig> {
     "goal",
     "measureImpact",
     "inlineConfig",
+    "caseSensitive",
     "presets",
     "rules",
     "categories",
@@ -204,6 +221,11 @@ export async function loadProjectConfig(path: string): Promise<ProjectConfig> {
   )
     throw new Error("measureImpact must be a boolean");
   if (
+    config.caseSensitive !== undefined &&
+    typeof config.caseSensitive !== "boolean"
+  )
+    throw new Error("caseSensitive must be a boolean");
+  if (
     config.inlineConfig !== undefined &&
     typeof config.inlineConfig !== "boolean"
   )
@@ -258,6 +280,7 @@ export function lintConfigFromProject(
     goal: config.goal,
     measureImpact: config.measureImpact,
     inlineConfig: config.inlineConfig,
+    caseSensitive: config.caseSensitive,
     presets: config.presets,
     rules: config.rules,
     categories: config.categories,

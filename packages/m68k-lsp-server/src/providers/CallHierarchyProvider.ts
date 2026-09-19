@@ -7,6 +7,7 @@ import {
   isLocalLabel,
   resolveDefinitionByName,
   type Definition,
+  keyFor,
 } from "../symbols";
 
 export default class CallHierarchyProvider implements Provider {
@@ -39,10 +40,15 @@ export default class CallHierarchyProvider implements Provider {
         continue;
       }
       for (const call of doc.symbols.calls) {
-        if (call.target !== item.name || !call.caller) {
+        if (
+          keyFor(this.ctx, call.target) !== keyFor(this.ctx, item.name) ||
+          !call.caller
+        ) {
           continue;
         }
-        const callerDef = doc.symbols.definitions.get(call.caller);
+        const callerDef = doc.symbols.definitions.get(
+          keyFor(this.ctx, call.caller),
+        );
         if (!callerDef) {
           continue;
         }

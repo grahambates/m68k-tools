@@ -12,6 +12,7 @@ import {
 } from "../analysis/symbols.js";
 import { analyzeFlags, type FlagAnalysis } from "../analysis/flags.js";
 import { prepareMacros } from "../analysis/macros.js";
+import { nameKey, setCaseSensitive } from "../analysis/case-mode.js";
 import {
   conditionalAssembly,
   prepareConditionals,
@@ -46,6 +47,12 @@ export interface RuleContext {
   readonly projectReferences?: ProjectReferences;
   /** What the file system says about this file, where the caller supplied it. */
   readonly facts?: FileFacts;
+  /**
+   * The key a symbol name is compared by: the name itself, or lower-cased where
+   * the project folds case. Compare labels, constants and macros through this,
+   * never by lower-casing a name directly.
+   */
+  nameKey(name: string): string;
 
   report(diagnostic: Diagnostic): void;
   evaluate(expr: ExpressionNode): ConstantResult;
@@ -322,6 +329,8 @@ export class DefaultRuleContext implements RuleContext {
     public readonly facts?: FileFacts,
   ) {
     this.sourceLines = source.split(/\r?\n/);
+    // Before anything looks a name up: the symbol table and every analysis read it.
+    setCaseSensitive(file, config.caseSensitive ?? true);
     this.symbols = new DefaultSymbolTable(file, external);
     this.settleConditionals(file, external);
     // Before the analyses, which read what each macro call expands to.
@@ -369,6 +378,10 @@ export class DefaultRuleContext implements RuleContext {
         (index) => unassembled[index],
       );
     }
+  }
+
+  nameKey(name: string): string {
+    return nameKey(this.file, name);
   }
 
   report(diagnostic: Diagnostic): void {

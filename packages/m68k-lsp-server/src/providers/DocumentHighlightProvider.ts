@@ -5,7 +5,7 @@ import { type Context } from "../context";
 import { isProcessed } from "../DocumentProcessor";
 import { locationAsRange } from "m68k-parser";
 import { registerName } from "../registerAnalysis";
-import { symbolAtPosition } from "../symbols";
+import { symbolAtPosition, keyFor } from "../symbols";
 
 export default class DocumentHighlightProvider implements Provider {
   constructor(protected readonly ctx: Context) {}
@@ -46,7 +46,7 @@ export default class DocumentHighlightProvider implements Provider {
 
     const results: lsp.DocumentHighlight[] = [];
 
-    const refs = docSymbols.references.get(foundSymbol.name);
+    const refs = docSymbols.references.get(keyFor(this.ctx, foundSymbol.name));
     if (refs) {
       for (const ref of refs) {
         results.push(
@@ -57,7 +57,7 @@ export default class DocumentHighlightProvider implements Provider {
         );
       }
     }
-    const def = docSymbols.definitions.get(foundSymbol.name);
+    const def = docSymbols.definitions.get(keyFor(this.ctx, foundSymbol.name));
     if (def) {
       results.push(
         lsp.DocumentHighlight.create(

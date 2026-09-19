@@ -479,3 +479,58 @@ describe("directive sizes", () => {
     expect(lines[1].bytes).toEqual(16);
   });
 });
+
+describe("symbol case", () => {
+  const constants = "SIZE = 16\n      ds.b size";
+
+  test("a constant is not found in another case by default", () => {
+    // SIZE and size are different symbols, so the count is not known.
+    expect(parse(constants)[1].bytes).toEqual(0);
+  });
+
+  test("it is when case is folded", () => {
+    expect(parse(constants, { caseSensitive: false })[1].bytes).toEqual(16);
+  });
+
+  test("a constant in the same case is found in either mode", () => {
+    const same = "SIZE = 16\n      ds.b SIZE";
+    expect(parse(same)[1].bytes).toEqual(16);
+    expect(parse(same, { caseSensitive: false })[1].bytes).toEqual(16);
+  });
+
+  test("Foo and foo are separate constants by default", () => {
+    const both = "Foo = 2\nfoo = 6\n      ds.b Foo\n      ds.b foo";
+    const lines = parse(both);
+    expect(lines[2].bytes).toEqual(2);
+    expect(lines[3].bytes).toEqual(6);
+  });
+
+  test("a label is found in another case only when case is folded", () => {
+    const labelled = "Start:\n      dc.b 1,2,3\nEnd:\n      ds.b end-start";
+    expect(parse(labelled)[3].bytes).toEqual(0);
+    expect(parse(labelled, { caseSensitive: false })[3].bytes).toEqual(3);
+  });
+
+  const macro = "Twice: macro\n      dc.b 1,2\n      endm\n";
+
+  test("a macro is not called in another case by default", () => {
+    const [, , , call] = parse(`${macro}      twice`);
+    expect(call.macroLines).toBeUndefined();
+  });
+
+  test("it is when case is folded", () => {
+    const [, , , call] = parse(`${macro}      twice`, { caseSensitive: false });
+    expect(call.macroLines).toHaveLength(1);
+    expect(call.bytes).toEqual(2);
+  });
+
+  test("a macro is called in the same case in either mode", () => {
+    const [, , , call] = parse(`${macro}      Twice`);
+    expect(call.bytes).toEqual(2);
+  });
+
+  test("a macro is called with a size in the same case", () => {
+    const [, , , call] = parse(`${macro}      Twice.w`);
+    expect(call.macroLines).toHaveLength(1);
+  });
+});

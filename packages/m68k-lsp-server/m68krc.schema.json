@@ -1,0 +1,246 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cdn.jsdelivr.net/npm/m68k-lsp-server/m68krc.schema.json",
+  "title": "m68k project configuration",
+  "description": "Project settings for the m68k language servers. The assembly server reads every key; the linter and its language server read processors, includePaths and caseSensitive.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "processors": {
+      "description": "Processors the code targets. Controls completion and diagnostics.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "mc68000",
+          "mc68010",
+          "mc68020",
+          "mc68030",
+          "mc68040",
+          "mc68060",
+          "mc68881",
+          "mc68851",
+          "cpu32"
+        ]
+      },
+      "default": ["mc68000"]
+    },
+    "includePaths": {
+      "description": "Directories searched for includes, as vasm -I or INCDIR. Absolute, or relative to this file.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "caseSensitive": {
+      "description": "Whether Foo and foo are different symbols (labels, constants, macros). Unset follows a -nocase in vasm.args, else true. Instruction and directive names are always matched without regard to case.",
+      "type": "boolean"
+    },
+    "exclude": {
+      "description": "Glob patterns to leave out of the workspace index, on top of the built-in ones for build output and dependency directories.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "vasm": {
+      "description": "Assembling with vasm to provide diagnostics.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "provideDiagnostics": {
+          "description": "Enable vasm diagnostics.",
+          "type": "boolean",
+          "default": true
+        },
+        "binPath": {
+          "description": "Filename or full path of the vasm executable.",
+          "type": "string",
+          "default": "vasmm68k_mot"
+        },
+        "args": {
+          "description": "Custom arguments to pass to vasm. Include paths, processors and case from this file are added automatically; -nocase, -I and -m here are read back as those options.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "preferWasm": {
+          "description": "Always use the bundled WebAssembly vasm.",
+          "type": "boolean",
+          "default": false
+        },
+        "exclude": {
+          "description": "File patterns not to build directly, e.g. *.i.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      }
+    },
+    "inlayHints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "description": "Show evaluated values of constant assignments inline.",
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "format": {
+      "$ref": "#/$defs/format"
+    }
+  },
+  "$defs": {
+    "format": {
+      "description": "Formatter options, as in .m68k-format.json.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "case": {
+          "oneOf": [
+            {
+              "enum": ["upper", "lower", "any"]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "instruction": {
+                  "enum": ["upper", "lower", "any"]
+                },
+                "directive": {
+                  "enum": ["upper", "lower", "any"]
+                },
+                "control": {
+                  "enum": ["upper", "lower", "any"]
+                },
+                "register": {
+                  "enum": ["upper", "lower", "any"]
+                },
+                "sectionType": {
+                  "enum": ["upper", "lower", "any"]
+                },
+                "hex": {
+                  "enum": ["upper", "lower", "any"]
+                }
+              }
+            }
+          ]
+        },
+        "labelColon": {
+          "oneOf": [
+            {
+              "enum": ["on", "off", "notInline", "onlyInline", "any"]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "global": {
+                  "enum": ["on", "off", "notInline", "onlyInline", "any"]
+                },
+                "local": {
+                  "enum": ["on", "off", "notInline", "onlyInline", "any"]
+                }
+              }
+            }
+          ]
+        },
+        "quotes": {
+          "enum": ["double", "single", "any"]
+        },
+        "operandSpace": {
+          "enum": ["on", "off", "any"]
+        },
+        "trimWhitespace": {
+          "type": "boolean"
+        },
+        "finalNewLine": {
+          "type": "boolean"
+        },
+        "endOfLine": {
+          "enum": ["lf", "cr", "crlf"]
+        },
+        "align": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mnemonic": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "operands": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "comment": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "operator": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "value": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "indentConditional": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "indentRept": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "indentMacro": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "tabSize": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "indentStyle": {
+              "enum": ["space", "tab"]
+            },
+            "autoExtend": {
+              "enum": ["line", "file", "block"]
+            },
+            "standaloneComment": {
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "enum": [
+                    "ignore",
+                    "nearest",
+                    "label",
+                    "mnemonic",
+                    "operands",
+                    "comment",
+                    "operator",
+                    "value"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

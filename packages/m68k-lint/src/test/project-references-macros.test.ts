@@ -20,7 +20,8 @@ describe("references made by a macro call", () => {
       "main.s": ["main:", "CALLINIT Sound", "rts"].join("\n"),
     });
     expect(index.references("Init_Sound")).toBe(true);
-    expect(index.references("init_sound")).toBe(true);
+    // A different case is a different symbol.
+    expect(index.references("init_sound")).toBe(false);
   });
 
   test("a name the call does not build is not", () => {

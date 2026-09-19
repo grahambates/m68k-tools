@@ -7,6 +7,7 @@ import { tmpdir } from "os";
 import { basename, dirname, join, relative } from "path";
 import { minimatch } from "minimatch";
 
+import { assemblerArgs } from "./config";
 import { type Context } from "./context";
 import { getEntryPointsFor } from "./files";
 import { instructionDocs } from "./docs";
@@ -57,11 +58,9 @@ export default class DiagnosticProcessor {
     }
 
     const args = [
-      // Custom args:
-      ...conf.vasm.args,
-      // Add dynamic options from main config:
-      ...conf.includePaths.map((path) => "-I" + path),
-      ...conf.processors.map((proc) => "-m" + proc.replace(/^mc/, "")),
+      // Custom args, and those that follow from the options in the main config
+      // (include paths, processors, case):
+      ...assemblerArgs(conf),
       // Filename of source file:
       // Command will be run from same dir to get relative paths in error messages
       basename(srcPath),

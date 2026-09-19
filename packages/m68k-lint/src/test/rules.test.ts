@@ -1649,7 +1649,7 @@ describe("v0.11 register-driven rules", () => {
         (d) => d.ruleId === ID,
       );
       expect(named?.suggestion?.replacement).toBe("\tclr.w (a1)+");
-      expect(named?.data?.symbolsLost).toEqual(["city_endmark"]);
+      expect(named?.data?.symbolsLost).toEqual(["CITY_ENDMARK"]);
     });
   });
 

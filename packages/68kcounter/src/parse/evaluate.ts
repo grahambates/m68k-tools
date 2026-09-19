@@ -1,6 +1,7 @@
 import { evaluateConstant, parseExpression } from "m68k-parser";
+import { lookupVariable, type Variables } from "./variables";
 
-export type Variables = Record<string, number>;
+export type { Variables };
 
 /** Evaluate a Motorola-syntax integer expression using vasm precedence. */
 export default function evaluate(
@@ -10,7 +11,7 @@ export default function evaluate(
   const parsed = parseExpression(expression.trim().replace(/^#/, ""));
   if (parsed.errors.length) return undefined;
   const result = evaluateConstant(parsed.value, (name) =>
-    Object.hasOwn(vars, name) ? vars[name] : undefined,
+    lookupVariable(vars, name),
   );
   return result.known && Number.isFinite(result.value)
     ? result.value

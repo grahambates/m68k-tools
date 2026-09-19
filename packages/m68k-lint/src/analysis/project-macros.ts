@@ -1,4 +1,4 @@
-import { collectMacroDefinitions, parseBlocks } from "m68k-parser";
+import { collectMacroDefinitions, parseBlocks, symbolKey } from "m68k-parser";
 import type { ParsedFile } from "m68k-parser";
 import type { ExternalMacro } from "./symbols.js";
 
@@ -21,6 +21,9 @@ export class ProjectMacros {
   private readonly entries = new Map<string, Entry>();
   private readonly conflicted = new Set<string>();
 
+  /** @param caseSensitive whether `Push` and `push` are different macros */
+  constructor(private readonly caseSensitive = true) {}
+
   /** Add every definition in a parsed file. */
   add(path: string, parsed: ParsedFile, source: string): void {
     const found = collectMacroDefinitions(
@@ -35,7 +38,7 @@ export class ProjectMacros {
         )
       )
         continue;
-      const key = macro.name.toLowerCase();
+      const key = symbolKey(macro.name, this.caseSensitive);
       if (this.conflicted.has(key)) continue;
       const entry: Entry = {
         definition: macro,
@@ -52,7 +55,7 @@ export class ProjectMacros {
 
   /** The macro of this name, if the project agrees on one definition of it. */
   get(name: string): ExternalMacro | undefined {
-    const entry = this.entries.get(name.toLowerCase());
+    const entry = this.entries.get(symbolKey(name, this.caseSensitive));
     return entry && { definition: entry.definition, origin: entry.origin };
   }
 

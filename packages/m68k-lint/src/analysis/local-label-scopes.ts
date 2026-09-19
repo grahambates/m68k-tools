@@ -5,6 +5,7 @@ import {
   type ParsedFile,
 } from "m68k-parser";
 import { scanBlocks } from "./blocks.js";
+import { isCaseSensitive } from "./case-mode.js";
 import { symbolNamesIn } from "./references.js";
 
 export interface LocalLabelScopes extends ResolvedScopes {
@@ -20,7 +21,7 @@ export interface LocalLabelScopes extends ResolvedScopes {
  * operand names, for the rules that ask whether one is used.
  */
 export function analyzeLocalLabelScopes(file: ParsedFile): LocalLabelScopes {
-  const scopes = resolveScopes(file);
+  const scopes = resolveScopes(file, { caseSensitive: isCaseSensitive(file) });
   const blocks = scanBlocks(file);
 
   const referenced = new Set<string>();

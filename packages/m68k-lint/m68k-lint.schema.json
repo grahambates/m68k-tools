@@ -80,6 +80,14 @@
       },
       "deprecated": true
     },
+    "includePaths": {
+      "description": "Directories the assembler is given to find includes in (vasm -I). Absolute, or relative to this file. Includes found through them are read for the constants and macros they define, so files shared between projects can live outside the project, but they are never linted.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
     "ignorePatterns": {
       "type": "array",
       "items": {

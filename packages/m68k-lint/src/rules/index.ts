@@ -121,6 +121,7 @@ import { unusedLocalLabel } from "./suspicious/unused-local-label.js";
 import { unusedGlobalLabel } from "./suspicious/unused-global-label.js";
 import { unusedConstant } from "./suspicious/unused-constant.js";
 import { unusedMacro } from "./suspicious/unused-macro.js";
+import { includeCase } from "./portability/include-case.js";
 import { unreachableCode } from "./suspicious/unreachable-code.js";
 import { infiniteLoop } from "./suspicious/infinite-loop.js";
 import { dbraWordCounter } from "./suspicious/dbra-word-counter.js";
@@ -231,6 +232,7 @@ export {
   unusedGlobalLabel,
   unusedConstant,
   unusedMacro,
+  includeCase,
   unreachableCode,
   infiniteLoop,
   dbraWordCounter,
@@ -492,6 +494,7 @@ export const defaultRules: readonly Rule[] = [
   unusedGlobalLabel,
   unusedConstant,
   unusedMacro,
+  includeCase,
   unreachableCode,
   infiniteLoop,
   dbraWordCounter,

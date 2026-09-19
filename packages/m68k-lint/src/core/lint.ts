@@ -9,11 +9,13 @@ import {
   unusedGlobalLabel,
   unusedConstant,
   unusedMacro,
+  includeCase,
 } from "../rules/index.js";
 import { measureDiagnosticImpact } from "../analysis/impact.js";
 import { createInlineSuppression } from "./inline-config.js";
 import type { ExternalSymbols } from "../analysis/symbols.js";
 import type { ProjectReferences } from "../analysis/project-references.js";
+import type { FileFacts } from "./facts.js";
 
 function matchesOptimizationGoal(
   diagnostic: Diagnostic,
@@ -126,6 +128,18 @@ export function needsProjectReferences(config: LintConfig): boolean {
   );
 }
 
+/**
+ * Whether a rule that needs the file system to have been consulted is live.
+ *
+ * Working out what an include is called on disk touches the file system, so a
+ * caller checks this first rather than paying for it on every run. Kept here for
+ * the reason `needsProjectReferences` is: the command line and the language
+ * server cannot then disagree about it.
+ */
+export function needsIncludeCase(config: LintConfig): boolean {
+  return effectiveSeverity(includeCase, config) !== "off";
+}
+
 export function lintParsedFile(
   file: ParsedFile,
   source: string,
@@ -133,6 +147,7 @@ export function lintParsedFile(
   rules: readonly Rule[] = defaultRules,
   external?: ExternalSymbols,
   projectReferences?: ProjectReferences,
+  facts?: FileFacts,
 ): Diagnostic[] {
   const ctx = new DefaultRuleContext(
     file,
@@ -140,6 +155,7 @@ export function lintParsedFile(
     config,
     external,
     projectReferences,
+    facts,
   );
 
   const paired = inversePairs(rules);
@@ -236,6 +252,7 @@ export function lintSource(
   rules: readonly Rule[] = defaultRules,
   external?: ExternalSymbols,
   projectReferences?: ProjectReferences,
+  facts?: FileFacts,
 ): Diagnostic[] {
   return lintParsedFile(
     parseFile(source),
@@ -244,5 +261,6 @@ export function lintSource(
     rules,
     external,
     projectReferences,
+    facts,
   );
 }

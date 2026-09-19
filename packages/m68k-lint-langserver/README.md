@@ -32,6 +32,11 @@ command line: they get no findings and no code actions. They are still read for 
 and macros they define, so ignoring a system include stops its unused symbols being reported
 without leaving the constants in it unresolved. Patterns are relative to the config file.
 
+`includePaths` in the config are the directories the assembler searches for includes, as in
+the assembly language server. Includes the linter finds through them, beside a file or in one
+of those directories, are read for the constants and macros they define even when they are
+outside the workspace, and are never linted.
+
 Settings, under the `m68kLint` section:
 
 ```jsonc

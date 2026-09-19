@@ -3,7 +3,7 @@
 Extensible static analysis and linting for Motorola 68k assembly, built on
 [`m68k-parser`](https://github.com/grahambates/m68k-tools/tree/main/packages/m68k-parser).
 
-155 built-in rules across correctness, suspicious-construct, optimization and
+156 built-in rules across correctness, suspicious-construct, optimization and
 style checks, backed by condition-code liveness, register liveness, constant
 propagation, stack depth and byte-alignment tracking, and macro expansion. Optimization suggestions on `mc68000` carry **exact** measured
 size and cycle deltas from [`68kcounter`](https://github.com/grahambates/m68k-tools/tree/main/packages/68kcounter),
@@ -145,6 +145,7 @@ named rule. File and ignore patterns are relative to the config file's directory
   "extensions": [".s", ".asm", ".i"],
   "files": ["src/**", "include/**"],
   "ignores": ["generated/**", "vendor/**"],
+  "includePaths": ["../shared/include"],
   "categories": { "style": false },
   "rules": {
     "suspicious/nop": "off",
@@ -153,7 +154,9 @@ named rule. File and ignore patterns are relative to the config file's directory
 }
 ```
 
-`files` is used when no input path is given on the command line. `include` and
+`includePaths` are the directories the assembler searches for includes; see
+[Includes outside the project](#includes-outside-the-project). `files` is used when no
+input path is given on the command line. `include` and
 `ignorePatterns` are accepted as aliases of `files` and `ignores`.
 `node_modules/**` and `.git/**` are always ignored during discovery.
 
@@ -201,6 +204,39 @@ any finding. It adds the file to `ignores` in the config that applies, beside th
 already there and leaving the rest of the file as it was, and creates `m68k-lint.json` at the
 workspace root if the project has none (which needs a client that can create a file as part of
 an edit, and a file inside the workspace).
+
+## Includes outside the project
+
+A project can include files from outside its own tree, such as NDK files shared
+between projects, and where they are is often given to the assembler rather than
+written in the source (`vasm -I`). List those directories as `includePaths` in
+the project config, the same setting the
+[assembly language server](https://github.com/grahambates/m68k-tools/tree/main/packages/m68k-lsp-server#readme)
+has:
+
+```json
+{
+  "includePaths": ["../shared/include", "/home/me/ndk/include"]
+}
+```
+
+Paths are absolute or relative to the config file. The linter follows each
+`include` it finds, looking beside the file that names it and then in each
+include path in order, as an assembler would, and keeps going through what those
+files include. Case is left to the file system, as it would be for the assembler
+run there: an include in the wrong case is found on macOS and Windows and not on
+Linux, so use the file's real case if the project is shared between developers on
+different systems. The files it reaches are read for the constants and macros they define and the names they refer to, and
+are never linted. At most 4000 are added.
+
+On a file system that ignores case, an include in the wrong case, `include "Exec/Types.i"`
+for `exec/types.i`, assembles without complaint and fails to build on one that does not.
+`portability/include-case` reports it, with the path as it is on disk as the fix. It needs the
+file system, so it is checked for the files the command line or the editor lints, and not
+for text read from standard input.
+
+An include with a path that names its own way, such as `include "../shared/hw.i"`,
+is followed with no configuration. An `INCDIR` in the source is not used yet.
 
 ## Constants from other files
 
@@ -288,6 +324,7 @@ See [`docs/rules.md`](docs/rules.md) for the full generated table, or run
 | `correctness`  | 3     | Valid assembly with a provable semantic or runtime problem  |
 | `suspicious`   | 24    | Valid code that may be intentional but is easy to misread   |
 | `optimization` | 121   | Smaller or faster equivalents, gated on target and liveness |
+| `portability`  | 1     | Constructs that work here but not on another system         |
 | `style`        | 7     | Subjective conventions, opt-in                              |
 
 `severity`, `confidence` and `applicability` are independent. Applicability is

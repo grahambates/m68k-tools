@@ -21,6 +21,7 @@ import {
   type RegisterAnalysis,
 } from "../analysis/registers.js";
 import type { LintConfig } from "./config.js";
+import type { FileFacts } from "./facts.js";
 import type { Diagnostic } from "./diagnostic.js";
 import { isMacroInvocation } from "../util/ast.js";
 import { computeSourceSpan, type SourceSpan } from "./span.js";
@@ -43,6 +44,8 @@ export interface RuleContext {
    * not evidence for a name that may be called from elsewhere.
    */
   readonly projectReferences?: ProjectReferences;
+  /** What the file system says about this file, where the caller supplied it. */
+  readonly facts?: FileFacts;
 
   report(diagnostic: Diagnostic): void;
   evaluate(expr: ExpressionNode): ConstantResult;
@@ -316,6 +319,7 @@ export class DefaultRuleContext implements RuleContext {
     public readonly config: LintConfig,
     external?: ExternalSymbols,
     public readonly projectReferences?: ProjectReferences,
+    public readonly facts?: FileFacts,
   ) {
     this.sourceLines = source.split(/\r?\n/);
     this.symbols = new DefaultSymbolTable(file, external);
@@ -499,7 +503,32 @@ export class DefaultRuleContext implements RuleContext {
     // stop assembling, so there is no rewrite to offer. Rules should not match
     // across one in the first place; this is the backstop for any that build a
     // span some other way.
+    //
+    // The exception is one line rewritten as the same directive, such as an
+    // INCLUDE with a corrected path: nothing structural is removed, only an
+    // operand changes. A block boundary is never let through.
+    const only = matched.length === 1 ? matched[0] : undefined;
+    const rewritesInPlace =
+      only?.mnemonic?.type === "directive" &&
+      !isBlockBoundary(only) &&
+      (() => {
+        try {
+          // Indented, as it will be once placed: in column zero a directive
+          // would be read as a label.
+          const rewritten = parseFile(
+            `\t${suggestion.replacement.trimStart()}`,
+          ).lines.find((line) => line.mnemonic)?.mnemonic;
+          return (
+            rewritten?.type === "directive" &&
+            rewritten.directive.toLowerCase() ===
+              only.mnemonic?.directive?.toLowerCase()
+          );
+        } catch {
+          return false;
+        }
+      })();
     if (
+      !rewritesInPlace &&
       matched.some(
         (line) => isBlockBoundary(line) || line?.mnemonic?.type === "directive",
       )

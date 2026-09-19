@@ -3,6 +3,7 @@ import { dirname, relative, sep } from "node:path";
 import { defaultConfig, type LintConfig } from "m68k-lint";
 import {
   configIgnores,
+  configIncludePaths,
   findProjectConfig,
   isIgnored,
   loadProjectConfig,
@@ -52,6 +53,8 @@ export interface ResolvedConfig {
   error?: string;
   /** The config's `ignores`: files it leaves out of linting. */
   ignores?: readonly string[];
+  /** The config's `includePaths` as absolute directories. */
+  includePaths?: readonly string[];
 }
 
 /**
@@ -131,6 +134,7 @@ export class ConfigResolver {
         config: { ...base, ...overrides },
         configPath,
         ignores: configIgnores(project),
+        includePaths: configIncludePaths(project, dirname(configPath)),
       };
     } catch (error) {
       return {

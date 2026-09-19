@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -342,5 +343,133 @@ describe("files the project ignores", () => {
     const dir = await project([]);
     const { out } = await capture(args(dir));
     expect(out).toContain("HW_UNUSED");
+  });
+});
+
+describe("includes outside the project", () => {
+  /**
+   * A project in `proj/` that includes `hw.i`, which lives in a sibling
+   * directory the source does not say how to reach.
+   */
+  async function workspace(config: object, include = "hw.i") {
+    const dir = await mkdtemp(join(tmpdir(), "m68k-lint-external-"));
+    await mkdir(join(dir, "proj"));
+    await mkdir(join(dir, "shared"));
+    await writeFile(
+      join(dir, "shared", "hw.i"),
+      "HW_ONE equ 1\nHW_UNUSED equ 2\n",
+      "utf8",
+    );
+    await writeFile(
+      join(dir, "proj", "main.s"),
+      `\tinclude "${include}"\nmain:\n\tmove.l\t#HW_ONE,d0\n\trts\n`,
+      "utf8",
+    );
+    await writeFile(
+      join(dir, "proj", "m68k-lint.json"),
+      JSON.stringify(config),
+      "utf8",
+    );
+    return join(dir, "proj");
+  }
+  const lint = (proj: string) =>
+    capture([
+      "--config",
+      join(proj, "m68k-lint.json"),
+      "--rule",
+      "suspicious/unused-constant=warning",
+      proj,
+    ]);
+
+  test("are read through the config's include paths", async () => {
+    const proj = await workspace({ includePaths: ["../shared"] });
+    const { out } = await lint(proj);
+    // The constant only resolves if the file outside the project was read.
+    expect(out).toContain("HW_ONE = 1");
+    expect(out).toContain("../shared/hw.i");
+  });
+
+  test("are not found without the include path", async () => {
+    // The control: the same project with nothing saying where hw.i is.
+    const proj = await workspace({});
+    const { out } = await lint(proj);
+    expect(out).not.toContain("HW_ONE = 1");
+  });
+
+  test("are found in the case the file system finds them in", async () => {
+    // Case is the operating system's business, as it would be for the
+    // assembler run there: found on a case-insensitive one, not on Linux.
+    const proj = await workspace({ includePaths: ["../shared"] }, "HW.I");
+    const dir = join(proj, "..", "shared");
+    const insensitive = existsSync(join(dir, "HW.I"));
+    const { out } = await lint(proj);
+    expect(out.includes("HW_ONE = 1")).toBe(insensitive);
+  });
+
+  test("are found when the include names its way there", async () => {
+    const proj = await workspace({}, "../shared/hw.i");
+    const { out } = await lint(proj);
+    expect(out).toContain("HW_ONE = 1");
+  });
+
+  test("are read but never linted", async () => {
+    const proj = await workspace({ includePaths: ["../shared"] });
+    const { out } = await lint(proj);
+    // hw.i defines a constant nothing uses, and is outside the project: it
+    // provides symbols and gets no findings of its own.
+    expect(out).not.toContain("HW_UNUSED");
+  });
+
+  test("count as references from the project", async () => {
+    const proj = await workspace({ includePaths: ["../shared"] });
+    // Read from the project's own file, the constant is used, so it is not
+    // reported even if the index also read the file that defines it.
+    const { out } = await lint(proj);
+    expect(out).not.toContain("HW_ONE' is not referenced");
+  });
+});
+
+describe("an include in the wrong case", () => {
+  /**
+   * A project whose `main.s` includes `HW.I` while the file is `hw.i`. Only a
+   * file system that ignores case resolves it, which is the situation the rule
+   * is for; on one that does not, the assembler itself would object.
+   */
+  async function project() {
+    const dir = await mkdtemp(join(tmpdir(), "m68k-lint-case-"));
+    await writeFile(join(dir, "hw.i"), "HW_ONE equ 1\n", "utf8");
+    await writeFile(
+      join(dir, "main.s"),
+      '\tinclude "HW.I"\nmain:\n\trts\n',
+      "utf8",
+    );
+    await writeFile(join(dir, "m68k-lint.json"), "{}", "utf8");
+    return dir;
+  }
+
+  test("is reported where the file system lets it through", async () => {
+    const dir = await project();
+    const insensitive = existsSync(join(dir, "HW.I"));
+    const { out } = await capture([
+      "--config",
+      join(dir, "m68k-lint.json"),
+      join(dir, "main.s"),
+    ]);
+    // Reported exactly when the file system resolved it. Where it did not, that
+    // is the assembler's to report and this stays quiet.
+    expect(out.includes("portability/include-case")).toBe(insensitive);
+    if (insensitive) expect(out).toContain("'HW.I' is 'hw.i' on disk");
+  });
+
+  test("is not reported when the rule is off", async () => {
+    const dir = await project();
+    const { out } = await capture([
+      "--config",
+      join(dir, "m68k-lint.json"),
+      "--rule",
+      "portability/include-case=off",
+      join(dir, "main.s"),
+    ]);
+    expect(out).not.toContain("portability/include-case");
   });
 });

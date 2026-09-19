@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { after, before, describe, it } from "node:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { TestClient, editsOf, fixture } from "./lsp-client.mjs";
 
@@ -475,6 +475,45 @@ describe("ignoring a file from a code action", () => {
     assert.equal(
       actions.some((a) => title.test(a.title)),
       false,
+    );
+  });
+});
+
+describe("includes outside the project", () => {
+  it("resolve constants through the config's include paths", async () => {
+    const client = withClient();
+    await client.initialize(fixture("extincl/proj"));
+    const { diagnostics } = await client.open(fixture("extincl/proj/main.s"));
+    // MOVEQ is only suggested if HW_ONE resolved to 1, so the file the include
+    // path points at outside the project was read.
+    assert.ok(
+      diagnostics.some((d) => d.code === "optimization/prefer-moveq"),
+      "the constant from the shared include resolved",
+    );
+  });
+
+  it("stay unresolved without the include path", async () => {
+    // The control: the same source, with nothing saying where hw.i is.
+    const client = withClient();
+    await client.initialize(fixture("extincl/bare"));
+    const { diagnostics } = await client.open(fixture("extincl/bare/main.s"));
+    assert.equal(
+      diagnostics.some((d) => d.code === "optimization/prefer-moveq"),
+      false,
+    );
+  });
+});
+
+describe("an include in the wrong case", () => {
+  it("is reported only where the file system lets it through", async () => {
+    const dir = fixture("wrongcase");
+    const insensitive = existsSync(`${dir}/HW.I`);
+    const client = withClient();
+    await client.initialize(dir);
+    const { diagnostics } = await client.open(`${dir}/main.s`);
+    assert.equal(
+      diagnostics.some((d) => d.code === "portability/include-case"),
+      insensitive,
     );
   });
 });

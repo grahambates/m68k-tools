@@ -4,6 +4,7 @@ export * from "./core/diagnostic.js";
 export * from "./core/lint.js";
 export * from "./core/rule.js";
 export * from "./core/fix.js";
+export * from "./core/facts.js";
 export * from "./core/span.js";
 export * from "./analysis/constants.js";
 export * from "./analysis/symbols.js";

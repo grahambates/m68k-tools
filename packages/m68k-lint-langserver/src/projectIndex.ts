@@ -6,6 +6,11 @@ import {
   type ProjectSymbols,
   type ProjectReferences,
 } from "m68k-lint";
+import {
+  followIncludes,
+  nodeIncludeFs,
+  type IncludedFile,
+} from "m68k-lint/project-config";
 import { discoverAssemblyFiles } from "@m68k-lsp/workspace-files";
 
 /**
@@ -46,6 +51,7 @@ export async function buildIndex(
   root: string,
   overrides: ReadonlyMap<string, string>,
   needsReferences: boolean,
+  includePaths: readonly string[] = [],
 ): Promise<ProjectIndex | undefined> {
   const paths = await discoverAssemblyFiles(root, {
     extensions: EXTENSIONS,
@@ -54,21 +60,32 @@ export async function buildIndex(
   if (!paths.length) return undefined;
 
   const files: { path: string; source: string }[] = [];
+  const read: IncludedFile[] = [];
   for (const path of paths) {
     const override = overrides.get(path);
     if (override !== undefined) {
       files.push({ path: relative(root, path) || path, source: override });
+      read.push({ path, source: override });
       continue;
     }
     try {
-      files.push({
-        path: relative(root, path) || path,
-        source: await readFile(path, "utf8"),
-      });
+      const source = await readFile(path, "utf8");
+      files.push({ path: relative(root, path) || path, source });
+      read.push({ path, source });
     } catch {
       // Unreadable files simply contribute nothing to the index.
     }
   }
+
+  // What the project includes from outside its tree, found beside the files or
+  // through the config's include paths. Read for what it defines, never linted.
+  const included = await followIncludes(read, {
+    includePaths,
+    fs: nodeIncludeFs(overrides),
+  });
+  for (const { path, source } of included)
+    files.push({ path: relative(root, path) || path, source });
+
   return {
     symbols: buildProjectSymbols(files),
     references: needsReferences ? buildProjectReferences(files) : undefined,
@@ -95,18 +112,24 @@ export class ProjectIndexCache {
   private cache = new Map<string, Promise<ProjectIndex | undefined>>();
   private withReferences = new Set<string>();
 
+  /**
+   * One index per root and set of include paths: two configs under one root can
+   * name different include paths, and each must get an index that read them.
+   */
   get(
     root: string,
     overrides: ReadonlyMap<string, string>,
     needsReferences: boolean,
+    includePaths: readonly string[] = [],
   ): Promise<ProjectIndex | undefined> {
-    const cached = this.cache.get(root);
-    if (cached && (!needsReferences || this.withReferences.has(root)))
+    const key = [root, ...includePaths].join("\0");
+    const cached = this.cache.get(key);
+    if (cached && (!needsReferences || this.withReferences.has(key)))
       return cached;
 
-    if (needsReferences) this.withReferences.add(root);
-    const index = buildIndex(root, overrides, needsReferences);
-    this.cache.set(root, index);
+    if (needsReferences) this.withReferences.add(key);
+    const index = buildIndex(root, overrides, needsReferences, includePaths);
+    this.cache.set(key, index);
     return index;
   }
 

@@ -2,7 +2,12 @@ import { readFile, writeFile } from "node:fs/promises";
 import { statSync } from "node:fs";
 import { dirname, relative, resolve, sep } from "node:path";
 import { parseFile } from "m68k-parser";
-import { lintParsedFile, needsProjectReferences } from "../core/lint.js";
+import {
+  lintParsedFile,
+  needsIncludeCase,
+  needsProjectReferences,
+} from "../core/lint.js";
+import type { FileFacts } from "../core/facts.js";
 import { applyFixes, type FixResult } from "../core/fix.js";
 import type {
   Applicability,
@@ -26,8 +31,13 @@ import { runRuleImpactAudit } from "../audit/rule-impact.js";
 import { defaultAssemblyExtensions, discoverFiles } from "./file-discovery.js";
 import { alwaysIgnored } from "./ignores.js";
 import {
+  configIncludePaths,
   findProjectConfig,
+  followIncludes,
+  includeCaseOnDisk,
   loadProjectConfig,
+  nodeIncludeFs,
+  type IncludedFile,
   type ProjectConfig,
 } from "./project-config.js";
 import {
@@ -102,8 +112,19 @@ async function lintOne(
   options: CliOptions,
   config: LintConfig,
   projectIndex?: ProjectIndex,
+  includePaths: readonly string[] = [],
 ) {
   let source = await readFile(path, "utf8");
+  // What the file system calls each include, for the rule that compares it with
+  // what the source says. Found once, from the text as read.
+  const facts: FileFacts | undefined = needsIncludeCase(config)
+    ? {
+        includeCase: await includeCaseOnDisk(
+          { path: resolve(path), source },
+          { includePaths, fs: nodeIncludeFs() },
+        ),
+      }
+    : undefined;
   let fixed: FixResult | undefined;
 
   if (options.fix) {
@@ -131,6 +152,7 @@ async function lintOne(
           undefined,
           projectIndex?.symbols,
           projectIndex?.references,
+          facts,
         ),
       {
         accept,
@@ -155,6 +177,7 @@ async function lintOne(
     undefined,
     projectIndex?.symbols,
     projectIndex?.references,
+    facts,
   );
   return { path, source, parseErrors: parsed.errors, diagnostics, fixed };
 }
@@ -197,7 +220,9 @@ export interface ProjectIndex {
  * all.
  *
  * Deliberately wider than the lint set, and the project's ignore patterns do not
- * narrow it: a file left out of linting is still read. Headers are often
+ * narrow it: a file left out of linting is still read. It also reaches past the
+ * project: what the files include, found beside them or through the config's
+ * `includePaths`, is read too. Headers are often
  * excluded from linting -- a system include the project only borrows from, whose
  * every unused symbol would otherwise be reported -- but are exactly where
  * constants, macros and cross-file XDEF/XREF pairs live. Reading them costs one
@@ -214,6 +239,7 @@ async function buildProjectIndex(
   root: string,
   extensions: readonly string[],
   needsReferences: boolean,
+  includePaths: readonly string[],
 ): Promise<ProjectIndex | undefined> {
   let paths: string[];
   try {
@@ -229,16 +255,26 @@ async function buildProjectIndex(
   }
 
   const files = [];
+  const read: IncludedFile[] = [];
   for (const path of paths) {
     try {
-      files.push({
-        path: relative(root, path) || path,
-        source: await readFile(path, "utf8"),
-      });
+      const source = await readFile(path, "utf8");
+      files.push({ path: relative(root, path) || path, source });
+      read.push({ path, source });
     } catch {
       // Unreadable files simply contribute nothing to the index.
     }
   }
+
+  // What the project includes from outside its tree -- shared NDK files, say --
+  // is found through the include paths and read for what it defines, never linted.
+  const included = await followIncludes(read, {
+    includePaths,
+    fs: nodeIncludeFs(),
+  });
+  for (const { path, source } of included)
+    files.push({ path: relative(root, path) || path, source });
+
   return {
     symbols: buildProjectSymbols(files),
     references: needsReferences ? buildProjectReferences(files) : undefined,
@@ -472,6 +508,9 @@ export async function run(argv: string[]): Promise<number> {
     });
   }
 
+  const includePaths = projectConfigPath
+    ? configIncludePaths(projectConfig, dirname(projectConfigPath))
+    : [];
   const projectIndex =
     config.projectSymbols === false
       ? undefined
@@ -479,13 +518,16 @@ export async function run(argv: string[]): Promise<number> {
           projectConfigPath ? projectRoot : inputRoot(rawInputs, projectRoot),
           extensions,
           needsProjectReferences(config),
+          includePaths,
         );
 
   const results: LintResult[] = [];
   let ioFailed = false;
   for (const file of inputFiles) {
     try {
-      results.push(await lintOne(file, options, config, projectIndex));
+      results.push(
+        await lintOne(file, options, config, projectIndex, includePaths),
+      );
     } catch (error) {
       ioFailed = true;
       const message = error instanceof Error ? error.message : String(error);

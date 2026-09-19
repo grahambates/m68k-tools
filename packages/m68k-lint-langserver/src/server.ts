@@ -11,7 +11,15 @@ import {
 } from "vscode-languageserver/node.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
-import { lintSource, needsProjectReferences, type Diagnostic } from "m68k-lint";
+import {
+  lintSource,
+  needsIncludeCase,
+  needsProjectReferences,
+  type Diagnostic,
+  type FileFacts,
+  type LintConfig,
+} from "m68k-lint";
+import { includeCaseOnDisk, nodeIncludeFs } from "m68k-lint/project-config";
 import { ConfigResolver, defaultSettings, type Settings } from "./config.js";
 import {
   DIAGNOSTIC_SOURCE,
@@ -74,7 +82,7 @@ async function lintDocument(
   // the command line. Its symbols are still indexed for everything else.
   if (await configs.isIgnored(uri.fsPath)) return [];
 
-  const { config, error } = await configs.resolve(uri.fsPath);
+  const { config, error, includePaths } = await configs.resolve(uri.fsPath);
   if (error) connection.console.warn(`m68k-lint: ${error}`);
 
   const root =
@@ -84,16 +92,43 @@ async function lintDocument(
         root,
         openDocumentText(),
         needsProjectReferences(config),
+        includePaths,
       )
     : undefined;
 
+  const facts = await fileFacts(
+    uri.fsPath,
+    document.getText(),
+    config,
+    includePaths,
+  );
   return lintSource(
     document.getText(),
     config,
     undefined,
     projectIndex?.symbols,
     projectIndex?.references,
+    facts,
   );
+}
+
+/** What the file system says about a file, for the rules that compare it with the source. */
+async function fileFacts(
+  fsPath: string,
+  text: string,
+  config: LintConfig,
+  includePaths: readonly string[] | undefined,
+): Promise<FileFacts | undefined> {
+  if (!needsIncludeCase(config)) return undefined;
+  return {
+    includeCase: await includeCaseOnDisk(
+      { path: fsPath, source: text },
+      {
+        includePaths: includePaths ?? [],
+        fs: nodeIncludeFs(openDocumentText()),
+      },
+    ),
+  };
 }
 
 async function validate(document: TextDocument): Promise<void> {
@@ -295,7 +330,7 @@ connection.onCodeAction(async (params: CodeActionParams) => {
     return [];
 
   const uri = URI.parse(document.uri);
-  const { config } = await configs.resolve(uri.fsPath);
+  const { config, includePaths } = await configs.resolve(uri.fsPath);
   const root =
     config.projectSymbols === false ? undefined : rootFor(uri.fsPath);
   const projectIndex = root
@@ -303,6 +338,7 @@ connection.onCodeAction(async (params: CodeActionParams) => {
         root,
         openDocumentText(),
         needsProjectReferences(config),
+        includePaths,
       )
     : undefined;
 
@@ -317,6 +353,12 @@ connection.onCodeAction(async (params: CodeActionParams) => {
         openText: (configUri) => documents.get(configUri)?.getText(),
       });
 
+  const facts = await fileFacts(
+    uri.fsPath,
+    document.getText(),
+    config,
+    includePaths,
+  );
   const settings = configs.getSettings();
   const options: ActionOptions = {
     ignoreFile,
@@ -329,6 +371,7 @@ connection.onCodeAction(async (params: CodeActionParams) => {
         undefined,
         projectIndex?.symbols,
         projectIndex?.references,
+        facts,
       ),
   };
 

@@ -13,6 +13,14 @@ import type { RuleCategory } from "../core/diagnostic.js";
 
 export { addIgnoreToConfigText, newConfigText } from "./config-edit.js";
 export { alwaysIgnored, isIgnored } from "./ignores.js";
+export {
+  followIncludes,
+  includeCaseOnDisk,
+  nodeIncludeFs,
+  type FollowOptions,
+  type IncludedFile,
+  type IncludeFs,
+} from "./project-includes.js";
 
 export const configFileNames = ["m68k-lint.json", ".m68klintrc.json"] as const;
 
@@ -60,6 +68,12 @@ export interface ProjectConfig {
   ignores?: string[];
   /** Backward-friendly aliases accepted by the loader. */
   ignorePatterns?: string[];
+  /**
+   * Directories the assembler is given to find includes in, `-I` for vasm.
+   * Absolute, or relative to the config file. Includes found through them are
+   * read for the constants and macros they define, never linted.
+   */
+  includePaths?: string[];
   include?: string[];
 }
 
@@ -139,6 +153,7 @@ export async function loadProjectConfig(path: string): Promise<ProjectConfig> {
     "ignores",
     "include",
     "ignorePatterns",
+    "includePaths",
   ]);
   for (const field of Object.keys(config)) {
     if (!knownFields.has(field))
@@ -153,6 +168,7 @@ export async function loadProjectConfig(path: string): Promise<ProjectConfig> {
     "ignores",
     "ignorePatterns",
     "include",
+    "includePaths",
   ] as const) {
     if (config[field] !== undefined) assertStringArray(config[field], field);
   }
@@ -251,4 +267,12 @@ export function lintConfigFromProject(
 /** The ignore patterns a project config lists, under either of their names. */
 export function configIgnores(config: ProjectConfig): string[] {
   return config.ignores ?? config.ignorePatterns ?? [];
+}
+
+/** The config's include paths as absolute directories, relative ones taken from the config's own. */
+export function configIncludePaths(
+  config: ProjectConfig,
+  configDir: string,
+): string[] {
+  return (config.includePaths ?? []).map((path) => resolve(configDir, path));
 }

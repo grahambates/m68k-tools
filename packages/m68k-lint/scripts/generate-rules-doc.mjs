@@ -138,7 +138,8 @@ const CATEGORY_BLURB = {
     "Valid code that may be intentional but is easy to misread or misuse.",
   optimization:
     "Smaller or faster equivalents, gated on CPU target and proven flag/register liveness.",
-  portability: "Constructs that do not carry across the targeted processors.",
+  portability:
+    "Constructs that do not carry across the targeted processors or the systems a project is built on.",
   style: "Subjective conventions. Opt in with the `style` preset or per rule.",
 };
 

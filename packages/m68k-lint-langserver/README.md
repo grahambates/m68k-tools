@@ -27,6 +27,11 @@ other also provides would turn into a formatter prompt or a definition picker fo
 Reads `m68k-lint.json` / `.m68klintrc.json`, found by walking up from the file being linted.
 That file takes precedence over LSP settings.
 
+Files matched by the config's `ignores` are not linted here either, the same as on the
+command line: they get no findings and no code actions. They are still read for the constants
+and macros they define, so ignoring a system include stops its unused symbols being reported
+without leaving the constants in it unresolved. Patterns are relative to the config file.
+
 Settings, under the `m68kLint` section:
 
 ```jsonc
@@ -61,7 +66,7 @@ vim.lsp.enable("m68k_lint")
 ```
 
 For diagnostics alone, `m68k-lint --format json` already feeds `none-ls`, `efm-langserver` and
-ALE. Code actions — applying a rule's rewrite, writing a suppression comment — are what this
+ALE. Code actions — applying a rule's rewrite, writing a suppression comment, ignoring the file — are what this
 server adds.
 
 ## License

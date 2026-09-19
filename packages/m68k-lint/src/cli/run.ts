@@ -24,6 +24,7 @@ import { formatDiagnostic, formatImpactSummary, paint } from "./format.js";
 import { runInit } from "./init.js";
 import { runRuleImpactAudit } from "../audit/rule-impact.js";
 import { defaultAssemblyExtensions, discoverFiles } from "./file-discovery.js";
+import { alwaysIgnored } from "./ignores.js";
 import {
   findProjectConfig,
   loadProjectConfig,
@@ -195,12 +196,15 @@ export interface ProjectIndex {
  * to, and, only when something will use it, whether a name is referenced at
  * all.
  *
- * Deliberately wider than the lint set: headers are often excluded from linting
- * but are exactly where constants and cross-file XDEF/XREF pairs live. Reading
- * them costs one pass and each index answers conservatively -- constants only
- * for names the whole project agrees on, references only for names it actually
- * finds -- so a project with conflicting definitions or files this cannot read
- * is no worse off than before.
+ * Deliberately wider than the lint set, and the project's ignore patterns do not
+ * narrow it: a file left out of linting is still read. Headers are often
+ * excluded from linting -- a system include the project only borrows from, whose
+ * every unused symbol would otherwise be reported -- but are exactly where
+ * constants, macros and cross-file XDEF/XREF pairs live. Reading them costs one
+ * pass and each index answers conservatively -- constants only for names the
+ * whole project agrees on, references only for names it actually finds -- so a
+ * project with conflicting definitions or files this cannot read is no worse off
+ * than before. This is also what the language server does.
  *
  * The reference index re-parses every file on top of the constant pass, so
  * `needsReferences` is checked before paying for it: `unused-global-label`
@@ -208,7 +212,6 @@ export interface ProjectIndex {
  */
 async function buildProjectIndex(
   root: string,
-  ignorePatterns: readonly string[],
   extensions: readonly string[],
   needsReferences: boolean,
 ): Promise<ProjectIndex | undefined> {
@@ -219,7 +222,7 @@ async function buildProjectIndex(
       extensions: [
         ...new Set([...extensions, ...defaultAssemblyExtensions, ".inc", ".h"]),
       ],
-      ignorePatterns: [...ignorePatterns],
+      ignorePatterns: alwaysIgnored,
     });
   } catch {
     return undefined;
@@ -434,8 +437,7 @@ export async function run(argv: string[]): Promise<number> {
   const extensions =
     options.extensions ?? projectConfig.extensions ?? defaultAssemblyExtensions;
   const ignorePatterns = [
-    "node_modules/**",
-    ".git/**",
+    ...alwaysIgnored,
     ...(projectConfig.ignores ?? projectConfig.ignorePatterns ?? []),
     ...options.ignorePatterns,
   ];
@@ -475,7 +477,6 @@ export async function run(argv: string[]): Promise<number> {
       ? undefined
       : await buildProjectIndex(
           projectConfigPath ? projectRoot : inputRoot(rawInputs, projectRoot),
-          ignorePatterns,
           extensions,
           needsProjectReferences(config),
         );

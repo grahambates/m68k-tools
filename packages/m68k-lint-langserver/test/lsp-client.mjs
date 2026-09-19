@@ -28,6 +28,7 @@ export class TestClient {
    * @param {boolean} [options.workspaceFolders] Advertise workspace-folder support.
    * @param {boolean} [options.configuration] Advertise configuration support.
    * @param {number} [options.registerDelayMs] Stall the reply to client/registerCapability.
+   * @param {boolean} [options.createFiles] Advertise support for creating a file in an edit.
    */
   constructor(options = {}) {
     this.options = {
@@ -134,6 +135,11 @@ export class TestClient {
     const rootUri = pathToFileURL(root).toString();
     const workspace = { configuration: this.options.configuration };
     if (this.options.workspaceFolders) workspace.workspaceFolders = true;
+    if (this.options.createFiles)
+      workspace.workspaceEdit = {
+        documentChanges: true,
+        resourceOperations: ["create"],
+      };
 
     const result = await this.request("initialize", {
       processId: process.pid,

@@ -1,5 +1,7 @@
 import { strict as assert } from "node:assert";
 import { after, before, describe, it } from "node:test";
+import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { TestClient, editsOf, fixture } from "./lsp-client.mjs";
 
 /** Every client is stopped, so a failing assertion cannot leave a server behind. */
@@ -352,4 +354,127 @@ it("annotates an obscuring rule by default, with project mode taking precedence"
         directory === "basic",
       );
   }
+});
+
+/** Applies one text edit to a string, converting its positions to offsets. */
+function applyEdit(text, edit) {
+  const lines = text.split("\n");
+  const offset = ({ line, character }) =>
+    lines.slice(0, line).reduce((sum, l) => sum + l.length + 1, 0) + character;
+  return (
+    text.slice(0, offset(edit.range.start)) +
+    edit.newText +
+    text.slice(offset(edit.range.end))
+  );
+}
+
+describe("ignored files", () => {
+  it("get no findings, and others in the same project still do", async () => {
+    const client = withClient();
+    await client.initialize(fixture("ignoring"));
+
+    const main = await client.open(fixture("ignoring/main.s"));
+    assert.ok(
+      main.diagnostics.length > 0,
+      "a file that is not ignored is linted",
+    );
+
+    const generated = await client.open(fixture("ignoring/generated.s"));
+    assert.deepEqual(generated.diagnostics, [], "a listed file");
+
+    const nested = await client.open(fixture("ignoring/sys/hw.s"));
+    assert.deepEqual(nested.diagnostics, [], "a file matched by a glob");
+  });
+
+  it("offer no code actions", async () => {
+    const client = withClient();
+    await client.initialize(fixture("ignoring"));
+    const { uri } = await client.open(fixture("ignoring/sys/hw.s"));
+    assert.deepEqual(await client.codeActions(uri, 1), []);
+  });
+});
+
+describe("ignoring a file from a code action", () => {
+  const title = /^Ignore this file/;
+
+  it("adds it to the config that applies", async () => {
+    const client = withClient();
+    await client.initialize(fixture("withconfig"));
+    const { uri } = await client.open(fixture("withconfig/main.s"));
+    const actions = await client.codeActions(uri, 1);
+    const action = actions.find((a) => title.test(a.title));
+
+    assert.ok(action, "the action is offered");
+    assert.equal(action.title, "Ignore this file in m68k-lint.json");
+    const configUri = pathToFileURL(
+      fixture("withconfig/m68k-lint.json"),
+    ).toString();
+    const edits = action.edit.changes[configUri];
+    assert.equal(edits.length, 1);
+
+    const before = readFileSync(fixture("withconfig/m68k-lint.json"), "utf8");
+    const after = applyEdit(before, edits[0]);
+    assert.deepEqual(JSON.parse(after), {
+      processors: ["mc68000"],
+      rules: { "suspicious/nop": "off" },
+      ignores: ["main.s"],
+    });
+    // Only the addition is in the edit; what was there is untouched.
+    assert.ok(after.startsWith(before.slice(0, before.lastIndexOf("\n}"))));
+  });
+
+  it("creates a config when the project has none", async () => {
+    const client = withClient({ createFiles: true });
+    await client.initialize(fixture("basic"));
+    const { uri } = await client.open(fixture("basic/moveq.s"));
+    const actions = await client.codeActions(uri, 1);
+    const action = actions.find((a) => title.test(a.title));
+
+    assert.ok(action, "the action is offered");
+    assert.equal(action.title, "Ignore this file (creates m68k-lint.json)");
+    const configUri = pathToFileURL(fixture("basic/m68k-lint.json")).toString();
+    const [create, edit] = action.edit.documentChanges;
+    assert.equal(create.kind, "create");
+    assert.equal(create.uri, configUri);
+    assert.equal(edit.textDocument.uri, configUri);
+    assert.deepEqual(JSON.parse(edit.edits[0].newText), {
+      ignores: ["moveq.s"],
+    });
+  });
+
+  it("is not offered for a file outside the workspace, which has no root to put a config in", async () => {
+    // A shared include lives outside the project. Ignoring it would mean writing
+    // a config into a directory the project does not own.
+    const outside = withClient({ createFiles: true });
+    await outside.initialize(fixture("basic"));
+    const opened = await outside.open(fixture("outside/shared.s"));
+    assert.ok(opened.diagnostics.length > 0, "the file has findings to act on");
+    const actions = await outside.codeActions(opened.uri, 1);
+    assert.ok(actions.length > 0, "other actions are still offered");
+    assert.equal(
+      actions.some((a) => title.test(a.title)),
+      false,
+    );
+
+    // The control: the same file, with its own directory as the workspace.
+    const inside = withClient({ createFiles: true });
+    await inside.initialize(fixture("outside"));
+    const control = await inside.open(fixture("outside/shared.s"));
+    const offered = await inside.codeActions(control.uri, 1);
+    assert.equal(
+      offered.some((a) => title.test(a.title)),
+      true,
+    );
+  });
+
+  it("is not offered where a config would have to be created and the client cannot", async () => {
+    const client = withClient();
+    await client.initialize(fixture("basic"));
+    const { uri } = await client.open(fixture("basic/moveq.s"));
+    const actions = await client.codeActions(uri, 1);
+    assert.equal(
+      actions.some((a) => title.test(a.title)),
+      false,
+    );
+  });
 });

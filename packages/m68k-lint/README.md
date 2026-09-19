@@ -48,34 +48,34 @@ m68k-lint --platform amiga --cpu mc68000 src/
 Directories and globs recursively discover `.s`, `.asm` and `.i` by default;
 explicit file paths are always linted whatever their suffix.
 
-| Option                                   | Description                                                    |
-| ---------------------------------------- | -------------------------------------------------------------- |
-| `--config <path>`                        | Use a specific JSON config file                                |
-| `--no-config`                            | Disable config-file discovery                                  |
-| `--ext <ext,...>`                        | Extensions for directory/glob discovery (default `.s,.asm,.i`) |
-| `--ignore-pattern <glob>`                | Ignore matching files (repeatable)                             |
-| `--cpu <cpu,...>`                        | Target processor(s), default `mc68000`                         |
-| `--platform <generic\|amiga\|atari>`     | Target platform, default `generic`                             |
-| `--preset <name,...>`                    | Enable rule presets: `recommended`, `style`                    |
-| `--goal <balanced\|speed\|size>`         | Filter known optimization trade-offs                           |
-| `--impact` / `--no-impact`               | Enable/disable exact 68000 measurement                         |
-| `--inline-config` / `--no-inline-config` | Honour `m68k-lint` comment directives                          |
-| `--impact-summary`                       | Summarize measured outcomes by rule                            |
-| `--audit-rule-impact`                    | Run the representative 68000 timing audit                      |
-| `--only <category,...>`                  | Run only selected rule categories                              |
-| `--disable-category <category>`          | Disable a category (repeatable)                                |
-| `--rule <id>=<setting>`                  | Override a rule: `off\|error\|warning\|suggestion\|info`       |
-| `--fix`                                  | Apply safe suggestions and rewrite the files                   |
-| `--fix-conditional`                      | Also apply conditional ones; read their notes first            |
-| `--fix-annotate <obfuscated\|all\|none>` | Annotate fixes (default `obfuscated`)                          |
-| `-i`, `--fix-interactive`                | Review each finding and choose what to do with it              |
-| `--fix-dry-run`                          | Report what `--fix` would change, writing nothing              |
-| `--format <pretty\|json>`                | Output format, default `pretty`                                |
-| `--fail-on <severity>`                   | Exit 1 at this severity or higher, default `error`             |
-| `--init`                                 | Create a project config file interactively                     |
-| `--list-rules`                           | List built-in rules and exit                                   |
-| `--color` / `--no-color`                 | Force or disable ANSI colours; default TTY only                |
-| `-h`, `--help` / `-v`, `--version`       | Show help or version                                           |
+| Option                                   | Description                                                     |
+| ---------------------------------------- | --------------------------------------------------------------- |
+| `--config <path>`                        | Use a specific JSON config file                                 |
+| `--no-config`                            | Disable config-file discovery                                   |
+| `--ext <ext,...>`                        | Extensions for directory/glob discovery (default `.s,.asm,.i`)  |
+| `--ignore-pattern <glob>`                | Do not lint matching files; still read for symbols (repeatable) |
+| `--cpu <cpu,...>`                        | Target processor(s), default `mc68000`                          |
+| `--platform <generic\|amiga\|atari>`     | Target platform, default `generic`                              |
+| `--preset <name,...>`                    | Enable rule presets: `recommended`, `style`                     |
+| `--goal <balanced\|speed\|size>`         | Filter known optimization trade-offs                            |
+| `--impact` / `--no-impact`               | Enable/disable exact 68000 measurement                          |
+| `--inline-config` / `--no-inline-config` | Honour `m68k-lint` comment directives                           |
+| `--impact-summary`                       | Summarize measured outcomes by rule                             |
+| `--audit-rule-impact`                    | Run the representative 68000 timing audit                       |
+| `--only <category,...>`                  | Run only selected rule categories                               |
+| `--disable-category <category>`          | Disable a category (repeatable)                                 |
+| `--rule <id>=<setting>`                  | Override a rule: `off\|error\|warning\|suggestion\|info`        |
+| `--fix`                                  | Apply safe suggestions and rewrite the files                    |
+| `--fix-conditional`                      | Also apply conditional ones; read their notes first             |
+| `--fix-annotate <obfuscated\|all\|none>` | Annotate fixes (default `obfuscated`)                           |
+| `-i`, `--fix-interactive`                | Review each finding and choose what to do with it               |
+| `--fix-dry-run`                          | Report what `--fix` would change, writing nothing               |
+| `--format <pretty\|json>`                | Output format, default `pretty`                                 |
+| `--fail-on <severity>`                   | Exit 1 at this severity or higher, default `error`              |
+| `--init`                                 | Create a project config file interactively                      |
+| `--list-rules`                           | List built-in rules and exit                                    |
+| `--color` / `--no-color`                 | Force or disable ANSI colours; default TTY only                 |
+| `-h`, `--help` / `-v`, `--version`       | Show help or version                                            |
 
 `error`-severity diagnostics exit 1; warnings and suggestions are printed but do
 not fail the command. `--fail-on` makes CI stricter. Usage and configuration
@@ -157,6 +157,13 @@ named rule. File and ignore patterns are relative to the config file's directory
 `ignorePatterns` are accepted as aliases of `files` and `ignores`.
 `node_modules/**` and `.git/**` are always ignored during discovery.
 
+`ignores` leaves files out of linting, not out of the project. An ignored file
+is still read for the constants and macros it defines and the names it refers
+to, so a system include the project only borrows from can be ignored, which
+stops every symbol the project does not use being reported, without the
+constants in it going unresolved. Only `node_modules/**` and `.git/**` are
+skipped entirely.
+
 ## Inline directives
 
 ```asm
@@ -182,6 +189,19 @@ current physical line, `disable-next-line` the following one. Projects that need
 centrally enforced configuration can set `"inlineConfig": false` or pass
 `--no-inline-config`.
 
+## Ignoring files
+
+`ignores` in the project config, or `--ignore-pattern`, leaves files out of linting: nothing
+is reported in them. They are still read for the constants and macros they define, and for the
+names they refer to, so ignoring a system include the project only borrows from does not leave
+the constants in it unresolved.
+
+The language server applies the same patterns, and offers an **Ignore this file** quick fix on
+any finding. It adds the file to `ignores` in the config that applies, beside the entries
+already there and leaving the rest of the file as it was, and creates `m68k-lint.json` at the
+workspace root if the project has none (which needs a client that can create a file as part of
+an edit, and a file inside the workspace).
+
 ## Constants from other files
 
 Most rules need to know what a constant is worth, and most constants live in an
@@ -204,6 +224,9 @@ from:
 notes:
  - Resolved from outside this file: SHIFT_COUNT = 32 (from include/hardware.i).
 ```
+
+Files matched by `ignores` are indexed too: ignoring a file stops findings being
+reported in it, not its symbols being used.
 
 Set `"projectSymbols": false` to analyse each file strictly on its own. That
 turns off macros from other files too (see below).
@@ -299,6 +322,8 @@ when the whole project has been read: `suspicious/unused-global-label`,
 `suspicious/unused-constant` and `suspicious/unused-macro`. They report only when
 the project index is available, and a name with no reference the index can see
 may still be an entry point, a vector-table slot or something a build step uses.
+Macro calls are expanded when the references are counted, so a name a macro
+builds from its argument (`jsr Init_\1`) counts as used.
 
 ## Overlapping optimizations
 

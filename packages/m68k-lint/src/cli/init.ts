@@ -140,7 +140,10 @@ export async function collectInitAnswers(
   const goal = await prompt.choice("Optimization goal", GOALS, "balanced");
   const style = await prompt.confirm("Enable the opt-in style preset?", false);
   const files = await prompt.list("Source globs to lint", detectedFiles);
-  const ignores = await prompt.list("Globs to ignore (blank for none)", []);
+  const ignores = await prompt.list(
+    "Globs to leave out of linting; still read for constants and macros (blank for none)",
+    [],
+  );
 
   return { platform, processors, goal, style, files, ignores };
 }

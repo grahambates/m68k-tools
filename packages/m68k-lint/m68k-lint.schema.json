@@ -65,6 +65,7 @@
       }
     },
     "ignores": {
+      "description": "Globs of files not to lint. They are still read for the constants and macros they define, so findings are not reported in a system include but its symbols still resolve.",
       "type": "array",
       "items": {
         "type": "string",

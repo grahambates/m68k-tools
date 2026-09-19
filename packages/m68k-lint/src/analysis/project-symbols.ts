@@ -1,10 +1,10 @@
-import { collectMacroDefinitions, parseBlocks, parseFile } from "m68k-parser";
+import { parseFile } from "m68k-parser";
 import type { ExpressionNode } from "m68k-parser";
 import { evaluateConstant } from "./constants.js";
+import { ProjectMacros } from "./project-macros.js";
 import { isInMacroDefinition, scanBlocks } from "./blocks.js";
 import {
   constantDefinition,
-  type ExternalMacro,
   sameExpression,
   type ExternalSymbols,
 } from "./symbols.js";
@@ -52,18 +52,12 @@ interface Definition {
   origin: string;
 }
 
-interface MacroEntry extends ExternalMacro {
-  /** The body as written, for telling whether two definitions agree. */
-  key: string;
-}
-
 export function buildProjectSymbols(
   files: readonly ProjectSourceFile[],
 ): ProjectSymbols {
   const definitions = new Map<string, Definition>();
   const conflicted = new Set<string>();
-  const macros = new Map<string, MacroEntry>();
-  const conflictedMacros = new Set<string>();
+  const macros = new ProjectMacros();
 
   for (const { path, source } of files) {
     let parsed;
@@ -76,32 +70,7 @@ export function buildProjectSymbols(
     }
     const blocks = scanBlocks(parsed);
 
-    // A macro defined inside another macro's body belongs to its expansions.
-    const found = collectMacroDefinitions(
-      parsed,
-      source.split(/\r?\n/),
-      parseBlocks(parsed),
-    );
-    for (const macro of found) {
-      if (
-        found.some(
-          (o) => o !== macro && o.start < macro.start && macro.end < o.end,
-        )
-      )
-        continue;
-      const key = macro.name.toLowerCase();
-      if (conflictedMacros.has(key)) continue;
-      const entry: MacroEntry = {
-        definition: macro,
-        origin: path,
-        key: macro.body.map((line) => line.trimEnd()).join("\n"),
-      };
-      const existing = macros.get(key);
-      if (existing && existing.key !== entry.key) {
-        conflictedMacros.add(key);
-        macros.delete(key);
-      } else if (!existing) macros.set(key, entry);
-    }
+    macros.add(path, parsed, source);
 
     parsed.lines.forEach((line, lineIndex) => {
       const definition = constantDefinition(line);
@@ -147,9 +116,6 @@ export function buildProjectSymbols(
       if (value === undefined) return undefined;
       return { value, origin: definitions.get(name.toLowerCase())!.origin };
     },
-    macro(name) {
-      const entry = macros.get(name.toLowerCase());
-      return entry && { definition: entry.definition, origin: entry.origin };
-    },
+    macro: (name) => macros.get(name),
   };
 }

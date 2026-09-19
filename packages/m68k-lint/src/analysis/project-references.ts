@@ -1,5 +1,12 @@
-import { parseFile } from "m68k-parser";
-import { collectReferencedSymbols } from "./references.js";
+import {
+  expandMacro,
+  macroInvocation,
+  parseFile,
+  type ParsedLine,
+} from "m68k-parser";
+import { scanBlocks } from "./blocks.js";
+import { ProjectMacros } from "./project-macros.js";
+import { collectReferencedSymbols, symbolNamesIn } from "./references.js";
 import type { ProjectSourceFile } from "./project-symbols.js";
 
 /**
@@ -12,6 +19,12 @@ import type { ProjectSourceFile } from "./project-symbols.js";
  * from. XDEF and XREF need no special handling: their operands parse as
  * ordinary symbol references, so a name a file exports or imports already
  * counts as referenced without this module knowing those directives exist.
+ *
+ * A macro call can name something the call itself does not spell out:
+ * `CALLINIT Sound` over `jsr Init_\1` refers to `Init_Sound`. So each call to a
+ * macro the project defines is expanded and the names in the result counted
+ * too. That can only add references, which is the safe direction for a rule that
+ * reports a name as unused.
  *
  * A file that will not parse contributes nothing, the same way it does for
  * `ProjectSymbols`: it is not this pass's job to report that.
@@ -34,7 +47,12 @@ export function buildProjectReferences(
 ): ProjectReferences {
   const referenced = new Set<string>();
   const invoked = new Set<string>();
-  for (const { source } of files) {
+  const macros = new ProjectMacros();
+  // Calls are expanded once every file has been read, since the macro may be
+  // defined in one that comes later.
+  const calls: { line: ParsedLine; text: string }[] = [];
+
+  for (const { path, source } of files) {
     let parsed;
     try {
       parsed = parseFile(source);
@@ -42,10 +60,37 @@ export function buildProjectReferences(
       continue;
     }
     collectReferencedSymbols(parsed.lines, referenced);
-    for (const line of parsed.lines)
-      if (line.mnemonic?.type === "macro")
-        invoked.add(line.mnemonic.macro.toLowerCase());
+    macros.add(path, parsed, source);
+
+    const regions = scanBlocks(parsed).region;
+    const text = source.split(/\r?\n/);
+    parsed.lines.forEach((line, index) => {
+      if (line.mnemonic?.type !== "macro") return;
+      invoked.add(line.mnemonic.macro.toLowerCase());
+      // A call in a macro body is expanded with the macro that contains it.
+      if (regions[index] === 0) calls.push({ line, text: text[index] ?? "" });
+    });
   }
+
+  let unique = 0;
+  for (const { line, text } of calls) {
+    if (line.mnemonic?.type !== "macro") continue;
+    const found = macros.get(line.mnemonic.macro);
+    if (!found) continue;
+    const expansion = expandMacro(
+      found.definition,
+      macroInvocation(line, text),
+      {
+        resolve: (name) => macros.get(name)?.definition,
+        unique: () => String(unique++),
+      },
+    );
+    for (const expanded of expansion.lines)
+      for (const operand of expanded.line.operands ?? [])
+        for (const name of symbolNamesIn(operand))
+          referenced.add(name.toLowerCase());
+  }
+
   return {
     references: (name) => referenced.has(name.toLowerCase()),
     invokes: (name) => invoked.has(name.toLowerCase()),

@@ -19,6 +19,7 @@ import {
   toLspDiagnostic,
 } from "./diagnostics.js";
 import { codeActionsFor, type ActionOptions } from "./codeActions.js";
+import { ignoreFileAction } from "./ignoreFile.js";
 import { ProjectIndexCache } from "./projectIndex.js";
 
 const connection = createConnection(ProposedFeatures.all);
@@ -29,6 +30,8 @@ const indexes = new ProjectIndexCache();
 let workspaceRoots: string[] = [];
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
+/** Whether an edit may create a file, which "ignore this file" needs when there is no config. */
+let canCreateFiles = false;
 
 /**
  * Resolves once the first settings pull has finished.
@@ -66,6 +69,10 @@ async function lintDocument(
 ): Promise<Diagnostic[] | undefined> {
   const uri = URI.parse(document.uri);
   if (uri.scheme !== "file") return undefined;
+
+  // A file the project leaves out of linting gets no findings, the same as on
+  // the command line. Its symbols are still indexed for everything else.
+  if (await configs.isIgnored(uri.fsPath)) return [];
 
   const { config, error } = await configs.resolve(uri.fsPath);
   if (error) connection.console.warn(`m68k-lint: ${error}`);
@@ -146,6 +153,11 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
   );
   hasWorkspaceFolderCapability = Boolean(
     params.capabilities.workspace?.workspaceFolders,
+  );
+  const workspaceEdit = params.capabilities.workspace?.workspaceEdit;
+  canCreateFiles = Boolean(
+    workspaceEdit?.documentChanges &&
+    workspaceEdit.resourceOperations?.includes("create"),
   );
   // Nothing to wait for when the client cannot serve settings at all.
   if (!hasConfigurationCapability) markSettingsReady();
@@ -294,8 +306,20 @@ connection.onCodeAction(async (params: CodeActionParams) => {
       )
     : undefined;
 
+  const resolved = await configs.resolve(uri.fsPath);
+  const ignoreFile = resolved.error
+    ? undefined
+    : await ignoreFileAction({
+        fsPath: uri.fsPath,
+        configPath: resolved.configPath,
+        root: rootFor(uri.fsPath),
+        canCreateFiles,
+        openText: (configUri) => documents.get(configUri)?.getText(),
+      });
+
   const settings = configs.getSettings();
   const options: ActionOptions = {
+    ignoreFile,
     conditional: settings.quickFix.conditional,
     annotate: config.fixAnnotate ?? "obfuscated",
     lint: (text) =>

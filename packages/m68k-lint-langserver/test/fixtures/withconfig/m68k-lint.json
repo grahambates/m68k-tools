@@ -1,0 +1,4 @@
+{
+  "processors": ["mc68000"],
+  "rules": { "suspicious/nop": "off" }
+}

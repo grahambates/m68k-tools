@@ -11,6 +11,9 @@ import type {
 } from "../core/config.js";
 import type { RuleCategory } from "../core/diagnostic.js";
 
+export { addIgnoreToConfigText, newConfigText } from "./config-edit.js";
+export { alwaysIgnored, isIgnored } from "./ignores.js";
+
 export const configFileNames = ["m68k-lint.json", ".m68klintrc.json"] as const;
 
 const processors = new Set<Processor>([
@@ -243,4 +246,9 @@ export function lintConfigFromProject(
     rules: config.rules,
     categories: config.categories,
   };
+}
+
+/** The ignore patterns a project config lists, under either of their names. */
+export function configIgnores(config: ProjectConfig): string[] {
+  return config.ignores ?? config.ignorePatterns ?? [];
 }

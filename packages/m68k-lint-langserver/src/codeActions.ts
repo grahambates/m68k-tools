@@ -119,6 +119,12 @@ export interface ActionOptions {
    * would have whichever config arrived last.
    */
   lint: (source: string) => Diagnostic[];
+  /**
+   * Adds the file to the project's ignore list, if it can be. Built by the
+   * caller, since it reads and writes the config file, and offered once for
+   * whatever findings were selected.
+   */
+  ignoreFile?: CodeAction;
 }
 
 /** Quick fixes and suppressions for the diagnostics overlapping `range`. */
@@ -156,6 +162,8 @@ export function codeActionsFor(
       actions.push(disableInFile(document, choice));
     }
   }
+
+  if (options.ignoreFile && selected.length) actions.push(options.ignoreFile);
 
   if (
     diagnostics.some(

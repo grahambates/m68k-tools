@@ -89,7 +89,7 @@ Options:
   --config <path>               Use a specific JSON config file
   --no-config                   Disable config-file discovery
   --ext <ext[,ext...]>          Extensions for directory/glob discovery; default: .s,.asm,.i
-  --ignore-pattern <glob>       Ignore matching files (repeatable)
+  --ignore-pattern <glob>       Do not lint matching files; they are still read (repeatable)
   --cpu <cpu[,cpu...]>          Target processor(s), default: mc68000
   --platform <name>             generic, amiga, atari; default: generic
   --preset <name[,name...]>     Enable rule preset(s): recommended, style

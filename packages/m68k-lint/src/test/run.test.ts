@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs, type CliOptions } from "../cli/args.js";
@@ -288,4 +288,59 @@ test("annotation precedence is CLI, project, then obfuscated", () => {
     buildConfig(options(["--fix-annotate", "none"]), { fixAnnotate: "all" })
       .fixAnnotate,
   ).toBe("none");
+});
+
+describe("files the project ignores", () => {
+  /** A system header the project borrows from, and a source that uses it. */
+  async function project(ignores: string[]) {
+    const dir = await mkdtemp(join(tmpdir(), "m68k-lint-ignored-"));
+    await mkdir(join(dir, "sys"));
+    await writeFile(
+      join(dir, "sys", "hw.i"),
+      "HW_ONE equ 1\nHW_UNUSED equ 2\n",
+      "utf8",
+    );
+    await writeFile(
+      join(dir, "main.s"),
+      "main:\n\tmove.l\t#HW_ONE,d0\n\trts\n",
+      "utf8",
+    );
+    await writeFile(
+      join(dir, "m68k-lint.json"),
+      JSON.stringify({ ignores }),
+      "utf8",
+    );
+    return dir;
+  }
+  // The config is named outright: the CLI looks for one from where it is run,
+  // not from the file it is given.
+  const args = (dir: string) => [
+    "--config",
+    join(dir, "m68k-lint.json"),
+    "--rule",
+    "suspicious/unused-constant=warning",
+    dir,
+  ];
+
+  test("are not reported on", async () => {
+    const dir = await project(["sys/**"]);
+    const { out } = await capture(args(dir));
+    expect(out).not.toContain("HW_UNUSED");
+  });
+
+  test("are still read, so their constants resolve", async () => {
+    const dir = await project(["sys/**"]);
+    const { out } = await capture(args(dir));
+    // The constant only resolves if the ignored header was indexed.
+    expect(out).toContain("HW_ONE = 1");
+    expect(out).toContain("sys/hw.i");
+  });
+
+  test("would be reported on if they were not ignored", async () => {
+    // The control: the rule does fire on the header, so silence above is the
+    // ignore pattern at work rather than the rule finding nothing.
+    const dir = await project([]);
+    const { out } = await capture(args(dir));
+    expect(out).toContain("HW_UNUSED");
+  });
 });

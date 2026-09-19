@@ -1,8 +1,10 @@
 import type { FixAnnotation } from "m68k-lint";
-import { dirname } from "node:path";
+import { dirname, relative, sep } from "node:path";
 import { defaultConfig, type LintConfig } from "m68k-lint";
 import {
+  configIgnores,
   findProjectConfig,
+  isIgnored,
   loadProjectConfig,
   lintConfigFromProject,
 } from "m68k-lint/project-config";
@@ -48,6 +50,8 @@ export interface ResolvedConfig {
   configPath?: string;
   /** Set when a config file was found but could not be read or validated. */
   error?: string;
+  /** The config's `ignores`: files it leaves out of linting. */
+  ignores?: readonly string[];
 }
 
 /**
@@ -85,6 +89,23 @@ export class ConfigResolver {
     return resolved;
   }
 
+  /**
+   * Whether the project's config leaves this file out of linting.
+   *
+   * Patterns are relative to the config file's directory, as they are for the
+   * command line, so the two agree about which files are ignored. A file outside
+   * that directory is never ignored by it.
+   */
+  async isIgnored(fsPath: string): Promise<boolean> {
+    const { configPath, ignores } = await this.resolve(fsPath);
+    if (!configPath) return false;
+    const relativePath = relative(dirname(configPath), fsPath)
+      .split(sep)
+      .join("/");
+    if (relativePath.startsWith("..")) return false;
+    return isIgnored(relativePath, ignores ?? []);
+  }
+
   private async load(dir: string): Promise<ResolvedConfig> {
     const base: LintConfig = {
       ...defaultConfig,
@@ -106,7 +127,11 @@ export class ConfigResolver {
       // lintConfigFromProject returns every key, undefined where the file was
       // silent. Spreading that as-is would erase the defaults underneath.
       const overrides = defined(lintConfigFromProject(project));
-      return { config: { ...base, ...overrides }, configPath };
+      return {
+        config: { ...base, ...overrides },
+        configPath,
+        ignores: configIgnores(project),
+      };
     } catch (error) {
       return {
         config: base,

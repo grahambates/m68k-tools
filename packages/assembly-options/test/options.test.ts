@@ -19,11 +19,10 @@ describe("optionsFromVasmArgs", () => {
     expect(optionsFromVasmArgs(["-Fhunkexe"]).caseSensitive).toBeUndefined();
   });
 
-  it("reads include paths in both spellings, taking relative ones from the base", () => {
+  it("reads include paths in both spellings, as written", () => {
     expect(
-      optionsFromVasmArgs(["-I../shared", "-I", "/abs/ndk"], "/work/proj")
-        .includePaths,
-    ).toEqual([resolve("/work/shared"), resolve("/abs/ndk")]);
+      optionsFromVasmArgs(["-I../shared", "-I", "/abs/ndk"]).includePaths,
+    ).toEqual(["../shared", "/abs/ndk"]);
   });
 
   it("reads processors", () => {
@@ -171,7 +170,7 @@ describe("the project config file", () => {
     expect(warnings).toEqual([]);
   });
 
-  it("takes a relative -I in the vasm arguments from the source root", async () => {
+  it("leaves a relative -I in the vasm arguments as written, for the search to try from both directories", async () => {
     const dir = await project({
       ".m68krc.json": JSON.stringify({
         sourceRoot: "build",
@@ -179,7 +178,15 @@ describe("the project config file", () => {
       }),
     });
     const { options } = await loadAssemblyOptions(join(dir, ".m68krc.json"));
-    expect(options.includePaths).toEqual([resolve(dir, "build", "inc")]);
+    expect(options.includePaths).toEqual(["inc"]);
+  });
+
+  it("also tries it from the config's directory when there is no source root", async () => {
+    const dir = await project({
+      ".m68krc.json": JSON.stringify({ vasm: { args: ["-Iinc", "-I/abs"] } }),
+    });
+    const { options } = await loadAssemblyOptions(join(dir, ".m68krc.json"));
+    expect(options.includePaths).toEqual(["inc", resolve(dir, "inc"), "/abs"]);
   });
 
   it("reads -esc from the vasm arguments, and the key over it", async () => {
@@ -236,7 +243,7 @@ describe("the project config file", () => {
     const { options } = await loadAssemblyOptions(join(dir, ".m68krc.json"));
     expect(options).toEqual({
       caseSensitive: false,
-      includePaths: [resolve(dir, "inc")],
+      includePaths: ["inc", resolve(dir, "inc")],
       processors: ["mc68030"],
     });
   });

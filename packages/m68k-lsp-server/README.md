@@ -89,7 +89,7 @@ The LSP client can configured using the following settings, either as initializa
 
 `.m68krc.json` is also read by the linter and its language server for the options they share: `processors`, `includePaths` and `caseSensitive`. A relative include path is taken from the directory of that file. Other keys are ignored by them.
 
-The assembler is run with the custom `vasm.args` followed by what these options imply: `-I` for each include path, `-m` for each processor and `-nocase` when `caseSensitive` is false, each only if the arguments do not already say so. A `-nocase` or `-I` among the arguments is likewise read back as the option, so the two forms agree. Setting `caseSensitive: true` alongside `-nocase` logs a warning. Relative paths in `vasm.args` are relative to where vasm is run, the source root (see below), and the linter reads them the same way.
+The assembler is run with the custom `vasm.args` followed by what these options imply: `-I` for each include path, `-m` for each processor and `-nocase` when `caseSensitive` is false, each only if the arguments do not already say so. A `-nocase` or `-I` among the arguments is likewise read back as the option, so the two forms agree. Setting `caseSensitive: true` alongside `-nocase` logs a warning. A relative `-I` in `vasm.args` is relative to where vasm is run, the source root (see below), and then to the main source's directory, as vasm tries it; the linter reads it the same way.
 
 A JSON schema for the file is published as `m68krc.schema.json` in this package, and is bundled with the VS Code extension. In other editors, reference it from the file:
 

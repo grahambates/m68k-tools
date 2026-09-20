@@ -231,9 +231,7 @@ the directory it is run in (`sourceRoot`), then the directory of the main source
 then the `-I` paths, then any `incdir`; it never looks beside the file that names
 the include. The linter looks there in that order, and only if none has the include, beside the
 file that names it, so it finds everything vasm does, the same file vasm would open,
-and sometimes a file vasm would not, which the assembler reports itself. The main sources are the files nothing else includes. A relative
-`-I` that only resolves from the main source's directory, with vasm run somewhere
-else, is not found. Case is left to the file system, as it would be for the assembler
+and sometimes a file vasm would not, which the assembler reports itself. The main sources are the files nothing else includes. Case is left to the file system, as it would be for the assembler
 run there: an include in the wrong case is found on macOS and Windows and not on
 Linux, so use the file's real case if the project is shared between developers on
 different systems. The files it reaches are read for the constants and macros they define and the names they refer to, and
@@ -250,7 +248,7 @@ is followed with no configuration. An `INCDIR` in the source is not used yet.
 
 ## Shared `.m68krc.json`
 
-The options that describe how the source is assembled, `processors`, `includePaths`, `caseSensitive`, `escapeSequences` and `sourceRoot`, are also read from a `.m68krc.json` (or `.m68krc`) found by walking up from the linted path, so the assembly server and the linter can share one file. From highest precedence: the lint config, the `.m68krc.json`, then `-nocase`, `-esc`, `-I` and `-m` among its `vasm.args`, then the defaults. Include paths from all of them are combined; a relative `-I` among the `vasm.args` is taken from the source root, where vasm is run, or from the file's directory when there is none. `sourceRoot` is the directory the assembler is run from, so an include named from there, such as `lib/defs.i`, is found; it is looked in after the including file's own directory and before the include paths. Other keys in the file are ignored, and `--no-config` skips it.
+The options that describe how the source is assembled, `processors`, `includePaths`, `caseSensitive`, `escapeSequences` and `sourceRoot`, are also read from a `.m68krc.json` (or `.m68krc`) found by walking up from the linted path, so the assembly server and the linter can share one file. From highest precedence: the lint config, the `.m68krc.json`, then `-nocase`, `-esc`, `-I` and `-m` among its `vasm.args`, then the defaults. Include paths from all of them are combined; a relative `-I` among the `vasm.args` is kept as written and tried as vasm tries it, from the source root and then from the main source's directory (and from the config file's directory when there is no source root). `sourceRoot` is the directory the assembler is run from, so an include named from there, such as `lib/defs.i`, is found; it is looked in after the including file's own directory and before the include paths. Other keys in the file are ignored, and `--no-config` skips it.
 
 ## Symbol case
 

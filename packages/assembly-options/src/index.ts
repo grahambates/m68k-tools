@@ -1,6 +1,6 @@
 import { statSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
-import { dirname, join, parse, resolve } from "node:path";
+import { dirname, isAbsolute, join, parse, resolve } from "node:path";
 
 /**
  * How a project's source is assembled.
@@ -80,12 +80,11 @@ export function findAssemblyConfigSync(start: string): string | undefined {
  * What vasm arguments say about how the source is assembled.
  *
  * `-Idir` (or `-I dir`) is an include path, `-nocase` folds symbol case, and
- * `-m68020` names a processor. Relative paths are taken from `base`.
+ * `-m68020` names a processor. Include paths are as written: vasm tries a
+ * relative one from the directory it is run in and then from the main source's,
+ * which is for the search to do, so nothing is resolved here.
  */
-export function optionsFromVasmArgs(
-  args: readonly string[],
-  base = process.cwd(),
-): AssemblyOptions {
+export function optionsFromVasmArgs(args: readonly string[]): AssemblyOptions {
   const options: AssemblyOptions = {};
   const includePaths: string[] = [];
   const processors: string[] = [];
@@ -96,9 +95,9 @@ export function optionsFromVasmArgs(
     else if (arg === "-esc") options.escapeSequences = true;
     else if (PROCESSOR_ARG.test(arg)) processors.push(`mc${arg.slice(2)}`);
     else if (arg === "-I" && args[i + 1] !== undefined)
-      includePaths.push(resolve(base, args[++i]));
+      includePaths.push(args[++i]);
     else if (arg.startsWith("-I") && arg.length > 2)
-      includePaths.push(resolve(base, arg.slice(2)));
+      includePaths.push(arg.slice(2));
   }
   if (includePaths.length) options.includePaths = includePaths;
   if (processors.length) options.processors = processors;
@@ -170,13 +169,16 @@ export async function loadAssemblyOptions(
   if (typeof json.sourceRoot === "string")
     stated.sourceRoot = resolve(dir, json.sourceRoot);
 
-  // vasm is run in the source root, so a relative -I among its arguments is
-  // relative to that, not to this file; without one the file's directory is the
-  // nearest thing to a place the assembler is run.
+  // A relative -I among the arguments is left as written, since vasm tries it
+  // from where it is run and from the main source's directory, and the search
+  // does the same. Without a source root the directory of this file is the
+  // likeliest place it is run from, so that is tried too.
   const vasm = json.vasm as { args?: unknown } | undefined;
-  const fromArgs = isStrings(vasm?.args)
-    ? optionsFromVasmArgs(vasm.args, stated.sourceRoot ?? dir)
-    : {};
+  const fromArgs = isStrings(vasm?.args) ? optionsFromVasmArgs(vasm.args) : {};
+  if (fromArgs.includePaths && stated.sourceRoot === undefined)
+    fromArgs.includePaths = fromArgs.includePaths.flatMap((path) =>
+      isAbsolute(path) ? [path] : [path, resolve(dir, path)],
+    );
 
   if (stated.caseSensitive === true && fromArgs.caseSensitive === false)
     warnings.push(

@@ -15,7 +15,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { build } from "esbuild";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { findVasm } from "./vasm.mjs";
 
@@ -121,7 +121,6 @@ const scenarios = [
     main: 'include "e.i"',
     cwd: "",
     args: ["-I../inc"],
-    gap: "a relative -I is resolved from the run directory only",
   },
   {
     name: "-I from a run directory elsewhere",
@@ -172,10 +171,8 @@ for (const scenario of scenarios) {
   const opened = !/(?:^|\n)(?:fatal )?error \d+/.test(ran.stdout + ran.stderr);
 
   // What the linter would be given: the run directory as the source root, and
-  // the -I paths resolved against it as the config does.
-  const includePaths = (scenario.args ?? [])
-    .filter((a) => a.startsWith("-I"))
-    .map((a) => resolve(cwd, a.slice(2)));
+  // the -I paths as written, which the search tries from both directories.
+  const includePaths = includeArguments(scenario.args ?? []);
   const fs = nodeIncludeFs();
   const source = { path: join(root, "src/main.s"), source: main };
   const followed = await followIncludes([source], {
@@ -198,13 +195,7 @@ for (const scenario of scenarios) {
   }
 
   const verdict =
-    opened && !found
-      ? scenario.gap
-        ? "known gap"
-        : "UNREACHED"
-      : !opened && found
-        ? "lenient"
-        : "agree";
+    opened && !found ? "UNREACHED" : !opened && found ? "lenient" : "agree";
   if (verdict === "UNREACHED") unreached++;
   if (verdict === "lenient") lenient++;
   console.log(

@@ -15,7 +15,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { build } from "esbuild";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { findVasm } from "./vasm.mjs";
 
@@ -44,12 +44,12 @@ const bundled = await build({
   platform: "node",
   write: false,
 });
-const { findVasmInclude, includeArguments } = await import(
+const { resolveInclude, includeArguments } = await import(
   `data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString("base64")}`
 );
 
 /** Whether the model says vasm opens every include in the tree under a main source. */
-function modelOpens(mainPath, cwd, args) {
+async function modelOpens(mainPath, cwd, args) {
   const includePaths = includeArguments(args);
   const incDirs = [];
   const queue = [mainPath];
@@ -59,11 +59,17 @@ function modelOpens(mainPath, cwd, args) {
     for (const [, name] of text.matchAll(/^\s*incdir\s+"([^"]+)"/gim))
       incDirs.push(name);
     for (const [, name] of text.matchAll(/^\s*include\s+"([^"]+)"/gim)) {
-      const found = findVasmInclude(
-        name,
-        { cwd, mainDir: dirname(mainPath), includePaths, incDirs },
-        existsSync,
-      );
+      const found = (
+        await resolveInclude(
+          name,
+          [{ cwd, mainDir: dirname(mainPath), includePaths, incDirs }],
+          [],
+          (dir, file) => {
+            const path = resolve(dir, file);
+            return existsSync(path) ? path : undefined;
+          },
+        )
+      )?.path;
       if (!found) return false;
       if (!seen.has(found)) {
         seen.add(found);
@@ -182,7 +188,7 @@ for (const scenario of scenarios) {
   });
   const found = followed.length > 0;
 
-  const predicted = modelOpens(
+  const predicted = await modelOpens(
     join(root, "src/main.s"),
     cwd,
     scenario.args ?? [],

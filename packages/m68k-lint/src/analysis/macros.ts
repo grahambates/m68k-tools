@@ -11,7 +11,7 @@ import {
 } from "m68k-parser";
 import { getFlagSemantics } from "../semantics/flags.js";
 import { setExpansion } from "../semantics/macro-expansions.js";
-import { nameKey } from "./case-mode.js";
+import { nameKey } from "./assembler-mode.js";
 import { evaluateCondition } from "./conditionals.js";
 import type { ExternalSymbols } from "./symbols.js";
 import { scanBlocks } from "./blocks.js";

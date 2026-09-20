@@ -8,7 +8,7 @@ import { getFlagSemantics } from "../semantics/flags.js";
 import { canonicalMnemonic } from "../semantics/mnemonics.js";
 import { isExecutableLine } from "../util/ast.js";
 import { scanBlocks, type ConditionalBlock } from "./blocks.js";
-import { nameKey } from "./case-mode.js";
+import { nameKey } from "./assembler-mode.js";
 import { conditionalAssembly } from "./conditionals.js";
 import { analyzeLocalLabelScopes } from "./local-label-scopes.js";
 

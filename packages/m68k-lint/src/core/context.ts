@@ -16,7 +16,7 @@ import {
   nameKey,
   setCaseSensitive,
   setEscapeSequences,
-} from "../analysis/case-mode.js";
+} from "../analysis/assembler-mode.js";
 import {
   conditionalAssembly,
   prepareConditionals,

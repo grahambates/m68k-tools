@@ -72,52 +72,64 @@ export interface IncludedFile {
   source: string;
 }
 
-export interface FollowOptions {
+/** Where vasm is run and given to look, the part of the search the config decides. */
+export interface IncludeSearchOptions {
   /**
    * The directory the assembler is run from, absolute, where the config says. It
    * looks there first, and a relative `-I` or `incdir` is tried from there.
    */
   sourceRoot?: string;
-  /** Directories the assembler is given to search for includes with `-I`, absolute. */
+  /** Directories the assembler is given to search for includes with `-I`, as written. */
   includePaths: readonly string[];
-  /**
-   * The directories of the main sources, which vasm also looks in. Worked out
-   * from the sources when not given.
-   */
-  entryDirs?: readonly string[];
-  /**
-   * The `incdir` directives in the sources, as written and in the order they
-   * appear, which add to the search. Worked out from the sources when not given.
-   */
-  incDirs?: readonly string[];
+}
+
+export interface FollowOptions extends IncludeSearchOptions {
   fs: IncludeFs;
   /** Most files to add, a guard against an include that reaches a whole tree. Default 4000. */
   limit?: number;
 }
 
-/** Where vasm is run and given to look, the part of the search the config decides. */
-export type IncludeSearchOptions = Pick<
-  FollowOptions,
-  "sourceRoot" | "includePaths"
->;
+/** The directives in a source that name a file or directory to search, as written. */
+interface Names {
+  include: string[];
+  incdir: string[];
+  incbin: string[];
+}
 
-/** The paths named by directives like `include` in a source, as written. */
-function pathsIn(source: string, directives: readonly string[]): string[] {
-  let parsed;
-  try {
-    parsed = parseFile(source);
-  } catch {
-    return [];
-  }
-  const names: string[] = [];
-  for (const line of parsed.lines) {
-    if (line.mnemonic?.type !== "directive") continue;
-    if (!directives.includes(line.mnemonic.directive.toLowerCase())) continue;
-    const operand = line.operands?.[0];
-    if (operand?.type === "string-literal" && operand.content)
-      names.push(operand.content);
-  }
-  return names;
+/** What the directives of a source name, parsing each source once however often it is asked. */
+function scanner() {
+  const cache = new Map<string, Names>();
+  return (source: string): Names => {
+    const known = cache.get(source);
+    if (known) return known;
+    const names: Names = { include: [], incdir: [], incbin: [] };
+    try {
+      for (const line of parseFile(source).lines) {
+        if (line.mnemonic?.type !== "directive") continue;
+        const directive = line.mnemonic.directive.toLowerCase();
+        const operand = line.operands?.[0];
+        if (
+          directive in names &&
+          operand?.type === "string-literal" &&
+          operand.content
+        )
+          names[directive as keyof Names].push(operand.content);
+      }
+    } catch {
+      // A source that does not parse names nothing.
+    }
+    cache.set(source, names);
+    return names;
+  };
+}
+
+/** What a search needs beyond the config: which files are main sources and what `incdir` adds. */
+interface SearchContext extends FollowOptions {
+  namesOf: (source: string) => Names;
+  /** The directories of the main sources, which vasm also looks in. */
+  entryDirs: readonly string[];
+  /** The `incdir`s in the sources, as written and in order. */
+  incDirs: readonly string[];
 }
 
 /**
@@ -130,23 +142,20 @@ function pathsIn(source: string, directives: readonly string[]): string[] {
  * own directory is a fallback, since finding a file vasm would not is harmless
  * for reading what it defines.
  */
-async function resolveFor(
-  file: IncludedFile,
-  name: string,
-  options: FollowOptions,
-  mainDirs: readonly string[],
-) {
-  const mains = mainDirs.length ? mainDirs : [dirname(file.path)];
+function resolveFor(file: IncludedFile, name: string, search: SearchContext) {
+  const mains = search.entryDirs.length
+    ? search.entryDirs
+    : [dirname(file.path)];
   return resolveInclude(
     name,
     mains.map((mainDir) => ({
-      cwd: options.sourceRoot ?? mainDir,
+      cwd: search.sourceRoot ?? mainDir,
       mainDir,
-      includePaths: options.includePaths,
-      incDirs: options.incDirs,
+      includePaths: search.includePaths,
+      incDirs: search.incDirs,
     })),
     [dirname(file.path)],
-    (dir, included) => options.fs.find(dir, included),
+    (dir, included) => search.fs.find(dir, included),
   );
 }
 
@@ -165,10 +174,22 @@ export async function entryDirectories(
   sources: readonly IncludedFile[],
   options: FollowOptions,
 ): Promise<string[]> {
+  return entriesOf(sources, {
+    ...options,
+    namesOf: scanner(),
+    entryDirs: [],
+    incDirs: [],
+  });
+}
+
+async function entriesOf(
+  sources: readonly IncludedFile[],
+  search: SearchContext,
+): Promise<string[]> {
   const included = new Set<string>();
   for (const file of sources) {
-    for (const name of pathsIn(file.source, ["include"])) {
-      const found = await resolveFor(file, name, options, []);
+    for (const name of search.namesOf(file.source).include) {
+      const found = await resolveFor(file, name, search);
       if (found) included.add(resolve(found.path));
     }
   }
@@ -185,11 +206,12 @@ export async function entryDirectories(
  * The files a set of sources include that are not among them, and everything
  * those include in turn.
  *
- * Each `include` is looked for beside the file that names it, in each of the
- * include paths in order, and in the directories of the main sources, which
- * covers what vasm does, and in any directory an `incdir` directive adds. That is how a project reaches includes outside its own
- * tree, such as NDK files shared between projects: nothing in the source says
- * where they are, and the paths are given to the assembler instead.
+ * Each `include` is found as vasm finds it: in the directory it is run in, the
+ * directory of the main source, the include paths and any `incdir`, and failing
+ * that beside the file that names it. That is how a project reaches includes
+ * outside its own tree, such as NDK files shared between projects: nothing in
+ * the source says where they are, and the paths are given to the assembler
+ * instead.
  *
  * An include that cannot be found is skipped, and so is one already known, which
  * also ends a cycle. Only the added files are returned, in the order found.
@@ -200,40 +222,31 @@ export async function followIncludes(
   sources: readonly IncludedFile[],
   options: FollowOptions,
 ): Promise<IncludedFile[]> {
-  const entryDirs =
-    options.entryDirs ?? (await entryDirectories(sources, options));
-  return follow(sources, { ...options, entryDirs });
-}
+  const namesOf = scanner();
+  const entryDirs = await entriesOf(sources, {
+    ...options,
+    namesOf,
+    entryDirs: [],
+    incDirs: [],
+  });
+  // The `incdir`s, gathered from every file as it is reached.
+  const incDirs: string[] = [];
+  const addIncDirs = (file: IncludedFile) => {
+    for (const name of namesOf(file.source).incdir)
+      if (!incDirs.includes(name)) incDirs.push(name);
+  };
+  sources.forEach(addIncDirs);
+  const search: SearchContext = { ...options, namesOf, entryDirs, incDirs };
 
-/** One walk through the includes. */
-async function follow(
-  sources: readonly IncludedFile[],
-  options: FollowOptions,
-): Promise<IncludedFile[]> {
   const limit = options.limit ?? 4000;
   const known = new Set(sources.map((file) => resolve(file.path)));
   const added: IncludedFile[] = [];
   const queue = [...sources];
-  const withEntries: FollowOptions = { ...options };
-  // The `incdir`s, gathered from every file as it is reached.
-  const incDirs: string[] = [];
-  const addIncDirs = (file: IncludedFile) => {
-    for (const name of pathsIn(file.source, ["incdir"]))
-      if (!incDirs.includes(name)) incDirs.push(name);
-  };
-  withEntries.incDirs = incDirs;
-  sources.forEach(addIncDirs);
-
   for (let next = 0; next < queue.length; next++) {
     const file = queue[next];
-    for (const name of pathsIn(file.source, ["include"])) {
+    for (const name of namesOf(file.source).include) {
       if (added.length >= limit) return added;
-      const found = await resolveFor(
-        file,
-        name,
-        withEntries,
-        withEntries.entryDirs ?? [],
-      );
+      const found = await resolveFor(file, name, search);
       if (!found) continue;
       const path = resolve(found.path);
       if (known.has(path)) continue;
@@ -270,21 +283,21 @@ export async function includeCaseOnDisk(
 ): Promise<Map<string, string>> {
   const differing = new Map<string, string>();
   const { fs } = options;
-  // What the file itself adds with `incdir`, when the caller has not gathered it.
-  options = {
-    ...options,
-    incDirs: options.incDirs ?? pathsIn(file.source, ["incdir"]),
-  };
   if (!fs.list) return differing;
 
-  for (const name of pathsIn(file.source, ["include", "incbin"])) {
+  // The file is taken as a main source, with what it adds itself with `incdir`.
+  const namesOf = scanner();
+  const names = namesOf(file.source);
+  const search: SearchContext = {
+    ...options,
+    namesOf,
+    entryDirs: [],
+    incDirs: names.incdir,
+  };
+
+  for (const name of [...names.include, ...names.incbin]) {
     if (differing.has(name)) continue;
-    const resolved = await resolveFor(
-      file,
-      name,
-      options,
-      options.entryDirs ?? [],
-    );
+    const resolved = await resolveFor(file, name, search);
     if (!resolved) continue;
     const dir = resolved.dir;
 

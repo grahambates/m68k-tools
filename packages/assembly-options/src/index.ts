@@ -1,5 +1,5 @@
 import { statSync } from "node:fs";
-import { readFile, stat } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, parse, resolve } from "node:path";
 
 /**
@@ -34,31 +34,23 @@ export const configFileNames = [".m68krc.json", ".m68krc"] as const;
 
 const PROCESSOR_ARG = /^-m(680[0-9]0|cpu32)$/;
 
-async function isFile(path: string): Promise<boolean> {
-  try {
-    return (await stat(path)).isFile();
-  } catch {
-    return false;
-  }
-}
+/** The vasm switches that set a yes-or-no option, and what each does. */
+const FLAGS = [
+  {
+    arg: "-nocase",
+    key: "caseSensitive",
+    value: false,
+    effect: "vasm still folds case",
+  },
+  {
+    arg: "-esc",
+    key: "escapeSequences",
+    value: true,
+    effect: "vasm still reads escapes",
+  },
+] as const;
 
 /** The project config that applies at `start`, found by walking up, or undefined if there is none. */
-export async function findAssemblyConfig(
-  start: string,
-): Promise<string | undefined> {
-  let dir = resolve(start);
-  const root = parse(dir).root;
-  for (;;) {
-    for (const name of configFileNames) {
-      const candidate = join(dir, name);
-      if (await isFile(candidate)) return candidate;
-    }
-    if (dir === root) return undefined;
-    dir = dirname(dir);
-  }
-}
-
-/** As `findAssemblyConfig`, for callers that cannot wait. */
 export function findAssemblyConfigSync(start: string): string | undefined {
   let dir = resolve(start);
   const root = parse(dir).root;
@@ -76,6 +68,13 @@ export function findAssemblyConfigSync(start: string): string | undefined {
   }
 }
 
+/** As `findAssemblyConfigSync`, for callers that are asynchronous anyway. */
+export async function findAssemblyConfig(
+  start: string,
+): Promise<string | undefined> {
+  return findAssemblyConfigSync(start);
+}
+
 /**
  * What vasm arguments say about how the source is assembled.
  *
@@ -91,8 +90,8 @@ export function optionsFromVasmArgs(args: readonly string[]): AssemblyOptions {
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (arg === "-nocase") options.caseSensitive = false;
-    else if (arg === "-esc") options.escapeSequences = true;
+    const flag = FLAGS.find((f) => f.arg === arg);
+    if (flag) options[flag.key] = flag.value;
     else if (PROCESSOR_ARG.test(arg)) processors.push(`mc${arg.slice(2)}`);
     else if (arg === "-I" && args[i + 1] !== undefined)
       includePaths.push(args[++i]);
@@ -115,17 +114,33 @@ export function mergeOptions(
   const merged: AssemblyOptions = {};
   const paths: string[] = [];
   for (const layer of layers) {
-    if (layer.processors) merged.processors = layer.processors;
-    if (layer.caseSensitive !== undefined)
-      merged.caseSensitive = layer.caseSensitive;
-    if (layer.sourceRoot !== undefined) merged.sourceRoot = layer.sourceRoot;
-    if (layer.escapeSequences !== undefined)
-      merged.escapeSequences = layer.escapeSequences;
-    for (const path of layer.includePaths ?? [])
+    const { includePaths, ...rest } = layer;
+    for (const [key, value] of Object.entries(rest))
+      if (value !== undefined) Object.assign(merged, { [key]: value });
+    for (const path of includePaths ?? [])
       if (!paths.includes(path)) paths.push(path);
   }
   if (paths.length) merged.includePaths = paths;
   return merged;
+}
+
+/**
+ * Where an option set outright says the opposite of a switch among the vasm
+ * arguments, such as `caseSensitive: true` with `-nocase`. The setting is what
+ * the tools go by, and vasm still does as it is told, so the two disagree.
+ */
+export function optionConflicts(
+  stated: AssemblyOptions,
+  args: unknown,
+): string[] {
+  const fromArgs = isStrings(args) ? optionsFromVasmArgs(args) : {};
+  return FLAGS.filter(
+    (flag) =>
+      stated[flag.key] === !flag.value && fromArgs[flag.key] === flag.value,
+  ).map(
+    (flag) =>
+      `${flag.key} is ${!flag.value} but the vasm arguments include ${flag.arg}; the setting is used for analysis, and ${flag.effect}`,
+  );
 }
 
 export interface LoadedOptions {
@@ -144,7 +159,8 @@ const isStrings = (value: unknown): value is string[] =>
  * tool's own, is left alone and never an error. A key set outright wins over
  * what the `vasm.args` in the same file imply, and where the two disagree the
  * caller is told. Relative paths are taken from the file's directory, except
- * those in `vasm.args`, which are taken from the source root as vasm would.
+ * those in `vasm.args`, which are kept as written for the search to try as vasm
+ * would.
  *
  * @throws if the file cannot be read or is not JSON
  */
@@ -180,15 +196,7 @@ export async function loadAssemblyOptions(
       isAbsolute(path) ? [path] : [path, resolve(dir, path)],
     );
 
-  if (stated.caseSensitive === true && fromArgs.caseSensitive === false)
-    warnings.push(
-      `caseSensitive is true but the vasm arguments include -nocase; the setting is used for analysis, and vasm still folds case`,
-    );
-
-  if (stated.escapeSequences === false && fromArgs.escapeSequences === true)
-    warnings.push(
-      `escapeSequences is false but the vasm arguments include -esc; the setting is used for analysis, and vasm still reads escapes`,
-    );
+  warnings.push(...optionConflicts(stated, vasm?.args));
 
   return { options: mergeOptions(fromArgs, stated), warnings };
 }
@@ -217,8 +225,8 @@ export function vasmArgs(
     const arg = `-m${processor.replace(/^mc/, "")}`;
     if (!has(arg)) args.push(arg);
   }
-  if (options.caseSensitive === false && !has("-nocase")) args.push("-nocase");
-  if (options.escapeSequences === true && !has("-esc")) args.push("-esc");
+  for (const flag of FLAGS)
+    if (options[flag.key] === flag.value && !has(flag.arg)) args.push(flag.arg);
   return args;
 }
 
@@ -229,7 +237,6 @@ export {
 } from "./infer.js";
 export { editAssemblyConfig, type ConfigChange } from "./edit.js";
 export {
-  findVasmInclude,
   includeArguments,
   resolveInclude,
   vasmSearchDirectories,

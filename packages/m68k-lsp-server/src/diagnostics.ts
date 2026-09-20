@@ -12,13 +12,14 @@ import { basename, dirname, join, relative } from "path";
 import { minimatch } from "minimatch";
 
 import { assemblerArgs, vasmRunDirectory } from "./config";
-import {
-  findVasmInclude,
-  includeArguments,
-  inferSearchDirectories,
-  type InferredDirectory,
-} from "@m68k-lsp/assembly-options";
+import { type InferredDirectory } from "@m68k-lsp/assembly-options";
 import { existsSync } from "fs";
+import {
+  includeNotes,
+  inferDirectories,
+  inferenceDiagnostic,
+  unresolvedIncludes,
+} from "./includeInference";
 import { type Context } from "./context";
 import { getEntryPointsFor } from "./files";
 import { instructionDocs } from "./docs";
@@ -37,46 +38,11 @@ export interface VasmOptions {
 /** The most times vasm is run again for includes it could not find. */
 const MAX_INFERENCE_RUNS = 5;
 
-interface UnresolvedInclude {
-  name: string;
-  /** The file the include is in. */
-  uri: string;
-  range: Range;
-}
-
 interface InferredNote {
   inferred: InferredDirectory;
   name: string;
   /** Where vasm reported the include it could not open, in the file being reported on. */
-  diagnostic?: Diagnostic;
-}
-
-/**
- * The note that an include was only found through a guessed path, at the include
- * that needed it, or at the top of the file when vasm did not say where.
- */
-function inferenceDiagnostic({
-  inferred,
-  name,
-  diagnostic,
-}: InferredNote): Diagnostic[] {
-  const hint =
-    inferred.kind === "sourceRoot"
-      ? `set "sourceRoot": "${inferred.dir}" in .m68krc.json`
-      : `add "${inferred.dir}" to "includePaths" in .m68krc.json`;
-  return [
-    {
-      range: diagnostic?.range ?? {
-        start: { line: 0, character: 0 },
-        end: { line: 0, character: 0 },
-      },
-      message: `"${name}" was not found, and is assumed to be in ${inferred.dir}, which is not in the include paths. To make that permanent, ${hint}.`,
-      severity: DiagnosticSeverity.Information,
-      source: "m68k",
-      code: "inferred-include-path",
-      data: { dir: inferred.dir, kind: inferred.kind, name },
-    },
-  ];
+  range?: Range;
 }
 
 export default class DiagnosticProcessor {
@@ -141,7 +107,11 @@ export default class DiagnosticProcessor {
     const extra = guessed.map((dir) => `-I${dir}`);
     // And any the includes in the source say are needed, worked out from where
     // vasm looks and what the project has, so the first run need not fail.
-    for (const found of this.inferredForIncludes(assembleUri))
+    const predicted = await unresolvedIncludes(assembleUri, this.ctx);
+    for (const found of inferDirectories(
+      predicted.map((include) => include.name),
+      this.ctx,
+    ))
       if (!extra.includes(`-I${found.dir}`)) extra.push(`-I${found.dir}`);
     let output = await this.runVasm(binPath, withRest(extra), options);
     if (output === undefined) return [];
@@ -158,13 +128,9 @@ export default class DiagnosticProcessor {
     ) {
       const missing = /could not open <([^>]+)> for input/.exec(output)?.[1];
       if (!missing) break;
-      const [inferred] = inferSearchDirectories(
-        [missing],
-        this.projectFiles(),
-        {
-          roots: this.ctx.workspaceFolders.map((f) => URI.parse(f.uri).fsPath),
-        },
-      ).filter((candidate) => !extra.includes(`-I${candidate.dir}`));
+      const [inferred] = inferDirectories([missing], this.ctx).filter(
+        (candidate) => !extra.includes(`-I${candidate.dir}`),
+      );
       if (!inferred) break;
 
       const message = parseVasmMessages(output).find((m) => m.code === 13);
@@ -174,12 +140,14 @@ export default class DiagnosticProcessor {
       if (next === undefined) break;
       output = next;
       this.guessedDirectories.add(inferred.dir);
-      found.push({ inferred, name: missing, diagnostic: before });
+      found.push({ inferred, name: missing, range: before?.range });
     }
 
     return [
       ...parseVasmOutput(output, targetPath),
-      ...found.flatMap((note) => inferenceDiagnostic(note)),
+      ...found.map((note) =>
+        inferenceDiagnostic(note.inferred, note.name, note.range),
+      ),
     ];
   }
 
@@ -205,101 +173,17 @@ export default class DiagnosticProcessor {
   }
 
   /**
-   * The includes in a program that vasm would not find, from where it looks.
-   *
-   * Follows the includes from the main source, resolving each as vasm does:
-   * from the directory it is run in, the main source's, then the `-I` paths and
-   * `incdir`s, and not beside the file that names it. That is stricter than the
-   * server's own lookup, which is why this is separate. Includes made by macros
-   * or names worked out at assembly time are not seen.
-   */
-  private unresolvedIncludes(assembleUri: string): UnresolvedInclude[] {
-    const srcPath = URI.parse(assembleUri).fsPath;
-    const { cwd } = this.runContext(srcPath);
-    const includePaths = includeArguments(assemblerArgs(this.ctx.config));
-    const incDirs: string[] = [];
-    const unresolved: UnresolvedInclude[] = [];
-
-    const queue = [assembleUri];
-    const seen = new Set(queue);
-    for (let i = 0; i < queue.length; i++) {
-      const doc = this.ctx.store.get(queue[i]);
-      if (!doc || !("symbols" in doc)) continue;
-      for (const dir of doc.symbols.incDirs) incDirs.push(dir.text);
-      for (const include of doc.symbols.includes) {
-        const found = findVasmInclude(
-          include.text,
-          { cwd, mainDir: dirname(srcPath), includePaths, incDirs },
-          existsSync,
-        );
-        if (!found) {
-          unresolved.push({
-            name: include.text,
-            uri: queue[i],
-            range: include.location.range,
-          });
-          continue;
-        }
-        const next = URI.file(found).toString();
-        if (!seen.has(next)) {
-          seen.add(next);
-          queue.push(next);
-        }
-      }
-    }
-    return unresolved;
-  }
-
-  /** Directories the project's files suggest for the includes vasm would not find. */
-  private inferredForIncludes(assembleUri: string): InferredDirectory[] {
-    if (this.ctx.config.inferIncludePaths === false) return [];
-    const names = this.unresolvedIncludes(assembleUri).map((u) => u.name);
-    if (!names.length) return [];
-    return inferSearchDirectories(names, this.projectFiles(), {
-      roots: this.ctx.workspaceFolders.map((f) => URI.parse(f.uri).fsPath),
-    });
-  }
-
-  /**
    * Notes on the includes in a file that vasm would not find but the project
-   * has a file for, saying where that is and how to make it permanent. Worked
-   * out from the source and the file system alone, so it needs no run of vasm
-   * and shows with vasm turned off.
+   * has a file for. Worked out from the source and the file system alone, so it
+   * needs no run of vasm and shows with vasm turned off.
    */
-  includeDiagnostics(uri: string): Diagnostic[] {
-    const conf = this.ctx.config;
-    if (conf.inferIncludePaths === false) return [];
-    const assembleUri = this.assemblyTarget(uri) ?? uri;
-    const mine = this.unresolvedIncludes(assembleUri).filter(
-      (u) => u.uri === uri,
-    );
-    if (!mine.length) return [];
-    const inferred = inferSearchDirectories(
-      this.unresolvedIncludes(assembleUri).map((u) => u.name),
-      this.projectFiles(),
-      { roots: this.ctx.workspaceFolders.map((f) => URI.parse(f.uri).fsPath) },
-    );
-    return mine.flatMap((u) => {
-      const dir = inferred.find((d) => d.names.includes(u.name));
-      return dir
-        ? inferenceDiagnostic({
-            inferred: dir,
-            name: u.name,
-            diagnostic: { range: u.range } as Diagnostic,
-          })
-        : [];
-    });
+  includeDiagnostics(uri: string): Promise<Diagnostic[]> {
+    if (this.ctx.config.inferIncludePaths === false) return Promise.resolve([]);
+    return includeNotes(uri, this.assemblyTarget(uri) ?? uri, this.ctx);
   }
 
   /** Directories guessed for includes that were not found, kept for later runs. */
   private readonly guessedDirectories = new Set<string>();
-
-  /** The paths of the files the server knows the project to have. */
-  private projectFiles(): string[] {
-    return [...this.ctx.store.keys()]
-      .filter((uri) => uri.startsWith("file:"))
-      .map((uri) => URI.parse(uri).fsPath);
-  }
 
   /** Everything vasm printed for one run, or undefined if it could not be run. */
   private runVasm(

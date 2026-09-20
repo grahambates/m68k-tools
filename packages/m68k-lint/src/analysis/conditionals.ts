@@ -6,7 +6,7 @@ import {
   type ParsedFile,
 } from "m68k-parser";
 import { scanBlocks, type ConditionalBlock } from "./blocks.js";
-import { nameKey } from "./case-mode.js";
+import { nameKey } from "./assembler-mode.js";
 import { constantDefinition } from "./symbols.js";
 
 /**

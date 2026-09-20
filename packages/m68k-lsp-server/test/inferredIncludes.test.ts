@@ -63,7 +63,7 @@ describe("an include vasm cannot find", () => {
   it("is predicted from the source, so vasm is run with the directory the first time", async () => {
     const { diagnostics, uri } = await setup();
     expect(errors(await diagnostics.vasmDiagnostics(uri))).toEqual([]);
-    const [note, ...more] = diagnostics.includeDiagnostics(uri);
+    const [note, ...more] = await diagnostics.includeDiagnostics(uri);
     expect(more).toEqual([]);
     expect(note).toMatchObject({
       code: "inferred-include-path",
@@ -80,7 +80,7 @@ describe("an include vasm cannot find", () => {
       vasm: { ...defaultConfig.vasm, provideDiagnostics: false },
     });
     expect(await diagnostics.vasmDiagnostics(uri)).toEqual([]);
-    expect(diagnostics.includeDiagnostics(uri)).toHaveLength(1);
+    expect(await diagnostics.includeDiagnostics(uri)).toHaveLength(1);
   });
 
   it("is found on the second run when the name cannot be read from the source", async () => {
@@ -90,7 +90,7 @@ describe("an include vasm cannot find", () => {
       {},
       'm\tmacro\n\tinclude "lib/\\1.i"\n\tendm\n\tm defs\n\tmoveq #VALUE,d0\n\trts\n',
     );
-    expect(diagnostics.includeDiagnostics(uri)).toEqual([]);
+    expect(await diagnostics.includeDiagnostics(uri)).toEqual([]);
     const found = await diagnostics.vasmDiagnostics(uri);
     expect(errors(found)).toEqual([]);
     expect(found.some((d) => d.code === "inferred-include-path")).toBe(true);
@@ -101,7 +101,7 @@ describe("an include vasm cannot find", () => {
     const found = await diagnostics.vasmDiagnostics(uri);
     expect(errors(found).length).toBeGreaterThan(0);
     expect(found.some((d) => d.code === "inferred-include-path")).toBe(false);
-    expect(diagnostics.includeDiagnostics(uri)).toEqual([]);
+    expect(await diagnostics.includeDiagnostics(uri)).toEqual([]);
   });
 
   it("is left alone when nothing has that path", async () => {
@@ -112,6 +112,6 @@ describe("an include vasm cannot find", () => {
     expect(
       errors(await diagnostics.vasmDiagnostics(uri)).length,
     ).toBeGreaterThan(0);
-    expect(diagnostics.includeDiagnostics(uri)).toEqual([]);
+    expect(await diagnostics.includeDiagnostics(uri)).toEqual([]);
   });
 });

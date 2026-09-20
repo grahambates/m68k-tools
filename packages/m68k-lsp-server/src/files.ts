@@ -7,12 +7,7 @@ import { dirname } from "path";
 import { isAssemblySource, walkFiles } from "@m68k-lsp/workspace-files";
 
 import { type Context } from "./context";
-import {
-  assemblerArgs,
-  type Config,
-  sourceRootOf,
-  vasmRunDirectory,
-} from "./config";
+import { assemblerArgs, sourceRootOf, vasmRunDirectory } from "./config";
 import {
   includeArguments,
   resolveInclude as resolveIncludeName,
@@ -55,14 +50,11 @@ type ResolveContext = Pick<Context, "workspaceFolders" | "store" | "config">;
  * which vasm would not do but finding a file it would not is harmless here.
  */
 function includeSearch(documentUri: string, ctx: ResolveContext) {
-  const workspaceRoots = ctx.workspaceFolders.map(
-    (f) => URI.parse(f.uri).fsPath,
-  );
+  const workspaceRoots = workspacePaths(ctx);
   const entries = getEntryPointsFor(documentUri, ctx);
   const mains = (entries.length ? entries : [documentUri]).map(
     (uri) => URI.parse(uri).fsPath,
   );
-  const includePaths = includeArguments(assemblerArgs(ctx.config as Config));
 
   // Only incdirs the document can actually see: its own and those of the
   // files it includes. Pooling them across the whole store let an incdir in
@@ -72,14 +64,9 @@ function includeSearch(documentUri: string, ctx: ResolveContext) {
     .flatMap((uri) => ctx.store.get(uri)?.symbols.incDirs ?? [])
     .map((dir) => dir.text);
 
-  const searches: VasmSearch[] = mains.map((main) => ({
-    cwd: vasmRunDirectory(ctx.config as Config, workspaceRoots, main),
-    mainDir: dirname(main),
-    includePaths,
-    incDirs,
-  }));
+  const searches = mains.map((main) => vasmSearchFor(main, ctx, incDirs));
   const docDir = dirname(URI.parse(documentUri).fsPath);
-  const sourceRoot = sourceRootOf(ctx.config as Config, workspaceRoots);
+  const sourceRoot = sourceRootOf(ctx.config, workspaceRoots);
   const fallback = [
     docDir,
     ...(sourceRoot ? [sourceRoot] : []),
@@ -88,6 +75,31 @@ function includeSearch(documentUri: string, ctx: ResolveContext) {
   return {
     searches,
     fallback: fallback.filter((dir, i) => fallback.indexOf(dir) === i),
+  };
+}
+
+/** The paths of the workspace folders. */
+export function workspacePaths(
+  ctx: Pick<Context, "workspaceFolders">,
+): string[] {
+  return ctx.workspaceFolders.map((f) => URI.parse(f.uri).fsPath);
+}
+
+/**
+ * Where vasm looks for an include when it assembles a main source: the directory
+ * it is run in, the main source's, the `-I` paths from the config and the
+ * `incdir`s given.
+ */
+export function vasmSearchFor(
+  mainPath: string,
+  ctx: ResolveContext,
+  incDirs: readonly string[] = [],
+): VasmSearch {
+  return {
+    cwd: vasmRunDirectory(ctx.config, workspacePaths(ctx), mainPath),
+    mainDir: dirname(mainPath),
+    includePaths: includeArguments(assemblerArgs(ctx.config)),
+    incDirs,
   };
 }
 

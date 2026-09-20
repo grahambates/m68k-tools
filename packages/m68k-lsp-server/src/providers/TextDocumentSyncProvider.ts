@@ -58,6 +58,7 @@ export default class TextDocumentSyncProvider implements Provider {
       );
       const updatedDoc = TextDocument.update(document, contentChanges, version);
       const processed = await this.processor.process(updatedDoc);
+      const includes = await this.diagnostics.includeDiagnostics(uri);
       if (
         this.diagnosticRuns.get(uri) !== run ||
         this.ctx.store.get(uri) !== processed
@@ -72,7 +73,7 @@ export default class TextDocumentSyncProvider implements Provider {
             processed.parsed,
             processed.blocks,
           ),
-          ...this.diagnostics.includeDiagnostics(uri),
+          ...includes,
         ],
       });
     } catch (error) {
@@ -112,6 +113,7 @@ export default class TextDocumentSyncProvider implements Provider {
     this.diagnosticRuns.set(uri, run);
     try {
       const vasmDiagnostics = await this.diagnostics.vasmDiagnostics(uri);
+      const includes = await this.diagnostics.includeDiagnostics(uri);
       if (
         this.diagnosticRuns.get(uri) !== run ||
         this.ctx.store.get(uri) !== existing ||
@@ -127,7 +129,7 @@ export default class TextDocumentSyncProvider implements Provider {
             existing.parsed,
             existing.blocks,
           ),
-          ...this.diagnostics.includeDiagnostics(uri),
+          ...includes,
           ...vasmDiagnostics,
         ],
       });

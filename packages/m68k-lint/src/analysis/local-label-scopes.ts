@@ -5,7 +5,7 @@ import {
   type ParsedFile,
 } from "m68k-parser";
 import { scanBlocks } from "./blocks.js";
-import { isCaseSensitive } from "./case-mode.js";
+import { isCaseSensitive } from "./assembler-mode.js";
 import { symbolNamesIn } from "./references.js";
 
 export interface LocalLabelScopes extends ResolvedScopes {

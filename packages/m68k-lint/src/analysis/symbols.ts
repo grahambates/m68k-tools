@@ -5,7 +5,7 @@ import type {
   ParsedLine,
 } from "m68k-parser";
 import { symbolKey } from "m68k-parser";
-import { isCaseSensitive } from "./case-mode.js";
+import { isCaseSensitive } from "./assembler-mode.js";
 import { evaluateConstant, type ConstantResult } from "./constants.js";
 import { isInMacroDefinition, scanBlocks } from "./blocks.js";
 

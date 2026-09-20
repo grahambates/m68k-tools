@@ -32,24 +32,6 @@ export function vasmSearchDirectories(search: VasmSearch): string[] {
   return dirs.filter((dir, i) => dirs.indexOf(dir) === i);
 }
 
-/**
- * The file vasm would open for an include, or undefined if it would not find one.
- *
- * @param exists whether a file is there
- */
-export function findVasmInclude(
-  name: string,
-  search: VasmSearch,
-  exists: (path: string) => boolean,
-): string | undefined {
-  if (isAbsolute(name)) return exists(name) ? name : undefined;
-  for (const dir of vasmSearchDirectories(search)) {
-    const path = resolve(dir, name);
-    if (exists(path)) return path;
-  }
-  return undefined;
-}
-
 /** The `-I` paths among vasm arguments, as written, in order. */
 export function includeArguments(args: readonly string[]): string[] {
   const paths: string[] = [];
@@ -91,16 +73,20 @@ export interface ResolvedInclude {
 export async function resolveInclude(
   name: string,
   searches: readonly VasmSearch[],
-  fallbackDirs: readonly string[],
-  find: (dir: string, name: string) => Promise<string | undefined>,
+  fallbackDirs: readonly string[] = [],
+  find: (
+    dir: string,
+    name: string,
+  ) => string | undefined | Promise<string | undefined>,
 ): Promise<ResolvedInclude | undefined> {
+  // A directory that was looked in already, by an earlier search, has nothing more.
   const tried = new Set<string>();
   const attempt = async (
     dirs: readonly string[],
     via: ResolvedInclude["via"],
   ) => {
     for (const dir of dirs) {
-      if (tried.has(dir) && via === "vasm") continue;
+      if (tried.has(dir)) continue;
       tried.add(dir);
       const path = await find(dir, name);
       if (path !== undefined) return { path, dir, via } as const;
@@ -111,8 +97,5 @@ export async function resolveInclude(
     const found = await attempt(vasmSearchDirectories(search), "vasm");
     if (found) return found;
   }
-  return attempt(
-    fallbackDirs.filter((dir) => !tried.has(dir)),
-    "fallback",
-  );
+  return attempt(fallbackDirs, "fallback");
 }

@@ -2,15 +2,16 @@ import type { ParsedFile } from "m68k-parser";
 import { symbolKey } from "m68k-parser";
 
 /**
- * Whether the symbols in a file are compared with case kept.
+ * How the assembler was run, for the parts of it the source does not say:
+ * whether symbols are compared with case kept (`-nocase`, or `opt c-`) and
+ * whether strings read backslash escapes (`-esc`), which decides how long string
+ * data is. Both come from the config.
  *
- * An assembler keeps case unless told otherwise (`-nocase`, or `opt c-`), and
- * whether it was told is not always in the source, so it comes from the
- * config, as does whether strings read backslash escapes (`-esc`), which
- * decides how long string data is. Recorded against the parsed file, as macro expansions and settled
- * conditionals are, so the analyses that look names up need not each be handed
- * it. A file nobody set it for keeps case, which is the assembler's default.
+ * Recorded against the parsed file, as macro expansions and settled conditionals
+ * are, so the analyses that need them are not each handed them. A file nobody
+ * set them for gets the assembler's defaults: case kept, no escapes.
  */
+/** Whether the symbols in a file are compared with case kept. */
 const modes = new WeakMap<ParsedFile, boolean>();
 
 export function setCaseSensitive(

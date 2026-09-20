@@ -1,14 +1,8 @@
 import {
-  findVasmInclude,
   includeArguments,
   resolveInclude,
   vasmSearchDirectories,
 } from "../src/index";
-
-const files = (...paths: string[]) => {
-  const set = new Set(paths);
-  return (path: string) => set.has(path);
-};
 
 describe("vasmSearchDirectories", () => {
   it("is the run directory, the main source's, the -I paths, then incdirs", () => {
@@ -35,41 +29,6 @@ describe("vasmSearchDirectories", () => {
 
   it("names each directory once", () => {
     expect(vasmSearchDirectories({ cwd: "/p", mainDir: "/p" })).toEqual(["/p"]);
-  });
-});
-
-describe("findVasmInclude", () => {
-  const search = { cwd: "/p", mainDir: "/p/src" };
-
-  it("finds a path from the run directory", () => {
-    expect(findVasmInclude("lib/a.i", search, files("/p/lib/a.i"))).toBe(
-      "/p/lib/a.i",
-    );
-  });
-
-  it("finds a file beside the main source", () => {
-    expect(findVasmInclude("c.i", search, files("/p/src/c.i"))).toBe(
-      "/p/src/c.i",
-    );
-  });
-
-  it("does not look beside the including file", () => {
-    // lib/a.i is only in lib, where nothing in the search looks.
-    expect(findVasmInclude("b.i", search, files("/p/lib/b.i"))).toBeUndefined();
-  });
-
-  it("finds a relative -I from either directory", () => {
-    const found = findVasmInclude(
-      "e.i",
-      { ...search, includePaths: ["../inc"] },
-      files("/p/inc/e.i"),
-    );
-    // From the main source's directory: /p/src/../inc.
-    expect(found).toBe("/p/inc/e.i");
-  });
-
-  it("takes an absolute name as it is", () => {
-    expect(findVasmInclude("/x/a.i", search, files("/x/a.i"))).toBe("/x/a.i");
   });
 });
 
@@ -124,6 +83,32 @@ describe("resolveInclude", () => {
       fs("/q/src/c.i", "/p/lib/c.i"),
     );
     expect(found).toMatchObject({ path: "/q/src/c.i", via: "vasm" });
+  });
+
+  it("does not look beside the including file unless given it as a fallback", async () => {
+    // lib/b.i is only in lib, where nothing in vasm's search looks.
+    expect(
+      await resolveInclude("b.i", [search], [], fs("/p/lib/b.i")),
+    ).toBeUndefined();
+  });
+
+  it("tries a relative -I from the run directory and then the main source's", async () => {
+    const found = await resolveInclude(
+      "e.i",
+      [{ ...search, includePaths: ["../inc"] }],
+      [],
+      fs("/p/inc/e.i"),
+    );
+    // Not /p/../inc, but /p/src/../inc.
+    expect(found).toMatchObject({ path: "/p/inc/e.i", via: "vasm" });
+  });
+
+  it("takes an absolute name as it is", async () => {
+    const find = (dir: string, name: string) =>
+      Promise.resolve(name === "/x/a.i" ? name : undefined);
+    expect(await resolveInclude("/x/a.i", [search], [], find)).toMatchObject({
+      path: "/x/a.i",
+    });
   });
 
   it("finds nothing where nothing is", async () => {

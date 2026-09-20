@@ -8,6 +8,7 @@ import {
 } from "m68k-lint";
 import {
   followIncludes,
+  type IncludeSearchOptions,
   nodeIncludeFs,
   type IncludedFile,
 } from "m68k-lint/project-config";
@@ -51,7 +52,7 @@ export async function buildIndex(
   root: string,
   overrides: ReadonlyMap<string, string>,
   needsReferences: boolean,
-  includePaths: readonly string[] = [],
+  includes: IncludeSearchOptions = { includePaths: [] },
   caseSensitive = true,
 ): Promise<ProjectIndex | undefined> {
   const paths = await discoverAssemblyFiles(root, {
@@ -81,7 +82,7 @@ export async function buildIndex(
   // What the project includes from outside its tree, found beside the files or
   // through the config's include paths. Read for what it defines, never linted.
   const included = await followIncludes(read, {
-    includePaths,
+    ...includes,
     fs: nodeIncludeFs(overrides),
   });
   for (const { path, source } of included)
@@ -124,12 +125,15 @@ export class ProjectIndexCache {
     root: string,
     overrides: ReadonlyMap<string, string>,
     needsReferences: boolean,
-    includePaths: readonly string[] = [],
+    includes: IncludeSearchOptions = { includePaths: [] },
     caseSensitive = true,
   ): Promise<ProjectIndex | undefined> {
-    const key = [root, caseSensitive ? "case" : "nocase", ...includePaths].join(
-      "\0",
-    );
+    const key = [
+      root,
+      caseSensitive ? "case" : "nocase",
+      includes.sourceRoot ?? "",
+      ...includes.includePaths,
+    ].join("\0");
     const cached = this.cache.get(key);
     if (cached && (!needsReferences || this.withReferences.has(key)))
       return cached;
@@ -139,7 +143,7 @@ export class ProjectIndexCache {
       root,
       overrides,
       needsReferences,
-      includePaths,
+      includes,
       caseSensitive,
     );
     this.cache.set(key, index);

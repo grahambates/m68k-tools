@@ -7,7 +7,18 @@ import { dirname } from "path";
 import { isAssemblySource, walkFiles } from "@m68k-lsp/workspace-files";
 
 import { type Context } from "./context";
-import { sourceRootOf } from "./config";
+import {
+  assemblerArgs,
+  type Config,
+  sourceRootOf,
+  vasmRunDirectory,
+} from "./config";
+import {
+  includeArguments,
+  resolveInclude as resolveIncludeName,
+  vasmSearchDirectories,
+  type VasmSearch,
+} from "@m68k-lsp/assembly-options";
 
 const { readFile, access } = fsp;
 
@@ -35,6 +46,61 @@ export async function readDocumentFromUri(
 type ResolveContext = Pick<Context, "workspaceFolders" | "store" | "config">;
 
 /**
+ * Where an include named in a document is looked for.
+ *
+ * As vasm looks, for each program the document is part of: the directory it is
+ * run in, the directory of the main source, the `-I` paths and the `incdir`s the
+ * document can see. Which program is not always known, so each is tried. Then,
+ * more forgivingly, beside the document itself and from each workspace folder,
+ * which vasm would not do but finding a file it would not is harmless here.
+ */
+function includeSearch(documentUri: string, ctx: ResolveContext) {
+  const workspaceRoots = ctx.workspaceFolders.map(
+    (f) => URI.parse(f.uri).fsPath,
+  );
+  const entries = getEntryPointsFor(documentUri, ctx);
+  const mains = (entries.length ? entries : [documentUri]).map(
+    (uri) => URI.parse(uri).fsPath,
+  );
+  const includePaths = includeArguments(assemblerArgs(ctx.config as Config));
+
+  // Only incdirs the document can actually see: its own and those of the
+  // files it includes. Pooling them across the whole store let an incdir in
+  // one part of a workspace change how another part resolves its includes.
+  const visible = [documentUri, ...getIncluded(documentUri, ctx)];
+  const incDirs = visible
+    .flatMap((uri) => ctx.store.get(uri)?.symbols.incDirs ?? [])
+    .map((dir) => dir.text);
+
+  const searches: VasmSearch[] = mains.map((main) => ({
+    cwd: vasmRunDirectory(ctx.config as Config, workspaceRoots, main),
+    mainDir: dirname(main),
+    includePaths,
+    incDirs,
+  }));
+  const docDir = dirname(URI.parse(documentUri).fsPath);
+  const sourceRoot = sourceRootOf(ctx.config as Config, workspaceRoots);
+  const fallback = [
+    docDir,
+    ...(sourceRoot ? [sourceRoot] : []),
+    ...workspaceRoots,
+  ].flatMap((root) => [root, ...incDirs.map((dir) => resolve(root, dir))]);
+  return {
+    searches,
+    fallback: fallback.filter((dir, i) => fallback.indexOf(dir) === i),
+  };
+}
+
+/** The file at a path under a directory, if there is one. */
+async function findFile(
+  dir: string,
+  name: string,
+): Promise<string | undefined> {
+  const candidate = resolve(dir, name);
+  return (await exists(candidate)) ? candidate : undefined;
+}
+
+/**
  * Resolve include file/dir path to first matching absolute file path.
  */
 export async function resolveInclude(
@@ -42,9 +108,8 @@ export async function resolveInclude(
   path: string,
   ctx: ResolveContext,
 ): Promise<string | undefined> {
-  for await (const resolved of resolveIncludesGen(documentUri, path, ctx)) {
-    return resolved;
-  }
+  const { searches, fallback } = includeSearch(documentUri, ctx);
+  return (await resolveIncludeName(path, searches, fallback, findFile))?.path;
 }
 
 /**
@@ -57,47 +122,14 @@ export async function* resolveIncludesGen(
   path: string | undefined,
   ctx: ResolveContext,
 ): AsyncGenerator<string> {
-  const workspaceRoots = ctx.workspaceFolders.map(
-    (f) => URI.parse(f.uri).fsPath,
-  );
-  // Where the assembler runs comes first, as it looks there first.
-  const sourceRoot = sourceRootOf(ctx.config, workspaceRoots);
-  // The directory of the program being assembled is searched too: vasm looks
-  // there, and never beside the file that names the include, so a nested include
-  // written from the main source's directory is found there.
-  const programDirs = getEntryPointsFor(documentUri, ctx).map((uri) =>
-    dirname(URI.parse(uri).fsPath),
-  );
-  const roots = [
-    ...(sourceRoot ? [sourceRoot] : []),
-    ...programDirs,
-    ...workspaceRoots,
-  ];
-  roots.push(dirname(URI.parse(documentUri).fsPath));
-
-  // Only incdirs the document can actually see: its own and those of the
-  // files it includes. Pooling them across the whole store let an incdir in
-  // one part of a workspace change how another part resolves its includes.
-  const visible = [documentUri, ...getIncluded(documentUri, ctx)];
-  const incDirs = visible
-    .flatMap((uri) => ctx.store.get(uri)?.symbols.incDirs ?? [])
-    .map((dir) => dir.text);
-
-  if (ctx.config.includePaths) {
-    incDirs.push(...ctx.config.includePaths);
-  }
-
-  for (const root of roots) {
-    const candidate = path ? resolve(root, path) : root;
-    if (await exists(candidate)) {
-      yield candidate;
-    }
-    for (const dir of incDirs) {
-      const candidate = path ? resolve(root, dir, path) : root;
-      if (await exists(candidate)) {
-        yield candidate;
-      }
-    }
+  const { searches, fallback } = includeSearch(documentUri, ctx);
+  const seen = new Set<string>();
+  const dirs = [...searches.flatMap(vasmSearchDirectories), ...fallback];
+  for (const dir of dirs) {
+    const candidate = path ? resolve(dir, path) : dir;
+    if (seen.has(candidate)) continue;
+    seen.add(candidate);
+    if (await exists(candidate)) yield candidate;
   }
 }
 

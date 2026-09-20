@@ -60,3 +60,59 @@ export function includeArguments(args: readonly string[]): string[] {
   }
   return paths;
 }
+
+export interface ResolvedInclude {
+  /** The file found. */
+  path: string;
+  /** The directory it was found in. */
+  dir: string;
+  /**
+   * `vasm` if the assembler would find it there, `fallback` if only the
+   * forgiving lookup did: a file vasm would not open from here.
+   */
+  via: "vasm" | "fallback";
+}
+
+/**
+ * Find the file an include names, as vasm would and, failing that, more
+ * forgivingly.
+ *
+ * vasm's own search comes first, so what is found is what the assembler opens.
+ * Where the tools cannot know the inputs to it (which file is the main source,
+ * where it is run from), more than one search may be given and each is tried
+ * in turn. If none finds it, `fallbackDirs` are tried, such as the directory of
+ * the including file: finding a file vasm would not is harmless for reading
+ * what it defines or for navigating to it, and losing one vasm would find is
+ * not, but the result says which it was so a caller can tell the user.
+ *
+ * @param find the file `name` is under `dir`, if there is one, as the caller's
+ *   file system has it
+ */
+export async function resolveInclude(
+  name: string,
+  searches: readonly VasmSearch[],
+  fallbackDirs: readonly string[],
+  find: (dir: string, name: string) => Promise<string | undefined>,
+): Promise<ResolvedInclude | undefined> {
+  const tried = new Set<string>();
+  const attempt = async (
+    dirs: readonly string[],
+    via: ResolvedInclude["via"],
+  ) => {
+    for (const dir of dirs) {
+      if (tried.has(dir) && via === "vasm") continue;
+      tried.add(dir);
+      const path = await find(dir, name);
+      if (path !== undefined) return { path, dir, via } as const;
+    }
+    return undefined;
+  };
+  for (const search of searches) {
+    const found = await attempt(vasmSearchDirectories(search), "vasm");
+    if (found) return found;
+  }
+  return attempt(
+    fallbackDirs.filter((dir) => !tried.has(dir)),
+    "fallback",
+  );
+}

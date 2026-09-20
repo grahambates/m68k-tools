@@ -61,4 +61,41 @@ describe("where an include is looked for", () => {
       join(dir, "src", "c.i"),
     );
   });
+
+  it("takes what vasm would open over a file beside the including file", async () => {
+    await writeFile(join(dir, "lib", "b.i"), "BESIDE = 1\n");
+    await writeFile(join(dir, "src", "b.i"), "MAIN = 1\n");
+    const ctx = await createContext(
+      [{ uri: pathToFileURL(join(dir, "elsewhere")).toString(), name: "w" }],
+      new NullLogger(),
+      {} as lsp.Connection,
+      {},
+    );
+    const processor = new DocumentProcessor(ctx);
+    const uri = (...parts: string[]) =>
+      pathToFileURL(join(dir, ...parts)).toString();
+    const open = (path: string[], text: string) =>
+      processor.process(TextDocument.create(uri(...path), "vasmmot", 1, text));
+    await open(["lib", "a.i"], '\tinclude "b.i"\n');
+    await writeFile(join(dir, "lib", "a.i"), '\tinclude "b.i"\n');
+    await writeFile(join(dir, "src", "main.s"), '\tinclude "../lib/a.i"\n');
+    await open(["src", "main.s"], '\tinclude "../lib/a.i"\n');
+
+    // vasm, run for src/main.s, opens src/b.i and never lib/b.i.
+    expect(await resolveInclude(uri("lib", "a.i"), "b.i", ctx)).toBe(
+      join(dir, "src", "b.i"),
+    );
+  });
+
+  it("still finds a file only beside the including file, which vasm would not open", async () => {
+    await writeFile(join(dir, "lib", "b.i"), "BESIDE = 1\n");
+    const ctx = await createContext(
+      [{ uri: pathToFileURL(join(dir, "elsewhere")).toString(), name: "w" }],
+      new NullLogger(),
+      {} as lsp.Connection,
+      {},
+    );
+    const uri = pathToFileURL(join(dir, "lib", "a.i")).toString();
+    expect(await resolveInclude(uri, "b.i", ctx)).toBe(join(dir, "lib", "b.i"));
+  });
 });

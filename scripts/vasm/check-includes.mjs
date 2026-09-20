@@ -171,17 +171,18 @@ for (const scenario of scenarios) {
   );
   const opened = !/(?:^|\n)(?:fatal )?error \d+/.test(ran.stdout + ran.stderr);
 
-  // What the linter would be given: the run directory as the source root, then
-  // the -I paths, resolved against it as the config does.
-  const includePaths = [
-    cwd,
-    ...(scenario.args ?? [])
-      .filter((a) => a.startsWith("-I"))
-      .map((a) => resolve(cwd, a.slice(2))),
-  ];
+  // What the linter would be given: the run directory as the source root, and
+  // the -I paths resolved against it as the config does.
+  const includePaths = (scenario.args ?? [])
+    .filter((a) => a.startsWith("-I"))
+    .map((a) => resolve(cwd, a.slice(2)));
   const fs = nodeIncludeFs();
   const source = { path: join(root, "src/main.s"), source: main };
-  const followed = await followIncludes([source], { includePaths, fs });
+  const followed = await followIncludes([source], {
+    sourceRoot: cwd,
+    includePaths,
+    fs,
+  });
   const found = followed.length > 0;
 
   const predicted = modelOpens(

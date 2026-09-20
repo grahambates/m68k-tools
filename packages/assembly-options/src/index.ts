@@ -192,19 +192,6 @@ export async function loadAssemblyOptions(
 }
 
 /**
- * The directories to look in for an include after the including file's own:
- * the source root, where the assembler runs and so looks first, then the
- * include paths in order, each once.
- */
-export function searchPaths(
-  includePaths: readonly string[] = [],
-  sourceRoot?: string,
-): string[] {
-  const paths = sourceRoot ? [sourceRoot, ...includePaths] : [...includePaths];
-  return paths.filter((path, i) => paths.indexOf(path) === i);
-}
-
-/**
  * The vasm arguments to run with: the ones the user gave, then those that follow
  * from the options, each only if it is not already there.
  *
@@ -242,6 +229,8 @@ export { editAssemblyConfig, type ConfigChange } from "./edit.js";
 export {
   findVasmInclude,
   includeArguments,
+  resolveInclude,
   vasmSearchDirectories,
+  type ResolvedInclude,
   type VasmSearch,
 } from "./search.js";

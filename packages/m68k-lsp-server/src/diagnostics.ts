@@ -8,10 +8,10 @@ import { URI } from "vscode-uri";
 import which from "which";
 import * as cp from "child_process";
 import { tmpdir } from "os";
-import { basename, dirname, isAbsolute, join, relative } from "path";
+import { basename, dirname, join, relative } from "path";
 import { minimatch } from "minimatch";
 
-import { assemblerArgs, sourceRootOf } from "./config";
+import { assemblerArgs, vasmRunDirectory } from "./config";
 import {
   findVasmInclude,
   includeArguments,
@@ -192,18 +192,15 @@ export default class DiagnosticProcessor {
    * to its own directory.
    */
   private runContext(srcPath: string): { cwd: string; fileArg: string } {
-    const root = sourceRootOf(
+    const cwd = vasmRunDirectory(
       this.ctx.config,
       this.ctx.workspaceFolders.map((f) => URI.parse(f.uri).fsPath),
+      srcPath,
     );
-    const fromRoot = root ? relative(root, srcPath) : undefined;
-    const cwd =
-      root && fromRoot && !fromRoot.startsWith("..") && !isAbsolute(fromRoot)
-        ? root
-        : dirname(srcPath);
     return {
       cwd,
-      fileArg: cwd === dirname(srcPath) ? basename(srcPath) : fromRoot!,
+      fileArg:
+        cwd === dirname(srcPath) ? basename(srcPath) : relative(cwd, srcPath),
     };
   }
 

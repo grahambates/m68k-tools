@@ -15,7 +15,6 @@ import {
   findAssemblyConfig,
   loadAssemblyOptions,
   mergeOptions,
-  searchPaths,
   type AssemblyOptions,
 } from "@m68k-lsp/assembly-options";
 
@@ -62,8 +61,10 @@ export interface ResolvedConfig {
   error?: string;
   /** The config's `ignores`: files it leaves out of linting. */
   ignores?: readonly string[];
-  /** Where includes are looked for after the file's own directory: the source root, then the config's and the shared file's include paths, all absolute. */
+  /** The `-I` paths: the config's and the shared file's, all absolute. */
   includePaths?: readonly string[];
+  /** The directory vasm is run from, absolute, where a config says. */
+  sourceRoot?: string;
   /** Things about the config files worth telling the user that are not errors. */
   warnings?: readonly string[];
 }
@@ -148,7 +149,8 @@ export class ConfigResolver {
     if (!configPath)
       return {
         config: base,
-        includePaths: searchPaths(shared.includePaths, shared.sourceRoot),
+        includePaths: shared.includePaths,
+        sourceRoot: shared.sourceRoot,
         warnings,
       };
 
@@ -161,13 +163,12 @@ export class ConfigResolver {
         config: { ...base, ...overrides },
         configPath,
         ignores: configIgnores(project),
-        includePaths: searchPaths(
-          mergeOptions(
-            { includePaths: configIncludePaths(project, dirname(configPath)) },
-            { includePaths: shared.includePaths },
-          ).includePaths,
+        includePaths: mergeOptions(
+          { includePaths: configIncludePaths(project, dirname(configPath)) },
+          { includePaths: shared.includePaths },
+        ).includePaths,
+        sourceRoot:
           configSourceRoot(project, dirname(configPath)) ?? shared.sourceRoot,
-        ),
         warnings,
       };
     } catch (error) {

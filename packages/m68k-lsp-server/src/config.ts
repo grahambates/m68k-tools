@@ -1,7 +1,7 @@
 import { type Processor } from "./docs";
 import { type FormatterOptions, defaultOptions } from "m68k-formatter";
 import * as os from "os";
-import { isAbsolute, resolve } from "path";
+import { dirname, isAbsolute, relative, resolve } from "path";
 import { optionsFromVasmArgs, vasmArgs } from "@m68k-lsp/assembly-options";
 import { type VasmOptions } from "./diagnostics";
 
@@ -138,4 +138,20 @@ export function sourceRootOf(
     : isAbsolute(config.sourceRoot)
       ? config.sourceRoot
       : undefined;
+}
+
+/**
+ * The directory vasm is run from to assemble a file: the source root where the
+ * config gives one and the file is under it, else the file's own directory.
+ */
+export function vasmRunDirectory(
+  config: Config,
+  workspaceRoots: readonly string[],
+  srcPath: string,
+): string {
+  const root = sourceRootOf(config, workspaceRoots);
+  const fromRoot = root ? relative(root, srcPath) : undefined;
+  return root && fromRoot && !fromRoot.startsWith("..") && !isAbsolute(fromRoot)
+    ? root
+    : dirname(srcPath);
 }

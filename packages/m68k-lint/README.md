@@ -229,9 +229,9 @@ Paths are absolute or relative to the config file. The linter follows each
 `include` it finds and keeps going through what those files include. vasm looks in
 the directory it is run in (`sourceRoot`), then the directory of the main source,
 then the `-I` paths, then any `incdir`; it never looks beside the file that names
-the include. The linter looks in all of those, and beside the file as well, so it
-finds everything vasm does and sometimes a file vasm would not, which the assembler
-reports itself. The main sources are the files nothing else includes. A relative
+the include. The linter looks there in that order, and only if none has the include, beside the
+file that names it, so it finds everything vasm does, the same file vasm would open,
+and sometimes a file vasm would not, which the assembler reports itself. The main sources are the files nothing else includes. A relative
 `-I` that only resolves from the main source's directory, with vasm run somewhere
 else, is not found. Case is left to the file system, as it would be for the assembler
 run there: an include in the wrong case is found on macOS and Windows and not on

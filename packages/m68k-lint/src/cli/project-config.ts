@@ -19,6 +19,7 @@ export {
   includeCaseOnDisk,
   nodeIncludeFs,
   type FollowOptions,
+  type IncludeSearchOptions,
   type IncludedFile,
   type IncludeFs,
 } from "./project-includes.js";

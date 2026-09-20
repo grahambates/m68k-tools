@@ -1,6 +1,7 @@
 import {
   findVasmInclude,
   includeArguments,
+  resolveInclude,
   vasmSearchDirectories,
 } from "../src/index";
 
@@ -78,5 +79,56 @@ describe("includeArguments", () => {
       "a",
       "b",
     ]);
+  });
+});
+
+describe("resolveInclude", () => {
+  const fs = (...paths: string[]) => {
+    const set = new Set(paths);
+    return (dir: string, name: string) => {
+      const path = `${dir}/${name}`;
+      return Promise.resolve(set.has(path) ? path : undefined);
+    };
+  };
+  const search = { cwd: "/p", mainDir: "/p/src" };
+
+  it("takes what vasm would find first", async () => {
+    const found = await resolveInclude(
+      "a.i",
+      [search],
+      ["/p/lib"],
+      fs("/p/src/a.i", "/p/lib/a.i"),
+    );
+    expect(found).toEqual({ path: "/p/src/a.i", dir: "/p/src", via: "vasm" });
+  });
+
+  it("falls back, and says that vasm would not find it", async () => {
+    const found = await resolveInclude(
+      "b.i",
+      [search],
+      ["/p/lib"],
+      fs("/p/lib/b.i"),
+    );
+    expect(found).toEqual({
+      path: "/p/lib/b.i",
+      dir: "/p/lib",
+      via: "fallback",
+    });
+  });
+
+  it("tries each search in turn before the fallback", async () => {
+    const found = await resolveInclude(
+      "c.i",
+      [search, { cwd: "/q", mainDir: "/q/src" }],
+      ["/p/lib"],
+      fs("/q/src/c.i", "/p/lib/c.i"),
+    );
+    expect(found).toMatchObject({ path: "/q/src/c.i", via: "vasm" });
+  });
+
+  it("finds nothing where nothing is", async () => {
+    expect(
+      await resolveInclude("d.i", [search], ["/p/lib"], fs()),
+    ).toBeUndefined();
   });
 });

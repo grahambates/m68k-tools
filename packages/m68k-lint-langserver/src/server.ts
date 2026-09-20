@@ -19,7 +19,11 @@ import {
   type FileFacts,
   type LintConfig,
 } from "m68k-lint";
-import { includeCaseOnDisk, nodeIncludeFs } from "m68k-lint/project-config";
+import {
+  includeCaseOnDisk,
+  nodeIncludeFs,
+  type IncludeSearchOptions,
+} from "m68k-lint/project-config";
 import { ConfigResolver, defaultSettings, type Settings } from "./config.js";
 import {
   DIAGNOSTIC_SOURCE,
@@ -82,9 +86,8 @@ async function lintDocument(
   // the command line. Its symbols are still indexed for everything else.
   if (await configs.isIgnored(uri.fsPath)) return [];
 
-  const { config, error, includePaths, warnings } = await configs.resolve(
-    uri.fsPath,
-  );
+  const { config, error, includePaths, sourceRoot, warnings } =
+    await configs.resolve(uri.fsPath);
   if (error) connection.console.warn(`m68k-lint: ${error}`);
   for (const warning of warnings ?? [])
     connection.console.warn(`m68k-lint: ${warning}`);
@@ -96,17 +99,15 @@ async function lintDocument(
         root,
         openDocumentText(),
         needsProjectReferences(config),
-        includePaths,
+        { includePaths: includePaths ?? [], sourceRoot },
         config.caseSensitive ?? true,
       )
     : undefined;
 
-  const facts = await fileFacts(
-    uri.fsPath,
-    document.getText(),
-    config,
-    includePaths,
-  );
+  const facts = await fileFacts(uri.fsPath, document.getText(), config, {
+    includePaths: includePaths ?? [],
+    sourceRoot,
+  });
   return lintSource(
     document.getText(),
     config,
@@ -122,14 +123,14 @@ async function fileFacts(
   fsPath: string,
   text: string,
   config: LintConfig,
-  includePaths: readonly string[] | undefined,
+  includes: IncludeSearchOptions,
 ): Promise<FileFacts | undefined> {
   if (!needsIncludeCase(config)) return undefined;
   return {
     includeCase: await includeCaseOnDisk(
       { path: fsPath, source: text },
       {
-        includePaths: includePaths ?? [],
+        ...includes,
         fs: nodeIncludeFs(openDocumentText()),
       },
     ),
@@ -335,7 +336,9 @@ connection.onCodeAction(async (params: CodeActionParams) => {
     return [];
 
   const uri = URI.parse(document.uri);
-  const { config, includePaths } = await configs.resolve(uri.fsPath);
+  const { config, includePaths, sourceRoot } = await configs.resolve(
+    uri.fsPath,
+  );
   const root =
     config.projectSymbols === false ? undefined : rootFor(uri.fsPath);
   const projectIndex = root
@@ -343,7 +346,7 @@ connection.onCodeAction(async (params: CodeActionParams) => {
         root,
         openDocumentText(),
         needsProjectReferences(config),
-        includePaths,
+        { includePaths: includePaths ?? [], sourceRoot },
         config.caseSensitive ?? true,
       )
     : undefined;
@@ -359,12 +362,10 @@ connection.onCodeAction(async (params: CodeActionParams) => {
         openText: (configUri) => documents.get(configUri)?.getText(),
       });
 
-  const facts = await fileFacts(
-    uri.fsPath,
-    document.getText(),
-    config,
-    includePaths,
-  );
+  const facts = await fileFacts(uri.fsPath, document.getText(), config, {
+    includePaths: includePaths ?? [],
+    sourceRoot,
+  });
   const settings = configs.getSettings();
   const options: ActionOptions = {
     ignoreFile,

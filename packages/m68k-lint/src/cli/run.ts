@@ -34,7 +34,6 @@ import {
   findAssemblyConfig,
   loadAssemblyOptions,
   mergeOptions,
-  searchPaths,
   type AssemblyOptions,
 } from "@m68k-lsp/assembly-options";
 import {
@@ -47,6 +46,7 @@ import {
   loadProjectConfig,
   nodeIncludeFs,
   type IncludedFile,
+  type IncludeSearchOptions,
   type ProjectConfig,
 } from "./project-config.js";
 import {
@@ -123,7 +123,7 @@ async function lintOne(
   options: CliOptions,
   config: LintConfig,
   projectIndex?: ProjectIndex,
-  includePaths: readonly string[] = [],
+  includes: IncludeSearchOptions = { includePaths: [] },
 ) {
   let source = await readFile(path, "utf8");
   // What the file system calls each include, for the rule that compares it with
@@ -132,7 +132,7 @@ async function lintOne(
     ? {
         includeCase: await includeCaseOnDisk(
           { path: resolve(path), source },
-          { includePaths, fs: nodeIncludeFs() },
+          { ...includes, fs: nodeIncludeFs() },
         ),
       }
     : undefined;
@@ -250,7 +250,7 @@ async function buildProjectIndex(
   root: string,
   extensions: readonly string[],
   needsReferences: boolean,
-  includePaths: readonly string[],
+  includes: IncludeSearchOptions,
   caseSensitive: boolean,
 ): Promise<ProjectIndex | undefined> {
   let paths: string[];
@@ -281,7 +281,7 @@ async function buildProjectIndex(
   // What the project includes from outside its tree -- shared NDK files, say --
   // is found through the include paths and read for what it defines, never linted.
   const included = await followIncludes(read, {
-    includePaths,
+    ...includes,
     fs: nodeIncludeFs(),
   });
   for (const { path, source } of included)
@@ -540,21 +540,24 @@ export async function run(argv: string[]): Promise<number> {
     caseSensitive: projectConfig.caseSensitive ?? shared.caseSensitive,
     escapeSequences: projectConfig.escapeSequences ?? shared.escapeSequences,
   });
-  // Where an include is looked for after the including file's own directory:
-  // the source root, where the assembler runs, then the include paths.
-  const includePaths = searchPaths(
-    mergeOptions(
-      {
-        includePaths: projectConfigPath
-          ? configIncludePaths(projectConfig, dirname(projectConfigPath))
-          : [],
-      },
-      { includePaths: shared.includePaths },
-    ).includePaths,
-    (projectConfigPath
-      ? configSourceRoot(projectConfig, dirname(projectConfigPath))
-      : undefined) ?? shared.sourceRoot,
-  );
+  // Where vasm looks for an include: the directory it is run in, then the
+  // main source's, then the include paths, which the config and the shared file
+  // both give.
+  const includes: IncludeSearchOptions = {
+    sourceRoot:
+      (projectConfigPath
+        ? configSourceRoot(projectConfig, dirname(projectConfigPath))
+        : undefined) ?? shared.sourceRoot,
+    includePaths:
+      mergeOptions(
+        {
+          includePaths: projectConfigPath
+            ? configIncludePaths(projectConfig, dirname(projectConfigPath))
+            : [],
+        },
+        { includePaths: shared.includePaths },
+      ).includePaths ?? [],
+  };
 
   if (options.fixInteractive) {
     return runInteractiveFixes(inputFiles, config, {
@@ -571,7 +574,7 @@ export async function run(argv: string[]): Promise<number> {
           projectConfigPath ? projectRoot : inputRoot(rawInputs, projectRoot),
           extensions,
           needsProjectReferences(config),
-          includePaths,
+          includes,
           config.caseSensitive ?? true,
         );
 
@@ -580,7 +583,7 @@ export async function run(argv: string[]): Promise<number> {
   for (const file of inputFiles) {
     try {
       results.push(
-        await lintOne(file, options, config, projectIndex, includePaths),
+        await lintOne(file, options, config, projectIndex, includes),
       );
     } catch (error) {
       ioFailed = true;

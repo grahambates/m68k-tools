@@ -66,6 +66,32 @@ describe("followIncludes", () => {
     expect(paths(found)).toEqual([resolve("/p/src/c.i")]);
   });
 
+  test("takes what vasm would open over a file beside the including file", async () => {
+    // Both exist: vasm opens the one in the main source's directory, never the
+    // one beside lib/a.i, so that is the one that is read.
+    const fs = memoryFs({ "/p/src/b.i": "main dir", "/p/lib/b.i": "beside" });
+    const found = await followIncludes(
+      [
+        { path: "/p/src/main.s", source: '\tinclude "../lib/a.i"' },
+        { path: "/p/lib/a.i", source: '\tinclude "b.i"' },
+      ],
+      { includePaths: [], fs },
+    );
+    expect(found.map((f) => f.source)).toEqual(["main dir"]);
+  });
+
+  test("still reads a file only beside the including file, which vasm would not open", async () => {
+    const fs = memoryFs({ "/p/lib/b.i": "beside" });
+    const found = await followIncludes(
+      [
+        { path: "/p/src/main.s", source: '\tinclude "../lib/a.i"' },
+        { path: "/p/lib/a.i", source: '\tinclude "b.i"' },
+      ],
+      { includePaths: [], fs },
+    );
+    expect(found.map((f) => f.source)).toEqual(["beside"]);
+  });
+
   test("follows an incdir named in a source", async () => {
     // Checked with vasm: incdir "inc" then include "e.i" opens inc/e.i.
     const fs = memoryFs({ "/p/inc/e.i": "E equ 1" });

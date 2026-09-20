@@ -1,6 +1,7 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { parseFile } from "m68k-parser";
+import { resolveInclude } from "@m68k-lsp/assembly-options";
 
 /** What following includes needs from a file system, so a caller can supply its own. */
 export interface IncludeFs {
@@ -72,7 +73,12 @@ export interface IncludedFile {
 }
 
 export interface FollowOptions {
-  /** Directories the assembler is given to search for includes, absolute. */
+  /**
+   * The directory the assembler is run from, absolute, where the config says. It
+   * looks there first, and a relative `-I` or `incdir` is tried from there.
+   */
+  sourceRoot?: string;
+  /** Directories the assembler is given to search for includes with `-I`, absolute. */
   includePaths: readonly string[];
   /**
    * The directories of the main sources, which vasm also looks in. Worked out
@@ -80,14 +86,20 @@ export interface FollowOptions {
    */
   entryDirs?: readonly string[];
   /**
-   * The directories `incdir` directives in the sources add to the search, in
-   * the order they appear. Worked out from the sources when not given.
+   * The `incdir` directives in the sources, as written and in the order they
+   * appear, which add to the search. Worked out from the sources when not given.
    */
   incDirs?: readonly string[];
   fs: IncludeFs;
   /** Most files to add, a guard against an include that reaches a whole tree. Default 4000. */
   limit?: number;
 }
+
+/** Where vasm is run and given to look, the part of the search the config decides. */
+export type IncludeSearchOptions = Pick<
+  FollowOptions,
+  "sourceRoot" | "includePaths"
+>;
 
 /** The paths named by directives like `include` in a source, as written. */
 function pathsIn(source: string, directives: readonly string[]): string[] {
@@ -109,6 +121,36 @@ function pathsIn(source: string, directives: readonly string[]): string[] {
 }
 
 /**
+ * The file an include names, from where vasm looks and then, failing that,
+ * beside the file that names it.
+ *
+ * vasm looks in the directory it is run in, then the main source's, then the
+ * `-I` paths and `incdir`s, and never beside the including file. The main source
+ * is not known here, so each candidate is tried in turn; the including file's
+ * own directory is a fallback, since finding a file vasm would not is harmless
+ * for reading what it defines.
+ */
+async function resolveFor(
+  file: IncludedFile,
+  name: string,
+  options: FollowOptions,
+  mainDirs: readonly string[],
+) {
+  const mains = mainDirs.length ? mainDirs : [dirname(file.path)];
+  return resolveInclude(
+    name,
+    mains.map((mainDir) => ({
+      cwd: options.sourceRoot ?? mainDir,
+      mainDir,
+      includePaths: options.includePaths,
+      incDirs: options.incDirs,
+    })),
+    [dirname(file.path)],
+    (dir, included) => options.fs.find(dir, included),
+  );
+}
+
+/**
  * The directories of the main sources among these: the files nothing else
  * includes.
  *
@@ -126,12 +168,8 @@ export async function entryDirectories(
   const included = new Set<string>();
   for (const file of sources) {
     for (const name of pathsIn(file.source, ["include"])) {
-      for (const dir of [dirname(file.path), ...options.includePaths]) {
-        const found = await options.fs.find(dir, name);
-        if (found === undefined) continue;
-        included.add(resolve(found));
-        break;
-      }
+      const found = await resolveFor(file, name, options, []);
+      if (found) included.add(resolve(found.path));
     }
   }
   const dirs: string[] = [];
@@ -141,45 +179,6 @@ export async function entryDirectories(
       dirs.push(dir);
   }
   return dirs;
-}
-
-/**
- * The directories to look in for an include a file names.
- *
- * The file's own directory comes first even though vasm does not look there:
- * finding a file the assembler would not is harmless here, since what is read
- * is only for the constants and macros it defines, and the assembler reports
- * the missing include itself. Then the include paths, and the main sources'
- * directories, which is where vasm finds anything not named from the directory
- * it is run in.
- */
-/**
- * The directories an `incdir` in a source adds to the search, tried as vasm does
- * a relative one: from the directory it is run in, then from the main source's.
- * It applies to includes after the directive wherever they are, so it is added
- * for all of them.
- */
-function incDirectories(file: IncludedFile, options: FollowOptions): string[] {
-  const bases = [
-    dirname(file.path),
-    ...options.includePaths,
-    ...(options.entryDirs ?? []),
-  ];
-  return pathsIn(file.source, ["incdir"]).flatMap((name) =>
-    bases.map((base) => resolve(base, name)),
-  );
-}
-
-function searchDirectories(
-  file: IncludedFile,
-  options: FollowOptions,
-): string[] {
-  return [
-    dirname(file.path),
-    ...options.includePaths,
-    ...(options.entryDirs ?? []),
-    ...(options.incDirs ?? []),
-  ].filter((dir, i, all) => all.indexOf(dir) === i);
 }
 
 /**
@@ -216,11 +215,11 @@ async function follow(
   const added: IncludedFile[] = [];
   const queue = [...sources];
   const withEntries: FollowOptions = { ...options };
-  // Directories `incdir` adds, gathered from every file as it is reached.
+  // The `incdir`s, gathered from every file as it is reached.
   const incDirs: string[] = [];
   const addIncDirs = (file: IncludedFile) => {
-    for (const dir of incDirectories(file, withEntries))
-      if (!incDirs.includes(dir)) incDirs.push(dir);
+    for (const name of pathsIn(file.source, ["incdir"]))
+      if (!incDirs.includes(name)) incDirs.push(name);
   };
   withEntries.incDirs = incDirs;
   sources.forEach(addIncDirs);
@@ -229,23 +228,22 @@ async function follow(
     const file = queue[next];
     for (const name of pathsIn(file.source, ["include"])) {
       if (added.length >= limit) return added;
-      for (const dir of searchDirectories(file, withEntries)) {
-        const found = await options.fs.find(dir, name);
-        if (found === undefined) continue;
-        const path = resolve(found);
-        if (!known.has(path)) {
-          known.add(path);
-          const source = await options.fs.read(path);
-          if (source !== undefined) {
-            const included = { path, source };
-            added.push(included);
-            queue.push(included);
-            addIncDirs(included);
-          }
-        }
-        // First place that has it, as an assembler's search order does.
-        break;
-      }
+      const found = await resolveFor(
+        file,
+        name,
+        withEntries,
+        withEntries.entryDirs ?? [],
+      );
+      if (!found) continue;
+      const path = resolve(found.path);
+      if (known.has(path)) continue;
+      known.add(path);
+      const source = await options.fs.read(path);
+      if (source === undefined) continue;
+      const included = { path, source };
+      added.push(included);
+      queue.push(included);
+      addIncDirs(included);
     }
   }
   return added;
@@ -275,39 +273,43 @@ export async function includeCaseOnDisk(
   // What the file itself adds with `incdir`, when the caller has not gathered it.
   options = {
     ...options,
-    incDirs: options.incDirs ?? incDirectories(file, options),
+    incDirs: options.incDirs ?? pathsIn(file.source, ["incdir"]),
   };
   if (!fs.list) return differing;
 
   for (const name of pathsIn(file.source, ["include", "incbin"])) {
     if (differing.has(name)) continue;
-    for (const dir of searchDirectories(file, options)) {
-      if ((await fs.find(dir, name)) === undefined) continue;
+    const resolved = await resolveFor(
+      file,
+      name,
+      options,
+      options.entryDirs ?? [],
+    );
+    if (!resolved) continue;
+    const dir = resolved.dir;
 
-      // Walk the name a segment at a time, taking each as the directory has it.
-      const parts = name.split(/([\\/]+)/);
-      let current = dir;
-      let actual = "";
-      for (const [index, part] of parts.entries()) {
-        if (index % 2 === 1 || part === "" || part === "." || part === "..") {
-          actual += part;
-          if (index % 2 === 0) current = resolve(current, part);
-          continue;
-        }
-        const entries = (await fs.list(current)) ?? [];
-        const match = entries.includes(part)
-          ? part
-          : entries.find((entry) => entry.toLowerCase() === part.toLowerCase());
-        if (match === undefined) {
-          actual = "";
-          break;
-        }
-        actual += match;
-        current = join(current, match);
+    // Walk the name a segment at a time, taking each as the directory has it.
+    const parts = name.split(/([\\/]+)/);
+    let current = dir;
+    let actual = "";
+    for (const [index, part] of parts.entries()) {
+      if (index % 2 === 1 || part === "" || part === "." || part === "..") {
+        actual += part;
+        if (index % 2 === 0) current = resolve(current, part);
+        continue;
       }
-      if (actual && actual !== name) differing.set(name, actual);
-      break;
+      const entries = (await fs.list(current)) ?? [];
+      const match = entries.includes(part)
+        ? part
+        : entries.find((entry) => entry.toLowerCase() === part.toLowerCase());
+      if (match === undefined) {
+        actual = "";
+        break;
+      }
+      actual += match;
+      current = join(current, match);
     }
+    if (actual && actual !== name) differing.set(name, actual);
   }
   return differing;
 }

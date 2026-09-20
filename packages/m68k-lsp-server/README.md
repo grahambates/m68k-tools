@@ -151,6 +151,26 @@ after the file's own directory and before the include paths.
 
 Default: unset
 
+### Inferred include paths:
+
+The server works out which includes vasm would not find, from where vasm looks: the directory it is run in,
+the directory of the main source, the `-I` paths and `incdir`s, and not beside the file that names the
+include. For each it looks for project files that end in the same path. If `include "lib/defs.i"` would not
+be found and the project has `<dir>/lib/defs.i`, vasm is given `<dir>` as an include path, so the include
+is found and the rest of the file is checked. If vasm still cannot open an include, for one made by a macro
+say, it is run again with the same kind of guess. An information diagnostic on the
+include says so, with quick fixes to add the directory to `includePaths` or set it as the `sourceRoot` in
+`.m68krc.json`, whichever is meant: to vasm the two are the same. A path that could be resolved more than one
+way is left alone. Turn it off with `inferIncludePaths: false`.
+
+```json
+{
+  "inferIncludePaths": false
+}
+```
+
+Default: on
+
 ### Escape sequences:
 
 Whether the assembler reads backslash escapes in strings (`vasm -esc`), so `dc.b "Hello\n"` holds a newline.

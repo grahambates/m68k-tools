@@ -26,6 +26,7 @@ describe("m68krc.schema.json", () => {
       "caseSensitive",
       "escapeSequences",
       "sourceRoot",
+      "inferIncludePaths",
     ]) {
       expect(keys).toContain(key);
     }

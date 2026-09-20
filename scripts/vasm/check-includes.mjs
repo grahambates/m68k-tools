@@ -11,7 +11,9 @@
  *
  * Run from the repository root after `pnpm build`.
  */
+import { existsSync, readFileSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { build } from "esbuild";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -30,12 +32,55 @@ const { followIncludes, nodeIncludeFs } = await import(
   )
 );
 
+// The model of vasm's search that the language server uses, which is TypeScript
+// source, so it is bundled here.
+const bundled = await build({
+  entryPoints: [
+    new URL("../../packages/assembly-options/src/index.ts", import.meta.url)
+      .pathname,
+  ],
+  bundle: true,
+  format: "esm",
+  platform: "node",
+  write: false,
+});
+const { findVasmInclude, includeArguments } = await import(
+  `data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString("base64")}`
+);
+
+/** Whether the model says vasm opens every include in the tree under a main source. */
+function modelOpens(mainPath, cwd, args) {
+  const includePaths = includeArguments(args);
+  const incDirs = [];
+  const queue = [mainPath];
+  const seen = new Set(queue);
+  for (let i = 0; i < queue.length; i++) {
+    const text = readFileSync(queue[i], "utf8");
+    for (const [, name] of text.matchAll(/^\s*incdir\s+"([^"]+)"/gim))
+      incDirs.push(name);
+    for (const [, name] of text.matchAll(/^\s*include\s+"([^"]+)"/gim)) {
+      const found = findVasmInclude(
+        name,
+        { cwd, mainDir: dirname(mainPath), includePaths, incDirs },
+        existsSync,
+      );
+      if (!found) return false;
+      if (!seen.has(found)) {
+        seen.add(found);
+        queue.push(found);
+      }
+    }
+  }
+  return true;
+}
+
 const root = await mkdtemp(join(tmpdir(), "m68k-include-check-"));
 const files = {
   "src/main.s": "",
   "src/c.i": "\tnop\n",
   "lib/a.i": '\tinclude "c.i"\n',
   "lib/b.i": "\tnop\n",
+  "lib/a3.i": '\tinclude "b.i"\n',
   "lib/a2.i": '\tinclude "../lib/b.i"\n',
   "inc/e.i": "\tnop\n",
   "other/d.i": "\tnop\n",
@@ -90,6 +135,11 @@ const scenarios = [
     main: 'incdir "inc"\n\tinclude "e.i"',
     cwd: "",
   },
+  {
+    name: "a bare name that is only beside the includer",
+    main: 'include "../lib/a3.i"',
+    cwd: "",
+  },
   { name: "not reachable at all", main: 'include "d.i"', cwd: "" },
   {
     name: "beside the includer only",
@@ -100,6 +150,7 @@ const scenarios = [
 ];
 
 let unreached = 0;
+let modelWrong = 0;
 let lenient = 0;
 for (const scenario of scenarios) {
   const main = `\t${scenario.main}\n`;
@@ -133,6 +184,18 @@ for (const scenario of scenarios) {
   const followed = await followIncludes([source], { includePaths, fs });
   const found = followed.length > 0;
 
+  const predicted = modelOpens(
+    join(root, "src/main.s"),
+    cwd,
+    scenario.args ?? [],
+  );
+  if (predicted !== opened) {
+    modelWrong++;
+    console.log(
+      `  MODEL     ${scenario.name}: the model says ${predicted ? "opens" : "fails"}, vasm ${opened ? "opens it" : "fails"}`,
+    );
+  }
+
   const verdict =
     opened && !found
       ? scenario.gap
@@ -152,4 +215,7 @@ await rm(root, { recursive: true, force: true });
 console.log(
   `${scenarios.length} scenarios: ${unreached} include(s) vasm opens that the linter does not reach, ${lenient} the linter finds that vasm does not`,
 );
-process.exitCode = unreached ? 1 : 0;
+console.log(
+  `${modelWrong} scenario(s) where the search-order model disagrees with vasm`,
+);
+process.exitCode = unreached || modelWrong ? 1 : 0;

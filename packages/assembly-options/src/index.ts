@@ -232,3 +232,16 @@ export function vasmArgs(
   if (options.escapeSequences === true && !has("-esc")) args.push("-esc");
   return args;
 }
+
+export {
+  inferSearchDirectories,
+  type InferOptions,
+  type InferredDirectory,
+} from "./infer.js";
+export { editAssemblyConfig, type ConfigChange } from "./edit.js";
+export {
+  findVasmInclude,
+  includeArguments,
+  vasmSearchDirectories,
+  type VasmSearch,
+} from "./search.js";

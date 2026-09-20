@@ -201,14 +201,21 @@ export async function followIncludes(
   sources: readonly IncludedFile[],
   options: FollowOptions,
 ): Promise<IncludedFile[]> {
+  const entryDirs =
+    options.entryDirs ?? (await entryDirectories(sources, options));
+  return follow(sources, { ...options, entryDirs });
+}
+
+/** One walk through the includes. */
+async function follow(
+  sources: readonly IncludedFile[],
+  options: FollowOptions,
+): Promise<IncludedFile[]> {
   const limit = options.limit ?? 4000;
   const known = new Set(sources.map((file) => resolve(file.path)));
   const added: IncludedFile[] = [];
   const queue = [...sources];
-  const withEntries: FollowOptions = {
-    ...options,
-    entryDirs: options.entryDirs ?? (await entryDirectories(sources, options)),
-  };
+  const withEntries: FollowOptions = { ...options };
   // Directories `incdir` adds, gathered from every file as it is reached.
   const incDirs: string[] = [];
   const addIncDirs = (file: IncludedFile) => {

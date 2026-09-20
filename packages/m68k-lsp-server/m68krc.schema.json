@@ -48,6 +48,11 @@
       "description": "The directory relative paths in the source, such as an include, resolve from, and vasm is run in: the directory a build is run from. Relative to this file. Unset means each file's own directory.",
       "type": "string"
     },
+    "inferIncludePaths": {
+      "description": "When vasm cannot open an include, guess the directory it is meant to be found in from project files ending in the same path, and run vasm again with it as an include path. An information diagnostic says so, with a quick fix to make it permanent. On unless false.",
+      "type": "boolean",
+      "default": true
+    },
     "exclude": {
       "description": "Glob patterns to leave out of the workspace index, on top of the built-in ones for build output and dependency directories.",
       "type": "array",

@@ -35,6 +35,12 @@ export interface Config {
    * the client. Unset means each file's own directory.
    */
   sourceRoot?: string;
+  /**
+   * Whether to guess where an include is when vasm cannot find it, from files
+   * the project has that end in the same path, and run vasm again with the
+   * directory as an include path. On unless turned off.
+   */
+  inferIncludePaths?: boolean;
   processors: Processor[];
   vasm: VasmOptions;
   inlayHints: InlayHintOptions;

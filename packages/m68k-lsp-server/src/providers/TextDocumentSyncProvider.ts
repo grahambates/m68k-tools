@@ -67,10 +67,13 @@ export default class TextDocumentSyncProvider implements Provider {
       this.connection.sendDiagnostics({
         uri,
         version,
-        diagnostics: this.diagnostics.parserDiagnostics(
-          processed.parsed,
-          processed.blocks,
-        ),
+        diagnostics: [
+          ...this.diagnostics.parserDiagnostics(
+            processed.parsed,
+            processed.blocks,
+          ),
+          ...this.diagnostics.includeDiagnostics(uri),
+        ],
       });
     } catch (error) {
       this.ctx.logger.error(`Unable to process ${uri}: ${String(error)}`);
@@ -124,6 +127,7 @@ export default class TextDocumentSyncProvider implements Provider {
             existing.parsed,
             existing.blocks,
           ),
+          ...this.diagnostics.includeDiagnostics(uri),
           ...vasmDiagnostics,
         ],
       });

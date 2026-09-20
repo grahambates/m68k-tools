@@ -889,11 +889,11 @@ export function parseLine(
       fullText += advance(state);
     }
 
-    // Split into condition and statement
-    const match = /^(\S+)\s+(.*)$/.exec(fullText);
+    // Split into condition and statement. As in vasm the condition is the
+    // first blank-delimited word, so `iif x = 1 nop` does not read as `x = 1`.
+    const match = /^(\S+)(\s+)(.*)$/.exec(fullText);
     if (match) {
-      const conditionText = match[1];
-      const statementText = match[2];
+      const [, conditionText, gap, statementText] = match;
 
       // Parse condition as expression
       const condEnd = condStart + conditionText.length;
@@ -910,22 +910,18 @@ export function parseLine(
         state.errors.push(...condErrors);
       }
 
-      // Parse statement recursively
-      const statementResult = parseLine("  " + statementText);
-      const statementLine = statementResult.value;
+      // Parse the statement as a line of its own. The text before it is
+      // blanked rather than cut off, so what is parsed keeps its place in the
+      // line and every location in it is a location in this one.
+      const statementStart = condEnd + gap.length;
+      const statementResult = parseLine(
+        " ".repeat(statementStart) + statementText,
+        lineNumber,
+      );
       state.errors.push(...statementResult.errors);
-
-      if (statementLine.operands) {
-        const statementStart = text.indexOf(statementText);
-        parsedLine.operands = statementLine.operands.map((op) => ({
-          ...op,
-          loc: {
-            start: statementStart + op.loc.start - 2,
-            end: statementStart + op.loc.end - 2,
-            line: state.line,
-          },
-        }));
-      }
+      parsedLine.inlineStatement = statementResult.value;
+      if (statementResult.value.operands)
+        parsedLine.operands = statementResult.value.operands;
     }
   } else if (parsedLine.mnemonic) {
     // Check if this is a no-operand mnemonic

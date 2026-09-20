@@ -58,6 +58,12 @@ export type QualifierNode = SizeNode | MacroParameterNode | UnknownNode;
 export interface ParsedLine {
   lineNumber?: number;
   inlineCondition?: ExpressionNode; // For iif directive: the condition expression
+  /**
+   * For an iif directive: the statement it makes conditional, as a line of its
+   * own, with locations in this line. Its mnemonic and operands are what run
+   * when the condition holds. The line's own `operands` are a copy of its.
+   */
+  inlineStatement?: ParsedLine;
   label?: LabelNode;
   mnemonic?: MnemonicNode;
   qualifier?: QualifierNode;

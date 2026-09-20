@@ -32,7 +32,8 @@ export function readsEscapes(variables: Variables): boolean {
   return ESCAPES in variables;
 }
 
-function keyOf(variables: Variables, name: string): string {
+/** The key a name is stored under: itself, or folded where the set folds case. */
+export function variableKey(variables: Variables, name: string): string {
   return FOLDED in variables ? name.toLowerCase() : name;
 }
 
@@ -40,7 +41,7 @@ export function lookupVariable(
   variables: Variables,
   name: string,
 ): number | undefined {
-  const key = keyOf(variables, name);
+  const key = variableKey(variables, name);
   return Object.hasOwn(variables, key) ? variables[key] : undefined;
 }
 
@@ -49,5 +50,10 @@ export function setVariable(
   name: string,
   value: number,
 ): void {
-  variables[keyOf(variables, name)] = value;
+  variables[variableKey(variables, name)] = value;
+}
+
+/** Forget a variable, so it is unknown from here on. */
+export function deleteVariable(variables: Variables, name: string): void {
+  delete variables[variableKey(variables, name)];
 }

@@ -1,4 +1,4 @@
-import { substituteMacroParameters, symbolKey } from "m68k-parser";
+import { parseLine, substituteMacroParameters, symbolKey } from "m68k-parser";
 import { type InstructionTiming, instructionTimings } from "../timings";
 import {
   type CacheModel,
@@ -18,6 +18,7 @@ import {
   StatementNode,
 } from "./nodes";
 import evaluate from "./evaluate";
+import { ConditionalConstants } from "./conditionals";
 import { createVariables, setVariable, type Variables } from "./variables";
 import statementSize from "../sizes";
 import { calculateTotals } from "../totals";
@@ -96,6 +97,28 @@ export default class Parser {
 
   // Directive groups:
 
+  /** Directives that open a conditional block. */
+  private conditions: Directive[] = [
+    Directives.IF,
+    Directives.IFEQ,
+    Directives.IFNE,
+    Directives.IFGT,
+    Directives.IFGE,
+    Directives.IFLT,
+    Directives.IFLE,
+    Directives.IFB,
+    Directives.IFNB,
+    Directives.IFC,
+    Directives.IFNC,
+    Directives.IFD,
+    Directives.IFND,
+    Directives.IFMACROD,
+    Directives.IFMACROND,
+  ];
+
+  /** Constants assigned in conditional blocks, which have no one value across the arms. */
+  private readonly conditionalConstants = new ConditionalConstants();
+
   private assignments: Directive[] = [
     Directives["="],
     Directives.EQU,
@@ -157,6 +180,7 @@ export default class Parser {
     this.bss = false;
     this.reptStart = null;
     this.reptStatements = [];
+    this.conditionalConstants.reset();
 
     return statements.map(this.processStatement.bind(this));
   }
@@ -186,6 +210,17 @@ export default class Parser {
     const cpu = this.detectCpu(statement);
     if (cpu) {
       this.cpu = cpu;
+    }
+
+    // An inline condition: `iif <condition> <statement>`. The statement is
+    // counted as it would be on a line of its own, like the arms of any other
+    // conditional, and what it assigns settles as a one-armed block does.
+    const inline = this.inlineStatement(statement);
+    if (inline) {
+      this.conditionalConstants.open();
+      const inner = this.processStatement(inline);
+      this.conditionalConstants.close(this.vars);
+      return { ...inner, statement };
     }
 
     let line: Line = { statement };
@@ -253,6 +288,16 @@ export default class Parser {
     return line;
   }
 
+  /** The statement an `iif` makes conditional, as a statement of its own. */
+  private inlineStatement(statement: StatementNode): StatementNode | undefined {
+    if (statement.opcode?.text.toLowerCase() !== "iif") return undefined;
+    const start = parseLine(statement.text).value.inlineStatement?.mnemonic?.loc
+      .start;
+    return start === undefined
+      ? undefined
+      : new StatementNode(`  ${statement.text.slice(start)}`);
+  }
+
   private processLabel(statement: StatementNode & LabelStatement) {
     // Assign running total of bytes to labels names
     // This allows expressions to get byte count from ranges e.g. `dcb.b END-START`
@@ -301,8 +346,30 @@ export default class Parser {
     ) {
       const value = evaluate(statement.operands[0].text, this.vars);
       if (value !== undefined) {
-        setVariable(this.vars, statement.label.text, value);
+        this.conditionalConstants.assign(
+          this.vars,
+          statement.label.text,
+          value,
+        );
       }
+    }
+
+    // Conditional blocks:
+    else if (this.conditions.includes(statement.opcode.op.name)) {
+      this.conditionalConstants.open();
+    } else if (
+      statement.opcode.op.name === Directives.ELSE ||
+      statement.opcode.op.name === Directives.ELSEIF
+    ) {
+      this.conditionalConstants.next(
+        this.vars,
+        statement.opcode.op.name === Directives.ELSE,
+      );
+    } else if (
+      statement.opcode.op.name === Directives.ENDC ||
+      statement.opcode.op.name === Directives.ENDIF
+    ) {
+      this.conditionalConstants.close(this.vars);
     }
 
     // Macro definition:

@@ -80,6 +80,8 @@ are different constants, and a macro is called by the name it was defined with. 
 A backslash in a string is an ordinary character, so `dc.b "a\n"` is three bytes. Pass
 `{ escapeSequences: true }` for a project assembled with `vasm -esc`, where it is two.
 
+Conditional assembly is not evaluated: every arm of an `IF` is counted, since each is a path the code may take. A constant assigned in a conditional block that has different values in different arms is unknown after the block, so anything sized by it counts as nothing, and does not take the last arm's value.
+
 ## Limitations:
 
 - Because it analyses your pre-assembled source, it can't take into account

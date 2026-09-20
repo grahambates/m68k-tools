@@ -375,6 +375,8 @@ export const Directives = {
   INCDIR: "INCDIR",
   INCBIN: "INCBIN",
   // Conditions:
+  IF: "IF",
+  ELSEIF: "ELSEIF",
   IFEQ: "IFEQ",
   IFNE: "IFNE",
   IFGT: "IFGT",

@@ -835,7 +835,7 @@ After:
 
 ```asm
 	move.w d0,d2
-	muls.w #26215,d0
+	muls.w #$40000/10+1,d0
 	swap d0
 	asr.w #2,d0
 	add.w d2,d2
@@ -847,16 +847,18 @@ Saves -12 bytes, 74(-6,0) cycles, (tradeoff)
 
 Notes:
 
-- This is only correct if the dividend in D0 is between -32768 and 32767, so it fits a signed word and the quotient cannot overflow. That cannot be proven here; check it.
+- Scale $40000, multiplier ceil($40000/10) = 26215, plus one for a negative dividend so that it rounds toward zero: exact for every dividend from -32768 to 32767, found by dividing them all. This is only correct if the dividend in D0 stays within that, so it fits a signed word and the quotient cannot overflow. That cannot be proven here; check it.
 - The upper word (DIVS.W's remainder) is provably unused, and N, Z, V and C are dead, so neither the remainder nor the different flag results matter.
 - The low word of D2 is proven dead and is used as scratch.
-- If the dividend is between -2048 and 2047: move.w d0,d2 ; muls.w #6556,d0 ; swap d0 ; add.w d2,d2 ; clr.w d2 ; addx.w d2,d0 (74 cycles).
-- If the dividend is between -128 and 127: move.w d0,d2 ; muls.w #6592,d0 ; swap d0 ; add.w d2,d2 ; clr.w d2 ; addx.w d2,d0 (70 cycles).
-- If the dividend is also never negative and below 4096: mulu.w #6554,d0 ; swap d0 (60 cycles).
-- If the dividend is also never negative and below 256: mulu.w #6560,d0 ; swap d0 (56 cycles).
-- If the dividend is also never negative and below 64: mulu.w #6656,d0 ; swap d0 (52 cycles).
-- If the dividend is also never negative and below 32: lsr.l #1,d0 ; move.l d0,d7 ; lsr.l #2,d7 ; sub.l d7,d0 ; lsr.l #2,d0 (46 cycles, clobbers D7).
-- If the dividend is also never negative and below 16: move.l d0,d7 ; lsr.l #2,d7 ; sub.l d7,d0 ; lsr.l #3,d0 (38 cycles, clobbers D7).
+- If the dividend is from -16388 to 16388, a smaller scale needs less: move.w d0,d2 ; muls.w #$10000/10+1,d0 ; swap d0 ; add.w d2,d2 ; clr.w d2 ; addx.w d2,d0 (78 cycles).
+- If the dividend is also never negative and no more than 32767, no correction is needed: mulu.w #$80000/10+1,d0 ; swap d0 ; lsr.w #3,d0 (76 cycles).
+- Made for 10 and not written from an expression, if the dividend is between -2048 and 2047: move.w d0,d2 ; muls.w #6556,d0 ; swap d0 ; add.w d2,d2 ; clr.w d2 ; addx.w d2,d0 (74 cycles).
+- Made for 10 and not written from an expression, if the dividend is between -128 and 127: move.w d0,d2 ; muls.w #6592,d0 ; swap d0 ; add.w d2,d2 ; clr.w d2 ; addx.w d2,d0 (70 cycles).
+- Made for 10 and not written from an expression, if the dividend is also never negative and below 4096: mulu.w #6554,d0 ; swap d0 (60 cycles).
+- Made for 10 and not written from an expression, if the dividend is also never negative and below 256: mulu.w #6560,d0 ; swap d0 (56 cycles).
+- Made for 10 and not written from an expression, if the dividend is also never negative and below 64: mulu.w #6656,d0 ; swap d0 (52 cycles).
+- Made for 10 and not written from an expression, if the dividend is also never negative and below 32: lsr.l #1,d0 ; move.l d0,d7 ; lsr.l #2,d7 ; sub.l d7,d0 ; lsr.l #2,d0 (46 cycles, clobbers D7).
+- Made for 10 and not written from an expression, if the dividend is also never negative and below 16: move.l d0,d7 ; lsr.l #2,d7 ; sub.l d7,d0 ; lsr.l #3,d0 (38 cycles, clobbers D7).
 - These sequences also change X, which DIVS.W leaves alone, and nothing here proves X is unused afterwards.
 
 ## `optimization/divs-word-power-of-two`
@@ -919,7 +921,7 @@ Before:
 After:
 
 ```asm
-	mulu.w #52429,d0
+	mulu.w #$80000/10+1,d0
 	swap d0
 	lsr.w #3,d0
 ```
@@ -928,12 +930,14 @@ Saves -4 bytes, 68(-2,0) cycles, (tradeoff)
 
 Notes:
 
-- This is only correct if the dividend in D0 is below 65536, so its upper word is zero and the quotient cannot overflow. That cannot be proven here; check it.
+- Scale $80000, multiplier ceil($80000/10) = 52429: exact for every dividend from 0 to 65535, found by dividing them all. This is only correct if the dividend in D0 stays within that, so its upper word is zero and the quotient cannot overflow. That cannot be proven here; check it.
 - The upper word (DIVU.W's remainder) is provably unused, and N, Z, V and C are dead, so neither the remainder nor the different flag results matter.
-- Recipes with shifts or adds also change X, which DIVU.W leaves alone, and nothing here proves X is unused afterwards.
-- If the dividend is below 4096: mulu.w #6554,d0 ; swap d0 (60 cycles).
-- If the dividend is below 256: mulu.w #6560,d0 ; swap d0 (56 cycles).
-- If the dividend is below 64: mulu.w #6656,d0 ; swap d0 (52 cycles).
+- If the dividend is no more than 43698, a smaller scale needs less: mulu.w #$40000/10+1,d0 ; swap d0 ; lsr.w #2,d0 (74 cycles).
+- If the dividend is no more than 16388, a smaller scale needs less: mulu.w #$10000/10+1,d0 ; swap d0 (60 cycles).
+- Made for 10 and not written from an expression, if the dividend is below 4096: mulu.w #6554,d0 ; swap d0 (60 cycles).
+- Made for 10 and not written from an expression, if the dividend is below 256: mulu.w #6560,d0 ; swap d0 (56 cycles).
+- Made for 10 and not written from an expression, if the dividend is below 64: mulu.w #6656,d0 ; swap d0 (52 cycles).
+- A recipe with a shift also changes X, which DIVU.W leaves alone, and nothing here proves X is unused afterwards.
 
 ## `optimization/divu-word-power-of-two`
 

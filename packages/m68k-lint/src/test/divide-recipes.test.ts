@@ -352,21 +352,22 @@ describe("the rule", () => {
   test("offers a reciprocal multiply when only the quotient is used", () => {
     const d = diagnostic(quotientOnly("divu.w #10,d0"));
     expect(d?.suggestion?.replacement).toBe(
-      "\tmulu.w #52429,d0\n\tswap d0\n\tlsr.w #3,d0",
+      "\tmulu.w #$80000/10+1,d0\n\tswap d0\n\tlsr.w #3,d0",
     );
     expect(d?.suggestion?.applicability).toBe("conditional");
   });
 
   test("states the dividend range it assumes", () => {
     const d = diagnostic(quotientOnly("divu.w #10,d0"));
-    expect(d?.message).toContain("below 65536");
-    expect(d?.notes?.[0]?.message).toContain("below 65536");
+    expect(d?.message).toContain("no more than 65535");
+    expect(d?.notes?.[0]?.message).toContain("from 0 to 65535");
   });
 
   test("says so when the divisor has no recipe for the whole 16-bit range", () => {
-    // 7 needs a 17-bit multiplier over 16 bits, so its widest recipe covers less.
+    // 7 needs a 17-bit multiplier over 16 bits, so its widest recipe covers less,
+    // and the message says how much: the last dividend it divides exactly.
     const d = diagnostic(quotientOnly("divu.w #7,d0"));
-    expect(d?.message).toContain("below 4096");
+    expect(d?.message).toContain("no more than 43692");
   });
 
   test("lists cheaper recipes for smaller dividends", () => {
@@ -381,19 +382,21 @@ describe("the rule", () => {
     const d = diagnostic(
       "divu.w #10,d0\nmove.w d0,d2\nmoveq #0,d0\naddx.w d4,d3\nrts",
     );
-    expect(d?.suggestion?.replacement).toBe("\tmulu.w #6554,d0\n\tswap d0");
-    expect(d?.message).toContain("below 4096");
+    expect(d?.suggestion?.replacement).toBe(
+      "\tmulu.w #$10000/10+1,d0\n\tswap d0",
+    );
+    expect(d?.message).toContain("no more than 16388");
   });
 
   test("warns that X changes when it is not known to be dead", () => {
     const d = diagnostic(quotientOnly("divu.w #10,d0"));
-    expect(d?.notes?.some((n) => /change X/.test(n.message))).toBe(true);
+    expect(d?.notes?.some((n) => /changes X/.test(n.message))).toBe(true);
   });
 
   test("treats a bare DIVU as the word divide it is on the 68000", () => {
     expect(
       diagnostic(quotientOnly("divu #10,d0"))?.suggestion?.replacement,
-    ).toBe("\tmulu.w #52429,d0\n\tswap d0\n\tlsr.w #3,d0");
+    ).toBe("\tmulu.w #$80000/10+1,d0\n\tswap d0\n\tlsr.w #3,d0");
   });
 
   test("is not offered when the remainder is used", () => {
@@ -406,7 +409,7 @@ describe("the rule", () => {
   test("is offered, with lower confidence, when the remainder use is unknown", () => {
     // d0 leaves the routine, so nothing proves its upper word is dropped.
     const d = diagnostic("divu.w #10,d0\nmove.w d0,(a0)+\nrts");
-    expect(d?.suggestion?.replacement).toContain("mulu.w #52429,d0");
+    expect(d?.suggestion?.replacement).toContain("mulu.w #$80000/10+1,d0");
     expect(d?.suggestion?.applicability).toBe("conditional");
     expect(d?.confidence).toBe("low");
     expect(
@@ -529,10 +532,11 @@ describe("the signed rules", () => {
   test("a reciprocal recipe for another constant, with the sign correction", () => {
     const d = find(withScratch("divs.w #10,d0"), RECIP);
     const code = d?.suggestion?.replacement ?? "";
-    expect(code).toContain("muls.w #26215,d0");
+    expect(code).toContain("muls.w #$40000/10+1,d0");
     expect(code).toContain("addx.w");
-    expect(d?.message).toContain("between -32768 and 32767");
+    expect(d?.message).toContain("from -32768 to 32767");
     expect(d?.suggestion?.applicability).toBe("conditional");
+    // Made for this value, for a smaller dividend, with fewer set bits.
     expect(
       d?.notes?.some((n) => /between -2048 and 2047/.test(n.message)),
     ).toBe(true);

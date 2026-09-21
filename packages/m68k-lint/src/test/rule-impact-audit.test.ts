@@ -74,6 +74,7 @@ test("sequence folds measure their full source span", () => {
   const audit = runRuleImpactAudit();
   for (const id of [
     "optimization/combine-consecutive-addq",
+    "optimization/combine-address-adjustments",
     "optimization/cancel-addq-predecrement-move",
     "optimization/negate-sub-to-add",
     "optimization/negate-add-to-sub",

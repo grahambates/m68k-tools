@@ -7,6 +7,26 @@ import {
 } from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
 import { DATA_REGISTERS } from "../../semantics/registers.js";
+import {
+  mulsWordFullResultRecipes,
+  mulsWordLowWordRecipes,
+  muluWordLowWordRecipes,
+  type MultiplyRecipe,
+} from "./generated/multiply-recipes.js";
+
+/**
+ * Write a generated recipe for these registers. Signed multiplies read better
+ * with arithmetic shifts, which do the same thing here.
+ */
+function render(
+  recipe: MultiplyRecipe,
+  d: string,
+  s: string | undefined,
+  signed: boolean,
+): string {
+  const code = recipe.code.replaceAll("%d", d).replaceAll("%s", s ?? "");
+  return signed ? code.replace(/^lsl\./gm, "asl.") : code;
+}
 
 function m68000Only(
   ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
@@ -40,53 +60,6 @@ function deadScratch(
   );
 }
 
-/**
- * Flamewing's signed-word constant-multiply recipes whose full 32-bit result is
- * preserved.  Factors already covered by the ASP68K-derived rules are omitted.
- * Each recipe was independently checked as an integer coefficient identity
- * after the initial EXT.L sign extension.
- */
-const fullResultRecipes: Readonly<
-  Record<number, (d: string, s: string) => string>
-> = {
-  11: (d, s) =>
-    `ext.l ${d}\nmove.l ${d},${s}\nadd.l ${s},${d}\nadd.l ${s},${d}\nasl.l #2,${d}\nsub.l ${s},${d}`,
-  13: (d, s) =>
-    `ext.l ${d}\nmove.l ${d},${s}\nadd.l ${s},${d}\nadd.l ${s},${d}\nasl.l #2,${d}\nadd.l ${s},${d}`,
-  14: (d, s) =>
-    `ext.l ${d}\nmove.l ${d},${s}\nasl.l #3,${d}\nsub.l ${s},${d}\nadd.l ${d},${d}`,
-  15: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nasl.l #4,${d}\nsub.l ${s},${d}`,
-  17: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nasl.l #4,${d}\nadd.l ${s},${d}`,
-  18: (d, s) =>
-    `ext.l ${d}\nadd.l ${d},${d}\nmove.l ${d},${s}\nasl.l #3,${d}\nadd.l ${s},${d}`,
-  19: (d, s) =>
-    `ext.l ${d}\nmove.l ${d},${s}\nasl.l #3,${d}\nadd.l ${s},${d}\nadd.l ${d},${d}\nadd.l ${s},${d}`,
-  20: (d, s) =>
-    `ext.l ${d}\nmove.l ${d},${s}\nasl.l #2,${d}\nadd.l ${s},${d}\nasl.l #2,${d}`,
-  21: (d, s) =>
-    `ext.l ${d}\nmove.l ${d},${s}\nasl.l #2,${d}\nadd.l ${s},${d}\nasl.l #2,${d}\nadd.l ${s},${d}`,
-  22: (d, s) =>
-    `ext.l ${d}\nadd.l ${d},${d}\nmove.l ${d},${s}\nadd.l ${s},${d}\nadd.l ${s},${d}\nasl.l #2,${d}\nsub.l ${s},${d}`,
-  23: (d, s) =>
-    `ext.l ${d}\nmove.l ${d},${s}\nadd.l ${s},${d}\nadd.l ${s},${d}\nasl.l #3,${d}\nsub.l ${s},${d}`,
-  24: (d, s) =>
-    `ext.l ${d}\nmove.l ${d},${s}\nadd.l ${s},${d}\nadd.l ${s},${d}\nasl.l #3,${d}`,
-  25: (d, s) =>
-    `ext.l ${d}\nmove.l ${d},${s}\nadd.l ${s},${d}\nadd.l ${s},${d}\nasl.l #3,${d}\nadd.l ${s},${d}`,
-  26: (d, s) =>
-    `ext.l ${d}\nmove.l ${d},${s}\nadd.l ${s},${s}\nadd.l ${s},${d}\nasl.l #3,${d}\nadd.l ${s},${d}`,
-  29: (d, s) =>
-    `ext.l ${d}\nmove.l ${d},${s}\nasl.l #5,${d}\nsub.l ${s},${d}\nsub.l ${s},${d}\nsub.l ${s},${d}`,
-  30: (d, s) =>
-    `ext.l ${d}\nmove.l ${d},${s}\nasl.l #5,${d}\nsub.l ${s},${d}\nsub.l ${s},${d}`,
-  31: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nasl.l #5,${d}\nsub.l ${s},${d}`,
-  33: (d, s) => `ext.l ${d}\nmove.l ${d},${s}\nasl.l #5,${d}\nadd.l ${s},${d}`,
-  34: (d, s) =>
-    `ext.l ${d}\nmove.l ${d},${s}\nasl.l #5,${d}\nadd.l ${s},${d}\nadd.l ${s},${d}`,
-  35: (d, s) =>
-    `ext.l ${d}\nmove.l ${d},${s}\nasl.l #5,${d}\nadd.l ${s},${d}\nadd.l ${s},${d}\nadd.l ${s},${d}`,
-};
-
 export const flamewingMulsWordFullResultConstants: Rule = {
   meta: {
     obfuscated: true,
@@ -114,16 +87,22 @@ export const flamewingMulsWordFullResultConstants: Rule = {
     if (!expr || !dest) return;
     const value = ctx.evaluate(expr);
     if (!value.known) return;
-    const recipe = fullResultRecipes[value.value];
+    const recipe = mulsWordFullResultRecipes[value.value];
     if (!recipe) return;
+    // When the upper word is unobserved the word-only recipe is much cheaper,
+    // so leave the constant to muls-word-low-word-only where that can apply.
+    const lowWord = mulsWordLowWordRecipes[value.value];
     if (
-      [15, 17, 31].includes(value.value) &&
-      ctx.registers.upperWordUseAfter(index, dest.register) === "unused"
+      lowWord &&
+      ctx.registers.upperWordUseAfter(index, dest.register) === "unused" &&
+      (!lowWord.scratch || deadScratch(ctx, index, dest.register, 0xffff))
     )
       return;
 
-    const scratch = deadScratch(ctx, index, dest.register);
-    if (!scratch) return;
+    const scratch = recipe.scratch
+      ? deadScratch(ctx, index, dest.register)
+      : undefined;
+    if (recipe.scratch && !scratch) return;
     // Final N/Z reflect the same 32-bit result and MULS clears V/C while preserving X.
     // The arithmetic recipe can produce different X/V/C.
     const safety = changedFlagsApplicability(ctx, index, ["X", "V", "C"]);
@@ -135,14 +114,20 @@ export const flamewingMulsWordFullResultConstants: Rule = {
       message: `MULS.W #${value.value},${dest.register.toUpperCase()} has a faster verified 68000 shift/add sequence`,
       loc: line.mnemonic!.loc,
       suggestion: {
-        description: `Replace MULS.W #${value.value} using dead scratch ${scratch.toUpperCase()}`,
-        replacement: recipe(dest.register, scratch),
+        description: scratch
+          ? `Replace MULS.W #${value.value} using dead scratch ${scratch.toUpperCase()}`
+          : `Replace MULS.W #${value.value}`,
+        replacement: render(recipe, dest.register, scratch, true),
         applicability: safety.applicability,
       },
       notes: [
-        {
-          message: `${scratch.toUpperCase()} is proven dead after the original multiply and may be clobbered.`,
-        },
+        ...(scratch
+          ? [
+              {
+                message: `${scratch.toUpperCase()} is proven dead after the original multiply and may be clobbered.`,
+              },
+            ]
+          : []),
         ...(safety.applicability === "safe"
           ? []
           : [
@@ -152,27 +137,9 @@ export const flamewingMulsWordFullResultConstants: Rule = {
               },
             ]),
       ],
-      data: { factor: value.value, scratch, provenance: "flamewing" },
+      data: { factor: value.value, scratch, provenance: "generated" },
     });
   },
-};
-
-/**
- * Flamewing also lists much shorter word-only multiply recipes when the old
- * high word of Dn is irrelevant.  Our existing upper-word use analysis is
- * sufficient to prove that precondition for a useful initial subset.
- */
-const lowWordRecipes: Readonly<
-  Record<number, (d: string, s: string) => string>
-> = {
-  3: (d, s) => `move.w ${d},${s}\nadd.w ${d},${d}\nadd.w ${s},${d}`,
-  5: (d, s) =>
-    `move.w ${d},${s}\nadd.w ${d},${d}\nadd.w ${d},${d}\nadd.w ${s},${d}`,
-  7: (d, s) => `move.w ${d},${s}\nasl.w #3,${d}\nsub.w ${s},${d}`,
-  9: (d, s) => `move.w ${d},${s}\nasl.w #3,${d}\nadd.w ${s},${d}`,
-  15: (d, s) => `move.w ${d},${s}\nasl.w #4,${d}\nsub.w ${s},${d}`,
-  17: (d, s) => `move.w ${d},${s}\nasl.w #4,${d}\nadd.w ${s},${d}`,
-  31: (d, s) => `move.w ${d},${s}\nasl.w #5,${d}\nsub.w ${s},${d}`,
 };
 
 export const flamewingMulsWordLowWordOnly: Rule = {
@@ -213,13 +180,15 @@ export const flamewingMulsWordLowWordOnly: Rule = {
     if (!expr || !dest) return;
     const value = ctx.evaluate(expr);
     if (!value.known) return;
-    const recipe = lowWordRecipes[value.value];
+    const recipe = mulsWordLowWordRecipes[value.value];
     if (!recipe) return;
 
     const upperWordUse = ctx.registers.upperWordUseAfter(index, dest.register);
     if (upperWordUse !== "unused") return;
-    const scratch = deadScratch(ctx, index, dest.register, 0xffff);
-    if (!scratch) return;
+    const scratch = recipe.scratch
+      ? deadScratch(ctx, index, dest.register, 0xffff)
+      : undefined;
+    if (recipe.scratch && !scratch) return;
     const safety = changedFlagsApplicability(ctx, index, [
       "X",
       "N",
@@ -236,16 +205,20 @@ export const flamewingMulsWordLowWordOnly: Rule = {
       loc: line.mnemonic!.loc,
       suggestion: {
         description: `Replace MULS.W #${value.value} with a word-only sequence`,
-        replacement: recipe(dest.register, scratch),
+        replacement: render(recipe, dest.register, scratch, true),
         applicability: safety.applicability,
       },
       notes: [
         {
           message: `The analyser proves the old upper word of ${dest.register.toUpperCase()} is discarded before it is read.`,
         },
-        {
-          message: `${scratch.toUpperCase()} is proven dead and can be used as scratch.`,
-        },
+        ...(scratch
+          ? [
+              {
+                message: `The low word of ${scratch.toUpperCase()} is proven dead and can be used as scratch.`,
+              },
+            ]
+          : []),
         ...(safety.applicability === "safe"
           ? []
           : [
@@ -259,35 +232,10 @@ export const flamewingMulsWordLowWordOnly: Rule = {
         factor: value.value,
         scratch,
         upperWordUse,
-        provenance: "flamewing",
+        provenance: "generated",
       },
     });
   },
-};
-
-/**
- * Flamewing's unsigned word-only multiply recipes.  These preserve the low
- * 16-bit product but, unlike MULU.W, do not produce the full zero-extended
- * 32-bit result.  They are therefore only valid when bits 16..31 of Dn are
- * proven unobserved before a definite overwrite.
- */
-const muluLowWordRecipes: Readonly<
-  Record<number, (d: string, s?: string) => string>
-> = {
-  1: () => "",
-  2: (d) => `add.w ${d},${d}`,
-  3: (d, s) => `move.w ${d},${s}\nadd.w ${d},${d}\nadd.w ${s},${d}`,
-  4: (d) => `add.w ${d},${d}\nadd.w ${d},${d}`,
-  5: (d, s) =>
-    `move.w ${d},${s}\nadd.w ${d},${d}\nadd.w ${d},${d}\nadd.w ${s},${d}`,
-  7: (d, s) => `move.w ${d},${s}\nlsl.w #3,${d}\nsub.w ${s},${d}`,
-  8: (d) => `lsl.w #3,${d}`,
-  9: (d, s) => `move.w ${d},${s}\nlsl.w #3,${d}\nadd.w ${s},${d}`,
-  15: (d, s) => `move.w ${d},${s}\nlsl.w #4,${d}\nsub.w ${s},${d}`,
-  16: (d) => `lsl.w #4,${d}`,
-  17: (d, s) => `move.w ${d},${s}\nlsl.w #4,${d}\nadd.w ${s},${d}`,
-  31: (d, s) => `move.w ${d},${s}\nlsl.w #5,${d}\nsub.w ${s},${d}`,
-  32: (d) => `lsl.w #5,${d}`,
 };
 
 export const flamewingMuluWordLowWordOnly: Rule = {
@@ -326,7 +274,11 @@ export const flamewingMuluWordLowWordOnly: Rule = {
     if (!expr || !dest) return;
     const value = ctx.evaluate(expr);
     if (!value.known) return;
-    const recipe = muluLowWordRecipes[value.value];
+    // Multiplying by one changes nothing, whatever the upper word holds.
+    const recipe =
+      value.value === 1
+        ? { cycles: 0, scratch: false, code: "" }
+        : muluWordLowWordRecipes[value.value];
     if (!recipe) return;
 
     if (
@@ -335,11 +287,10 @@ export const flamewingMuluWordLowWordOnly: Rule = {
     )
       return;
 
-    const needsScratch = ![1, 2, 4, 8, 16, 32].includes(value.value);
-    const scratch = needsScratch
+    const scratch = recipe.scratch
       ? deadScratch(ctx, index, dest.register, 0xffff)
       : undefined;
-    if (needsScratch && !scratch) return;
+    if (recipe.scratch && !scratch) return;
 
     // MULU.W writes a 32-bit result and sets N/Z from that long result while
     // clearing V/C and preserving X.  A word-only sequence has different CCR
@@ -351,7 +302,7 @@ export const flamewingMuluWordLowWordOnly: Rule = {
       "V",
       "C",
     ]);
-    const replacement = recipe(dest.register, scratch);
+    const replacement = render(recipe, dest.register, scratch, false);
     ctx.report({
       ruleId: this.meta.id,
       category: this.meta.category,
@@ -374,7 +325,7 @@ export const flamewingMuluWordLowWordOnly: Rule = {
         ...(scratch
           ? [
               {
-                message: `${scratch.toUpperCase()} is proven dead and may be clobbered.`,
+                message: `The low word of ${scratch.toUpperCase()} is proven dead and may be clobbered.`,
               },
             ]
           : []),
@@ -391,7 +342,7 @@ export const flamewingMuluWordLowWordOnly: Rule = {
         factor: value.value,
         scratch,
         differingBits: "16-31",
-        provenance: "flamewing",
+        provenance: "generated",
       },
     });
   },

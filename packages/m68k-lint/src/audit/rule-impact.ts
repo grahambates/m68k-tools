@@ -121,6 +121,16 @@ export const ruleImpactAuditCases: readonly RuleImpactAuditCase[] = [
     source: "addq.l #2,d0\naddq.l #3,d0",
   },
   {
+    ruleId: "optimization/combine-address-adjustments",
+    caseId: "lea-pair",
+    source: "lea 32(a0),a0\nlea 32(a0),a0\nmove.l d0,(a0)",
+  },
+  {
+    ruleId: "optimization/combine-address-adjustments",
+    caseId: "quick-then-lea",
+    source: "addq.l #4,a0\nlea 8(a0),a0\nmove.l d0,(a0)",
+  },
+  {
     ruleId: "optimization/combine-consecutive-shift",
     source: "lsl.w #2,d0\nlsl.w #6,d0",
   },
@@ -318,6 +328,21 @@ export const ruleImpactAuditCases: readonly RuleImpactAuditCase[] = [
   {
     ruleId: "optimization/mulu-word-low-word-only",
     source: "mulu.w #9,d0\nmove.w d0,d2\nmove.l #0,d0\nmoveq #0,d7",
+  },
+  {
+    ruleId: "optimization/muls-word-full-result-constants",
+    caseId: "generated-63",
+    source: "muls.w #63,d0\nmoveq #0,d7",
+  },
+  {
+    ruleId: "optimization/muls-word-low-word-only",
+    caseId: "generated-40",
+    source: "muls.w #40,d0\nmove.w d0,d2\nmove.l #0,d0\nmoveq #0,d7",
+  },
+  {
+    ruleId: "optimization/mulu-word-low-word-only",
+    caseId: "generated-100",
+    source: "mulu.w #100,d0\nmove.w d0,d2\nmove.l #0,d0\nmoveq #0,d7",
   },
   {
     ruleId: "optimization/move-byte-and-mask",

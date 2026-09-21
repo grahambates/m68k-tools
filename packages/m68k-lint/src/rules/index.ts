@@ -75,6 +75,7 @@ import { zeroStoreToClear } from "./optimization/zero-store-to-clear.js";
 import { moveImmediateViaScratch } from "./optimization/move-immediate-via-scratch.js";
 import { cmpZeroAddressViaScratch } from "./optimization/cmp-zero-address-via-scratch.js";
 import { combineConsecutiveAddq } from "./optimization/combine-consecutive-addq.js";
+import { combineAddressAdjustments } from "./optimization/combine-address-adjustments.js";
 import { combineConsecutiveShift } from "./optimization/combine-consecutive-shift.js";
 import { combineConsecutiveBitOps } from "./optimization/combine-consecutive-bit-ops.js";
 import { combineLoadsIntoMovem } from "./optimization/combine-loads-into-movem.js";
@@ -295,6 +296,7 @@ export {
   moveImmediateViaScratch,
   cmpZeroAddressViaScratch,
   combineConsecutiveAddq,
+  combineAddressAdjustments,
   combineConsecutiveShift,
   combineConsecutiveBitOps,
   combineLoadsIntoMovem,
@@ -439,6 +441,7 @@ export const defaultRules: readonly Rule[] = [
   zeroStoreToClear,
   cmpZeroAddressViaScratch,
   combineConsecutiveAddq,
+  combineAddressAdjustments,
   combineConsecutiveShift,
   combineConsecutiveBitOps,
   combineLoadsIntoMovem,

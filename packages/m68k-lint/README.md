@@ -688,9 +688,10 @@ pnpm test
 pnpm run build
 pnpm run audit:impact
 pnpm run docs:rules    # regenerate docs/rules.md
+pnpm run generate:multiply  # regenerate the constant-multiply recipes from 68kcounter
 ```
 
-Run these commands from `packages/m68k-lint` after installing from the repository root. Build workspace dependencies first with `pnpm --dir ../.. build`. Root CI runs the checks; regenerate rule documentation when rules change. `pnpm run lint:fix` and `pnpm run format:check` are also
+Run these commands from `packages/m68k-lint` after installing from the repository root. Build workspace dependencies first with `pnpm --dir ../.. build`. Root CI runs the checks; regenerate rule documentation when rules change, and the multiply recipes when 68kcounter's timings change (a test fails if they are stale). `pnpm run lint:fix` and `pnpm run format:check` are also
 available.
 
 `pnpm run verify:semantics` is separate and not part of CI. It runs suggested

@@ -61,6 +61,7 @@
     "cli": "node ./dist/cli/main.js",
     "audit:impact": "node ./dist/cli/main.js --audit-rule-impact",
     "verify:semantics": "pnpm run build && node --experimental-wasm-modules ./scripts/verify-semantics.mjs",
+    "generate:multiply": "node ./scripts/generate-multiply-recipes.mjs",
     "docs:rules": "pnpm run build && node ./scripts/generate-rules-doc.mjs",
     "prepublishOnly": "pnpm run typecheck && pnpm run lint && pnpm test && pnpm run build && pnpm run audit:impact",
     "clean": "rm -rf out dist .tsbuild coverage"

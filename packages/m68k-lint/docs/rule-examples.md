@@ -479,6 +479,29 @@ Notes:
 - The long form has equivalent N/Z/V/C semantics for comparison with zero.
 - The .W form is intentionally not implemented because CMPA.W sign-extends the source before a 32-bit address comparison.
 
+## `optimization/combine-address-adjustments`
+
+Combine consecutive constant adjustments of the same address register.
+
+Before:
+
+```asm
+	lea 32(a0),a0
+	lea 32(a0),a0
+```
+
+After:
+
+```asm
+	lea 64(a0),a0
+```
+
+Saves 4 bytes, 8(2,0) cycles, (overall improvement)
+
+Notes:
+
+- The two adjustments add +64 in total. Address registers have no condition codes, so nothing else changes.
+
 ## `optimization/combine-adjacent-clr-bytes`
 
 Combine adjacent CLR.B writes.
@@ -1476,10 +1499,10 @@ After:
 ```asm
 	ext.l d0
 	move.l d0,d2
-	add.l d2,d0
-	add.l d2,d0
+	add.l d0,d0
+	add.l d0,d2
 	asl.l #2,d0
-	sub.l d2,d0
+	add.l d2,d0
 ```
 
 Saves -8 bytes, 6(-4,0) cycles, (tradeoff)
@@ -1536,7 +1559,7 @@ Saves -2 bytes, 26(-1,0) cycles, (tradeoff)
 Notes:
 
 - The analyser proves the old upper word of D0 is discarded before it is read.
-- D2 is proven dead and can be used as scratch.
+- The low word of D2 is proven dead and can be used as scratch.
 - The word-only arithmetic sequence has different CCR behaviour from MULS.W.
 
 ## `optimization/muls-word-power-of-two`
@@ -1734,7 +1757,7 @@ Saves -2 bytes, 26(-1,0) cycles, (tradeoff)
 Notes:
 
 - The analyser proves bits 16-31 of D0 are discarded before any read.
-- D2 is proven dead and may be clobbered.
+- The low word of D2 is proven dead and may be clobbered.
 - The word-only replacement has different CCR behaviour from MULU.W.
 
 ## `optimization/mulu-word-power-of-two`

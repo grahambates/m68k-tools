@@ -29,6 +29,7 @@ export class TestClient {
    * @param {boolean} [options.configuration] Advertise configuration support.
    * @param {number} [options.registerDelayMs] Stall the reply to client/registerCapability.
    * @param {boolean} [options.createFiles] Advertise support for creating a file in an edit.
+   * @param {boolean} [options.resolveCodeActionEdits] Advertise that a code action's edit can be resolved later.
    */
   constructor(options = {}) {
     this.options = {
@@ -70,7 +71,12 @@ export class TestClient {
     }
   }
 
+  /** Every diagnostic publication so far, in order, for a test that counts them. */
+  published = [];
+
   #dispatch(message) {
+    if (message.method === "textDocument/publishDiagnostics")
+      this.published.push(message.params);
     // Server-to-client requests are answered here, before anything can wait on
     // them: their ids share a space with nothing, and a waiter matching on id
     // would otherwise resolve against the server's own request.
@@ -144,7 +150,14 @@ export class TestClient {
     const result = await this.request("initialize", {
       processId: process.pid,
       rootUri,
-      capabilities: { workspace, textDocument: { codeAction: {} } },
+      capabilities: {
+        workspace,
+        textDocument: {
+          codeAction: this.options.resolveCodeActionEdits
+            ? { resolveSupport: { properties: ["edit"] } }
+            : {},
+        },
+      },
       workspaceFolders: this.options.workspaceFolders
         ? [{ uri: rootUri, name: "fixture" }]
         : null,
@@ -176,13 +189,40 @@ export class TestClient {
     return { uri, diagnostics: (await published).params.diagnostics };
   }
 
-  async codeActions(uri, line) {
+  /** @param {string[]} [only] The kinds of action asked for, as a client filtering by kind sends. */
+  async codeActions(uri, line, only) {
     const result = await this.request("textDocument/codeAction", {
       textDocument: { uri },
       range: { start: { line, character: 0 }, end: { line, character: 0 } },
-      context: { diagnostics: [] },
+      context: { diagnostics: [], ...(only ? { only } : {}) },
     });
     return result.result;
+  }
+
+  /** Asks the server to fill in a code action it offered without its edit. */
+  async resolveCodeAction(action) {
+    return (await this.request("codeAction/resolve", action)).result;
+  }
+
+  /** Resolves once `count` publications for `uri` have arrived, counting from the start. */
+  async publishedFor(uri, count, timeoutMs = 20000) {
+    const deadline = Date.now() + timeoutMs;
+    while (this.published.filter((p) => p.uri === uri).length < count) {
+      if (Date.now() > deadline)
+        throw new Error(
+          `timed out waiting for publication ${count} for ${uri}`,
+        );
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    return this.published.filter((p) => p.uri === uri);
+  }
+
+  /** Replaces the whole text of an open document. */
+  change(uri, version, text) {
+    this.notify("textDocument/didChange", {
+      textDocument: { uri, version },
+      contentChanges: [{ text }],
+    });
   }
 
   stop() {

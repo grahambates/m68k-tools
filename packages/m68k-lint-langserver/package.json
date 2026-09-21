@@ -42,7 +42,7 @@
   },
   "scripts": {
     "build": "node ../../scripts/build-lint-lsp.mjs --minify",
-    "test": "node --test test/*.test.mjs",
+    "test": "node --experimental-strip-types --test test/*.test.mjs",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf out dist .tsbuild coverage"
   }

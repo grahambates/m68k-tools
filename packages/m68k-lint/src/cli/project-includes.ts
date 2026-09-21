@@ -1,7 +1,10 @@
 import { readFile, readdir, stat } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { parseFile } from "m68k-parser";
-import { resolveInclude } from "@m68k-lsp/assembly-options";
+import {
+  resolveInclude,
+  type ResolvedInclude,
+} from "@m68k-lsp/assembly-options";
 
 /** What following includes needs from a file system, so a caller can supply its own. */
 export interface IncludeFs {
@@ -17,6 +20,14 @@ export interface IncludeFs {
   /** The names in a directory, as the file system spells them. Needed to check case. */
   list?(dir: string): Promise<readonly string[]>;
 }
+
+/**
+ * Lets other work run. Following the includes of thousands of files is mostly
+ * parsing and looking things up in memory, with nothing to wait on, so without
+ * this it is one stretch that a server cannot answer anything during.
+ */
+const YIELD_EVERY = 50;
+const yieldNow = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 async function isFile(path: string): Promise<boolean> {
   try {
@@ -41,15 +52,44 @@ export function nodeIncludeFs(
   overrides: ReadonlyMap<string, string> = new Map(),
 ): IncludeFs {
   const listings = new Map<string, Promise<string[]>>();
+  // The same name is looked for in the same directory from many files, and each
+  // lookup is a system call. Nothing changes on disk while one file system is in
+  // use, so a lookup is made once.
+  const finds = new Map<string, Promise<string | undefined>>();
+
+  // Most lookups are misses: an include is tried in every directory the search
+  // reaches, and in a project of many main sources that is a great many, each
+  // a system call. A directory is read once instead, and a name that is in no
+  // entry of it, whatever the case, cannot be a file there. That holds on a
+  // file system that ignores case and on one that does not, so it decides
+  // nothing about case: anything that might be there is still asked of the
+  // file system itself.
+  const folded = new Map<string, Promise<Set<string>>>();
+  const fold = (name: string) => name.normalize("NFC").toLowerCase();
+  const namesIn = (dir: string) => {
+    let names = folded.get(dir);
+    if (!names) {
+      names = (async () => new Set((await list(dir)).map(fold)))();
+      folded.set(dir, names);
+    }
+    return names;
+  };
+  const list = (dir: string) => {
+    let listing = listings.get(dir);
+    if (!listing) {
+      listing = readdir(dir).catch(() => []);
+      listings.set(dir, listing);
+    }
+    return listing;
+  };
+  const lookUp = async (path: string): Promise<string | undefined> => {
+    if (overrides.has(path)) return path;
+    if (!(await namesIn(dirname(path))).has(fold(basename(path))))
+      return undefined;
+    return (await isFile(path)) ? path : undefined;
+  };
   return {
-    list(dir) {
-      let listing = listings.get(dir);
-      if (!listing) {
-        listing = readdir(dir).catch(() => []);
-        listings.set(dir, listing);
-      }
-      return listing;
-    },
+    list,
     async read(path) {
       const open = overrides.get(path);
       if (open !== undefined) return open;
@@ -59,9 +99,14 @@ export function nodeIncludeFs(
         return undefined;
       }
     },
-    async find(dir, name) {
+    find(dir, name) {
       const path = resolve(dir, name);
-      return (await isFile(path)) || overrides.has(path) ? path : undefined;
+      let found = finds.get(path);
+      if (!found) {
+        found = lookUp(path);
+        finds.set(path, found);
+      }
+      return found;
     },
   };
 }
@@ -130,6 +175,8 @@ interface SearchContext extends FollowOptions {
   entryDirs: readonly string[];
   /** The `incdir`s in the sources, as written and in order. */
   incDirs: readonly string[];
+  /** Answers already worked out, so an include named by many files is looked for once. */
+  answers?: Map<string, Promise<ResolvedInclude | undefined>>;
 }
 
 /**
@@ -142,20 +189,55 @@ interface SearchContext extends FollowOptions {
  * own directory is a fallback, since finding a file vasm would not is harmless
  * for reading what it defines.
  */
-function resolveFor(file: IncludedFile, name: string, search: SearchContext) {
-  const mains = search.entryDirs.length
-    ? search.entryDirs
-    : [dirname(file.path)];
-  return resolveInclude(
-    name,
-    mains.map((mainDir) => ({
-      cwd: search.sourceRoot ?? mainDir,
-      mainDir,
-      includePaths: search.includePaths,
-      incDirs: search.incDirs,
-    })),
-    [dirname(file.path)],
-    (dir, included) => search.fs.find(dir, included),
+async function resolveFor(
+  file: IncludedFile,
+  name: string,
+  search: SearchContext,
+): Promise<ResolvedInclude | undefined> {
+  const beside = dirname(file.path);
+  const find = (dir: string, included: string) => search.fs.find(dir, included);
+  const remember = (
+    key: string,
+    work: () => Promise<ResolvedInclude | undefined>,
+  ) => {
+    const answers = (search.answers ??= new Map<
+      string,
+      Promise<ResolvedInclude | undefined>
+    >());
+    let answer = answers.get(key);
+    if (!answer) {
+      answer = work();
+      answers.set(key, answer);
+    }
+    return answer;
+  };
+
+  // vasm's own search does not depend on which file names the include when the
+  // main sources are known, only on the name. With a project of many main
+  // sources it tries a directory for each, so it is worth doing once. The
+  // `incdir`s grow as files are reached, so what was found before one was seen
+  // is not reused after.
+  const mains = search.entryDirs.length ? search.entryDirs : [beside];
+  const vasm = await remember(
+    `vasm\0${search.incDirs.length}\0${search.entryDirs.length ? "" : beside}\0${name}`,
+    () =>
+      resolveInclude(
+        name,
+        mains.map((mainDir) => ({
+          cwd: search.sourceRoot ?? mainDir,
+          mainDir,
+          includePaths: search.includePaths,
+          incDirs: search.incDirs,
+        })),
+        [],
+        find,
+      ),
+  );
+  if (vasm) return vasm;
+  // Failing that, beside the file that names it, which is the one part that
+  // does depend on the file.
+  return remember(`beside\0${beside}\0${name}`, () =>
+    resolveInclude(name, [], [beside], find),
   );
 }
 
@@ -187,7 +269,9 @@ async function entriesOf(
   search: SearchContext,
 ): Promise<string[]> {
   const included = new Set<string>();
+  let read = 0;
   for (const file of sources) {
+    if (++read % YIELD_EVERY === 0) await yieldNow();
     for (const name of search.namesOf(file.source).include) {
       const found = await resolveFor(file, name, search);
       if (found) included.add(resolve(found.path));
@@ -243,6 +327,7 @@ export async function followIncludes(
   const added: IncludedFile[] = [];
   const queue = [...sources];
   for (let next = 0; next < queue.length; next++) {
+    if (next % YIELD_EVERY === 0) await yieldNow();
     const file = queue[next];
     for (const name of namesOf(file.source).include) {
       if (added.length >= limit) return added;

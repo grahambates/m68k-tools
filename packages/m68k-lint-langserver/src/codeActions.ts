@@ -107,7 +107,36 @@ function fixTitle(diagnostic: Diagnostic): string {
   return tail ? `${description} (${tail})` : description;
 }
 
+/**
+ * How "fix all" is offered alongside the quick fixes.
+ *
+ * Building it means running the whole lint-apply-repeat loop, which is a full
+ * lint per pass and can take many seconds on a large file, and clients ask for
+ * code actions whenever the cursor moves. So it is only built up front when it
+ * was asked for (`eager`), or when the client cannot fill it in later. Otherwise
+ * it is offered without its edit (`lazy`) and built when the client resolves it,
+ * or left out (`none`) when the request was for other kinds of action.
+ */
+export type FixAllMode = "eager" | "lazy" | "none";
+
+/** What a lazily offered fix-all carries, to build its edit from later. */
+export interface LazyFixAllData {
+  fixAll: true;
+  uri: string;
+  version: number;
+}
+
+export function isLazyFixAll(data: unknown): data is LazyFixAllData {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    (data as { fixAll?: unknown }).fixAll === true
+  );
+}
+
 export interface ActionOptions {
+  /** Defaults to `eager`. */
+  fixAll?: FixAllMode;
   conditional: boolean;
   annotate: FixAnnotation;
   /**
@@ -165,16 +194,58 @@ export function codeActionsFor(
 
   if (options.ignoreFile && selected.length) actions.push(options.ignoreFile);
 
+  const mode = options.fixAll ?? "eager";
   if (
+    mode !== "none" &&
     diagnostics.some(
       (diagnostic) => diagnostic.suggestion?.replacement !== undefined,
     )
   ) {
-    const all = fixAll(document, source, options);
-    if (all) actions.push(all);
+    if (mode === "eager") {
+      const all = fixAll(document, source, options);
+      if (all) actions.push(all);
+    } else if (fixAllApplies(source, diagnostics, options)) {
+      actions.push(lazyFixAll(document));
+    }
   }
 
   return actions;
+}
+
+/**
+ * Whether fix-all would change anything, without running it. It stops when a
+ * pass applies nothing, and the first pass applies whatever `applyOnce` does to
+ * the findings already in hand, so this is the same answer without the lints.
+ */
+function fixAllApplies(
+  source: string,
+  diagnostics: readonly Diagnostic[],
+  options: ActionOptions,
+): boolean {
+  return (
+    applyOnce(
+      source,
+      diagnostics,
+      acceptedApplicabilities(options.conditional),
+      options.annotate,
+      FIX_ALL_ASSESSMENTS,
+    ).applied.length > 0
+  );
+}
+
+/** Fix-all with its edit left to `codeAction/resolve`. */
+function lazyFixAll(document: TextDocument): CodeAction {
+  const data: LazyFixAllData = {
+    fixAll: true,
+    uri: document.uri,
+    version: document.version,
+  };
+  return {
+    title: "Fix all auto-fixable m68k-lint findings",
+    kind: CodeActionKind.SourceFixAll,
+    diagnostics: [],
+    data,
+  };
 }
 
 /**

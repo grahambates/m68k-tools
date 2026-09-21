@@ -52,17 +52,61 @@ interface Definition {
   origin: string;
 }
 
+/** How many files are read between yields when building without blocking. */
+const YIELD_EVERY = 25;
+
+/** Runs a builder that yields now and then to the end. */
+function finish<T>(build: Generator<void, T, void>): T {
+  for (;;) {
+    const step = build.next();
+    if (step.done) return step.value;
+  }
+}
+
+/**
+ * Builds the symbols for a project. This is a loop over every file, which on a
+ * project of thousands of them is seconds of work; `buildProjectSymbolsAsync`
+ * does the same and lets other work run in between.
+ */
 export function buildProjectSymbols(
   files: readonly ProjectSourceFile[],
   options: { caseSensitive?: boolean } = {},
 ): ProjectSymbols {
+  return finish(symbolsBuilder(files, options));
+}
+
+/**
+ * Builds the same symbols as `buildProjectSymbols`, but calls `yieldNow` every
+ * few files, so a server that is building an index does not stop answering
+ * everything else for as long as the build takes.
+ */
+export async function buildProjectSymbolsAsync(
+  files: readonly ProjectSourceFile[],
+  options: { caseSensitive?: boolean } = {},
+  yieldNow: () => Promise<void> = () =>
+    new Promise((resolve) => setImmediate(resolve)),
+): Promise<ProjectSymbols> {
+  const build = symbolsBuilder(files, options);
+  for (;;) {
+    const step = build.next();
+    if (step.done) return step.value;
+    await yieldNow();
+  }
+}
+
+function* symbolsBuilder(
+  files: readonly ProjectSourceFile[],
+  options: { caseSensitive?: boolean },
+): Generator<void, ProjectSymbols, void> {
   const caseSensitive = options.caseSensitive ?? true;
   const keyOf = (name: string) => symbolKey(name, caseSensitive);
   const definitions = new Map<string, Definition>();
   const conflicted = new Set<string>();
   const macros = new ProjectMacros(caseSensitive);
 
+  let read = 0;
   for (const { path, source } of files) {
+    if (++read % YIELD_EVERY === 0) yield;
     let parsed;
     try {
       parsed = parseFile(source);

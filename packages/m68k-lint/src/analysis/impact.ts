@@ -337,6 +337,26 @@ export function assessOptimizationImpact(
   return "neutral";
 }
 
+let cachedSource: string | undefined;
+let cachedLines: readonly string[] = [];
+
+/**
+ * The lines of a source, split once. Measuring is done for every suggestion in
+ * a file, and splitting the whole file each time makes a lint of a large file
+ * quadratic in its number of suggestions. The last source is kept, which is the
+ * one being linted.
+ */
+function linesOf(source: string): readonly string[] {
+  if (source !== cachedSource) {
+    cachedLines = source
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n")
+      .split("\n");
+    cachedSource = source;
+  }
+  return cachedLines;
+}
+
 /** Attach exact 68000 resource measurements to a replacement suggestion. */
 export function measureDiagnosticImpact(
   diagnostic: Diagnostic,
@@ -352,11 +372,7 @@ export function measureDiagnosticImpact(
   const span = diagnostic.span ?? computeSourceSpan(diagnostic, file);
   if (!span) return diagnostic;
 
-  const sourceLines = source
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .split("\n");
-  const original = sourceLines
+  const original = linesOf(source)
     .slice(span.startLine - 1, span.endLine)
     .join("\n");
   // A rule that matched a shift by a register only fires once the count is

@@ -194,6 +194,99 @@ describe("code actions", () => {
     );
   });
 
+  describe("fix-all for a client that can resolve it later", () => {
+    const resolving = () => withClient({ resolveCodeActionEdits: true });
+    const EXPECTED = "start:\n\tmoveq\t#1,d0\n\tmoveq\t#0,d1\n\trts\n";
+
+    it("declares that it resolves code actions", async () => {
+      const client = resolving();
+      const capabilities = await client.initialize(fixture("basic"));
+      assert.equal(capabilities.codeActionProvider.resolveProvider, true);
+    });
+
+    it("offers it without its edit, and builds the edit when resolved", async () => {
+      const client = resolving();
+      await client.initialize(fixture("basic"));
+      const { uri } = await client.open(fixture("basic/moveq.s"));
+      const actions = await client.codeActions(uri, 1);
+
+      const offered = actions.find((a) => a.kind === "source.fixAll");
+      assert.ok(offered, "expected a fix-all action");
+      assert.equal(offered.edit, undefined);
+      assert.ok(offered.data, "expected what it needs to be resolved");
+      // The count is not known until it is built.
+      assert.doesNotMatch(offered.title, /\(\d+\)/);
+
+      const resolved = await client.resolveCodeAction(offered);
+      assert.match(resolved.title, /\(\d+\)/);
+      assert.equal(editsOf(resolved, uri)[0].newText, EXPECTED);
+    });
+
+    it("does not build it for a request for other kinds of action", async () => {
+      const client = resolving();
+      await client.initialize(fixture("basic"));
+      const { uri } = await client.open(fixture("basic/moveq.s"));
+      const actions = await client.codeActions(uri, 1, ["quickfix"]);
+      assert.ok(actions.some((a) => a.kind === "quickfix"));
+      assert.ok(!actions.some((a) => a.kind === "source.fixAll"));
+    });
+
+    it("builds it up front when asked for by kind", async () => {
+      const client = resolving();
+      await client.initialize(fixture("basic"));
+      const { uri } = await client.open(fixture("basic/moveq.s"));
+      const actions = await client.codeActions(uri, 1, ["source.fixAll"]);
+      const fixAll = actions.find((a) => a.kind === "source.fixAll");
+      assert.equal(editsOf(fixAll, uri)[0].newText, EXPECTED);
+    });
+
+    it("is not offered when there is nothing it would fix", async () => {
+      // BSR/RTS to BRA is conditional, which fix-all leaves alone.
+      const client = resolving();
+      await client.initialize(fixture("basic"));
+      const { uri } = await client.open(fixture("basic/tailcall.s"));
+      const actions = await client.codeActions(uri, 1);
+      assert.ok(actions.some((a) => a.title.startsWith("Replace")));
+      assert.ok(!actions.some((a) => a.kind === "source.fixAll"));
+    });
+
+    it("gives no edit for a document that has changed since it was offered", async () => {
+      const client = resolving();
+      await client.initialize(fixture("basic"));
+      const { uri } = await client.open(fixture("basic/moveq.s"));
+      const offered = (await client.codeActions(uri, 1)).find(
+        (a) => a.kind === "source.fixAll",
+      );
+      // Whole-document edits would overwrite what was typed since.
+      client.change(uri, 2, "start:\n\tmove.l\t#5,d0\n\trts\n");
+      const resolved = await client.resolveCodeAction(offered);
+      assert.equal(resolved.edit, undefined);
+    });
+
+    it("leaves an action that is not a fix-all alone", async () => {
+      const client = resolving();
+      await client.initialize(fixture("basic"));
+      const action = { title: "Something else", kind: "quickfix" };
+      assert.deepEqual(await client.resolveCodeAction(action), action);
+    });
+  });
+
+  describe("saving", () => {
+    it("lints again with the new project index once it is ready, without waiting for it first", async () => {
+      const client = withClient();
+      await client.initialize(fixture("basic"));
+      const { uri } = await client.open(fixture("basic/moveq.s"));
+      await client.publishedFor(uri, 1);
+
+      client.notify("textDocument/didSave", { textDocument: { uri } });
+      // One publication straight away, from the index that was already built,
+      // and one when the rebuilt index replaces it.
+      const [, second, third] = await client.publishedFor(uri, 3);
+      assert.deepEqual(second.diagnostics, third.diagnostics);
+      assert.ok(second.diagnostics.length > 0, "expected the finding to stay");
+    });
+  });
+
   describe("conditional suggestions", () => {
     /**
      * BSR/RTS to BRA is `conditional`: it changes the stack depth the callee

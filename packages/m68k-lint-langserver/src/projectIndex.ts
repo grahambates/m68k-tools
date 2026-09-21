@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { relative } from "node:path";
 import {
-  buildProjectSymbols,
-  buildProjectReferences,
+  buildProjectSymbolsAsync,
+  buildProjectReferencesAsync,
   type ProjectSymbols,
   type ProjectReferences,
 } from "m68k-lint";
@@ -13,6 +13,7 @@ import {
   type IncludedFile,
 } from "m68k-lint/project-config";
 import { discoverAssemblyFiles } from "@m68k-lsp/workspace-files";
+import { RefreshingCache } from "./refreshingCache.js";
 
 /**
  * Constants a file uses but does not define live in an include somewhere else
@@ -88,10 +89,12 @@ export async function buildIndex(
   for (const { path, source } of included)
     files.push({ path: relative(root, path) || path, source });
 
+  // Each of these is seconds of work on a large project, so they let the server
+  // answer other requests as they go instead of blocking it until they finish.
   return {
-    symbols: buildProjectSymbols(files, { caseSensitive }),
+    symbols: await buildProjectSymbolsAsync(files, { caseSensitive }),
     references: needsReferences
-      ? buildProjectReferences(files, { caseSensitive })
+      ? await buildProjectReferencesAsync(files, { caseSensitive })
       : undefined,
   };
 }
@@ -113,17 +116,32 @@ export async function buildIndex(
  * extra to keep serving to a document that does not need them.
  */
 export class ProjectIndexCache {
-  private cache = new Map<string, Promise<ProjectIndex | undefined>>();
+  private readonly indexes: RefreshingCache<ProjectIndex | undefined>;
   private withReferences = new Set<string>();
+
+  /**
+   * @param onRefreshed called when an index that was out of date has been
+   *   replaced, so what was worked out from the old one can be done again
+   * @param quietMs how long after the last `invalidate` the rebuild starts
+   */
+  constructor(onRefreshed: () => void = () => {}, quietMs?: number) {
+    this.indexes = new RefreshingCache({ onRefreshed, quietMs });
+  }
 
   /**
    * One index per root, set of include paths and case mode: two configs under
    * one root can differ in any of them, and each must get an index built to
    * match, since the mode decides which names are the same name.
+   *
+   * An index that has been `invalidate`d is still returned, and rebuilt in the
+   * background once things have been quiet for a while. `overrides` may be a
+   * function so that a rebuild that starts later reads the open documents as
+   * they are then, not as they were when it was asked for.
    */
   get(
     root: string,
-    overrides: ReadonlyMap<string, string>,
+    overrides:
+      ReadonlyMap<string, string> | (() => ReadonlyMap<string, string>),
     needsReferences: boolean,
     includes: IncludeSearchOptions = { includePaths: [] },
     caseSensitive = true,
@@ -134,24 +152,31 @@ export class ProjectIndexCache {
       includes.sourceRoot ?? "",
       ...includes.includePaths,
     ].join("\0");
-    const cached = this.cache.get(key);
-    if (cached && (!needsReferences || this.withReferences.has(key)))
-      return cached;
+    const build = (withReferences: boolean) =>
+      buildIndex(
+        root,
+        typeof overrides === "function" ? overrides() : overrides,
+        withReferences,
+        includes,
+        caseSensitive,
+      );
 
-    if (needsReferences) this.withReferences.add(key);
-    const index = buildIndex(
-      root,
-      overrides,
-      needsReferences,
-      includes,
-      caseSensitive,
-    );
-    this.cache.set(key, index);
-    return index;
+    // Wanted now and not there: the caller is waiting for this one.
+    if (needsReferences && !this.withReferences.has(key)) {
+      this.withReferences.add(key);
+      return this.indexes.set(key, () => build(true));
+    }
+    return this.indexes.get(key, () => build(this.withReferences.has(key)));
   }
 
+  /** Everything is out of date, not wrong: keep serving it while it is rebuilt. */
+  invalidate(): void {
+    this.indexes.invalidate();
+  }
+
+  /** Everything is wrong: serve none of it. */
   clear(): void {
-    this.cache.clear();
+    this.indexes.clear();
     this.withReferences.clear();
   }
 }

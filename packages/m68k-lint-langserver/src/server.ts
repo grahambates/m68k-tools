@@ -30,20 +30,49 @@ import {
   diagnosticRange,
   toLspDiagnostic,
 } from "./diagnostics.js";
-import { codeActionsFor, type ActionOptions } from "./codeActions.js";
+import {
+  codeActionsFor,
+  fixAll as buildFixAll,
+  isLazyFixAll,
+  type ActionOptions,
+  type FixAllMode,
+} from "./codeActions.js";
 import { ignoreFileAction } from "./ignoreFile.js";
+import { LintCache } from "./lintCache.js";
 import { ProjectIndexCache } from "./projectIndex.js";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
 const configs = new ConfigResolver();
-const indexes = new ProjectIndexCache();
+/**
+ * The project index takes seconds to build on a large project, and a save only
+ * makes it out of date, not wrong, so a save keeps serving the old one while a
+ * new one is built. When that is done, what was linted with the old one is
+ * linted again.
+ */
+const indexes = new ProjectIndexCache(() => {
+  lintCache.clear();
+  validateAll();
+});
+/**
+ * Diagnostics for each document at the version last linted, shared by the
+ * publish after an edit and the code-action requests that follow it. Cleared
+ * whenever something a result depends on other than the document itself
+ * changes: any edit (another open document can define what this one uses), a
+ * save, the configuration, the workspace or a watched file.
+ */
+const lintCache = new LintCache<Diagnostic[] | undefined>();
 
 let workspaceRoots: string[] = [];
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 /** Whether an edit may create a file, which "ignore this file" needs when there is no config. */
 let canCreateFiles = false;
+/**
+ * Whether the client can fill in a code action's edit after the fact. Without
+ * it, an action has to arrive with its edit, so fix-all is built up front.
+ */
+let canResolveEdit = false;
 
 /**
  * Resolves once the first settings pull has finished.
@@ -76,7 +105,15 @@ function openDocumentText(): Map<string, string> {
   return overrides;
 }
 
-async function lintDocument(
+function lintDocument(
+  document: TextDocument,
+): Promise<Diagnostic[] | undefined> {
+  return lintCache.get(document.uri, document.version, () =>
+    lintDocumentUncached(document),
+  );
+}
+
+async function lintDocumentUncached(
   document: TextDocument,
 ): Promise<Diagnostic[] | undefined> {
   const uri = URI.parse(document.uri);
@@ -97,7 +134,7 @@ async function lintDocument(
   const projectIndex = root
     ? await indexes.get(
         root,
-        openDocumentText(),
+        openDocumentText,
         needsProjectReferences(config),
         { includePaths: includePaths ?? [], sourceRoot },
         config.caseSensitive ?? true,
@@ -200,6 +237,11 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
     workspaceEdit?.documentChanges &&
     workspaceEdit.resourceOperations?.includes("create"),
   );
+  canResolveEdit = Boolean(
+    params.capabilities.textDocument?.codeAction?.resolveSupport?.properties?.includes(
+      "edit",
+    ),
+  );
   // Nothing to wait for when the client cannot serve settings at all.
   if (!hasConfigurationCapability) markSettingsReady();
 
@@ -221,7 +263,8 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
       // turns into a formatter prompt or a definition picker for the user.
       codeActionProvider: {
         codeActionKinds: [CodeActionKind.QuickFix, CodeActionKind.SourceFixAll],
-        resolveProvider: false,
+        // Only fix-all is resolved: its edit takes a lint per pass to build.
+        resolveProvider: true,
       },
       workspace: {
         workspaceFolders: { supported: true, changeNotifications: true },
@@ -259,6 +302,7 @@ connection.onInitialized(async () => {
     }
     indexes.clear();
     configs.clear();
+    lintCache.clear();
     validateAll();
   });
 });
@@ -277,6 +321,7 @@ async function refreshSettings(): Promise<void> {
 
 connection.onDidChangeConfiguration(async () => {
   await refreshSettings();
+  lintCache.clear();
   validateAll();
 });
 
@@ -287,18 +332,25 @@ connection.onDidChangeConfiguration(async () => {
 connection.onDidChangeWatchedFiles(() => {
   configs.clear();
   indexes.clear();
+  lintCache.clear();
   validateAll();
 });
 
 documents.onDidOpen((event) => void validate(event.document));
 
 documents.onDidChangeContent((event) => {
+  // Another open document may define what this one uses, so an edit anywhere
+  // makes every cached result suspect.
+  lintCache.clear();
   if (configs.getSettings().run === "onType") scheduleValidate(event.document);
 });
 
 documents.onDidSave((event) => {
-  // A save can change what other open files resolve, so the index goes with it.
-  indexes.clear();
+  // A save can change what other open files resolve, so the index is out of
+  // date. It is not thrown away: this lint uses the old one, and the open
+  // documents are linted again when the new one is ready.
+  indexes.invalidate();
+  lintCache.clear();
   void validate(event.document);
 });
 
@@ -306,6 +358,7 @@ documents.onDidClose((event) => {
   const timer = pending.get(event.document.uri);
   if (timer) clearTimeout(timer);
   pending.delete(event.document.uri);
+  lintCache.delete(event.document.uri);
   connection.sendDiagnostics({ uri: event.document.uri, diagnostics: [] });
 });
 
@@ -344,7 +397,7 @@ connection.onCodeAction(async (params: CodeActionParams) => {
   const projectIndex = root
     ? await indexes.get(
         root,
-        openDocumentText(),
+        openDocumentText,
         needsProjectReferences(config),
         { includePaths: includePaths ?? [], sourceRoot },
         config.caseSensitive ?? true,
@@ -367,7 +420,19 @@ connection.onCodeAction(async (params: CodeActionParams) => {
     sourceRoot,
   });
   const settings = configs.getSettings();
+  // Fix-all costs a lint per pass, so it is only built now if it was asked for
+  // or the client cannot resolve it later, and is not built at all for a
+  // request that would filter it out.
+  const only = params.context.only;
+  const fixAll: FixAllMode = only
+    ? only.includes(CodeActionKind.SourceFixAll)
+      ? "eager"
+      : "none"
+    : canResolveEdit
+      ? "lazy"
+      : "eager";
   const options: ActionOptions = {
+    fixAll,
     ignoreFile,
     conditional: settings.quickFix.conditional,
     annotate: config.fixAnnotate ?? "obfuscated",
@@ -389,10 +454,58 @@ connection.onCodeAction(async (params: CodeActionParams) => {
     selected,
     options,
   );
-  const only = params.context.only;
   return only
     ? actions.filter((action) => action.kind && only.includes(action.kind))
     : actions;
+});
+
+/**
+ * Builds the edit for a fix-all that was offered without one.
+ *
+ * It only answers for the version of the document it was offered for: an edit
+ * that replaces the whole text of a different one would overwrite what has been
+ * typed since, so in that case the action is returned as it was, with no edit.
+ */
+connection.onCodeActionResolve(async (action) => {
+  const data: unknown = action.data;
+  if (!isLazyFixAll(data)) return action;
+  const document = documents.get(data.uri);
+  if (!document || document.version !== data.version) return action;
+
+  const uri = URI.parse(document.uri);
+  const { config, includePaths, sourceRoot } = await configs.resolve(
+    uri.fsPath,
+  );
+  const root =
+    config.projectSymbols === false ? undefined : rootFor(uri.fsPath);
+  const projectIndex = root
+    ? await indexes.get(
+        root,
+        openDocumentText,
+        needsProjectReferences(config),
+        { includePaths: includePaths ?? [], sourceRoot },
+        config.caseSensitive ?? true,
+      )
+    : undefined;
+  const facts = await fileFacts(uri.fsPath, document.getText(), config, {
+    includePaths: includePaths ?? [],
+    sourceRoot,
+  });
+  const built = buildFixAll(document, document.getText(), {
+    fixAll: "eager",
+    conditional: configs.getSettings().quickFix.conditional,
+    annotate: config.fixAnnotate ?? "obfuscated",
+    lint: (text) =>
+      lintSource(
+        text,
+        config,
+        undefined,
+        projectIndex?.symbols,
+        projectIndex?.references,
+        facts,
+      ),
+  });
+  return built ? { ...action, title: built.title, edit: built.edit } : action;
 });
 
 export { DIAGNOSTIC_SOURCE };

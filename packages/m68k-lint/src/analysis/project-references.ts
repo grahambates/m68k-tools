@@ -43,10 +43,43 @@ export interface ProjectReferences {
   invokes(name: string): boolean;
 }
 
+/** How many files are read between yields when building without blocking. */
+const YIELD_EVERY = 25;
+
 export function buildProjectReferences(
   files: readonly ProjectSourceFile[],
   options: { caseSensitive?: boolean } = {},
 ): ProjectReferences {
+  const build = referencesBuilder(files, options);
+  for (;;) {
+    const step = build.next();
+    if (step.done) return step.value;
+  }
+}
+
+/**
+ * Builds the same references as `buildProjectReferences`, but calls `yieldNow`
+ * every few files, so a server that is building an index does not stop
+ * answering everything else for as long as the build takes.
+ */
+export async function buildProjectReferencesAsync(
+  files: readonly ProjectSourceFile[],
+  options: { caseSensitive?: boolean } = {},
+  yieldNow: () => Promise<void> = () =>
+    new Promise((resolve) => setImmediate(resolve)),
+): Promise<ProjectReferences> {
+  const build = referencesBuilder(files, options);
+  for (;;) {
+    const step = build.next();
+    if (step.done) return step.value;
+    await yieldNow();
+  }
+}
+
+function* referencesBuilder(
+  files: readonly ProjectSourceFile[],
+  options: { caseSensitive?: boolean },
+): Generator<void, ProjectReferences, void> {
   const caseSensitive = options.caseSensitive ?? true;
   const keyOf = (name: string) => symbolKey(name, caseSensitive);
   const referenced = new Set<string>();
@@ -56,7 +89,9 @@ export function buildProjectReferences(
   // defined in one that comes later.
   const calls: { line: ParsedLine; text: string }[] = [];
 
+  let read = 0;
   for (const { path, source } of files) {
+    if (++read % YIELD_EVERY === 0) yield;
     let parsed;
     try {
       parsed = parseFile(source);
@@ -77,7 +112,9 @@ export function buildProjectReferences(
   }
 
   let unique = 0;
+  let expanded = 0;
   for (const { line, text } of calls) {
+    if (++expanded % (YIELD_EVERY * 20) === 0) yield;
     if (line.mnemonic?.type !== "macro") continue;
     const found = macros.get(line.mnemonic.macro);
     if (!found) continue;

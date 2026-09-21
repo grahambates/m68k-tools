@@ -1,9 +1,18 @@
-import { dirname, resolve } from "node:path";
+import {
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import {
   configIncludePaths,
   entryDirectories,
   followIncludes,
   includeCaseOnDisk,
+  nodeIncludeFs,
   type IncludeFs,
 } from "../cli/project-config.js";
 
@@ -253,6 +262,122 @@ describe("followIncludes", () => {
       { includePaths: [], fs, limit: 2 },
     );
     expect(found).toHaveLength(2);
+  });
+});
+
+describe("following includes in a project of many main sources", () => {
+  test("looks for an include named by many files once, not once per file", async () => {
+    // Forty main sources each name the same include, which only one directory
+    // has. Trying every main source's directory for every file that names it
+    // is forty lookups each, and a project of a few thousand files made that
+    // the whole cost of indexing it.
+    const files: Record<string, string> = { "/p/d39/shared.i": "" };
+    const sources = [];
+    for (let i = 0; i < 40; i++) {
+      const path = `/p/d${i}/main.s`;
+      files[path] = '\tinclude "shared.i"';
+      sources.push({ path, source: files[path] });
+    }
+    const base = memoryFs(files);
+    let lookups = 0;
+    const fs: IncludeFs = {
+      ...base,
+      find: (dir, name) => {
+        lookups++;
+        return base.find(dir, name);
+      },
+    };
+    const found = await followIncludes(sources, { includePaths: [], fs });
+    expect(paths(found)).toEqual([resolve("/p/d39/shared.i")]);
+    expect(lookups).toBeLessThan(200);
+  });
+
+  test("still resolves each file's own include when the names differ", async () => {
+    const files: Record<string, string> = {};
+    const sources = [];
+    for (let i = 0; i < 12; i++) {
+      files[`/p/d${i}/main.s`] = `\tinclude "u${i}.i"`;
+      files[`/p/d${i}/u${i}.i`] = "";
+      sources.push({
+        path: `/p/d${i}/main.s`,
+        source: files[`/p/d${i}/main.s`],
+      });
+    }
+    const found = await followIncludes(sources, {
+      includePaths: [],
+      fs: memoryFs(files),
+    });
+    expect(paths(found).sort()).toEqual(
+      Array.from({ length: 12 }, (_, i) => resolve(`/p/d${i}/u${i}.i`)).sort(),
+    );
+  });
+});
+
+describe("nodeIncludeFs", () => {
+  /** What the operating system says, asked the slow way, for comparison. */
+  const stat = (dir: string, name: string) => {
+    const path = resolve(dir, name);
+    try {
+      return statSync(path).isFile() ? path : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  let root: string;
+  beforeAll(() => {
+    root = mkdtempSync(join(tmpdir(), "include-fs-"));
+    mkdirSync(join(root, "lib", "Exec"), { recursive: true });
+    mkdirSync(join(root, "empty"));
+    mkdirSync(join(root, "adir.i"));
+    writeFileSync(join(root, "hw.i"), "");
+    writeFileSync(join(root, "lib", "Exec", "Types.i"), "");
+    writeFileSync(join(root, "lib", "a b.i"), "");
+  });
+  afterAll(() => rmSync(root, { recursive: true, force: true }));
+
+  test("agrees with asking the file system, for what is there and what is not", async () => {
+    const fs = nodeIncludeFs();
+    const asks: [string, string][] = [
+      [root, "hw.i"],
+      [root, "HW.I"], // wrong case: whatever this file system says
+      [root, "missing.i"],
+      [root, "adir.i"], // a directory is not a file
+      [root, "lib/Exec/Types.i"],
+      [root, "lib/exec/types.i"], // wrong case in a directory and a file
+      [root, "LIB/EXEC/TYPES.I"],
+      [root, "lib/a b.i"],
+      [root, "lib/../hw.i"],
+      [join(root, "lib"), "../hw.i"],
+      [join(root, "empty"), "hw.i"],
+      [join(root, "no-such-dir"), "hw.i"],
+      [join(root, "no-such-dir"), "sub/hw.i"],
+      [root, ""],
+    ];
+    for (const [dir, name] of asks)
+      expect(await fs.find(dir, name), `${dir} ${name}`).toBe(stat(dir, name));
+  });
+
+  test("answers the same lookup the same way each time", async () => {
+    const fs = nodeIncludeFs();
+    expect(await fs.find(root, "hw.i")).toBe(join(root, "hw.i"));
+    expect(await fs.find(root, "hw.i")).toBe(join(root, "hw.i"));
+    expect(await fs.find(root, "nope.i")).toBeUndefined();
+    expect(await fs.find(root, "nope.i")).toBeUndefined();
+  });
+
+  test("finds an open editor's text for a file that is not on disk", async () => {
+    const path = join(root, "unsaved.i");
+    const fs = nodeIncludeFs(new Map([[path, "X equ 1"]]));
+    expect(await fs.find(root, "unsaved.i")).toBe(path);
+    expect(await fs.read(path)).toBe("X equ 1");
+    // Only for that path.
+    expect(await fs.find(root, "other.i")).toBeUndefined();
+  });
+
+  test("still lists a directory for the case check", async () => {
+    const names = await nodeIncludeFs().list?.(root);
+    expect(names).toEqual(expect.arrayContaining(["hw.i", "lib", "empty"]));
   });
 });
 

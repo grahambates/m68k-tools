@@ -275,8 +275,10 @@ export function findRoutineRange(
   ) {
     const line = document.parsed.lines[index];
     const mnemonic = line.mnemonic;
+    // A return that only happens if a condition holds does not end the routine.
     if (
       mnemonic?.type === "instruction" &&
+      line.inlineCondition === undefined &&
       routineReturns.has(mnemonic.instruction.toLowerCase())
     ) {
       return {
@@ -368,7 +370,9 @@ function reachableLinesAfterPosition(
         pending.push(targetLine);
       }
     }
-    if (!mnemonic || !routineReturns.has(mnemonic)) {
+    // A conditional statement (`iif`) may not run, so it never ends the flow.
+    const conditional = line.inlineCondition !== undefined;
+    if (conditional || !mnemonic || !routineReturns.has(mnemonic)) {
       if (mnemonic && isBranchMnemonic(mnemonic)) {
         const target = branchTarget(line);
         const targetLine =
@@ -387,7 +391,7 @@ function reachableLinesAfterPosition(
         }
         pending.push(targetLine);
       }
-      if (mnemonic !== "bra" && mnemonic !== "jmp") {
+      if (conditional || (mnemonic !== "bra" && mnemonic !== "jmp")) {
         pending.push(lineIndex + 1);
       }
     }

@@ -971,6 +971,27 @@ Second:
       });
     });
 
+    it("does not end a routine at a return that is conditional", async () => {
+      const textDocument = await createDoc(
+        "conditional-return.s",
+        `First:
+ iif DEBUG rts
+ moveq #1,d0
+ rts
+`,
+      );
+
+      expect(
+        provider.onRoutineRange({
+          textDocument,
+          position: lsp.Position.create(1, 2),
+        }),
+      ).toEqual({
+        range: range(0, 0, 3, 4),
+        label: "First",
+      });
+    });
+
     it("uses the start of the file before the first non-local label", async () => {
       const textDocument = await createDoc(
         "no-label.s",

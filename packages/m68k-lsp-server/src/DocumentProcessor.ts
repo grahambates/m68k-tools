@@ -1,6 +1,7 @@
 import {
   collectMacroDefinitions as collectDefinitions,
   parseBlocks,
+  expandInlineStatements,
   parseFile,
   symbolKey,
 } from "m68k-parser";
@@ -69,6 +70,8 @@ export default class DocumentProcessor {
 
     const text = document.getText();
     const parsed = parseFile(text);
+    // What an `iif` makes conditional is what the rest of the server looks at.
+    expandInlineStatements(parsed);
     const blocks = parseBlocks(parsed);
 
     const processed: ProcessedDocument = {
@@ -125,6 +128,7 @@ export default class DocumentProcessor {
 
     const text = document.getText();
     const parsed = parseFile(text);
+    expandInlineStatements(parsed);
     const blocks = parseBlocks(parsed);
 
     const indexed: IndexedDocument = {

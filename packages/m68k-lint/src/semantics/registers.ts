@@ -597,7 +597,7 @@ function foldRegisterSemantics(
   return { reads, writes, partialWrites, unknownEffects, call };
 }
 
-export function getRegisterSemantics(line: ParsedLine): RegisterSemantics {
+function unconditionalRegisterSemantics(line: ParsedLine): RegisterSemantics {
   const expansion = isMacroInvocation(line) ? expansionOf(line) : undefined;
   if (expansion) return foldRegisterSemantics(expansion);
 
@@ -607,4 +607,17 @@ export function getRegisterSemantics(line: ParsedLine): RegisterSemantics {
   const writes = new Set(semantics.writes);
   for (const op of line.operands ?? []) addEaSideEffectWrite(writes, op);
   return { ...semantics, writes, partialWrites: partialWritesOf(line, writes) };
+}
+
+/**
+ * Which registers an instruction reads and writes.
+ *
+ * On a line made conditional by `iif` a write may not happen, so it does not end
+ * the life of the value that was there: it is a partial write, as a word write
+ * to a data register is.
+ */
+export function getRegisterSemantics(line: ParsedLine): RegisterSemantics {
+  const semantics = unconditionalRegisterSemantics(line);
+  if (line.inlineCondition === undefined) return semantics;
+  return { ...semantics, partialWrites: new Set(semantics.writes) };
 }

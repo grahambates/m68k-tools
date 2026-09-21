@@ -331,6 +331,12 @@ file defines, so a constant set one way in an `IF` arm and another in its `ELSE`
 arm is no longer a conflict, and a write in an arm that is not assembled is not
 called dead.
 
+An inline `iif <condition> <statement>` is analysed as the statement it makes conditional. What it does may
+not happen, so a write in it does not end the life of an earlier value, a jump or return in it leaves the
+next line reachable, and it is never joined to the lines around it by a rule that combines neighbours. A
+rewrite of it keeps the `iif <condition>` in front; one that would span lines or remove it is only suggested.
+An `iif` whose condition is known not to hold is left out of the flow like an `if 0` arm.
+
 A condition that cannot be settled -- a name defined elsewhere or on the
 assembler's command line, the pass number -- leaves the
 block alone: its arms are treated as alternatives, as they always were.

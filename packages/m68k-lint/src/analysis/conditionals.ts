@@ -210,6 +210,21 @@ export function prepareConditionals(
   };
 
   let changed = false;
+
+  // An `iif` whose condition is known not to hold leaves its statement out.
+  file.lines.forEach((line, index) => {
+    if (line.inlineCondition === undefined || regions.region[index] !== 0)
+      return;
+    const operand: OperandNode = {
+      type: "value",
+      value: line.inlineCondition,
+      loc: line.inlineCondition.loc,
+    };
+    if (evaluateCondition("if", [operand], evaluate, undefined) === "no") {
+      unassembled[index] = true;
+      changed = true;
+    }
+  });
   const blocks: ConditionalBlock[] = regions.conditionals;
   for (const block of blocks) {
     // A macro body is not assembled where it is written.

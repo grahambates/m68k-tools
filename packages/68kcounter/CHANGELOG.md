@@ -1,5 +1,34 @@
 # 68kcounter
 
+## 5.1.0
+
+### Minor Changes
+
+- a8034b3: Know about vasm's `-esc`. `escapeSequences` joins `.m68krc.json` (and `m68k-lint.json`, and `m68k.escapeSequences` in editor settings); an `-esc` among the vasm arguments is read as the option, and the assembly server passes `-esc` to vasm when it is set. With it, a backslash in a string is read as vasm does: `\n \r \t \b \e \f`, `\\ \" \'`, up to three octal digits (`\101`) and `\x` with up to two hex digits are one element each, so string data is shorter than it is written. `m68k-parser` gains `decodeStringEscapes`, and `directiveSize` takes `escapeSequences`; the linter's alignment analysis and 68kcounter's `parse` use it. Sequences checked against vasm's own output; `\a` and `\v` are not supported by it.
+- 84eb9ee: Evaluate expressions as vasm does. Values are now 32-bit signed, so `$ffffffff` is -1 (and less than 5), a product that overflows wraps, and results agree with the assembler where they used to differ, most visibly in comparisons and shifts of large values; a `move.l #$ffffffff,d0` is now seen as fitting `moveq #-1`. Character constants are evaluated (`'A'` is 65, `'AB'` is `$4142`, up to four characters), with backslash escapes read when `escapeSequences` is set. Checked against vasm's output for the operator precedence table and several thousand generated expressions; the remaining differences are chains of unary operators, which vasm rejects, and a chain of comparisons starting with `<=` or `>=`, which vasm evaluates unlike its own documentation.
+- 3d61532: Keep symbol case by default, as vasm does. `Foo` and `foo` are different symbols unless the assembler was given `-nocase`; the linter used to treat every name as case-insensitive, so two symbols differing only in case merged into one, giving a false conflict for constants, hiding unused labels, and letting a branch to `.Loop` land on `.loop`. Constants, labels, local labels and macros now keep their case throughout, and instruction, directive and register names are still matched without regard to case.
+
+  A project assembled with `-nocase` says so: `caseSensitive: false` in `m68k-lint.json`, or in the assembly server's config, which also follows a `-nocase` among the vasm arguments when the setting is unset. 68kcounter's `parse` takes `{ caseSensitive: false }`. The assembly server re-reads every document when the setting changes. `m68k-parser` gains `symbolKey`, and `analyzeLocalLabelScopes` takes the option. Macro names in 68kcounter and the assembly server, which used to ignore case, now keep it like other symbols. `opt c-` in the source is not read yet.
+
+### Patch Changes
+
+- 2483db0: A constant assigned in a conditional block no longer takes the value of the last arm. The counter still shows every arm, but a constant that ends a block with different values depending on the arm, or that a block with no `ELSE` may not have set, is unknown afterwards, so what is sized by it is unknown too and not a guess. A constant every arm agrees on keeps its value, each arm starts from what was known before the block, and blocks nest. Labels are unaffected. `IF` and `ELSEIF` are recognised as directives.
+- 530995e: Count `dc`, `dcb` and `ds` written without a size as words, as an assembler does. They were counted as nothing, so `dc 1,2,3` reported 0 bytes instead of 6. Directive sizes now come from the parser, shared with the linter.
+- ca3b18b: Substitute macro parameters with the routine shared with the other tools, so macro calls are counted the way an assembler expands them. `\0` (the size the macro was called with), `NARG`, `\#`, `\?n` and the `\.`, `\+`, `\-` selectors now work; a numbered argument the call did not supply is empty rather than left in the text; and `\10` is `\1` followed by a zero, as in vasm, where arguments beyond nine are `\a` to `\z` and only in Devpac mode. Definitions are still tracked as the file is read, so timings and byte counts for each expanded line are unchanged.
+- 2483db0: `iif` now keeps the statement it makes conditional. `ParsedLine.inlineStatement` is that statement parsed as a line of its own, with locations in the `iif` line, so `iif DEBUG move.w d0,d1` has its `move`, its `.w` and its operands, where only the operands and the condition were kept before. The condition still ends at the first blank, as in vasm. 68kcounter counts the statement, with its size and timing, as it would on a line of its own. `expandInlineStatements` turns each `iif` line in a parsed file into the statement it makes conditional, keeping the label, comment and condition, for tools that read a line's mnemonic and operands.
+- 2daedf1: Fixes found by checking against a real vasm. `trap #n` is two bytes in 68kcounter, not four. `movea.w #$8000,a0` (and other unsigned word values from `$8000` to `$ffff`) is suggested as `lea -32768.w,a0`, since vasm rejects `lea $8000.w`. In `dc.w`, `dc.l` and other sizes wider than a byte, a string is one character constant, so `dc.w "ab"` is one word and `dc.l "abcd"` one long, not one element per character; only `dc.b` counts characters.
+- Updated dependencies [a8034b3]
+- Updated dependencies [84eb9ee]
+- Updated dependencies [2483db0]
+- Updated dependencies [530995e]
+- Updated dependencies [ca3b18b]
+- Updated dependencies [530995e]
+- Updated dependencies [2daedf1]
+- Updated dependencies [530995e]
+- Updated dependencies [3d61532]
+- Updated dependencies [2daedf1]
+  - m68k-parser@2.1.0
+
 ## 5.0.0
 
 ### Major Changes

@@ -1,6 +1,6 @@
 {
   "name": "m68k-formatter",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Motorola 68000 assembly formatter and CLI",
   "author": "Graham Bates",
   "license": "MIT",

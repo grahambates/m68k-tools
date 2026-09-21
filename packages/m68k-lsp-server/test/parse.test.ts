@@ -362,7 +362,7 @@ describe("parse", () => {
     });
 
     it("identifies the first operand component", () => {
-      const info = componentAtIndex(line, 17);
+      const info = componentAtIndex(line, 16);
       expect(info).toEqual({
         component: { start: 16, end: 18, value: "#1" },
         type: ComponentType.Operand,
@@ -444,6 +444,37 @@ describe("parse", () => {
     it("parses a size list", () => {
       const { sizes } = parseSignature("MOVE[.w)] <ea>[,<ea>]");
       expect(sizes).toEqual(["w"]);
+    });
+  });
+
+  describe("an iif", () => {
+    const text = "\tiif DEBUG move.w d0,d1";
+
+    it("has the mnemonic and size of the statement it makes conditional", () => {
+      const line = parseLine(text);
+      expect(line.mnemonic?.value).toBe("iif");
+      expect(line.inlineMnemonic).toEqual({
+        start: 11,
+        end: 15,
+        value: "move",
+      });
+      expect(line.inlineSize).toEqual({ start: 16, end: 17, value: "w" });
+    });
+
+    it("finds those components at a position", () => {
+      const line = parseLine(text);
+      expect(componentAtIndex(line, 12)).toMatchObject({
+        type: ComponentType.Mnemonic,
+        component: { value: "move" },
+      });
+      expect(componentAtIndex(line, 16)).toMatchObject({
+        type: ComponentType.Size,
+      });
+      // The iif itself is still a mnemonic.
+      expect(componentAtIndex(line, 2)).toMatchObject({
+        type: ComponentType.Mnemonic,
+        component: { value: "iif" },
+      });
     });
   });
 });

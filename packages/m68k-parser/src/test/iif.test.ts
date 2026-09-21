@@ -1,3 +1,4 @@
+import { parseFile, expandInlineStatements } from "../index.js";
 import { parseLine } from "../line-parser.js";
 
 /** `iif` makes the statement after its condition conditional; the condition ends at the first blank, as in vasm. */
@@ -66,5 +67,33 @@ describe("iif", () => {
     expect(line.inlineStatement?.mnemonic).toMatchObject({
       instruction: "nop",
     });
+  });
+});
+
+describe("expandInlineStatements", () => {
+  it("makes an iif line the statement it makes conditional", () => {
+    const file = parseFile("lbl\tiif DEBUG move.w d0,d1 ; note\n\tnop");
+    expandInlineStatements(file);
+    const [line] = file.lines;
+    expect(line.label?.label).toBe("lbl");
+    expect(line.mnemonic).toMatchObject({
+      type: "instruction",
+      instruction: "move",
+    });
+    expect(line.qualifier).toMatchObject({ size: "w" });
+    expect(line.operands).toHaveLength(2);
+    expect(line.comment).toBeDefined();
+    // The condition stays, as the mark that it is conditional.
+    expect(line.inlineCondition).toBeDefined();
+    // Lines that are not iif are as they were.
+    expect(file.lines[1].inlineCondition).toBeUndefined();
+  });
+
+  it("can be called again", () => {
+    const file = parseFile("\tiif 1 nop");
+    expandInlineStatements(file);
+    const once = file.lines[0];
+    expandInlineStatements(file);
+    expect(file.lines[0]).toBe(once);
   });
 });

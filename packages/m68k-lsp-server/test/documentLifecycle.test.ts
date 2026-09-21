@@ -48,6 +48,16 @@ describe("document lifecycle", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("follows an include an iif makes conditional", async () => {
+    await write("debug.i", "Debug equ 1\n");
+    const uri = await write("main.s", '\tiif DEBUG include "debug.i"\n');
+    const processed = await processor.process(
+      TextDocument.create(uri, "m68k", 1, '\tiif DEBUG include "debug.i"\n'),
+    );
+    expect(processed.symbols.includes.map((i) => i.text)).toEqual(["debug.i"]);
+    expect(processed.referencedUris).toEqual([uriFor("debug.i")]);
+  });
+
   it("releases closed syntax trees and discards unsaved symbols", async () => {
     const uri = await write("main.s", "Saved equ 1\n");
     await processor.process(

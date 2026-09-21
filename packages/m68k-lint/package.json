@@ -1,6 +1,6 @@
 {
   "name": "m68k-lint",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Extensible static analysis and linting for Motorola 68k assembly",
   "keywords": [
     "m68k",

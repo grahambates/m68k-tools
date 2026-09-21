@@ -1,5 +1,26 @@
 # m68k-formatter
 
+## 0.3.0
+
+### Minor Changes
+
+- 5c669b3: Publish a JSON schema for `.m68k-format.json` as `m68k-format.schema.json`, and accept a `$schema` key in the file, which used to be rejected. The VS Code extension bundles the schema; elsewhere reference `https://cdn.jsdelivr.net/npm/m68k-formatter@0/m68k-format.schema.json`.
+- a8034b3: Read formatter options from the `format` section of a shared `.m68krc.json` as well as `.m68k-format.json`, so the CLI agrees with the language server. The nearest of each is loaded and merged, the nearer on top (`.m68k-format.json` where both share a directory), as the language server already did; a `.m68krc.json` with no `format` section is passed over. `--config` accepts either. `findConfigs` and `loadConfigs` are added.
+
+### Patch Changes
+
+- Updated dependencies [a8034b3]
+- Updated dependencies [84eb9ee]
+- Updated dependencies [2483db0]
+- Updated dependencies [530995e]
+- Updated dependencies [ca3b18b]
+- Updated dependencies [530995e]
+- Updated dependencies [2daedf1]
+- Updated dependencies [530995e]
+- Updated dependencies [3d61532]
+- Updated dependencies [2daedf1]
+  - m68k-parser@2.1.0
+
 ## 0.2.0
 
 ### Minor Changes

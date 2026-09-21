@@ -1,4 +1,4 @@
-import { parseFile } from "m68k-parser";
+import { expandInlineStatements, parseFile } from "m68k-parser";
 import type { ExpressionNode, ParsedFile, ParsedLine } from "m68k-parser";
 import {
   evaluateConstant,
@@ -333,6 +333,8 @@ export class DefaultRuleContext implements RuleContext {
     public readonly facts?: FileFacts,
   ) {
     this.sourceLines = source.split(/\r?\n/);
+    // First, so everything sees the statement an `iif` makes conditional.
+    expandInlineStatements(file);
     // Before anything looks a name up: the symbol table and every analysis read it.
     setCaseSensitive(file, config.caseSensitive ?? true);
     setEscapeSequences(file, config.escapeSequences ?? false);
@@ -391,6 +393,16 @@ export class DefaultRuleContext implements RuleContext {
 
   report(diagnostic: Diagnostic): void {
     const span = computeSourceSpan(diagnostic, this.file);
+    // A run of lines with a conditional statement among them is not a sequence,
+    // whatever a rule made of it.
+    if (
+      span &&
+      span.endLine > span.startLine &&
+      this.file.lines
+        .slice(span.startLine - 1, span.endLine)
+        .some((line) => line.inlineCondition !== undefined)
+    )
+      return;
     const suggestion = this.placeSuggestion(diagnostic, span);
     const replacement =
       suggestion?.replacement ?? diagnostic.suggestion?.replacement;
@@ -516,6 +528,12 @@ export class DefaultRuleContext implements RuleContext {
       return undefined;
 
     const matched = this.file.lines.slice(span.startLine - 1, span.endLine);
+    // One `iif` line rewritten in place keeps its label and condition: only the
+    // statement after the condition is what the rule replaces.
+    const inline = matched.length === 1 ? matched[0] : undefined;
+    if (inline?.inlineCondition !== undefined)
+      return this.placeInlineSuggestion(suggestion, inline, span);
+
     // A directive inside the match is structure, not code to be rewritten.
     // Replacing the run would delete an ENDC or an alignment and the file would
     // stop assembling, so there is no rewrite to offer. Rules should not match
@@ -588,6 +606,32 @@ export class DefaultRuleContext implements RuleContext {
     }
 
     return { ...suggestion, replacement };
+  }
+
+  /**
+   * A replacement for a line made conditional by `iif`.
+   *
+   * Only a single-line statement can stand in for one: the text up to the
+   * statement, label and condition included, is kept and the replacement put
+   * after it. A replacement that is nothing or spans lines would change when it
+   * runs, so there is none to offer.
+   */
+  private placeInlineSuggestion(
+    suggestion: NonNullable<Diagnostic["suggestion"]>,
+    line: ParsedLine,
+    span: SourceSpan,
+  ): Diagnostic["suggestion"] {
+    const replacement = suggestion.replacement?.trim();
+    const sourceLine = this.sourceLines[span.startLine - 1];
+    const start = line.mnemonic?.loc.start;
+    if (!replacement || replacement.includes("\n") || start === undefined)
+      return { ...suggestion, replacement: undefined, applicability: "manual" };
+    const comment = trailingCommentOf(line, sourceLine);
+    const placed = sourceLine.slice(0, start) + replacement;
+    return {
+      ...suggestion,
+      replacement: comment ? attachComments(placed, comment, [], "") : placed,
+    };
   }
 
   /** Drop the record of constants borrowed from other files. Called per line. */

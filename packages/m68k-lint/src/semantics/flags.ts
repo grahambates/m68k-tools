@@ -138,12 +138,40 @@ function foldFlagSemantics(lines: readonly ParsedLine[]): FlagSemantics {
 }
 
 /**
+ * What an instruction does to the condition codes and to control flow.
+ *
+ * On a line made conditional by `iif` it may do none of it, which is the same as
+ * it doing all of it and the earlier values surviving: what it would write, it
+ * also reads, so a value set before it is not dead. A jump or return it would
+ * make is then one that may or may not be taken, since the line after it can
+ * still run.
+ */
+export function getFlagSemantics(line: ParsedLine): FlagSemantics {
+  const semantics = unconditionalFlagSemantics(line);
+  if (line.inlineCondition === undefined) return semantics;
+  const controlFlow: ControlFlowKind =
+    semantics.controlFlow === "call" || semantics.controlFlow === "fallthrough"
+      ? semantics.controlFlow
+      : "conditional-branch";
+  return {
+    reads: new Set([
+      ...semantics.reads,
+      ...semantics.writes,
+      ...semantics.undefined,
+    ]),
+    writes: none(),
+    undefined: none(),
+    controlFlow,
+  };
+}
+
+/**
  * Conservative, deliberately incomplete instruction flag semantics.
  * Unknown instructions preserve our knowledge of existing flags rather than
  * pretending to write them. As the table expands, callers automatically get
  * more precise answers without rule changes.
  */
-export function getFlagSemantics(line: ParsedLine): FlagSemantics {
+function unconditionalFlagSemantics(line: ParsedLine): FlagSemantics {
   const expansion = isMacroInvocation(line) ? expansionOf(line) : undefined;
   if (expansion) return foldFlagSemantics(expansion);
   // A macro's body is invisible here, so treat the condition codes the way a

@@ -64,7 +64,9 @@ export function isInMacroDefinition(
  * does not exist, and a replacement spanning one would delete it.
  */
 export function isBlockBoundary(line: ParsedLine | undefined): boolean {
-  return blockRole(line) !== undefined;
+  // A line made conditional by `iif` is one: it runs or not, so what is beside it
+  // is not a sequence with it.
+  return blockRole(line) !== undefined || line?.inlineCondition !== undefined;
 }
 
 export function scanBlocks(file: ParsedFile): BlockStructure {

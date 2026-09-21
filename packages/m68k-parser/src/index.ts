@@ -82,5 +82,6 @@ export {
 } from "./directive-kinds.js";
 
 export { directiveSize } from "./directive-size.js";
+export { expandInlineStatements } from "./inline-statements.js";
 export { decodeStringEscapes, type EscapedString } from "./string-escapes.js";
 export type { DirectiveSizeOptions } from "./directive-size.js";

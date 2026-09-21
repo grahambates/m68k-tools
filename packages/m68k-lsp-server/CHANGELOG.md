@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.13.0
+
+### Minor Changes
+
+- a8034b3: Know about vasm's `-esc`. `escapeSequences` joins `.m68krc.json` (and `m68k-lint.json`, and `m68k.escapeSequences` in editor settings); an `-esc` among the vasm arguments is read as the option, and the assembly server passes `-esc` to vasm when it is set. With it, a backslash in a string is read as vasm does: `\n \r \t \b \e \f`, `\\ \" \'`, up to three octal digits (`\101`) and `\x` with up to two hex digits are one element each, so string data is shorter than it is written. `m68k-parser` gains `decodeStringEscapes`, and `directiveSize` takes `escapeSequences`; the linter's alignment analysis and 68kcounter's `parse` use it. Sequences checked against vasm's own output; `\a` and `\v` are not supported by it.
+- 11ee555: Search for includes as vasm does. vasm looks in the directory it is run in, then in the directory of the main source, then the `-I` paths and `incdir`s, and never beside the file that names the include; the linter and the assembly server looked beside the including file and in the include paths only. They now also look in the directory of the main source (the file nothing else includes) and follow `incdir` directives, so an include named from the main source's directory by a file in another directory, or one reached through `incdir`, is found and its constants and macros are read. vasm's own order is tried first, so the file read is the one vasm opens, and looking beside the including file is kept only as a last resort, so nothing that was found before is lost. The search is one function shared by the linter, the linter server and the assembly server. Checked against vasm 1.9.
+- ca4c874: Guess where an include is when vasm would not find it. If a file in the project ends in the same path (`lib/defs.i` for `include "lib/defs.i"`), the directory in front of it is added as an include path, so the error goes away and the rest of the file is checked. Which includes vasm would not find is worked out from the source and where vasm looks (its run directory, the main source's directory, `-I` and `incdir`, and not beside the including file), so the first run already has the directory and the note shows even with vasm turned off; if vasm still fails to open an include, it is run again with a guess. An information diagnostic on the include says where it was found, with quick fixes to add the directory to `includePaths` or set `sourceRoot` in `.m68krc.json`, creating the file if there is none. A path that matches files in more than one place is left alone. `inferIncludePaths: false` (`m68k.inferIncludePaths` in editor settings) turns it off.
+- Understand the statement an `iif` makes conditional. `iif DEBUG include "debug.i"` follows the include, and its symbols and links are found as for any include; hover and completion work on the mnemonic and size of the statement; and a return or branch in it does not end the routine or the flow, since it may not run. The shared `expandInlineStatements` in `m68k-parser` does this for the linter as well.
+- 3d61532: Publish a JSON schema for `.m68krc.json` as `m68krc.schema.json`, for completion and validation of the project config. The VS Code extension bundles it; other editors can reference `https://cdn.jsdelivr.net/npm/m68k-lsp-server@0/m68krc.schema.json` through `$schema`.
+- 3d61532: Share the options that describe how the source is assembled. `processors`, `includePaths` and `caseSensitive` are read from `.m68krc.json` by the linter, its language server and the assembly server, layered under the tool's own config, and `-nocase`, `-I` and `-m` in the vasm arguments are read back as those options. The assembly server now passes `-nocase` to vasm when case is folded by setting, without repeating arguments already given, and warns when `caseSensitive: true` contradicts a `-nocase` argument. The linter CLI now honours `caseSensitive` in its config, which it previously ignored.
+
+  The assembly server now finds `.m68krc.json` by walking up from the workspace folder, as the linter does, rather than only in the folder itself.
+
+  Relative `includePaths` in `.m68krc.json` are taken from the file's directory by the assembly server too, so all three tools agree, and vasm is given the resolved paths.
+
+- 9ca205d: Add `sourceRoot`, the directory relative paths in the source resolve from, to `.m68krc.json`, `m68k-lint.json` (where it overrides the shared file's) and `m68k.sourceRoot` in editor settings. vasm is run there instead of in each file's own directory, so a project whose includes are named from where its build runs (`include "lib/defs.i"`) no longer gets false include errors, and the linter and both language servers look there for includes. Unset keeps the previous behaviour.
+
+  A relative `-I` in `vasm.args` is tried from the source root, where vasm is run, and then from the main source's directory, as vasm does, and the linter reads it the same way.
+
+- 3d61532: Keep symbol case by default, as vasm does. `Foo` and `foo` are different symbols unless the assembler was given `-nocase`; the linter used to treat every name as case-insensitive, so two symbols differing only in case merged into one, giving a false conflict for constants, hiding unused labels, and letting a branch to `.Loop` land on `.loop`. Constants, labels, local labels and macros now keep their case throughout, and instruction, directive and register names are still matched without regard to case.
+
+  A project assembled with `-nocase` says so: `caseSensitive: false` in `m68k-lint.json`, or in the assembly server's config, which also follows a `-nocase` among the vasm arguments when the setting is unset. 68kcounter's `parse` takes `{ caseSensitive: false }`. The assembly server re-reads every document when the setting changes. `m68k-parser` gains `symbolKey`, and `analyzeLocalLabelScopes` takes the option. Macro names in 68kcounter and the assembly server, which used to ignore case, now keep it like other symbols. `opt c-` in the source is not read yet.
+
+### Patch Changes
+
+- 530995e: Resolve local labels the same way everywhere. The linter, the register analysis in the language server and its symbol lookups each decided for themselves which label a local one belongs to, and they disagreed: one let a label defined with `equ` start a new routine, one counted only labels on code, one counted any label. All now use the parser's rule, under which a label that defines a symbol does not start a routine while a label on data does.
+- 530995e: Fix register access for two instructions in register usage. `SHS` and `SLO` (the synonym spellings of `SCC` and `SCS`) were reported as reading and writing their register when they only write it, and the register destination of `MOVEP` was reported as read and written when it is only written.
+- ca3b18b: Use the shared macro expansion from m68k-parser for register usage. Macros defined as `macro Name` (name as an operand) are now expanded as well as `Name: macro`.
+- Updated dependencies [a8034b3]
+- Updated dependencies [84eb9ee]
+- Updated dependencies [5c669b3]
+- Updated dependencies [a8034b3]
+- Updated dependencies [2483db0]
+- Updated dependencies [530995e]
+- Updated dependencies [ca3b18b]
+- Updated dependencies [530995e]
+- Updated dependencies [2daedf1]
+- Updated dependencies [530995e]
+- Updated dependencies [3d61532]
+- Updated dependencies [2daedf1]
+  - m68k-parser@2.1.0
+  - m68k-formatter@0.3.0
+
 ## 0.12.1
 
 ### Patch Changes

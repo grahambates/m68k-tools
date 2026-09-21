@@ -1,6 +1,6 @@
 {
   "name": "68kcounter",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "description": "68000 ASM source code cycle counter",
   "keywords": [
     "68000",

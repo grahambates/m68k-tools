@@ -5,6 +5,9 @@ export interface ParsedLine {
   label?: Component;
   mnemonic?: Component;
   size?: Component;
+  /** For an `iif`: the mnemonic and size of the statement it makes conditional. */
+  inlineMnemonic?: Component;
+  inlineSize?: Component;
   operands?: Component[];
   comment?: Component;
 }
@@ -59,6 +62,9 @@ export function parseLine(text: string): ParsedLine {
     // first case. Completion needs that to know the cursor is on a size.
     line.size = component(ast.qualifier.loc);
   }
+  const inner = ast.inlineStatement;
+  if (inner?.mnemonic) line.inlineMnemonic = component(inner.mnemonic.loc);
+  if (inner?.qualifier) line.inlineSize = component(inner.qualifier.loc);
   if (ast.operands?.length) {
     line.operands = ast.operands.map((operand) => component(operand.loc));
   }
@@ -73,7 +79,15 @@ export function parseLine(text: string): ParsedLine {
  * Identify the component at given postion on a line
  */
 export function componentAtIndex(
-  { label, mnemonic, size, operands, comment }: ParsedLine,
+  {
+    label,
+    mnemonic,
+    size,
+    inlineMnemonic,
+    inlineSize,
+    operands,
+    comment,
+  }: ParsedLine,
   index: number,
 ): ComponentInfo | undefined {
   if (label && containsIndex(label, index)) {
@@ -88,9 +102,21 @@ export function componentAtIndex(
       type: ComponentType.Mnemonic,
     };
   }
+  if (inlineMnemonic && containsIndex(inlineMnemonic, index)) {
+    return {
+      component: inlineMnemonic,
+      type: ComponentType.Mnemonic,
+    };
+  }
   if (size && containsIndex(size, index)) {
     return {
       component: size,
+      type: ComponentType.Size,
+    };
+  }
+  if (inlineSize && containsIndex(inlineSize, index)) {
+    return {
+      component: inlineSize,
       type: ComponentType.Size,
     };
   }

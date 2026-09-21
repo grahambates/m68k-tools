@@ -15,12 +15,272 @@ export interface MultiplyRecipe {
 
 /**
  * MULS.W #n,Dm with the full 32-bit result. Starts with EXT.L, and needs a
- * scratch register that is dead in full. Constants that ASP68K's rules handle
- * (2, 3, 5, 6, 7, 9, 10, 12) and powers of two are left to those.
+ * scratch register that is dead in full. Positive constants that ASP68K's rules
+ * handle (2, 3, 5, 6, 7, 9, 10, 12) and powers of two are left to those. Negative
+ * constants are all here, including negative powers of two, which nothing else
+ * covers; -1 is left to negative-signed-multiply.
  */
 export const mulsWordFullResultRecipes: Readonly<
   Record<number, MultiplyRecipe>
 > = {
+  "-256": {
+    cycles: 34,
+    scratch: false,
+    code: "ext.l %d\nneg.l %d\nlsl.l #8,%d",
+  },
+  "-255": {
+    cycles: 40,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #8,%s\nsub.l %s,%d",
+  },
+  "-254": {
+    cycles: 46,
+    scratch: true,
+    code: "ext.l %d\nadd.l %d,%d\nmove.l %d,%s\nlsl.l #7,%s\nsub.l %s,%d",
+  },
+  "-129": {
+    cycles: 44,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nneg.l %d\nlsl.l #7,%d\nsub.l %s,%d",
+  },
+  "-128": {
+    cycles: 32,
+    scratch: false,
+    code: "ext.l %d\nneg.l %d\nlsl.l #7,%d",
+  },
+  "-127": {
+    cycles: 38,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #7,%s\nsub.l %s,%d",
+  },
+  "-126": {
+    cycles: 44,
+    scratch: true,
+    code: "ext.l %d\nadd.l %d,%d\nmove.l %d,%s\nlsl.l #6,%s\nsub.l %s,%d",
+  },
+  "-124": {
+    cycles: 46,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #5,%s\nsub.l %s,%d\nlsl.l #2,%d",
+  },
+  "-120": {
+    cycles: 46,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #4,%s\nsub.l %s,%d\nlsl.l #3,%d",
+  },
+  "-112": {
+    cycles: 46,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #3,%s\nsub.l %s,%d\nlsl.l #4,%d",
+  },
+  "-96": {
+    cycles: 46,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #2,%s\nsub.l %s,%d\nlsl.l #5,%d",
+  },
+  "-95": {
+    cycles: 50,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nadd.l %s,%s\nadd.l %d,%s\nlsl.l #5,%s\nsub.l %s,%d",
+  },
+  "-94": {
+    cycles: 50,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nadd.l %d,%d\nadd.l %d,%s\nlsl.l #5,%s\nsub.l %s,%d",
+  },
+  "-65": {
+    cycles: 42,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nneg.l %d\nlsl.l #6,%d\nsub.l %s,%d",
+  },
+  "-64": {
+    cycles: 30,
+    scratch: false,
+    code: "ext.l %d\nneg.l %d\nlsl.l #6,%d",
+  },
+  "-63": {
+    cycles: 36,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #6,%s\nsub.l %s,%d",
+  },
+  "-62": {
+    cycles: 42,
+    scratch: true,
+    code: "ext.l %d\nadd.l %d,%d\nmove.l %d,%s\nlsl.l #5,%s\nsub.l %s,%d",
+  },
+  "-60": {
+    cycles: 44,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #4,%s\nsub.l %s,%d\nlsl.l #2,%d",
+  },
+  "-56": {
+    cycles: 44,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #3,%s\nsub.l %s,%d\nlsl.l #3,%d",
+  },
+  "-48": {
+    cycles: 44,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #2,%s\nsub.l %s,%d\nlsl.l #4,%d",
+  },
+  "-47": {
+    cycles: 48,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nadd.l %s,%s\nadd.l %d,%s\nlsl.l #4,%s\nsub.l %s,%d",
+  },
+  "-46": {
+    cycles: 48,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nadd.l %d,%d\nadd.l %d,%s\nlsl.l #4,%s\nsub.l %s,%d",
+  },
+  "-39": {
+    cycles: 50,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #2,%s\nadd.l %d,%s\nlsl.l #3,%s\nsub.l %s,%d",
+  },
+  "-35": {
+    cycles: 50,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #2,%s\nsub.l %s,%d\nlsl.l #3,%s\nsub.l %s,%d",
+  },
+  "-34": {
+    cycles: 46,
+    scratch: true,
+    code: "ext.l %d\nadd.l %d,%d\nmove.l %d,%s\nneg.l %d\nlsl.l #4,%d\nsub.l %s,%d",
+  },
+  "-33": {
+    cycles: 40,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nneg.l %d\nlsl.l #5,%d\nsub.l %s,%d",
+  },
+  "-32": {
+    cycles: 28,
+    scratch: false,
+    code: "ext.l %d\nneg.l %d\nlsl.l #5,%d",
+  },
+  "-31": {
+    cycles: 34,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #5,%s\nsub.l %s,%d",
+  },
+  "-30": {
+    cycles: 40,
+    scratch: true,
+    code: "ext.l %d\nadd.l %d,%d\nmove.l %d,%s\nlsl.l #4,%s\nsub.l %s,%d",
+  },
+  "-28": {
+    cycles: 42,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #3,%s\nsub.l %s,%d\nlsl.l #2,%d",
+  },
+  "-27": {
+    cycles: 50,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #2,%s\nadd.l %s,%d\nlsl.l #3,%s\nsub.l %s,%d",
+  },
+  "-24": {
+    cycles: 42,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #2,%s\nsub.l %s,%d\nlsl.l #3,%d",
+  },
+  "-23": {
+    cycles: 46,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nadd.l %s,%s\nadd.l %d,%s\nlsl.l #3,%s\nsub.l %s,%d",
+  },
+  "-22": {
+    cycles: 46,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nadd.l %d,%d\nadd.l %d,%s\nlsl.l #3,%s\nsub.l %s,%d",
+  },
+  "-21": {
+    cycles: 50,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nadd.l %d,%d\nadd.l %d,%s\nmove.l %s,%d\nlsl.l #3,%s\nsub.l %s,%d",
+  },
+  "-20": {
+    cycles: 46,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nneg.l %d\nlsl.l #2,%d\nsub.l %s,%d\nlsl.l #2,%d",
+  },
+  "-19": {
+    cycles: 48,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #2,%s\nadd.l %d,%s\nlsl.l #2,%s\nsub.l %s,%d",
+  },
+  "-18": {
+    cycles: 44,
+    scratch: true,
+    code: "ext.l %d\nadd.l %d,%d\nmove.l %d,%s\nneg.l %d\nlsl.l #3,%d\nsub.l %s,%d",
+  },
+  "-17": {
+    cycles: 38,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nneg.l %d\nlsl.l #4,%d\nsub.l %s,%d",
+  },
+  "-16": {
+    cycles: 26,
+    scratch: false,
+    code: "ext.l %d\nneg.l %d\nlsl.l #4,%d",
+  },
+  "-15": {
+    cycles: 32,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #4,%s\nsub.l %s,%d",
+  },
+  "-14": {
+    cycles: 38,
+    scratch: true,
+    code: "ext.l %d\nadd.l %d,%d\nmove.l %d,%s\nlsl.l #3,%s\nsub.l %s,%d",
+  },
+  "-13": {
+    cycles: 46,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nadd.l %s,%s\nadd.l %s,%d\nlsl.l #3,%s\nsub.l %s,%d",
+  },
+  "-12": {
+    cycles: 40,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #2,%s\nsub.l %s,%d\nlsl.l #2,%d",
+  },
+  "-11": {
+    cycles: 44,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nadd.l %s,%s\nadd.l %d,%s\nlsl.l #2,%s\nsub.l %s,%d",
+  },
+  "-10": {
+    cycles: 42,
+    scratch: true,
+    code: "ext.l %d\nadd.l %d,%d\nmove.l %d,%s\nneg.l %d\nlsl.l #2,%d\nsub.l %s,%d",
+  },
+  "-9": {
+    cycles: 36,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nneg.l %d\nlsl.l #3,%d\nsub.l %s,%d",
+  },
+  "-8": { cycles: 24, scratch: false, code: "ext.l %d\nneg.l %d\nlsl.l #3,%d" },
+  "-7": {
+    cycles: 30,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #3,%s\nsub.l %s,%d",
+  },
+  "-6": {
+    cycles: 36,
+    scratch: true,
+    code: "ext.l %d\nadd.l %d,%d\nmove.l %d,%s\nlsl.l #2,%s\nsub.l %s,%d",
+  },
+  "-5": {
+    cycles: 34,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nneg.l %d\nlsl.l #2,%d\nsub.l %s,%d",
+  },
+  "-4": { cycles: 22, scratch: false, code: "ext.l %d\nneg.l %d\nlsl.l #2,%d" },
+  "-3": {
+    cycles: 28,
+    scratch: true,
+    code: "ext.l %d\nmove.l %d,%s\nlsl.l #2,%s\nsub.l %s,%d",
+  },
+  "-2": { cycles: 18, scratch: false, code: "ext.l %d\nneg.l %d\nadd.l %d,%d" },
   11: {
     cycles: 44,
     scratch: true,
@@ -304,12 +564,1259 @@ export const mulsWordFullResultRecipes: Readonly<
 };
 
 /**
- * MULS.W #n,Dm when only the low word of the result is used. Word operations
- * only: the multiplied register's upper word must be unobserved, and only the
- * low word of the scratch register is used.
+ * MULS.W #n,Dm when only the low word of the result is used, for positive and
+ * negative n. Word operations only: the multiplied register's upper word must be
+ * unobserved, and only the low word of the scratch register is used.
  */
 export const mulsWordLowWordRecipes: Readonly<Record<number, MultiplyRecipe>> =
   {
+    "-256": { cycles: 26, scratch: false, code: "neg.w %d\nlsl.w #8,%d" },
+    "-255": {
+      cycles: 30,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #8,%s\nsub.w %s,%d",
+    },
+    "-254": {
+      cycles: 32,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nlsl.w #7,%s\nsub.w %s,%d",
+    },
+    "-253": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #7,%s\nsub.w %s,%d",
+    },
+    "-252": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #6,%s\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d",
+    },
+    "-251": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #6,%s\nsub.w %s,%d",
+    },
+    "-250": {
+      cycles: 38,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #6,%s\nsub.w %s,%d",
+    },
+    "-249": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nadd.w %d,%s\nadd.w %s,%d\nlsl.w #6,%s\nsub.w %s,%d",
+    },
+    "-248": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #5,%s\nsub.w %s,%d\nlsl.w #3,%d",
+    },
+    "-247": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #3,%s\nadd.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-246": {
+      cycles: 40,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-245": {
+      cycles: 44,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nadd.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-244": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d",
+    },
+    "-243": {
+      cycles: 44,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%d\nadd.w %d,%s\nadd.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-242": {
+      cycles: 44,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-241": {
+      cycles: 44,
+      scratch: true,
+      code: "move.w %d,%s\nneg.w %d\nlsl.w #4,%d\nadd.w %d,%s\nlsl.w #4,%d\nsub.w %s,%d",
+    },
+    "-240": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d\nlsl.w #4,%d",
+    },
+    "-239": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #4,%s\nadd.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-238": {
+      cycles: 42,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nlsl.w #3,%s\nadd.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-237": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d\nadd.w %s,%s\nsub.w %s,%d",
+    },
+    "-236": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d",
+    },
+    "-235": {
+      cycles: 44,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nsub.w %s,%d\nsub.w %d,%s\nlsl.w #5,%d\nsub.w %s,%d",
+    },
+    "-234": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d\nadd.w %d,%d\nsub.w %s,%d",
+    },
+    "-233": {
+      cycles: 46,
+      scratch: true,
+      code: "move.w %d,%s\nneg.w %d\nlsl.w #3,%d\nadd.w %d,%s\nadd.w %s,%d\nlsl.w #4,%d\nsub.w %s,%d",
+    },
+    "-232": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d\nlsl.w #5,%d\nsub.w %s,%d",
+    },
+    "-231": {
+      cycles: 44,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #3,%d\nsub.w %d,%s\nmove.w %s,%d\nlsl.w #5,%d\nadd.w %s,%d",
+    },
+    "-230": {
+      cycles: 42,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nsub.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-229": {
+      cycles: 44,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %d,%s\nadd.w %d,%s\nsub.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-228": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nsub.w %s,%d\nlsl.w #5,%d\nsub.w %s,%d",
+    },
+    "-227": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nsub.w %d,%s\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-226": {
+      cycles: 44,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %d,%s\nadd.w %d,%s\nneg.w %d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-225": {
+      cycles: 44,
+      scratch: true,
+      code: "move.w %d,%s\nneg.w %d\nlsl.w #3,%d\nadd.w %s,%d\nlsl.w #5,%d\nsub.w %s,%d",
+    },
+    "-224": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d\nlsl.w #5,%d",
+    },
+    "-223": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #3,%s\nsub.w %d,%s\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-222": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %d,%s\nadd.w %d,%s\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-221": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nadd.w %d,%s\nadd.w %d,%s\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-220": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nsub.w %d,%s\nsub.w %d,%s\nlsl.w #5,%s\nadd.w %s,%d",
+    },
+    "-219": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %s,%d\nadd.w %d,%s\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-218": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nadd.w %d,%d\nadd.w %d,%s\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-217": {
+      cycles: 44,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #3,%d\nsub.w %d,%s\nmove.w %s,%d\nlsl.w #5,%d\nsub.w %s,%d",
+    },
+    "-216": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #5,%s\nsub.w %s,%d\nlsl.w #3,%d\nadd.w %s,%d",
+    },
+    "-215": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%d\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-214": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %d,%d\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-213": {
+      cycles: 44,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nsub.w %d,%s\nsub.w %d,%s\nsub.w %s,%d\nlsl.w #5,%s\nadd.w %s,%d",
+    },
+    "-212": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d\nadd.w %d,%d\nsub.w %d,%s\nadd.w %d,%d\nsub.w %s,%d\nadd.w %d,%d",
+    },
+    "-211": {
+      cycles: 44,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-210": {
+      cycles: 46,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nlsl.w #3,%d\nsub.w %d,%s\nmove.w %s,%d\nlsl.w #4,%d\nsub.w %s,%d",
+    },
+    "-209": {
+      cycles: 44,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #3,%d\nsub.w %d,%s\nsub.w %s,%d\nlsl.w #5,%s\nadd.w %s,%d",
+    },
+    "-208": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #3,%s\nsub.w %s,%d\nlsl.w #4,%d",
+    },
+    "-207": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-206": {
+      cycles: 44,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nlsl.w #3,%s\nadd.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-205": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %d,%s\nadd.w %s,%s\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-204": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d\nsub.w %s,%d\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d\nsub.w %s,%d",
+    },
+    "-203": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%d\nadd.w %d,%s\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-202": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-201": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-200": {
+      cycles: 40,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nlsl.w #5,%d\nsub.w %s,%d",
+    },
+    "-199": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nsub.w %d,%s\nlsl.w #6,%d\nsub.w %s,%d",
+    },
+    "-198": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%d\nadd.w %d,%d\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-197": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %d,%s\nadd.w %s,%s\nsub.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-196": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nlsl.w #6,%d\nsub.w %s,%d",
+    },
+    "-195": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nsub.w %d,%s\nmove.w %s,%d\nlsl.w #6,%d\nadd.w %s,%d",
+    },
+    "-194": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nneg.w %d\nlsl.w #6,%s\nsub.w %s,%d",
+    },
+    "-193": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nsub.w %s,%d\nlsl.w #6,%s\nsub.w %s,%d",
+    },
+    "-192": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nneg.w %d\nlsl.w #6,%d",
+    },
+    "-191": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %d,%s\nlsl.w #6,%s\nsub.w %s,%d",
+    },
+    "-190": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nlsl.w #6,%s\nsub.w %s,%d",
+    },
+    "-189": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nmove.w %s,%d\nlsl.w #6,%s\nsub.w %s,%d",
+    },
+    "-188": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #5,%s\nsub.w %s,%d\nadd.w %d,%d\nsub.w %s,%d\nadd.w %d,%d",
+    },
+    "-187": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%d\nlsl.w #6,%s\nsub.w %s,%d",
+    },
+    "-186": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%s\nmove.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-185": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-184": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d\nadd.w %d,%d\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d",
+    },
+    "-183": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nsub.w %s,%d\nsub.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-182": {
+      cycles: 40,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-181": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %d,%s\nadd.w %s,%s\nsub.w %s,%d\nsub.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-180": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nmove.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d",
+    },
+    "-179": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nadd.w %s,%s\nsub.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-178": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-177": {
+      cycles: 44,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%d\nlsl.w #5,%s\nsub.w %d,%s\nadd.w %s,%s\nsub.w %s,%d",
+    },
+    "-176": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nadd.w %s,%s\nsub.w %s,%d\nlsl.w #4,%d",
+    },
+    "-175": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nadd.w %d,%s\nadd.w %s,%s\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-174": {
+      cycles: 44,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nlsl.w #3,%s\nsub.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-173": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nadd.w %d,%s\nadd.w %s,%s\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-172": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d",
+    },
+    "-171": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %s,%d\nadd.w %d,%s\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-170": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nadd.w %d,%d\nsub.w %d,%s\nsub.w %d,%s\nlsl.w #4,%s\nadd.w %s,%d",
+    },
+    "-169": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nadd.w %d,%s\nadd.w %s,%d\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-168": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nneg.w %d\nlsl.w #4,%s\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d\nsub.w %s,%d\nadd.w %d,%d",
+    },
+    "-167": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nsub.w %d,%s\nsub.w %s,%d\nlsl.w #4,%d\nsub.w %s,%d",
+    },
+    "-166": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %d,%s\nadd.w %s,%s\nsub.w %s,%d\nlsl.w #5,%d\nsub.w %s,%d",
+    },
+    "-165": {
+      cycles: 44,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %d,%s\nmove.w %s,%d\nneg.w %d\nlsl.w #5,%d\nsub.w %s,%d",
+    },
+    "-164": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %d,%s\nneg.w %d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-163": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %d,%s\nsub.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-162": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %d,%s\nneg.w %d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-161": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %d,%s\nsub.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-160": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %s,%d\nneg.w %d\nlsl.w #5,%d",
+    },
+    "-159": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nadd.w %d,%s\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-158": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %d,%s\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-157": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %d,%s\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-156": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %d,%s\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-155": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %d,%s\nmove.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-154": {
+      cycles: 38,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-153": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %d,%s\nadd.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-152": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d\nsub.w %s,%d\nadd.w %d,%d",
+    },
+    "-151": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-150": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%s\nmove.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-149": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %d,%s\nadd.w %d,%s\nsub.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-148": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d",
+    },
+    "-147": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-146": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-145": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nneg.w %d\nlsl.w #3,%d\nsub.w %s,%d\nlsl.w #4,%d\nsub.w %s,%d",
+    },
+    "-144": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nneg.w %d\nlsl.w #3,%d\nsub.w %s,%d\nlsl.w #4,%d",
+    },
+    "-143": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #3,%s\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-142": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d\nadd.w %s,%s\nsub.w %s,%d",
+    },
+    "-141": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nmove.w %s,%d\nadd.w %s,%s\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-140": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d\nsub.w %s,%d",
+    },
+    "-139": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-138": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nmove.w %s,%d\nadd.w %d,%d\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-137": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nneg.w %d\nlsl.w #3,%d\nsub.w %d,%s\nlsl.w #4,%d\nsub.w %s,%d",
+    },
+    "-136": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nneg.w %d\nlsl.w #4,%d\nsub.w %s,%d\nlsl.w #3,%d",
+    },
+    "-135": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-134": {
+      cycles: 38,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-133": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %d,%s\nneg.w %d\nlsl.w #5,%d\nsub.w %s,%d",
+    },
+    "-132": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nneg.w %d\nlsl.w #5,%d\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d",
+    },
+    "-131": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-130": {
+      cycles: 34,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nneg.w %d\nlsl.w #6,%d\nsub.w %s,%d",
+    },
+    "-129": {
+      cycles: 32,
+      scratch: true,
+      code: "move.w %d,%s\nneg.w %d\nlsl.w #7,%d\nsub.w %s,%d",
+    },
+    "-128": { cycles: 24, scratch: false, code: "neg.w %d\nlsl.w #7,%d" },
+    "-127": {
+      cycles: 28,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #7,%s\nsub.w %s,%d",
+    },
+    "-126": {
+      cycles: 30,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nlsl.w #6,%s\nsub.w %s,%d",
+    },
+    "-125": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #6,%s\nsub.w %s,%d",
+    },
+    "-124": {
+      cycles: 32,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #5,%s\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d",
+    },
+    "-123": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-122": {
+      cycles: 36,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-121": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nadd.w %d,%s\nadd.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-120": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d\nlsl.w #3,%d",
+    },
+    "-119": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #3,%s\nadd.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-118": {
+      cycles: 38,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-117": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d\nadd.w %s,%s\nsub.w %s,%d",
+    },
+    "-116": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d",
+    },
+    "-115": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nsub.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-114": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d\nadd.w %d,%d\nsub.w %s,%d",
+    },
+    "-113": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nneg.w %d\nlsl.w #3,%d\nadd.w %s,%d\nlsl.w #4,%d\nsub.w %s,%d",
+    },
+    "-112": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d\nlsl.w #4,%d",
+    },
+    "-111": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #3,%s\nsub.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-110": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %d,%s\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-109": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nadd.w %d,%s\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-108": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d\nadd.w %d,%d\nsub.w %s,%d\nadd.w %d,%d\nsub.w %s,%d",
+    },
+    "-107": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %s,%d\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-106": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nadd.w %d,%d\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-105": {
+      cycles: 42,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #3,%d\nsub.w %d,%s\nmove.w %s,%d\nlsl.w #4,%d\nsub.w %s,%d",
+    },
+    "-104": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d\nlsl.w #3,%d\nadd.w %s,%d",
+    },
+    "-103": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nsub.w %d,%s\nlsl.w #5,%d\nsub.w %s,%d",
+    },
+    "-102": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %d,%d\nadd.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-101": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %d,%s\nadd.w %s,%s\nsub.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-100": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nlsl.w #5,%d\nsub.w %s,%d",
+    },
+    "-99": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nsub.w %d,%s\nmove.w %s,%d\nlsl.w #5,%d\nadd.w %s,%d",
+    },
+    "-98": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nneg.w %d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-97": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nsub.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-96": {
+      cycles: 32,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nneg.w %d\nlsl.w #5,%d",
+    },
+    "-95": {
+      cycles: 32,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %d,%s\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-94": {
+      cycles: 32,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-93": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nmove.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-92": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d\nadd.w %d,%d\nsub.w %s,%d\nadd.w %d,%d",
+    },
+    "-91": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-90": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%s\nmove.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-89": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-88": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nadd.w %s,%s\nsub.w %s,%d\nlsl.w #3,%d",
+    },
+    "-87": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nadd.w %d,%s\nadd.w %s,%s\nadd.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-86": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %d,%s\nadd.w %s,%s\nsub.w %s,%d\nlsl.w #4,%d\nsub.w %s,%d",
+    },
+    "-85": {
+      cycles: 40,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nadd.w %d,%s\nadd.w %s,%s\nadd.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-84": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nneg.w %d\nlsl.w #4,%s\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d\nsub.w %s,%d",
+    },
+    "-83": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %d,%s\nsub.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-82": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %d,%s\nneg.w %d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-81": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %d,%s\nsub.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-80": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %s,%d\nneg.w %d\nlsl.w #4,%d",
+    },
+    "-79": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-78": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-77": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-76": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d\nsub.w %s,%d",
+    },
+    "-75": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %d,%s\nmove.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-74": {
+      cycles: 36,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-73": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %d,%s\nadd.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-72": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nneg.w %d\nlsl.w #3,%d\nsub.w %s,%d\nlsl.w #3,%d",
+    },
+    "-71": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #3,%s\nadd.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-70": {
+      cycles: 36,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-69": {
+      cycles: 38,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %d,%s\nneg.w %d\nlsl.w #4,%d\nsub.w %s,%d",
+    },
+    "-68": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nneg.w %d\nlsl.w #4,%d\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d",
+    },
+    "-67": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-66": {
+      cycles: 32,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nneg.w %d\nlsl.w #5,%d\nsub.w %s,%d",
+    },
+    "-65": {
+      cycles: 30,
+      scratch: true,
+      code: "move.w %d,%s\nneg.w %d\nlsl.w #6,%d\nsub.w %s,%d",
+    },
+    "-64": { cycles: 22, scratch: false, code: "neg.w %d\nlsl.w #6,%d" },
+    "-63": {
+      cycles: 26,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #6,%s\nsub.w %s,%d",
+    },
+    "-62": {
+      cycles: 28,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-61": {
+      cycles: 32,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-60": {
+      cycles: 30,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d",
+    },
+    "-59": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-58": {
+      cycles: 34,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-57": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nsub.w %d,%s\nadd.w %s,%s\nsub.w %s,%d",
+    },
+    "-56": {
+      cycles: 32,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d\nlsl.w #3,%d",
+    },
+    "-55": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #3,%s\nadd.w %s,%d\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-54": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %d,%s\nadd.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-53": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nadd.w %d,%s\nadd.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-52": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nlsl.w #4,%d\nsub.w %s,%d",
+    },
+    "-51": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %s,%d\nadd.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-50": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nneg.w %d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-49": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nsub.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-48": {
+      cycles: 30,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nneg.w %d\nlsl.w #4,%d",
+    },
+    "-47": {
+      cycles: 30,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-46": {
+      cycles: 30,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-45": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nmove.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-44": {
+      cycles: 32,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d\nadd.w %d,%d\nsub.w %s,%d\nadd.w %d,%d",
+    },
+    "-43": {
+      cycles: 34,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-42": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %s,%s\nmove.w %s,%d\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-41": {
+      cycles: 36,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %d,%s\nsub.w %s,%d\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-40": {
+      cycles: 32,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %s,%d\nneg.w %d\nlsl.w #3,%d",
+    },
+    "-39": {
+      cycles: 32,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nadd.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-38": {
+      cycles: 32,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nadd.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-37": {
+      cycles: 32,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nadd.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-36": {
+      cycles: 32,
+      scratch: true,
+      code: "move.w %d,%s\nneg.w %d\nlsl.w #3,%d\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d",
+    },
+    "-35": {
+      cycles: 32,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-34": {
+      cycles: 30,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nneg.w %d\nlsl.w #4,%d\nsub.w %s,%d",
+    },
+    "-33": {
+      cycles: 28,
+      scratch: true,
+      code: "move.w %d,%s\nneg.w %d\nlsl.w #5,%d\nsub.w %s,%d",
+    },
+    "-32": { cycles: 20, scratch: false, code: "neg.w %d\nlsl.w #5,%d" },
+    "-31": {
+      cycles: 24,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #5,%s\nsub.w %s,%d",
+    },
+    "-30": {
+      cycles: 26,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-29": {
+      cycles: 30,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-28": {
+      cycles: 28,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d\nadd.w %d,%d\nadd.w %d,%d",
+    },
+    "-27": {
+      cycles: 32,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-26": {
+      cycles: 32,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nneg.w %d\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-25": {
+      cycles: 32,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nsub.w %s,%d\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-24": {
+      cycles: 28,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nneg.w %d\nlsl.w #3,%d",
+    },
+    "-23": {
+      cycles: 28,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-22": {
+      cycles: 28,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-21": {
+      cycles: 32,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%s\nmove.w %s,%d\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-20": {
+      cycles: 28,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %s,%d\nadd.w %d,%d\nadd.w %d,%d\nneg.w %d",
+    },
+    "-19": {
+      cycles: 28,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nadd.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d",
+    },
+    "-18": {
+      cycles: 28,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nneg.w %d\nlsl.w #3,%d\nsub.w %s,%d",
+    },
+    "-17": {
+      cycles: 26,
+      scratch: true,
+      code: "move.w %d,%s\nneg.w %d\nlsl.w #4,%d\nsub.w %s,%d",
+    },
+    "-16": { cycles: 18, scratch: false, code: "neg.w %d\nlsl.w #4,%d" },
+    "-15": {
+      cycles: 22,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #4,%s\nsub.w %s,%d",
+    },
+    "-14": {
+      cycles: 24,
+      scratch: true,
+      code: "add.w %d,%d\nmove.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-13": {
+      cycles: 28,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%d\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-12": {
+      cycles: 24,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nadd.w %d,%d\nadd.w %d,%d\nneg.w %d",
+    },
+    "-11": {
+      cycles: 24,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %s,%s\nadd.w %s,%s\nsub.w %s,%d\nadd.w %s,%s\nsub.w %s,%d",
+    },
+    "-10": {
+      cycles: 24,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %s,%d\nadd.w %d,%d\nneg.w %d",
+    },
+    "-9": {
+      cycles: 24,
+      scratch: true,
+      code: "move.w %d,%s\nneg.w %d\nlsl.w #3,%d\nsub.w %s,%d",
+    },
+    "-8": { cycles: 16, scratch: false, code: "neg.w %d\nlsl.w #3,%d" },
+    "-7": {
+      cycles: 20,
+      scratch: true,
+      code: "move.w %d,%s\nlsl.w #3,%s\nsub.w %s,%d",
+    },
+    "-6": {
+      cycles: 20,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nadd.w %d,%d\nneg.w %d",
+    },
+    "-5": {
+      cycles: 20,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %d,%d\nadd.w %s,%d\nneg.w %d",
+    },
+    "-4": {
+      cycles: 12,
+      scratch: false,
+      code: "add.w %d,%d\nadd.w %d,%d\nneg.w %d",
+    },
+    "-3": {
+      cycles: 16,
+      scratch: true,
+      code: "move.w %d,%s\nadd.w %d,%d\nadd.w %s,%d\nneg.w %d",
+    },
+    "-2": { cycles: 8, scratch: false, code: "add.w %d,%d\nneg.w %d" },
     2: { cycles: 4, scratch: false, code: "add.w %d,%d" },
     3: {
       cycles: 12,

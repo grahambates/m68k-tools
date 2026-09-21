@@ -3832,3 +3832,4295 @@ export const divideRecipes: Readonly<Record<number, readonly DivideRecipe[]>> =
       },
     ],
   };
+
+/**
+ * Recipes for `divs.w #n,Dm` where only the quotient is used, by divisor. The
+ * same shape as `divideRecipes`, but `bits` describes a signed dividend:
+ * each recipe is exact for every dividend from -2^`bits` up to 2^`bits` - 1,
+ * rounding toward zero as DIVS.W does. `%s` is a scratch register whose low
+ * word is used.
+ */
+export const divsRecipes: Readonly<Record<number, readonly DivideRecipe[]>> = {
+  3: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #22016,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #21856,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #21846,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  5: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #13184,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #13112,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #26215,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  6: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #11008,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #10928,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #10923,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  7: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #9408,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #9363,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #18725,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  9: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #7288,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #7282,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  10: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #6592,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #6556,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #26215,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  11: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #5984,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #5958,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  12: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #5504,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #5464,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #10923,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  13: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #5056,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #5042,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #20165,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  14: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #4704,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #4682,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #18725,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  15: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #4376,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #4370,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  17: [
+    {
+      bits: 11,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3856,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #30841,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  18: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3644,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3641,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  19: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3456,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3450,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  20: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3296,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3278,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #26215,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  21: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3128,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3121,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  22: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2992,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2979,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  23: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2864,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2850,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  24: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2752,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2732,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 100,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #10923,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  25: [
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2622,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #5243,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  26: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2528,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2521,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #20165,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  27: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2432,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2428,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  28: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2352,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2341,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #18725,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  29: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2272,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2260,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #18079,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  30: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2188,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2185,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  31: [
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2115,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #16913,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  33: [
+    {
+      bits: 15,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1986,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  34: [
+    {
+      bits: 11,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1928,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #30841,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  35: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1888,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1873,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3745,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  36: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1822,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1821,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3641,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  37: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1776,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1772,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #7085,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  38: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1728,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1725,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  39: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1688,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1681,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #26887,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  40: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1648,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1639,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #26215,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  41: [
+    {
+      bits: 11,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1599,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  42: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1564,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1561,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  43: [
+    {
+      bits: 7,
+      cycles: 66,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1536,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3049,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #12193,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  44: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1496,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1490,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2979,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  45: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1464,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1457,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #11651,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  46: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1432,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1425,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  47: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1400,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1395,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  48: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1376,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1366,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 102,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #10923,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  49: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1340,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1338,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2675,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  50: [
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1311,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #5243,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  51: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1286,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2571,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  52: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1264,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2521,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #20165,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  53: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1248,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1237,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 100,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #19785,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  54: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1216,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1214,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  55: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1200,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1192,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  56: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1176,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2341,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 100,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #18725,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  57: [
+    {
+      bits: 11,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1150,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  58: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1136,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1130,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #18079,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  59: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1120,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1111,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 100,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #17773,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  60: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1094,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2185,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  61: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1080,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2149,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #8595,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  62: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1058,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2115,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #16913,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  63: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1048,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2081,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  65: [
+    {
+      bits: 7,
+      cycles: 66,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1016,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2017,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 80,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #4033,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  66: [
+    {
+      bits: 15,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #993,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  67: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #984,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1957,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #31301,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  68: [
+    {
+      bits: 11,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #964,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #30841,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  69: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #952,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #950,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #15197,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  70: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #944,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1873,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3745,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  71: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #924,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1847,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #14769,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  72: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #911,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1821,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3641,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  73: [
+    {
+      bits: 11,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #898,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  74: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #888,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #886,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #7085,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  75: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #880,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #874,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  76: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #864,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1725,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  77: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #856,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1703,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #6809,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  78: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #844,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1681,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #26887,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  79: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #830,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3319,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #26547,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  80: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #824,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1639,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #26215,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  81: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #816,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3237,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #25891,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  82: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #800,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1599,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  83: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #792,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3159,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #25267,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  84: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #782,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1561,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  85: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #772,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3085,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #24673,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  86: [
+    {
+      bits: 7,
+      cycles: 66,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #768,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3049,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #12193,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  87: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #760,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1507,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  88: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #752,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #745,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2979,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  89: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #737,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1473,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #5891,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  90: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #736,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1457,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #11651,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  91: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #728,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1441,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #11523,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  92: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #716,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1425,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  93: [
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #705,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  94: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #704,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1395,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  95: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #696,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #690,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  96: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #688,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #683,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 104,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #10923,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  97: [
+    {
+      bits: 7,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #676,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2703,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  98: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #670,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #669,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2675,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  99: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #664,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #662,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  100: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #656,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1311,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #5243,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  101: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #652,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #649,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #5191,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  102: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #643,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2571,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  103: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #638,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1273,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #20361,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  104: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #632,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2521,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #20165,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  105: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #625,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2497,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #19973,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  106: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #624,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1237,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 102,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #19785,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  107: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #614,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1225,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  108: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #608,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #607,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  109: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #604,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1203,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2405,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  110: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #600,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #596,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  111: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #591,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1181,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  112: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #588,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2341,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 102,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #18725,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  113: [
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #580,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #18559,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  114: [
+    {
+      bits: 11,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #575,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  115: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #572,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #570,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  116: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #568,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #565,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #18079,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  117: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #561,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2241,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  118: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #560,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1111,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 102,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #17773,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  119: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #551,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2203,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  120: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #547,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2185,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  121: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #542,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2167,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #4333,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  122: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #540,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2149,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #8595,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  123: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #536,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #533,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  124: [
+    {
+      bits: 7,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #529,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2115,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #16913,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  125: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #526,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1049,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  126: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #524,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2081,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  127: [
+    {
+      bits: 7,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #518,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2065,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  129: [
+    {
+      bits: 11,
+      cycles: 80,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2033,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #16257,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  130: [
+    {
+      bits: 11,
+      cycles: 80,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2017,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #4033,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  131: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1001,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #16009,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  132: [
+    {
+      bits: 15,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #993,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  133: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3943,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #31537,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  134: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1957,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 100,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #31301,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  135: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #971,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 100,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #31069,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  136: [
+    {
+      bits: 11,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #482,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #30841,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  137: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #957,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3827,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  138: [
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #475,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #15197,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  139: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #943,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #30175,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  140: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1873,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3745,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  141: [
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #465,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #29747,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  142: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1847,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #14769,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  143: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #917,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 100,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #29331,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  144: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1821,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3641,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  145: [
+    {
+      bits: 11,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #452,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #28927,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  146: [
+    {
+      bits: 11,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #449,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  147: [
+    {
+      bits: 11,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #446,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 100,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #28533,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  148: [
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #443,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #7085,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  149: [
+    {
+      bits: 11,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #440,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #14075,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  150: [
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #437,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  151: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3473,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #27777,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  152: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1725,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  153: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #857,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #13707,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  154: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1703,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #6809,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  155: [
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #423,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  156: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1681,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #26887,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  157: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #835,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #6679,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  158: [
+    {
+      bits: 11,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #415,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #26547,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  159: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1649,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #6595,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  160: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1639,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #26215,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  161: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1629,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #6513,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  162: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1619,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 100,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #25891,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  163: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1609,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #6433,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  164: [
+    {
+      bits: 11,
+      cycles: 80,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1599,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  165: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1589,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  166: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3159,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 100,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #25267,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  167: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #785,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #6279,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  168: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1561,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  169: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3103,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #24819,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  170: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3085,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #24673,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  171: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3067,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  172: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3049,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #12193,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  173: [
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #379,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 104,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #24245,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  174: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1507,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  175: [
+    {
+      bits: 15,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #749,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  176: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #745,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2979,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  177: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2963,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 100,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #23697,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  178: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1473,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #5891,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  179: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1465,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2929,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  180: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1457,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #11651,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  181: [
+    {
+      bits: 11,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1449,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 104,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #23173,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  182: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1441,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #11523,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  183: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1433,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2865,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  184: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1425,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  185: [
+    {
+      bits: 15,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1417,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  186: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #705,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  187: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #701,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #11215,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  188: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1395,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  189: [
+    {
+      bits: 11,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2775,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  190: [
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #345,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  191: [
+    {
+      bits: 11,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1373,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2745,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  192: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #683,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 106,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #10923,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  193: [
+    {
+      bits: 11,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2717,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  194: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2703,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  195: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1345,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  196: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #669,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2675,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  197: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1331,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 104,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #21291,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  198: [
+    {
+      bits: 15,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #331,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  199: [
+    {
+      bits: 11,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2635,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 108,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #21077,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  200: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1311,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #5243,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  201: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2609,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  202: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #649,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #5191,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  203: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2583,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #10331,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  204: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2571,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  205: [
+    {
+      bits: 11,
+      cycles: 80,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1279,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  206: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1273,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #20361,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  207: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1267,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  208: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2521,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 100,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #20165,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  209: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2509,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 100,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #20069,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  210: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2497,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #19973,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  211: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1243,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  212: [
+    {
+      bits: 11,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1237,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 104,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #19785,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  213: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1231,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #4923,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  214: [
+    {
+      bits: 15,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1225,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  215: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2439,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  216: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #607,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  217: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2417,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #19329,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  218: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1203,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2405,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  219: [
+    {
+      bits: 11,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2395,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  220: [
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #298,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  221: [
+    {
+      bits: 11,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2373,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 100,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #18979,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  222: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1181,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  223: [
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #294,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 100,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #18809,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  224: [
+    {
+      bits: 11,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2341,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 104,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #18725,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  225: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2331,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  226: [
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #290,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #18559,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  227: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1155,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  228: [
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #575,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  229: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1145,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #4579,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  230: [
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #285,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  231: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1135,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  232: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #565,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #18079,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  233: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2251,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  234: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2241,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  235: [
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #279,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  236: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1111,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 104,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #17773,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  237: [
+    {
+      bits: 11,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2213,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #8849,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  238: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #551,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  239: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1097,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  240: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2185,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  241: [
+    {
+      bits: 11,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #272,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #4351,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  242: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2167,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #4333,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  243: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1079,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 100,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #17261,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  244: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2149,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #8595,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  245: [
+    {
+      bits: 15,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #535,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  246: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #533,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  247: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2123,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 104,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #16981,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  248: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2115,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #16913,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  249: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1053,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #16845,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  250: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1049,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  251: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2089,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  252: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2081,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  253: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2073,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  254: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2065,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  255: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2057,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  257: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2041,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #32641,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  258: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2033,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #16257,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  259: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2025,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #32389,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  260: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2017,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #4033,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  261: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #2009,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #32141,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  262: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1001,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #16009,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  263: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #997,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3987,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  264: [
+    {
+      bits: 15,
+      cycles: 80,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #993,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  265: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1979,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3957,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  266: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #493,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #31537,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  267: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #491,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  268: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1957,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 102,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #31301,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  269: [
+    {
+      bits: 11,
+      cycles: 80,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #975,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #31185,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  270: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #971,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 102,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #31069,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  271: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1935,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #30955,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  272: [
+    {
+      bits: 11,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #241,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #30841,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  273: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1921,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3841,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  274: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #957,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3827,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  275: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1907,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  276: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #475,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 100,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #15197,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  277: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1893,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #7571,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  278: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #943,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #30175,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  279: [
+    {
+      bits: 11,
+      cycles: 74,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #235,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 102,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #30067,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  280: [
+    {
+      bits: 11,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1873,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3745,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  281: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #933,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 102,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #29853,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  282: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #465,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #29747,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  283: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1853,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #14821,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  284: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1847,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #14769,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  285: [
+    {
+      bits: 11,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #230,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #14717,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  286: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #917,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 102,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #29331,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  287: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1827,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 102,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #29229,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  288: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1821,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3641,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  289: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #1815,%d\nswap %d\nasr.w #3,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #29027,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  290: [
+    {
+      bits: 11,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #226,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 90,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #28927,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  291: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #901,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #28827,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  292: [
+    {
+      bits: 11,
+      cycles: 78,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #449,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  293: [
+    {
+      bits: 11,
+      cycles: 80,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #895,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  294: [
+    {
+      bits: 11,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #223,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 102,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #28533,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  295: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #889,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 94,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #7109,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  296: [
+    {
+      bits: 11,
+      cycles: 82,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #443,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 98,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #7085,%d\nswap %d\nasr.w #5,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  297: [
+    {
+      bits: 11,
+      cycles: 84,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #883,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 106,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #28245,%d\nswap %d\nasr.w #7,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  298: [
+    {
+      bits: 11,
+      cycles: 70,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #220,%d\nswap %d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 96,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #14075,%d\nswap %d\nasr.w #6,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  299: [
+    {
+      bits: 11,
+      cycles: 88,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #877,%d\nswap %d\nasr.w #2,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+    {
+      bits: 15,
+      cycles: 92,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #3507,%d\nswap %d\nasr.w #4,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+  300: [
+    {
+      bits: 11,
+      cycles: 86,
+      scratch: true,
+      code: "move.w %d,%s\nmuls.w #437,%d\nswap %d\nasr.w #1,%d\nadd.w %s,%s\nclr.w %s\naddx.w %s,%d",
+    },
+  ],
+};
+
+/**
+ * Signed divides by a power of two that round toward zero, by divisor. A plain
+ * arithmetic shift rounds toward minus infinity, so a negative dividend gets
+ * 2^k-1 added first. `bits` is 15 for a dividend that is a sign-extended
+ * word, which is cheaper, and 31 for any 32-bit dividend. Each recipe needs a
+ * scratch register that is dead in full.
+ */
+export const divsPowerOfTwoRecipes: Readonly<
+  Record<number, readonly DivideRecipe[]>
+> = {
+  2: [
+    {
+      bits: 15,
+      cycles: 36,
+      scratch: true,
+      code: "move.l %d,%s\nswap %s\next.l %s\nneg.l %s\nadd.l %s,%d\nasr.l #1,%d",
+    },
+    {
+      bits: 31,
+      cycles: 44,
+      scratch: true,
+      code: "move.l %d,%s\nadd.l %s,%s\nsubx.l %s,%s\nneg.l %s\nadd.l %s,%d\nasr.l #1,%d",
+    },
+  ],
+  4: [
+    {
+      bits: 15,
+      cycles: 48,
+      scratch: true,
+      code: "move.l %d,%s\nswap %s\next.l %s\nand.l #3,%s\nadd.l %s,%d\nasr.l #2,%d",
+    },
+    {
+      bits: 31,
+      cycles: 56,
+      scratch: true,
+      code: "move.l %d,%s\nadd.l %s,%s\nsubx.l %s,%s\nand.l #3,%s\nadd.l %s,%d\nasr.l #2,%d",
+    },
+  ],
+  8: [
+    {
+      bits: 15,
+      cycles: 50,
+      scratch: true,
+      code: "move.l %d,%s\nswap %s\next.l %s\nand.l #7,%s\nadd.l %s,%d\nasr.l #3,%d",
+    },
+    {
+      bits: 31,
+      cycles: 58,
+      scratch: true,
+      code: "move.l %d,%s\nadd.l %s,%s\nsubx.l %s,%s\nand.l #7,%s\nadd.l %s,%d\nasr.l #3,%d",
+    },
+  ],
+  16: [
+    {
+      bits: 15,
+      cycles: 52,
+      scratch: true,
+      code: "move.l %d,%s\nswap %s\next.l %s\nand.l #15,%s\nadd.l %s,%d\nasr.l #4,%d",
+    },
+    {
+      bits: 31,
+      cycles: 60,
+      scratch: true,
+      code: "move.l %d,%s\nadd.l %s,%s\nsubx.l %s,%s\nand.l #15,%s\nadd.l %s,%d\nasr.l #4,%d",
+    },
+  ],
+  32: [
+    {
+      bits: 15,
+      cycles: 54,
+      scratch: true,
+      code: "move.l %d,%s\nswap %s\next.l %s\nand.l #31,%s\nadd.l %s,%d\nasr.l #5,%d",
+    },
+    {
+      bits: 31,
+      cycles: 62,
+      scratch: true,
+      code: "move.l %d,%s\nadd.l %s,%s\nsubx.l %s,%s\nand.l #31,%s\nadd.l %s,%d\nasr.l #5,%d",
+    },
+  ],
+  64: [
+    {
+      bits: 15,
+      cycles: 56,
+      scratch: true,
+      code: "move.l %d,%s\nswap %s\next.l %s\nand.l #63,%s\nadd.l %s,%d\nasr.l #6,%d",
+    },
+    {
+      bits: 31,
+      cycles: 64,
+      scratch: true,
+      code: "move.l %d,%s\nadd.l %s,%s\nsubx.l %s,%s\nand.l #63,%s\nadd.l %s,%d\nasr.l #6,%d",
+    },
+  ],
+  128: [
+    {
+      bits: 15,
+      cycles: 58,
+      scratch: true,
+      code: "move.l %d,%s\nswap %s\next.l %s\nand.l #127,%s\nadd.l %s,%d\nasr.l #7,%d",
+    },
+    {
+      bits: 31,
+      cycles: 66,
+      scratch: true,
+      code: "move.l %d,%s\nadd.l %s,%s\nsubx.l %s,%s\nand.l #127,%s\nadd.l %s,%d\nasr.l #7,%d",
+    },
+  ],
+  256: [
+    {
+      bits: 15,
+      cycles: 60,
+      scratch: true,
+      code: "move.l %d,%s\nswap %s\next.l %s\nand.l #255,%s\nadd.l %s,%d\nasr.l #8,%d",
+    },
+    {
+      bits: 31,
+      cycles: 68,
+      scratch: true,
+      code: "move.l %d,%s\nadd.l %s,%s\nsubx.l %s,%s\nand.l #255,%s\nadd.l %s,%d\nasr.l #8,%d",
+    },
+  ],
+  512: [
+    {
+      bits: 15,
+      cycles: 70,
+      scratch: true,
+      code: "move.l %d,%s\nswap %s\next.l %s\nand.l #511,%s\nadd.l %s,%d\nasr.l #8,%d\nasr.l #1,%d",
+    },
+    {
+      bits: 31,
+      cycles: 78,
+      scratch: true,
+      code: "move.l %d,%s\nadd.l %s,%s\nsubx.l %s,%s\nand.l #511,%s\nadd.l %s,%d\nasr.l #8,%d\nasr.l #1,%d",
+    },
+  ],
+  1024: [
+    {
+      bits: 15,
+      cycles: 72,
+      scratch: true,
+      code: "move.l %d,%s\nswap %s\next.l %s\nand.l #1023,%s\nadd.l %s,%d\nasr.l #8,%d\nasr.l #2,%d",
+    },
+    {
+      bits: 31,
+      cycles: 80,
+      scratch: true,
+      code: "move.l %d,%s\nadd.l %s,%s\nsubx.l %s,%s\nand.l #1023,%s\nadd.l %s,%d\nasr.l #8,%d\nasr.l #2,%d",
+    },
+  ],
+  2048: [
+    {
+      bits: 15,
+      cycles: 74,
+      scratch: true,
+      code: "move.l %d,%s\nswap %s\next.l %s\nand.l #2047,%s\nadd.l %s,%d\nasr.l #8,%d\nasr.l #3,%d",
+    },
+    {
+      bits: 31,
+      cycles: 82,
+      scratch: true,
+      code: "move.l %d,%s\nadd.l %s,%s\nsubx.l %s,%s\nand.l #2047,%s\nadd.l %s,%d\nasr.l #8,%d\nasr.l #3,%d",
+    },
+  ],
+  4096: [
+    {
+      bits: 15,
+      cycles: 76,
+      scratch: true,
+      code: "move.l %d,%s\nswap %s\next.l %s\nand.l #4095,%s\nadd.l %s,%d\nasr.l #8,%d\nasr.l #4,%d",
+    },
+    {
+      bits: 31,
+      cycles: 84,
+      scratch: true,
+      code: "move.l %d,%s\nadd.l %s,%s\nsubx.l %s,%s\nand.l #4095,%s\nadd.l %s,%d\nasr.l #8,%d\nasr.l #4,%d",
+    },
+  ],
+  8192: [
+    {
+      bits: 15,
+      cycles: 78,
+      scratch: true,
+      code: "move.l %d,%s\nswap %s\next.l %s\nand.l #8191,%s\nadd.l %s,%d\nasr.l #8,%d\nasr.l #5,%d",
+    },
+    {
+      bits: 31,
+      cycles: 86,
+      scratch: true,
+      code: "move.l %d,%s\nadd.l %s,%s\nsubx.l %s,%s\nand.l #8191,%s\nadd.l %s,%d\nasr.l #8,%d\nasr.l #5,%d",
+    },
+  ],
+  16384: [
+    {
+      bits: 15,
+      cycles: 80,
+      scratch: true,
+      code: "move.l %d,%s\nswap %s\next.l %s\nand.l #16383,%s\nadd.l %s,%d\nasr.l #8,%d\nasr.l #6,%d",
+    },
+    {
+      bits: 31,
+      cycles: 88,
+      scratch: true,
+      code: "move.l %d,%s\nadd.l %s,%s\nsubx.l %s,%s\nand.l #16383,%s\nadd.l %s,%d\nasr.l #8,%d\nasr.l #6,%d",
+    },
+  ],
+};

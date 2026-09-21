@@ -3,6 +3,7 @@ import {
   dataRegisterOperand,
   immediateExpressionOperand,
   instructionSize,
+  wordFormSize,
   isInstruction,
 } from "../../util/ast.js";
 import { changedFlagsApplicability, isPowerOfTwo } from "./helpers.js";
@@ -29,7 +30,7 @@ export const divuWordPowerOfTwo: Rule = {
     docs: { source: "ASP68K", example: { source: "\tdivu.w #4,d0" } },
   },
   checkLine(ctx, line, index) {
-    if (!isInstruction(line, "divu") || instructionSize(line) !== "w") return;
+    if (!isInstruction(line, "divu") || wordFormSize(line) !== "w") return;
     const immediate = immediateExpressionOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
     if (!immediate || !dest) return;

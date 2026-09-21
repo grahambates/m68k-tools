@@ -157,6 +157,10 @@ import {
 } from "./optimization/divu-power-of-two.js";
 import { divuWordByConstant } from "./optimization/divu-word-by-constant.js";
 import {
+  divsWordPowerOfTwo,
+  divsWordByConstant,
+} from "./optimization/divs-word-recipes.js";
+import {
   narrowMoveaImmediate,
   narrowAddaSubaImmediate,
   narrowCmpaImmediate,
@@ -337,6 +341,8 @@ export {
   foldAddressExpressionToLea,
   divuWordPowerOfTwo,
   divuWordByConstant,
+  divsWordPowerOfTwo,
+  divsWordByConstant,
   divuLongPowerOfTwo,
   narrowMoveaImmediate,
   narrowAddaSubaImmediate,
@@ -407,6 +413,8 @@ export const defaultRules: readonly Rule[] = [
   foldAddressExpressionToLea,
   divuWordPowerOfTwo,
   divuWordByConstant,
+  divsWordPowerOfTwo,
+  divsWordByConstant,
   multiplySignedWordSelectedConstants,
   cmpaZeroToTst030,
   multiplySignedLong060,

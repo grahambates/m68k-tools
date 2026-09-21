@@ -31,6 +31,15 @@ export function instructionSize(line: ParsedLine): Size | undefined {
   return line.qualifier?.type === "size" ? line.qualifier.size : undefined;
 }
 
+/**
+ * The size of a MULU, MULS, DIVU or DIVS. On the 68000 these only have a word
+ * form, so one written without a size is the word form; the long forms of later
+ * processors have to be written `.l`.
+ */
+export function wordFormSize(line: ParsedLine): Size {
+  return instructionSize(line) ?? "w";
+}
+
 export function operand(
   line: ParsedLine,
   index: number,

@@ -2,7 +2,7 @@ import type { Rule } from "../../core/rule.js";
 import {
   dataRegisterOperand,
   immediateOperand,
-  instructionSize,
+  wordFormSize,
   isInstruction,
 } from "../../util/ast.js";
 import { changedFlagsApplicability, isPowerOfTwo } from "./helpers.js";
@@ -37,7 +37,7 @@ export const multiplyWordByZero: Rule = {
   },
   checkLine(ctx, line) {
     if (!(isInstruction(line, "muls") || isInstruction(line, "mulu"))) return;
-    if (instructionSize(line) !== "w" || !sourceTimingKnown(ctx)) return;
+    if (wordFormSize(line) !== "w" || !sourceTimingKnown(ctx)) return;
     const imm = immediateOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
     if (!imm || !dest) return;
@@ -74,7 +74,7 @@ export const multiplySignedWordByOne: Rule = {
   checkLine(ctx, line) {
     if (
       !isInstruction(line, "muls") ||
-      instructionSize(line) !== "w" ||
+      wordFormSize(line) !== "w" ||
       !sourceTimingKnown(ctx)
     )
       return;
@@ -114,7 +114,7 @@ export const multiplyUnsignedWordByOne: Rule = {
     docs: { source: "ASP68K", example: { source: "\tmulu.w #1,d0" } },
   },
   checkLine(ctx, line) {
-    if (!isInstruction(line, "mulu") || instructionSize(line) !== "w") return;
+    if (!isInstruction(line, "mulu") || wordFormSize(line) !== "w") return;
     if (!targetsOnly(ctx.config, ["mc68000", "mc68010", "mc68030", "mc68040"]))
       return;
     const imm = immediateOperand(line, 0);
@@ -160,7 +160,7 @@ export const multiplySignedWordPowerOfTwo: Rule = {
   checkLine(ctx, line, index) {
     if (
       !isInstruction(line, "muls") ||
-      instructionSize(line) !== "w" ||
+      wordFormSize(line) !== "w" ||
       !targetsOnly(ctx.config, [
         "mc68000",
         "mc68010",
@@ -238,7 +238,7 @@ export const multiplyUnsignedWordPowerOfTwo: Rule = {
   checkLine(ctx, line, index) {
     if (
       !isInstruction(line, "mulu") ||
-      instructionSize(line) !== "w" ||
+      wordFormSize(line) !== "w" ||
       !powerOfTwoTimingUseful(ctx)
     )
       return;
@@ -308,7 +308,7 @@ export const multiplySignedWordHighPowerOfTwo: Rule = {
   checkLine(ctx, line, index) {
     if (
       !isInstruction(line, "muls") ||
-      instructionSize(line) !== "w" ||
+      wordFormSize(line) !== "w" ||
       !powerOfTwoTimingUseful(ctx)
     )
       return;
@@ -379,7 +379,7 @@ export const multiplyUnsignedWordHighPowerOfTwo: Rule = {
   checkLine(ctx, line, index) {
     if (
       !isInstruction(line, "mulu") ||
-      instructionSize(line) !== "w" ||
+      wordFormSize(line) !== "w" ||
       !powerOfTwoTimingUseful(ctx)
     )
       return;

@@ -10,6 +10,10 @@
  * states then gives the cheapest sequence for every constant in one pass, with
  * each instruction costed by 68kcounter (68000) and ties broken by size.
  *
+ * Constants are 2 to 256, and for MULS.W their negatives, since a negative
+ * constant is only a different coefficient for the same search. (MULU.W reads
+ * its constant as unsigned, so a negative one is a large positive.)
+ *
  * Two kinds of sequence are produced:
  *
  * - Full result: the 32-bit product of the sign-extended low word, exactly what
@@ -182,17 +186,25 @@ function costOf(lines) {
   );
 }
 
-function table(name, doc, kind, multiply, include) {
+/** The constants 2..MAX_CONSTANT, and for a signed multiply their negatives too. */
+const constants = (negative) => [
+  ...(negative
+    ? Array.from({ length: MAX_CONSTANT - 1 }, (_, i) => -MAX_CONSTANT + i)
+    : []),
+  ...Array.from({ length: MAX_CONSTANT - 1 }, (_, i) => i + 2),
+];
+
+function table(name, doc, kind, multiply, include, negative) {
   const find = search(kind);
   const rows = [];
-  for (let c = 2; c <= MAX_CONSTANT; c++) {
+  for (const c of constants(negative)) {
     if (!include(c)) continue;
     const lines = find(c);
     if (!lines) continue;
     const cost = costOf(lines);
     if (cost.cycles >= line(`${multiply} #${c},d0`).cycles) continue;
     rows.push(
-      `  ${c}: { cycles: ${cost.cycles}, scratch: ${lines.some((x) => /d1/.test(x))}, code: ${JSON.stringify(lines.map(template).join("\n"))} },`,
+      `  ${c < 0 ? `"${c}"` : c}: { cycles: ${cost.cycles}, scratch: ${lines.some((x) => /d1/.test(x))}, code: ${JSON.stringify(lines.map(template).join("\n"))} },`,
     );
   }
   return `/**\n${doc}\n */\nexport const ${name}: Readonly<Record<number, MultiplyRecipe>> = {\n${rows.join("\n")}\n};\n`;
@@ -217,20 +229,24 @@ export interface MultiplyRecipe {
 ${table(
   "mulsWordFullResultRecipes",
   ` * MULS.W #n,Dm with the full 32-bit result. Starts with EXT.L, and needs a
- * scratch register that is dead in full. Constants that ASP68K's rules handle
- * (${[...ASP68K_FULL_RESULT].join(", ")}) and powers of two are left to those.`,
+ * scratch register that is dead in full. Positive constants that ASP68K's rules
+ * handle (${[...ASP68K_FULL_RESULT].join(", ")}) and powers of two are left to those. Negative
+ * constants are all here, including negative powers of two, which nothing else
+ * covers; -1 is left to negative-signed-multiply.`,
   "full",
   "muls.w",
-  (c) => !ASP68K_FULL_RESULT.has(c) && !isPowerOfTwo(c),
+  (c) => c < 0 || (!ASP68K_FULL_RESULT.has(c) && !isPowerOfTwo(c)),
+  true,
 )}
 ${table(
   "mulsWordLowWordRecipes",
-  ` * MULS.W #n,Dm when only the low word of the result is used. Word operations
- * only: the multiplied register's upper word must be unobserved, and only the
- * low word of the scratch register is used.`,
+  ` * MULS.W #n,Dm when only the low word of the result is used, for positive and
+ * negative n. Word operations only: the multiplied register's upper word must be
+ * unobserved, and only the low word of the scratch register is used.`,
   "low",
   "muls.w",
   () => true,
+  true,
 )}
 ${table(
   "muluWordLowWordRecipes",
@@ -240,6 +256,7 @@ ${table(
   "low",
   "mulu.w",
   () => true,
+  false,
 )}`;
   const options = (await prettier.resolveConfig(OUT)) ?? {};
   return prettier.format(source, { ...options, filepath: OUT });

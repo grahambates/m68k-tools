@@ -821,6 +821,70 @@ Notes:
 
 - Restricted to positive 1..8 immediates so SUBQ reproduces CMP subtraction flags exactly; negative ADDQ forms need separate carry-condition reasoning.
 
+## `optimization/divs-word-by-constant`
+
+Replace signed word division by a constant with a multiply by its reciprocal when only the quotient of a small dividend is needed.
+
+Before:
+
+```asm
+	divs.w #10,d0
+```
+
+After:
+
+```asm
+	move.w d0,d2
+	muls.w #26215,d0
+	swap d0
+	asr.w #2,d0
+	add.w d2,d2
+	clr.w d2
+	addx.w d2,d0
+```
+
+Saves -12 bytes, 74(-6,0) cycles, (tradeoff)
+
+Notes:
+
+- This is only correct if the dividend in D0 is between -32768 and 32767, so it fits a signed word and the quotient cannot overflow. That cannot be proven here; check it.
+- The upper word (DIVS.W's remainder) is provably unused, and N, Z, V and C are dead, so neither the remainder nor the different flag results matter.
+- The low word of D2 is proven dead and is used as scratch.
+- If the dividend is between -2048 and 2047: move.w d0,d2 ; muls.w #6556,d0 ; swap d0 ; add.w d2,d2 ; clr.w d2 ; addx.w d2,d0 (74 cycles).
+- If the dividend is between -128 and 127: move.w d0,d2 ; muls.w #6592,d0 ; swap d0 ; add.w d2,d2 ; clr.w d2 ; addx.w d2,d0 (70 cycles).
+- If the dividend is also never negative and below 4096: mulu.w #6554,d0 ; swap d0 (60 cycles).
+- If the dividend is also never negative and below 256: mulu.w #6560,d0 ; swap d0 (56 cycles).
+- If the dividend is also never negative and below 64: mulu.w #6656,d0 ; swap d0 (52 cycles).
+- If the dividend is also never negative and below 32: lsr.l #1,d0 ; move.l d0,d7 ; lsr.l #2,d7 ; sub.l d7,d0 ; lsr.l #2,d0 (46 cycles, clobbers D7).
+- If the dividend is also never negative and below 16: move.l d0,d7 ; lsr.l #2,d7 ; sub.l d7,d0 ; lsr.l #3,d0 (38 cycles, clobbers D7).
+- These sequences also change X, which DIVS.W leaves alone, and nothing here proves X is unused afterwards.
+
+## `optimization/divs-word-power-of-two`
+
+Replace signed word division by a power of two with an arithmetic shift when only the quotient is needed and rounding toward minus infinity is acceptable.
+
+Before:
+
+```asm
+	divs.w #4,d0
+```
+
+After:
+
+```asm
+	asr.l #2,d0
+```
+
+Saves 2 bytes, 150(1,0) cycles, (overall improvement)
+
+Notes:
+
+- This rounds differently from DIVS.W for a negative dividend that is not a multiple of 4: DIVS.W truncates toward zero and ASR rounds toward minus infinity, so the result is one lower (-3 / 2 is -1 with DIVS.W and -2 with ASR). A non-negative dividend gives exactly the same result.
+- The upper word (DIVS.W's remainder) is provably unused, and N, Z, V and C are dead, so neither the remainder nor the different flag results matter.
+- This also assumes the quotient fits a signed word: DIVS.W would otherwise have overflowed and left the register unchanged.
+- No register is free for the form that rounds toward zero, which adds 2^k-1 to a negative dividend before shifting.
+- These sequences also change X, which DIVS.W leaves alone, and nothing here proves X is unused afterwards.
+
 ## `optimization/divu-long-power-of-two`
 
 Replace unsigned long division by a power of two with a logical shift.

@@ -207,3 +207,91 @@ describe("the rules use the generated recipes", () => {
     );
   });
 });
+
+describe("negative constants", () => {
+  const id = (rule: string) => `optimization/${rule}`;
+  const at = (source: string, rule: string) =>
+    lint(source, { processors: ["mc68000"] }).find(
+      (d) => d.ruleId === id(rule),
+    );
+
+  test("the tables have a negative half, for MULS.W only", () => {
+    const negative = (table: Record<number, unknown>) =>
+      Object.keys(table).filter((k) => Number(k) < 0).length;
+    expect(negative(mulsWordFullResultRecipes)).toBeGreaterThan(40);
+    expect(negative(mulsWordLowWordRecipes)).toBeGreaterThan(200);
+    // MULU.W reads its constant as unsigned, so a negative one is not a small multiply.
+    expect(negative(muluWordLowWordRecipes)).toBe(0);
+  });
+
+  test("-1 is left to negative-signed-multiply", () => {
+    for (const table of [mulsWordFullResultRecipes, mulsWordLowWordRecipes])
+      expect(table[-1]).toBeUndefined();
+  });
+
+  test("a negative full-result constant gets a shift/add sequence", () => {
+    const d = at(
+      "muls.w #-13,d0\nmove.l d0,d2\nrts",
+      "muls-word-full-result-constants",
+    );
+    expect(d?.message).toContain("MULS.W #-13");
+    expect(d?.suggestion?.replacement).toContain("sub.l");
+  });
+
+  test("a negative low-word constant gets a word-only sequence", () => {
+    const d = at(
+      "muls.w #-40,d0\nmove.w d0,d2\nmoveq #0,d0\nrts",
+      "muls-word-low-word-only",
+    );
+    expect(d?.suggestion?.replacement).toBeDefined();
+    expect(d?.suggestion?.replacement).not.toContain(".l");
+    expect(d?.suggestion?.replacement).toContain("neg.w");
+  });
+
+  test("a negative power of two is a negation and a shift", () => {
+    expect(
+      at(
+        "muls.w #-64,d0\nmove.w d0,d2\nmoveq #0,d0\nrts",
+        "muls-word-low-word-only",
+      )?.suggestion?.replacement,
+    ).toBe("\tneg.w d0\n\tasl.w #6,d0");
+    expect(
+      at("muls.w #-64,d0\nmove.l d0,d2\nrts", "muls-word-full-result-constants")
+        ?.suggestion?.replacement,
+    ).toBe("\text.l d0\n\tneg.l d0\n\tasl.l #6,d0");
+  });
+
+  test("a word pattern above 32767 is the negative it encodes", () => {
+    // vasm encodes #$fff5, #65525 and #-11 identically.
+    for (const spelling of ["#$fff5", "#65525"]) {
+      const d = at(
+        `muls.w ${spelling},d0\nmove.l d0,d2\nrts`,
+        "muls-word-full-result-constants",
+      );
+      expect(d?.message).toContain("MULS.W #-11");
+    }
+  });
+
+  test("MULU.W by a negative-looking constant is not touched", () => {
+    expect(
+      at(
+        "mulu.w #-11,d0\nmove.w d0,d2\nmoveq #0,d0\nrts",
+        "mulu-word-low-word-only",
+      ),
+    ).toBeUndefined();
+  });
+
+  test("-1 still only gets the vasm rule", () => {
+    const ids = lint("muls.w #-1,d0\nmove.l d0,d2\nrts", {
+      processors: ["mc68000"],
+    }).map((d) => d.ruleId);
+    expect(ids).toContain("optimization/negative-signed-multiply");
+    expect(ids).not.toContain("optimization/muls-word-full-result-constants");
+  });
+
+  test("a bare MULS with a negative constant is the word form", () => {
+    expect(
+      at("muls #-13,d0\nmove.l d0,d2\nrts", "muls-word-full-result-constants"),
+    ).toBeDefined();
+  });
+});

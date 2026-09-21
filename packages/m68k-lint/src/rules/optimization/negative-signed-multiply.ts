@@ -2,7 +2,7 @@ import type { Rule } from "../../core/rule.js";
 import {
   dataRegisterOperand,
   immediateOperand,
-  instructionSize,
+  wordFormSize,
   isInstruction,
 } from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
@@ -41,7 +41,7 @@ export const vasmNegativeSignedMultiply: Rule = {
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "muls")) return;
-    const size = instructionSize(line);
+    const size = wordFormSize(line);
     const imm = immediateOperand(line, 0);
     const dest = dataRegisterOperand(line, 1);
     if (!imm || !dest) return;

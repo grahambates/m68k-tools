@@ -2,7 +2,7 @@ import type { Rule } from "../../core/rule.js";
 import {
   dataRegisterOperand,
   immediateExpressionOperand,
-  instructionSize,
+  wordFormSize,
   isInstruction,
 } from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
@@ -13,6 +13,13 @@ import {
   muluWordLowWordRecipes,
   type MultiplyRecipe,
 } from "./generated/multiply-recipes.js";
+
+/**
+ * A MULS.W immediate is a signed word, so a pattern above 32767 is negative:
+ * \`#$fff5\` and \`#65525\` encode the same as \`#-11\`.
+ */
+const signedWord = (value: number) =>
+  value >= 0x8000 && value <= 0xffff ? value - 0x10000 : value;
 
 /**
  * Write a generated recipe for these registers. Signed multiplies read better
@@ -79,7 +86,7 @@ export const flamewingMulsWordFullResultConstants: Rule = {
     if (
       !m68000Only(ctx) ||
       !isInstruction(line, "muls") ||
-      instructionSize(line) !== "w"
+      wordFormSize(line) !== "w"
     )
       return;
     const expr = immediateExpressionOperand(line, 0);
@@ -87,11 +94,12 @@ export const flamewingMulsWordFullResultConstants: Rule = {
     if (!expr || !dest) return;
     const value = ctx.evaluate(expr);
     if (!value.known) return;
-    const recipe = mulsWordFullResultRecipes[value.value];
+    const factor = signedWord(value.value);
+    const recipe = mulsWordFullResultRecipes[factor];
     if (!recipe) return;
     // When the upper word is unobserved the word-only recipe is much cheaper,
     // so leave the constant to muls-word-low-word-only where that can apply.
-    const lowWord = mulsWordLowWordRecipes[value.value];
+    const lowWord = mulsWordLowWordRecipes[factor];
     if (
       lowWord &&
       ctx.registers.upperWordUseAfter(index, dest.register) === "unused" &&
@@ -111,12 +119,12 @@ export const flamewingMulsWordFullResultConstants: Rule = {
       category: this.meta.category,
       severity: this.meta.defaultSeverity,
       confidence: safety.confidence,
-      message: `MULS.W #${value.value},${dest.register.toUpperCase()} has a faster verified 68000 shift/add sequence`,
+      message: `MULS.W #${factor},${dest.register.toUpperCase()} has a faster verified 68000 shift/add sequence`,
       loc: line.mnemonic!.loc,
       suggestion: {
         description: scratch
-          ? `Replace MULS.W #${value.value} using dead scratch ${scratch.toUpperCase()}`
-          : `Replace MULS.W #${value.value}`,
+          ? `Replace MULS.W #${factor} using dead scratch ${scratch.toUpperCase()}`
+          : `Replace MULS.W #${factor}`,
         replacement: render(recipe, dest.register, scratch, true),
         applicability: safety.applicability,
       },
@@ -137,7 +145,7 @@ export const flamewingMulsWordFullResultConstants: Rule = {
               },
             ]),
       ],
-      data: { factor: value.value, scratch, provenance: "generated" },
+      data: { factor, scratch, provenance: "generated" },
     });
   },
 };
@@ -172,7 +180,7 @@ export const flamewingMulsWordLowWordOnly: Rule = {
     if (
       !m68000Only(ctx) ||
       !isInstruction(line, "muls") ||
-      instructionSize(line) !== "w"
+      wordFormSize(line) !== "w"
     )
       return;
     const expr = immediateExpressionOperand(line, 0);
@@ -180,7 +188,8 @@ export const flamewingMulsWordLowWordOnly: Rule = {
     if (!expr || !dest) return;
     const value = ctx.evaluate(expr);
     if (!value.known) return;
-    const recipe = mulsWordLowWordRecipes[value.value];
+    const factor = signedWord(value.value);
+    const recipe = mulsWordLowWordRecipes[factor];
     if (!recipe) return;
 
     const upperWordUse = ctx.registers.upperWordUseAfter(index, dest.register);
@@ -201,10 +210,10 @@ export const flamewingMulsWordLowWordOnly: Rule = {
       category: this.meta.category,
       severity: this.meta.defaultSeverity,
       confidence: safety.confidence,
-      message: `Only the low word of ${dest.register.toUpperCase()} is observed after MULS.W #${value.value}; a shorter word-only sequence suffices`,
+      message: `Only the low word of ${dest.register.toUpperCase()} is observed after MULS.W #${factor}; a shorter word-only sequence suffices`,
       loc: line.mnemonic!.loc,
       suggestion: {
-        description: `Replace MULS.W #${value.value} with a word-only sequence`,
+        description: `Replace MULS.W #${factor} with a word-only sequence`,
         replacement: render(recipe, dest.register, scratch, true),
         applicability: safety.applicability,
       },
@@ -229,7 +238,7 @@ export const flamewingMulsWordLowWordOnly: Rule = {
             ]),
       ],
       data: {
-        factor: value.value,
+        factor,
         scratch,
         upperWordUse,
         provenance: "generated",
@@ -266,7 +275,7 @@ export const flamewingMuluWordLowWordOnly: Rule = {
     if (
       !m68000Only(ctx) ||
       !isInstruction(line, "mulu") ||
-      instructionSize(line) !== "w"
+      wordFormSize(line) !== "w"
     )
       return;
     const expr = immediateExpressionOperand(line, 0);

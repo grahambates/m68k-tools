@@ -349,6 +349,34 @@ export const ruleImpactAuditCases: readonly RuleImpactAuditCase[] = [
     source: "divu.w #10,d0\nmove.w d0,d2\nmove.l #0,d0\nmoveq #0,d7",
   },
   {
+    ruleId: "optimization/divs-word-power-of-two",
+    source: "divs.w #4,d0\nmove.w d0,d2\nmove.l #0,d0\nmoveq #0,d7",
+  },
+  {
+    ruleId: "optimization/divs-word-by-constant",
+    source: "divs.w #10,d0\nmove.w d0,d2\nmove.l #0,d0\nmoveq #0,d7",
+  },
+  {
+    ruleId: "optimization/divs-word-power-of-two",
+    caseId: "negative",
+    source: "divs.w #-4,d0\nmove.w d0,d2\nmove.l #0,d0\nmoveq #0,d7",
+  },
+  {
+    ruleId: "optimization/divs-word-by-constant",
+    caseId: "negative",
+    source: "divs.w #-10,d0\nmove.w d0,d2\nmove.l #0,d0\nmoveq #0,d7",
+  },
+  {
+    ruleId: "optimization/muls-word-full-result-constants",
+    caseId: "negative",
+    source: "muls.w #-13,d0\nmoveq #0,d7",
+  },
+  {
+    ruleId: "optimization/muls-word-low-word-only",
+    caseId: "negative",
+    source: "muls.w #-11,d0\nmove.w d0,d2\nmove.l #0,d0\nmoveq #0,d7",
+  },
+  {
     ruleId: "optimization/move-byte-and-mask",
     source: "move.b (a0),d0\nandi.b #$7f,d0\nmove.b d0,d1\nmove.l #0,d0",
   },

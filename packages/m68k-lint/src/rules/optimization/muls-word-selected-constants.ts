@@ -2,7 +2,7 @@ import type { Rule } from "../../core/rule.js";
 import {
   dataRegisterOperand,
   immediateExpressionOperand,
-  instructionSize,
+  wordFormSize,
   isInstruction,
 } from "../../util/ast.js";
 import { changedFlagsApplicability } from "./helpers.js";
@@ -47,7 +47,7 @@ export const multiplySignedWordSelectedConstants: Rule = {
   checkLine(ctx, line, index) {
     if (
       !isInstruction(line, "muls") ||
-      instructionSize(line) !== "w" ||
+      wordFormSize(line) !== "w" ||
       !usefulTargets(ctx)
     )
       return;

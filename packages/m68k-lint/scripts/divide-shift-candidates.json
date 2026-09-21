@@ -1,0 +1,368 @@
+[
+  {
+    "divisor": 5,
+    "bits": 4,
+    "cycles": 36,
+    "code": ["move.l d0,d1", "lsr.l #2,d1", "sub.l d1,d0", "lsr.l #2,d0"]
+  },
+  {
+    "divisor": 6,
+    "bits": 4,
+    "cycles": 44,
+    "code": [
+      "lsr.l #1,d0",
+      "move.l d0,d1",
+      "add.l d1,d0",
+      "add.l d1,d0",
+      "lsr.l #3,d0"
+    ]
+  },
+  {
+    "divisor": 7,
+    "bits": 4,
+    "cycles": 40,
+    "code": ["move.l d0,d1", "lsr.l #3,d0", "addx.l d1,d0", "lsr.l #3,d0"]
+  },
+  {
+    "divisor": 9,
+    "bits": 4,
+    "cycles": 40,
+    "code": ["move.l d0,d1", "lsr.l #3,d1", "sub.l d1,d0", "lsr.l #3,d0"]
+  },
+  {
+    "divisor": 10,
+    "bits": 4,
+    "cycles": 38,
+    "code": ["move.l d0,d1", "lsr.l #2,d1", "sub.l d1,d0", "lsr.l #3,d0"]
+  },
+  {
+    "divisor": 11,
+    "bits": 4,
+    "cycles": 38,
+    "code": ["move.l d0,d1", "add.l d1,d0", "add.l d1,d0", "lsr.l #5,d0"]
+  },
+  {
+    "divisor": 12,
+    "bits": 4,
+    "cycles": 44,
+    "code": [
+      "move.l d0,d1",
+      "lsr.l #2,d0",
+      "sub.l d1,d0",
+      "addx.l d1,d0",
+      "lsr.l #2,d0"
+    ]
+  },
+  {
+    "divisor": 13,
+    "bits": 4,
+    "cycles": 40,
+    "code": ["move.l d0,d1", "lsr.l #2,d0", "add.l d1,d0", "lsr.l #4,d0"]
+  },
+  {
+    "divisor": 14,
+    "bits": 4,
+    "cycles": 42,
+    "code": ["move.l d0,d1", "lsr.l #3,d0", "addx.l d1,d0", "lsr.l #4,d0"]
+  },
+  {
+    "divisor": 15,
+    "bits": 4,
+    "cycles": 36,
+    "code": ["move.l d0,d1", "lsr.l #1,d1", "sub.l d1,d0", "lsr.l #3,d0"]
+  },
+  {
+    "divisor": 7,
+    "bits": 5,
+    "cycles": 40,
+    "code": ["move.l d0,d1", "lsr.l #3,d0", "addx.l d1,d0", "lsr.l #3,d0"]
+  },
+  {
+    "divisor": 9,
+    "bits": 5,
+    "cycles": 40,
+    "code": ["move.l d0,d1", "lsr.l #3,d1", "sub.l d1,d0", "lsr.l #3,d0"]
+  },
+  {
+    "divisor": 10,
+    "bits": 5,
+    "cycles": 46,
+    "code": [
+      "lsr.l #1,d0",
+      "move.l d0,d1",
+      "lsr.l #2,d1",
+      "sub.l d1,d0",
+      "lsr.l #2,d0"
+    ]
+  },
+  {
+    "divisor": 11,
+    "bits": 5,
+    "cycles": 38,
+    "code": ["move.l d0,d1", "add.l d1,d0", "add.l d1,d0", "lsr.l #5,d0"]
+  },
+  {
+    "divisor": 12,
+    "bits": 5,
+    "cycles": 46,
+    "code": [
+      "lsr.l #2,d0",
+      "move.l d0,d1",
+      "add.l d1,d0",
+      "add.l d1,d0",
+      "lsr.l #3,d0"
+    ]
+  },
+  {
+    "divisor": 13,
+    "bits": 5,
+    "cycles": 40,
+    "code": ["move.l d0,d1", "lsr.l #2,d0", "add.l d1,d0", "lsr.l #4,d0"]
+  },
+  {
+    "divisor": 14,
+    "bits": 5,
+    "cycles": 42,
+    "code": ["move.l d0,d1", "lsr.l #3,d0", "addx.l d1,d0", "lsr.l #4,d0"]
+  },
+  {
+    "divisor": 15,
+    "bits": 5,
+    "cycles": 44,
+    "code": ["move.l d0,d1", "lsr.l #4,d0", "addx.l d1,d0", "lsr.l #4,d0"]
+  },
+  {
+    "divisor": 17,
+    "bits": 5,
+    "cycles": 44,
+    "code": ["move.l d0,d1", "lsr.l #4,d1", "sub.l d1,d0", "lsr.l #4,d0"]
+  },
+  {
+    "divisor": 18,
+    "bits": 5,
+    "cycles": 42,
+    "code": ["move.l d0,d1", "lsr.l #3,d1", "sub.l d1,d0", "lsr.l #4,d0"]
+  },
+  {
+    "divisor": 19,
+    "bits": 5,
+    "cycles": 50,
+    "code": [
+      "move.l d0,d1",
+      "add.l d1,d0",
+      "lsr.l #2,d1",
+      "subx.l d1,d0",
+      "lsr.l #5,d0"
+    ]
+  },
+  {
+    "divisor": 20,
+    "bits": 5,
+    "cycles": 48,
+    "code": [
+      "lsr.l #1,d0",
+      "move.l d0,d1",
+      "lsr.l #2,d1",
+      "sub.l d1,d0",
+      "lsr.l #3,d0"
+    ]
+  },
+  {
+    "divisor": 21,
+    "bits": 5,
+    "cycles": 40,
+    "code": ["move.l d0,d1", "lsr.l #1,d0", "addx.l d1,d0", "lsr.l #5,d0"]
+  },
+  {
+    "divisor": 22,
+    "bits": 5,
+    "cycles": 40,
+    "code": ["move.l d0,d1", "add.l d1,d0", "add.l d1,d0", "lsr.l #6,d0"]
+  },
+  {
+    "divisor": 24,
+    "bits": 5,
+    "cycles": 46,
+    "code": [
+      "move.l d0,d1",
+      "lsr.l #3,d0",
+      "sub.l d1,d0",
+      "addx.l d1,d0",
+      "lsr.l #2,d0"
+    ]
+  },
+  {
+    "divisor": 26,
+    "bits": 5,
+    "cycles": 42,
+    "code": ["move.l d0,d1", "lsr.l #2,d0", "add.l d1,d0", "lsr.l #5,d0"]
+  },
+  {
+    "divisor": 28,
+    "bits": 5,
+    "cycles": 44,
+    "code": ["move.l d0,d1", "lsr.l #3,d0", "addx.l d1,d0", "lsr.l #5,d0"]
+  },
+  {
+    "divisor": 29,
+    "bits": 5,
+    "cycles": 44,
+    "code": ["move.l d0,d1", "lsr.l #3,d0", "add.l d1,d0", "lsr.l #5,d0"]
+  },
+  {
+    "divisor": 30,
+    "bits": 5,
+    "cycles": 46,
+    "code": ["move.l d0,d1", "lsr.l #4,d0", "addx.l d1,d0", "lsr.l #5,d0"]
+  },
+  {
+    "divisor": 31,
+    "bits": 5,
+    "cycles": 38,
+    "code": ["move.l d0,d1", "lsr.l #1,d1", "sub.l d1,d0", "lsr.l #4,d0"]
+  },
+  {
+    "divisor": 9,
+    "bits": 6,
+    "cycles": 40,
+    "code": ["move.l d0,d1", "lsr.l #3,d1", "sub.l d1,d0", "lsr.l #3,d0"]
+  },
+  {
+    "divisor": 13,
+    "bits": 6,
+    "cycles": 40,
+    "code": ["move.l d0,d1", "lsr.l #2,d0", "add.l d1,d0", "lsr.l #4,d0"]
+  },
+  {
+    "divisor": 14,
+    "bits": 6,
+    "cycles": 50,
+    "code": [
+      "lsr.l #1,d0",
+      "move.l d0,d1",
+      "lsr.l #3,d0",
+      "addx.l d1,d0",
+      "lsr.l #3,d0"
+    ]
+  },
+  {
+    "divisor": 15,
+    "bits": 6,
+    "cycles": 44,
+    "code": ["move.l d0,d1", "lsr.l #4,d0", "addx.l d1,d0", "lsr.l #4,d0"]
+  },
+  {
+    "divisor": 17,
+    "bits": 6,
+    "cycles": 44,
+    "code": ["move.l d0,d1", "lsr.l #4,d1", "sub.l d1,d0", "lsr.l #4,d0"]
+  },
+  {
+    "divisor": 18,
+    "bits": 6,
+    "cycles": 42,
+    "code": ["move.l d0,d1", "lsr.l #3,d1", "sub.l d1,d0", "lsr.l #4,d0"]
+  },
+  {
+    "divisor": 20,
+    "bits": 6,
+    "cycles": 48,
+    "code": [
+      "lsr.l #2,d0",
+      "move.l d0,d1",
+      "lsr.l #2,d1",
+      "sub.l d1,d0",
+      "lsr.l #2,d0"
+    ]
+  },
+  {
+    "divisor": 21,
+    "bits": 6,
+    "cycles": 40,
+    "code": ["move.l d0,d1", "lsr.l #2,d1", "sub.l d1,d0", "lsr.l #4,d0"]
+  },
+  {
+    "divisor": 22,
+    "bits": 6,
+    "cycles": 48,
+    "code": [
+      "lsr.l #1,d0",
+      "move.l d0,d1",
+      "add.l d1,d0",
+      "add.l d1,d0",
+      "lsr.l #5,d0"
+    ]
+  },
+  {
+    "divisor": 24,
+    "bits": 6,
+    "cycles": 48,
+    "code": [
+      "lsr.l #3,d0",
+      "move.l d0,d1",
+      "add.l d1,d0",
+      "add.l d1,d0",
+      "lsr.l #3,d0"
+    ]
+  },
+  {
+    "divisor": 26,
+    "bits": 6,
+    "cycles": 42,
+    "code": ["move.l d0,d1", "lsr.l #2,d0", "add.l d1,d0", "lsr.l #5,d0"]
+  },
+  {
+    "divisor": 30,
+    "bits": 6,
+    "cycles": 46,
+    "code": ["move.l d0,d1", "lsr.l #4,d0", "addx.l d1,d0", "lsr.l #5,d0"]
+  },
+  {
+    "divisor": 31,
+    "bits": 6,
+    "cycles": 48,
+    "code": ["move.l d0,d1", "lsr.l #5,d0", "addx.l d1,d0", "lsr.l #5,d0"]
+  },
+  {
+    "divisor": 33,
+    "bits": 6,
+    "cycles": 48,
+    "code": [
+      "move.l d0,d1",
+      "sub.l d0,d1",
+      "sub.l d0,d1",
+      "subx.l d1,d0",
+      "lsr.l #6,d0"
+    ]
+  },
+  {
+    "divisor": 34,
+    "bits": 6,
+    "cycles": 46,
+    "code": ["move.l d0,d1", "lsr.l #4,d1", "sub.l d1,d0", "lsr.l #5,d0"]
+  },
+  {
+    "divisor": 36,
+    "bits": 6,
+    "cycles": 44,
+    "code": ["move.l d0,d1", "lsr.l #3,d1", "sub.l d1,d0", "lsr.l #5,d0"]
+  },
+  {
+    "divisor": 37,
+    "bits": 6,
+    "cycles": 44,
+    "code": ["move.l d0,d1", "lsr.l #3,d1", "subx.l d1,d0", "lsr.l #5,d0"]
+  },
+  {
+    "divisor": 40,
+    "bits": 6,
+    "cycles": 50,
+    "code": [
+      "lsr.l #2,d0",
+      "move.l d0,d1",
+      "lsr.l #2,d1",
+      "sub.l d1,d0",
+      "lsr.l #3,d0"
+    ]
+  }
+]

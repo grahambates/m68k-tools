@@ -842,6 +842,35 @@ Notes:
 - Unlike DIVU.W, this two-operand long form does not leave a packed remainder in the upper word of Dn.
 - DIVU.L and LSR do not have identical CCR effects; review subsequent flag use.
 
+## `optimization/divu-word-by-constant`
+
+Replace unsigned word division by a constant with a multiply by its reciprocal when only the quotient of a small dividend is needed.
+
+Before:
+
+```asm
+	divu.w #10,d0
+```
+
+After:
+
+```asm
+	mulu.w #52429,d0
+	swap d0
+	lsr.w #3,d0
+```
+
+Saves -4 bytes, 68(-2,0) cycles, (tradeoff)
+
+Notes:
+
+- This is only correct if the dividend in D0 is below 65536, so its upper word is zero and the quotient cannot overflow. That cannot be proven here; check it.
+- The upper word (DIVU.W's remainder) is provably unused, and N, Z, V and C are dead, so neither the remainder nor the different flag results matter.
+- Recipes with shifts or adds also change X, which DIVU.W leaves alone, and nothing here proves X is unused afterwards.
+- If the dividend is below 4096: mulu.w #6554,d0 ; swap d0 (60 cycles).
+- If the dividend is below 256: mulu.w #6560,d0 ; swap d0 (56 cycles).
+- If the dividend is below 64: mulu.w #6656,d0 ; swap d0 (52 cycles).
+
 ## `optimization/divu-word-power-of-two`
 
 Replace unsigned word division by a power of two with a logical shift when its remainder semantics are not needed.

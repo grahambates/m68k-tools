@@ -345,6 +345,10 @@ export const ruleImpactAuditCases: readonly RuleImpactAuditCase[] = [
     source: "mulu.w #100,d0\nmove.w d0,d2\nmove.l #0,d0\nmoveq #0,d7",
   },
   {
+    ruleId: "optimization/divu-word-by-constant",
+    source: "divu.w #10,d0\nmove.w d0,d2\nmove.l #0,d0\nmoveq #0,d7",
+  },
+  {
     ruleId: "optimization/move-byte-and-mask",
     source: "move.b (a0),d0\nandi.b #$7f,d0\nmove.b d0,d1\nmove.l #0,d0",
   },

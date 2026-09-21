@@ -61,9 +61,76 @@ The web launcher uses Chrome and starts Vite at `http://127.0.0.1:5173` with a f
 
 ## Releases
 
-Packages have independent versions. Add a changeset with `pnpm changeset` alongside a user-facing change and commit its Markdown file. The manual release workflow opens a version PR; `pnpm version-packages` consumes pending changesets, updates package versions and dependency ranges, and writes package changelogs. Publishing is not enabled by this migration. See [.changeset/README.md](.changeset/README.md).
+Packages have independent versions, managed with [Changesets](https://github.com/changesets/changesets). Six packages publish to npm (`m68k-parser`, `68kcounter`, `m68k-lint`, `m68k-formatter`, `m68k-lsp-server`, `m68k-lint-langserver`) and three VS Code extensions publish to the Marketplace (`m68k-lsp`, `m68k-lint-vscode`, `68kcounter-vscode`). Published Node packages target Node 22.15.1 or later; the extensions require VS Code 1.101 or later.
 
-Published Node packages target Node 22.15.1 or later; VS Code extensions require 1.101 or later. Development tools require a newer Node 22 minor than the published runtime.
+### 1. Describe the change
+
+Run `pnpm changeset` with each user-facing change, or write a Markdown file in `.changeset/` by hand, and commit it with the change. Each file names the packages affected, the semver bump for each (`patch`, `minor` or `major`) and a description that becomes the changelog entry. Separate descriptions can be separate files.
+
+**Name the extensions too.** They bundle the servers, so a new server version does not bump them: Changesets only bumps a dependent when the dependency leaves its version range, and the extensions hold theirs within a caret range or as dev dependencies. If a release should ship a new extension version, add a changeset naming it (`m68k-lsp`, `m68k-lint-vscode` or `68kcounter-vscode`), or its Marketplace publish will find the version already taken.
+
+`pnpm exec changeset status` lists what is pending and which packages it bumps.
+
+### 2. Version
+
+```sh
+pnpm version-packages
+```
+
+This consumes the pending changesets, bumps versions and internal dependency ranges, writes each package's `CHANGELOG.md`, and updates the lockfile. Review the diff, then commit it (for example as `Release packages`). The manual **Version packages** workflow (`workflow_dispatch` on `main`) does the same and opens a pull request, if you would rather review it there.
+
+### 3. Verify
+
+From a clean checkout of the release commit:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm check
+pnpm check:packages
+```
+
+`pnpm check` builds everything and runs lint, formatting, type checks, tests, the linter coverage and the rule-impact audit. `pnpm check:packages` installs the packed npm archives in an isolated project and exercises them. If you have a vasm binary, `VASM=/path/to/vasmm68k_mot pnpm check:vasm` compares sizes, lint suggestions and syntax with the real assembler (see `scripts/vasm/README.md`).
+
+### 4. Publish to npm
+
+Log in with `npm login`, using an account that can publish all six packages. Then:
+
+```sh
+pnpm exec changeset publish
+```
+
+This publishes every package whose version is not yet on the registry, in dependency order, and skips the rest, so it is safe to run again after a failure. It also creates a git tag `<name>@<version>` for each package it releases, including the private extensions. It needs an authenticated npm session, and asks for a one-time password if the account has 2FA. Check the result with `npm view <package> version`.
+
+### 5. Publish the extensions
+
+The extensions are private on npm and go to the Marketplace as VSIX files. Publishing needs the `gigabates` publisher's Azure DevOps personal access token, with the **Marketplace: Manage** scope and **All accessible organizations**. It is created under the user settings in Azure DevOps (not on the Marketplace publisher page). Set it up once with `pnpm --filter m68k-lsp exec vsce login gigabates`.
+
+Build and package all three first, to check that they build:
+
+```sh
+pnpm package
+```
+
+This writes `.vsix` files without publishing. The counter's is `68kcounter-<version>.vsix` at the repository root. Then publish:
+
+```sh
+pnpm run publish:extensions   # all three, or one at a time:
+pnpm run publish:assembly     # m68k-lsp
+pnpm run publish:lint         # m68k-lint-vscode
+pnpm run publish:counter      # 68kcounter-vscode
+```
+
+Use the `pnpm run publish:*` scripts and not `pnpm publish`: pnpm's own `publish` command runs instead of the package script, and against a private package it reports that there is nothing to publish and does nothing. The counter extension must go through `publish:counter`, not `vsce publish` from `apps/68kcounter-vscode`: its workspace name differs from its Marketplace identity (`gigabates.68kcounter`), and the script stages the renamed manifest and publishes that VSIX by path.
+
+A Marketplace error that the version already exists means the extension was not bumped: go back to step 1.
+
+### 6. Push
+
+```sh
+git push --follow-tags
+```
+
+This pushes the release commit and the tags. Nothing publishes from CI yet; the workflow only opens version pull requests. npm trusted publishing is planned for the next round, and cannot do the first publish of a new package.
 
 See the [migration record](docs/monorepo-migration.md), [assembly server documentation](packages/m68k-lsp-server/README.md), and [formatter documentation](packages/m68k-formatter/README.md).
 

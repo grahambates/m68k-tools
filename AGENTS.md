@@ -67,6 +67,7 @@ pnpm check
 
 - Inspect `git status` before editing or committing. Preserve unrelated user changes and stage only the requested work. Do not commit or publish unless requested.
 - Add a `.changeset/*.md` file for user-facing package changes, naming affected packages and appropriate semver bumps. Packages are independently versioned; use Changesets rather than manually bumping versions or running `npm version`.
+- The VS Code extensions are private packages that bundle the servers, so a new server version does not bump them: Changesets only bumps a dependent when the dependency leaves its range, and the extensions hold them as dev dependencies or within a caret range. Add a changeset naming the extension (`m68k-lsp`, `m68k-lint-vscode`, `68kcounter-vscode`) whenever a release should ship a new version of it; otherwise the Marketplace publish finds its version already taken.
 - Changesets versioning generates package changelog entries and updates internal dependency ranges. Keep release notes with the owning package and update relevant client documentation when behaviour changes.
 - Preserve package licence files, copyright notices and bundled third-party licences.
 - Summarise what changed, what was verified and any remaining limitations. Keep these instructions durable: do not add temporary task status, machine-specific paths or transient test counts.

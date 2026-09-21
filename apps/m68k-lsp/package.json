@@ -4,7 +4,7 @@
   "description": "Motorola 68000 family Assembly language support",
   "author": "Graham Bates",
   "license": "MIT",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "scripts": {
     "package": "vsce package --no-dependencies",
     "publish": "vsce publish --no-dependencies",

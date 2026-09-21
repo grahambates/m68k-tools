@@ -2,7 +2,7 @@
   "name": "m68k-lint-vscode",
   "displayName": "M68k Lint",
   "description": "Static analysis and optimization hints for Motorola 68k assembly",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "gigabates",
   "license": "MIT",
   "author": "Graham Bates",

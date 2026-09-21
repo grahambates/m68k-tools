@@ -1,5 +1,11 @@
 # m68k-lint-vscode
 
+## 0.4.0
+
+### Minor Changes
+
+- Release with linter language server 0.4: case-sensitive symbols by default, a shared `.m68krc.json` for processors, include paths, case, escape sequences and source root, vasm-style include search, the statement in an `iif` analysed, and a new rule for backslash escapes in strings. Configuration changes to `.m68krc.json` are picked up.
+
 ## 0.3.0
 
 ### Minor Changes

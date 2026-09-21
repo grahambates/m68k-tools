@@ -1,5 +1,11 @@
 # Change Log
 
+## 1.4.0
+
+### Minor Changes
+
+- Release with counter 5.1: expressions are 32-bit signed as in vasm, string sizes follow vasm (`dc.w "ab"` is one word, and `-esc` escapes are one byte), constants assigned in conditional blocks are unknown when the arms differ, `iif` statements are counted, and `trap` is two bytes.
+
 ## 1.3.0
 
 ### Minor Changes

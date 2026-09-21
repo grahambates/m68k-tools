@@ -1,5 +1,11 @@
 # m68k-lsp
 
+## 0.13.0
+
+### Minor Changes
+
+- Release with language server 0.13: a shared `.m68krc.json` project config, with a JSON schema for it and for `.m68k-format.json`; new `sourceRoot`, `escapeSequences` and `inferIncludePaths` settings; case-sensitive symbols; vasm-style include search, with guessed include paths offered as quick fixes; the statement in an `iif` understood; and fewer redundant activation events.
+
 ## 0.12.0
 
 ### Minor Changes

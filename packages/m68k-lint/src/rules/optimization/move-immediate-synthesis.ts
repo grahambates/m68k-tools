@@ -7,7 +7,7 @@ import {
 } from "../../util/ast.js";
 import {
   changedFlagsApplicability,
-  containsSymbol,
+  isAuthoredExpression,
   embeddedValueText,
 } from "./helpers.js";
 
@@ -148,10 +148,10 @@ export const moveImmediateDoubleByte: Rule = {
     const r = match.dest.register;
     const safety = changedFlagsApplicability(ctx, index, ["X", "V", "C"]);
     // The halving is exact, the value being even, so it can be written rather
-    // than worked out. Worth doing only when there is a name in it to keep:
-    // `#200/2` reads worse than `#100`, but `#SPRITE_BYTES/2` keeps a constant
-    // the code would otherwise stop tracking.
-    const half = containsSymbol(match.value)
+    // than worked out. Done when the author wrote an expression, a name or a
+    // sum, so that it is still there: `#SPRITE_BYTES/2`, `#100+50` as
+    // `#(100+50)/2`. A bare `#200` becomes `#100`, not `#200/2`.
+    const half = isAuthoredExpression(match.value)
       ? `${embeddedValueText(ctx, match.value, value.value)}/2`
       : String(m);
     const replacement = `moveq #${half},${r}\nadd.b ${r},${r}`;

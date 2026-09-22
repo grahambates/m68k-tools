@@ -181,10 +181,8 @@ export function embeddedValueText(
 /**
  * Whether an expression mentions a name at all.
  *
- * Deciding whether to write the arithmetic out or its result. `#SMALL+2` keeps
- * a constant the code depends on; `#3+2` keeps nothing and reads worse than
- * `#5`. So the derived form is only worth writing when there is a name in it to
- * save.
+ * For rules that only care whether a value follows a constant. Whether the
+ * author chose to write a value out is `isAuthoredExpression`.
  */
 export function containsSymbol(
   expression: ExpressionNode | undefined,
@@ -195,5 +193,81 @@ export function containsSymbol(
     Array.isArray(value)
       ? value.some((entry: unknown) => containsSymbol(entry as ExpressionNode))
       : containsSymbol(value as ExpressionNode),
+  );
+}
+
+/**
+ * Whether the author wrote this value as something more than a number.
+ *
+ * A name (`SMALL`), a sum (`10-1`, kept for a DBRA count that shows its intent)
+ * or a product (`4*2`) is a choice about how to say the value, and a rule that
+ * derives a new value from it should keep saying it that way. A bare number
+ * (`5`, `-3`) expresses nothing, so a value derived only from bare numbers is
+ * just the number: writing `2+4` for a total nobody wrote as a sum would be
+ * inventing an expression.
+ */
+export function isAuthoredExpression(
+  expression: ExpressionNode | undefined,
+): boolean {
+  let node = expression;
+  while (node?.type === "group") node = node.expression;
+  if (!node) return false;
+  if (node.type === "numeric-literal") return false;
+  if (
+    node.type === "unary-op" &&
+    (node.operator === "-" || node.operator === "+") &&
+    node.operand.type === "numeric-literal"
+  )
+    return false;
+  return true;
+}
+
+/** Operators that bind more loosely than `+` and `-`, so a term using one needs brackets in a sum. */
+const LOOSER_THAN_ADDITIVE = new Set([
+  "<",
+  ">",
+  "<=",
+  ">=",
+  "==",
+  "=",
+  "!=",
+  "<>",
+  "&&",
+  "||",
+]);
+
+/**
+ * The expression as written, ready to be a term of a sum.
+ *
+ * Unlike `embeddedValueText` this leaves `4*2` and `1<<3` bare, as they bind
+ * tighter than `+` and `-` in vasm, so the sum reads as the author wrote it:
+ * `4*2+8`, not `(4*2)+8`. Only what binds looser, comparisons and logic, is
+ * bracketed.
+ */
+export function additiveTermText(
+  ctx: RuleContext,
+  expression: ExpressionNode | undefined,
+  evaluated: number,
+): string {
+  const text = valueText(ctx, expression, evaluated);
+  let node = expression;
+  while (node?.type === "group") node = node.expression;
+  return node?.type === "binary-op" && LOOSER_THAN_ADDITIVE.has(node.operator)
+    ? `(${text})`
+    : text;
+}
+
+/** Terms joined into a sum, a negative term becoming a subtraction: `4*2-3`. */
+export function sumText(terms: readonly string[]): string {
+  return terms.reduce(
+    (sum, term) =>
+      term === ""
+        ? sum
+        : sum === ""
+          ? term
+          : term.startsWith("-")
+            ? `${sum}${term}`
+            : `${sum}+${term}`,
+    "",
   );
 }

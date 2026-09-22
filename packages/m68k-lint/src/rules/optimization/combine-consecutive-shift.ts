@@ -7,8 +7,9 @@ import {
   isInstruction,
 } from "../../util/ast.js";
 import {
-  containsSymbol,
-  embeddedValueText,
+  additiveTermText,
+  isAuthoredExpression,
+  sumText,
   hasLabelBetween,
   sourceOperand,
 } from "./helpers.js";
@@ -87,11 +88,14 @@ export const combineConsecutiveShift: Rule = {
     const total = n.value + m.value;
     const destText = sourceOperand(ctx, line, 1);
     if (!destText) return;
-    const symbolic =
-      containsSymbol(firstImm.value) || containsSymbol(secondImm.value);
-    const totalText = symbolic
-      ? `${embeddedValueText(ctx, firstImm.value, n.value)}+${embeddedValueText(ctx, secondImm.value, m.value)}`
-      : String(total);
+    const totalText =
+      isAuthoredExpression(firstImm.value) ||
+      isAuthoredExpression(secondImm.value)
+        ? sumText([
+            additiveTermText(ctx, firstImm.value, n.value),
+            additiveTermText(ctx, secondImm.value, m.value),
+          ])
+        : String(total);
 
     let replacement: string;
     let note: string;

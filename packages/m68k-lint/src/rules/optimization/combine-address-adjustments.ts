@@ -1,4 +1,4 @@
-import type { ParsedLine } from "m68k-parser";
+import type { ExpressionNode, ParsedLine } from "m68k-parser";
 import type { RuleContext } from "../../core/context.js";
 import type { Rule } from "../../core/rule.js";
 import {
@@ -7,7 +7,14 @@ import {
   isInstruction,
   operand,
 } from "../../util/ast.js";
-import { containsSymbol, hasLabelBetween, sourceOperand } from "./helpers.js";
+import {
+  additiveTermText,
+  hasLabelBetween,
+  isAuthoredExpression,
+  negatedValueText,
+  sourceOperand,
+  sumText,
+} from "./helpers.js";
 
 /** LEA's displacement, and ADDA.W's immediate, are signed 16-bit. */
 const WORD_MIN = -0x8000;
@@ -20,6 +27,11 @@ interface Adjustment {
   delta: number;
   /** ADDQ.L, which combine-consecutive-addq already folds. */
   quickLong: boolean;
+  /**
+   * The change as the author wrote it, and its negation, when that was more
+   * than a number: a name, or a sum such as `4*2`. Absent for a bare number.
+   */
+  written?: { plus: string; minus: string };
 }
 
 function registerName(name: string): string {
@@ -30,7 +42,7 @@ function registerName(name: string): string {
 /**
  * A line that only adds a literal constant to an address register: ADDQ/SUBQ,
  * ADD/ADDA/SUB/SUBA with an immediate, or LEA d(An),An onto the same register.
- * Named values are left alone, since folding them would lose the names.
+ * A value the author wrote as an expression keeps that expression in the fold.
  */
 function adjustment(
   ctx: RuleContext,
@@ -52,14 +64,18 @@ function adjustment(
       source?.type !== "address-register-indirect-displacement" ||
       source.displacementSize ||
       source.register.type !== "address-register" ||
-      registerName(source.register.register) !== register ||
-      containsSymbol(source.displacement)
+      registerName(source.register.register) !== register
     )
       return undefined;
     const value = ctx.evaluate(source.displacement);
     if (!value.known || value.value < WORD_MIN || value.value > WORD_MAX)
       return undefined;
-    return { register, delta: value.value, quickLong: false };
+    return {
+      register,
+      delta: value.value,
+      quickLong: false,
+      written: writtenChange(ctx, source.displacement, value.value, false),
+    };
   }
 
   const subtract =
@@ -76,7 +92,7 @@ function adjustment(
   const size = instructionSize(line);
   if (size !== "w" && size !== "l") return undefined;
   const immediate = immediateOperand(line, 0);
-  if (!immediate || containsSymbol(immediate.value)) return undefined;
+  if (!immediate) return undefined;
   const value = ctx.evaluate(immediate.value);
   if (!value.known) return undefined;
 
@@ -93,14 +109,42 @@ function adjustment(
     register,
     delta: subtract ? -value.value : value.value,
     quickLong: isInstruction(line, "addq") && size === "l",
+    written: writtenChange(ctx, immediate.value, value.value, subtract),
   };
 }
 
-/** The cheapest single instruction that adds `delta`, within LEA's reach. */
-function combined(delta: number, dest: string): string {
-  if (delta >= 1 && delta <= 8) return `addq.l #${delta},${dest}`;
-  if (delta <= -1 && delta >= -8) return `subq.l #${-delta},${dest}`;
-  return `lea ${delta}(${dest}),${dest}`;
+/** How an adjustment reads as the author wrote it, if that is more than a number. */
+function writtenChange(
+  ctx: RuleContext,
+  expression: ExpressionNode | undefined,
+  value: number,
+  subtract: boolean,
+): Adjustment["written"] {
+  if (!isAuthoredExpression(expression)) return undefined;
+  const added = additiveTermText(ctx, expression, value);
+  const taken = negatedValueText(ctx, expression, -value);
+  return subtract
+    ? { plus: taken, minus: added }
+    : { plus: added, minus: taken };
+}
+
+/**
+ * The cheapest single instruction that adds `delta`, within LEA's reach. When
+ * the author wrote any of the values as an expression, `written` is the sum
+ * they wrote, to use in place of the number.
+ */
+function combined(
+  delta: number,
+  dest: string,
+  written?: { plus: string; minus: string },
+): string {
+  if (delta >= 1 && delta <= 8)
+    return `addq.l #${written?.plus ?? delta},${dest}`;
+  if (delta <= -1 && delta >= -8)
+    return `subq.l #${written?.minus ?? -delta},${dest}`;
+  // A displacement that opens with a bracket reads like an addressing mode.
+  const text = written?.plus ?? String(delta);
+  return `lea ${text.startsWith("(") ? `0+${text}` : text}(${dest}),${dest}`;
 }
 
 export const combineAddressAdjustments: Rule = {
@@ -139,7 +183,21 @@ export const combineAddressAdjustments: Rule = {
 
     const dest = sourceOperand(ctx, line, 1);
     if (!dest) return;
-    const replacement = combined(total, dest);
+    // Each side's own text, when either was written as an expression. A side
+    // that was a bare number stands for itself.
+    const side = (a: Adjustment) =>
+      a.written ??
+      (a.delta === 0
+        ? { plus: "", minus: "" }
+        : { plus: String(a.delta), minus: String(-a.delta) });
+    const written =
+      first.written || second.written
+        ? {
+            plus: sumText([side(first).plus, side(second).plus]),
+            minus: sumText([side(first).minus, side(second).minus]),
+          }
+        : undefined;
+    const replacement = combined(total, dest, written);
 
     ctx.report({
       ruleId: this.meta.id,

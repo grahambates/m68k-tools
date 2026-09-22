@@ -8,7 +8,7 @@ import {
 } from "../../util/ast.js";
 import {
   changedFlagsApplicability,
-  containsSymbol,
+  isAuthoredExpression,
   embeddedValueText,
   hasLabelBetween,
 } from "./helpers.js";
@@ -125,14 +125,15 @@ export const combineConsecutiveBitOps: Rule = {
     const width = size === "b" ? 2 : size === "w" ? 4 : 8;
     const limit = size === "b" ? 0xff : size === "w" ? 0xffff : 0xffffffff;
 
-    // Written as shifts of the bit numbers when any of them is a name, so a
-    // `bclr #SPRITE_ON,d0` keeps saying which bit it means rather than becoming
-    // an opaque mask that no longer tracks the constant it came from.
+    // Written as shifts of the bit numbers when any of them is a name or an
+    // expression, so a `bclr #SPRITE_ON,d0` keeps saying which bit it means
+    // rather than becoming an opaque mask that no longer tracks the constant
+    // it came from.
     // `& limit` works on a signed 32-bit value, so the unsigned coercion has to
     // come after it or a mask reaching bit 31 renders as a negative number.
     const literal = (value: number) =>
       hex(value & limit, width, { uppercase: false });
-    const symbolic = members.some((m) => containsSymbol(m.op.expression));
+    const symbolic = members.some((m) => isAuthoredExpression(m.op.expression));
     // Each shift is parenthesised so the mask does not depend on the assembler
     // agreeing with C about how `<<` and `|` bind.
     const bits = members

@@ -6,6 +6,7 @@ import {
 import type { TextDocument } from "vscode-languageserver-textdocument";
 import type {
   Diagnostic,
+  DiagnosticNote,
   OptimizationImpact,
   Severity,
   SourceSpan,
@@ -83,6 +84,46 @@ export function formatImpact(
   return parts.length ? `saves: ${parts.join(", ")}` : undefined;
 }
 
+/**
+ * relatedInformation for several choices on one diagnostic, each shown as its
+ * own numbered block -- a client cannot nest one choice's notes under its
+ * heading, so the numbering is what keeps a flat list readable as separate
+ * options rather than one run-on list.
+ *
+ * A caveat worded identically in every choice (typically one that does not
+ * depend on which one was picked, such as whether a register's old value is
+ * provably unused) is said once up front instead of once per choice, the same
+ * way the CLI already collapses a cost figure shared across every choice.
+ * Only an unlocated note is eligible: one that points elsewhere in the file
+ * is kept with the choice it belongs to.
+ */
+function notesForChoices(
+  primary: Diagnostic,
+  alternatives: readonly Diagnostic[],
+): DiagnosticNote[] {
+  const choices = [primary, ...alternatives];
+  const shared = (primary.notes ?? []).filter(
+    (note) =>
+      !note.loc &&
+      choices.every((choice) =>
+        (choice.notes ?? []).some(
+          (other) => !other.loc && other.message === note.message,
+        ),
+      ),
+  );
+  return [
+    ...shared,
+    ...choices.flatMap((choice, index) => [
+      {
+        message: `Option ${index + 1} of ${choices.length} -- ${choice.suggestion?.description} [${choice.ruleId}]: ${formatImpact(choice.suggestion?.impact) ?? "unmeasured"}`,
+      },
+      ...(choice.notes ?? []).filter(
+        (note) => note.loc || !shared.some((s) => s.message === note.message),
+      ),
+    ]),
+  ];
+}
+
 export function toLspDiagnostic(
   diagnostic: Diagnostic,
   document: TextDocument,
@@ -101,14 +142,12 @@ export function toLspDiagnostic(
 
   // Notes carry the reasoning a rule wants the reader to check before acting on
   // it, and several are located elsewhere in the file. relatedInformation is
-  // the only place a client will show that as something clickable.
+  // the only place a client will show that as something clickable, and it is
+  // a flat list -- a client cannot nest one choice's notes under its heading
+  // -- so with several choices this is built to still read as separate blocks
+  // rather than one run-on list.
   const notes = diagnostic.alternatives?.length
-    ? [diagnostic, ...diagnostic.alternatives].flatMap((choice) => [
-        {
-          message: `${choice.suggestion?.description} [${choice.ruleId}]: ${formatImpact(choice.suggestion?.impact) ?? "unmeasured"}`,
-        },
-        ...(choice.notes ?? []),
-      ])
+    ? notesForChoices(diagnostic, diagnostic.alternatives)
     : (diagnostic.notes ?? []);
   if (notes.length) {
     lsp.relatedInformation = notes.map((note) => ({

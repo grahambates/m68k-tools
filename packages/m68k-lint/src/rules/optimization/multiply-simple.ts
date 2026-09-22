@@ -7,6 +7,10 @@ import {
 } from "../../util/ast.js";
 import { changedFlagsApplicability, isPowerOfTwo } from "./helpers.js";
 import { targetsOnly } from "../../core/config.js";
+import {
+  mulsLowWordOnlyDiagnostic,
+  muluLowWordOnlyDiagnostic,
+} from "./multiply-word-recipes.js";
 
 // Verified with 68kcounter: MULS.W/MULU.W by 0 or 1 costs the same fixed 31
 // cycles on 68020 regardless of the immediate, so removing/replacing it is
@@ -23,12 +27,6 @@ function powerOfTwoTimingUseful(
   return ctx.config.processors.every((cpu) =>
     ["mc68000", "mc68010", "mc68030", "mc68040"].includes(cpu),
   );
-}
-
-function strictly68000(
-  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
-): boolean {
-  return ctx.config.processors.every((cpu) => cpu === "mc68000");
 }
 
 export const multiplyWordByZero: Rule = {
@@ -189,14 +187,12 @@ export const multiplySignedWordPowerOfTwo: Rule = {
       return;
     const shift = Math.log2(value.value);
     if (!Number.isInteger(shift) || shift < 1 || shift > 8) return;
+
     // On 68000, sign-extending to a long is wasted work when the old upper
-    // word is never read: muls-word-low-word-only offers a plain ASL.W there,
-    // cheaper, and it now does so even when that is merely not disproven.
-    if (
-      strictly68000(ctx) &&
-      ctx.registers.upperWordUseAfter(index, dest.register) !== "used"
-    )
-      return;
+    // word is never read: a plain ASL.W does the same job for less, so it is
+    // offered alongside this one as a cheaper, conditional alternative rather
+    // than replacing it -- this form is always correct, the other is not.
+    const alternative = mulsLowWordOnlyDiagnostic(ctx, line, index);
 
     // N/Z describe the final result in both forms. MULS clears V/C and preserves X,
     // whereas ASL derives X/V/C from the shift, so those are the observable differences.
@@ -230,6 +226,7 @@ export const multiplySignedWordPowerOfTwo: Rule = {
               },
             ]),
       ],
+      ...(alternative ? { alternatives: [alternative] } : {}),
     });
   },
 };
@@ -269,14 +266,12 @@ export const multiplyUnsignedWordPowerOfTwo: Rule = {
       return;
     const shift = Math.log2(value.value);
     if (!Number.isInteger(shift) || shift < 1 || shift > 8) return;
+
     // On 68000, zero-extending to a long is wasted work when the old upper
-    // word is never read: mulu-word-low-word-only offers a plain LSL.W there,
-    // cheaper, and it now does so even when that is merely not disproven.
-    if (
-      strictly68000(ctx) &&
-      ctx.registers.upperWordUseAfter(index, dest.register) !== "used"
-    )
-      return;
+    // word is never read: a plain LSL.W does the same job for less, so it is
+    // offered alongside this one as a cheaper, conditional alternative rather
+    // than replacing it -- this form is always correct, the other is not.
+    const alternative = muluLowWordOnlyDiagnostic(ctx, line, index);
 
     const safety = changedFlagsApplicability(ctx, index, ["X", "V", "C"]);
     const r = dest.register;
@@ -308,6 +303,7 @@ export const multiplyUnsignedWordPowerOfTwo: Rule = {
               },
             ]),
       ],
+      ...(alternative ? { alternatives: [alternative] } : {}),
     });
   },
 };
@@ -347,14 +343,11 @@ export const multiplySignedWordHighPowerOfTwo: Rule = {
       return;
     const shift = Math.log2(value.value);
     if (!Number.isInteger(shift) || shift < 9 || shift > 15) return;
-    // On 68000, muls-word-low-word-only now covers powers of two above the
-    // generated tables too, with a plain ASL.W; leave it there when the upper
-    // word is not proven used.
-    if (
-      strictly68000(ctx) &&
-      ctx.registers.upperWordUseAfter(index, dest.register) !== "used"
-    )
-      return;
+
+    // The low-word-only form covers powers of two above the generated
+    // tables' range too, with a plain ASL.W; offered alongside this one as a
+    // cheaper, conditional alternative.
+    const alternative = mulsLowWordOnlyDiagnostic(ctx, line, index);
 
     const safety = changedFlagsApplicability(ctx, index, ["X", "V", "C"]);
     const r = dest.register;
@@ -387,6 +380,7 @@ export const multiplySignedWordHighPowerOfTwo: Rule = {
               },
             ]),
       ],
+      ...(alternative ? { alternatives: [alternative] } : {}),
     });
   },
 };
@@ -426,14 +420,11 @@ export const multiplyUnsignedWordHighPowerOfTwo: Rule = {
       return;
     const shift = Math.log2(value.value);
     if (!Number.isInteger(shift) || shift < 9 || shift > 15) return;
-    // On 68000, mulu-word-low-word-only now covers powers of two above the
-    // generated tables too, with a plain LSL.W; leave it there when the upper
-    // word is not proven used.
-    if (
-      strictly68000(ctx) &&
-      ctx.registers.upperWordUseAfter(index, dest.register) !== "used"
-    )
-      return;
+
+    // The low-word-only form covers powers of two above the generated
+    // tables' range too, with a plain LSL.W; offered alongside this one as a
+    // cheaper, conditional alternative.
+    const alternative = muluLowWordOnlyDiagnostic(ctx, line, index);
 
     const safety = changedFlagsApplicability(ctx, index, ["X", "V", "C"]);
     const r = dest.register;
@@ -466,6 +457,7 @@ export const multiplyUnsignedWordHighPowerOfTwo: Rule = {
               },
             ]),
       ],
+      ...(alternative ? { alternatives: [alternative] } : {}),
     });
   },
 };

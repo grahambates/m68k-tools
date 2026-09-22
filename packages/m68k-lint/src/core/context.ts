@@ -391,7 +391,32 @@ export class DefaultRuleContext implements RuleContext {
     return nameKey(this.file, name);
   }
 
+  /**
+   * Report a finding, optionally alongside `alternatives` for the same
+   * problem -- other complete, independently applicable replacements a
+   * developer might prefer, typically a cheaper one that depends on something
+   * only they can confirm. Each alternative goes through the same processing
+   * as the primary (span, symbol-loss note, highlight) before it is attached;
+   * one that turns out not to apply (e.g. it spans an inline conditional) is
+   * dropped rather than sinking the whole report.
+   *
+   * Kept separate from `alternatives` accumulated later by cross-rule
+   * consolidation, which this does not interfere with.
+   */
   report(diagnostic: Diagnostic): void {
+    const { alternatives: rawAlternatives, ...primary } = diagnostic;
+    const built = this.buildDiagnostic(primary);
+    if (!built) return;
+    if (rawAlternatives?.length) {
+      const alternatives = rawAlternatives
+        .map((alternative) => this.buildDiagnostic(alternative))
+        .filter((d): d is Diagnostic => d !== undefined);
+      if (alternatives.length) built.alternatives = alternatives;
+    }
+    this.diagnostics.push(built);
+  }
+
+  private buildDiagnostic(diagnostic: Diagnostic): Diagnostic | undefined {
     const span = computeSourceSpan(diagnostic, this.file);
     // A run of lines with a conditional statement among them is not a sequence,
     // whatever a rule made of it.
@@ -402,7 +427,7 @@ export class DefaultRuleContext implements RuleContext {
         .slice(span.startLine - 1, span.endLine)
         .some((line) => line.inlineCondition !== undefined)
     )
-      return;
+      return undefined;
     const suggestion = this.placeSuggestion(diagnostic, span);
     const replacement =
       suggestion?.replacement ?? diagnostic.suggestion?.replacement;
@@ -484,14 +509,14 @@ export class DefaultRuleContext implements RuleContext {
         }
       }
     }
-    this.diagnostics.push({
+    return {
       ...diagnostic,
       ...(highlight ? { highlight } : {}),
       notes,
       span,
       data,
       ...(suggestion ? { suggestion } : {}),
-    });
+    };
   }
 
   /**

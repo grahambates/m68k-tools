@@ -170,12 +170,27 @@ describe("the rules use the generated recipes", () => {
     expect(replacement).not.toContain(".l");
   });
 
+  // A power of two is muls/mulu-word-power-of-two's to report; the word-only
+  // rules only compute this one for them to attach as a cheaper alternative.
+  const alternative = (source: string, id: string, altId: string) =>
+    lint(source, { processors: ["mc68000"] })
+      .find((d) => d.ruleId === id)
+      ?.alternatives?.find((a) => a.ruleId === altId)?.suggestion?.replacement;
+
   test("a power of two becomes a single word shift when the upper word is dead", () => {
     expect(
-      suggestion("muls.w #64,d0\nmove.w d0,d2\nmoveq #0,d0\nrts", ID_LOW_S),
+      alternative(
+        "muls.w #64,d0\nmove.w d0,d2\nmoveq #0,d0\nrts",
+        "optimization/muls-word-power-of-two",
+        ID_LOW_S,
+      ),
     ).toBe("\tasl.w #6,d0");
     expect(
-      suggestion("mulu.w #64,d0\nmove.w d0,d2\nmoveq #0,d0\nrts", ID_LOW_U),
+      alternative(
+        "mulu.w #64,d0\nmove.w d0,d2\nmoveq #0,d0\nrts",
+        "optimization/mulu-word-power-of-two",
+        ID_LOW_U,
+      ),
     ).toBe("\tlsl.w #6,d0");
   });
 
@@ -200,7 +215,9 @@ describe("the rules use the generated recipes", () => {
   test("no scratch is needed, or claimed, for a recipe that uses none", () => {
     const diagnostic = lint("muls.w #64,d0\nmove.w d0,d2\nmoveq #0,d0\nrts", {
       processors: ["mc68000"],
-    }).find((d) => d.ruleId === ID_LOW_S);
+    })
+      .find((d) => d.ruleId === "optimization/muls-word-power-of-two")
+      ?.alternatives?.find((a) => a.ruleId === ID_LOW_S);
     expect(diagnostic?.suggestion?.replacement).not.toMatch(/d[1-7]/);
     expect(diagnostic?.notes?.some((n) => /scratch/i.test(n.message))).toBe(
       false,

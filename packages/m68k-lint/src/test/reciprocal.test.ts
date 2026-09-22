@@ -187,11 +187,29 @@ describe("a divisor that is written as an expression", () => {
 
   test("keeps the scale in the expression for each alternative it lists", () => {
     const d = find(`MY_DIV equ 10\n\tdivu #MY_DIV,d0${after}`, ID_U);
-    const smaller = (d?.notes ?? [])
-      .filter((n) => /a smaller scale needs less/.test(n.message))
-      .map((n) => n.message);
-    expect(smaller.some((m) => m.includes("#$40000/MY_DIV+1"))).toBe(true);
-    expect(smaller.some((m) => m.includes("#$10000/MY_DIV+1"))).toBe(true);
+    const smaller = (d?.alternatives ?? []).map(
+      (alt) => alt.suggestion?.replacement,
+    );
+    expect(smaller.some((m) => m?.includes("#$40000/MY_DIV+1"))).toBe(true);
+    expect(smaller.some((m) => m?.includes("#$10000/MY_DIV+1"))).toBe(true);
+  });
+
+  test("an alternative is obfuscated too, since it is the same rule's finding", () => {
+    const d = find(`\tdivu #7,d0${after}`, ID_U);
+    expect(d?.suggestion?.obfuscated).toBe(true);
+    expect(d?.alternatives?.length).toBeGreaterThan(0);
+    for (const alt of d?.alternatives ?? [])
+      expect(alt.suggestion?.obfuscated).toBe(true);
+  });
+
+  test("an alternative carries the same configured severity as the primary", () => {
+    const d = lint(`\tdivu #7,d0${after}`, {
+      processors: ["mc68000"],
+      rules: { [ID_U]: "warning" },
+    }).find((x) => x.ruleId === ID_U);
+    expect(d?.severity).toBe("warning");
+    for (const alt of d?.alternatives ?? [])
+      expect(alt.severity).toBe("warning");
   });
 
   test("says what was checked, and that it was for the current value only", () => {
@@ -312,13 +330,12 @@ describe("a divisor written as a number", () => {
 
   test("lists a smaller scale only when it costs less", () => {
     const d = find(`\tdivu #7,d0${after}`, ID_U);
-    const notes = (d?.notes ?? []).filter((n) =>
-      /a smaller scale needs less/.test(n.message),
-    );
-    for (const note of notes) {
-      const listed = Number(/\((\d+) cycles\)/.exec(note.message)?.[1]);
-      // The primary is scale $20000; every listed alternative is cheaper.
-      expect(listed).toBeLessThan(
+    // The primary is scale $20000; every listed alternative is cheaper, and
+    // each is offered as a real, independently applicable choice.
+    for (const alt of d?.alternatives ?? []) {
+      expect(alt.suggestion?.applicability).toBe("conditional");
+      expect(alt.suggestion?.replacement).toBeDefined();
+      expect(alt.suggestion!.impact!.execution!.cpuCycles!.after!).toBeLessThan(
         unsignedCycles({ multiplier: 18725, shift: 1, min: 0, max: 0 }),
       );
     }

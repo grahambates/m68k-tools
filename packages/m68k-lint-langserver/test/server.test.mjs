@@ -117,6 +117,95 @@ describe("code actions", () => {
     assert.ok(fixes.some((a) => editsOf(a, uri)[0].newText.includes("add.b")));
   });
 
+  it("offers one disable action per rule, not one per alternative from the same rule", async () => {
+    const client = withClient();
+    await client.initialize(fixture("basic"));
+    const { uri } = await client.open(fixture("basic/divide-alternatives.s"));
+    const actions = await client.codeActions(uri, 0);
+
+    const fixes = actions.filter((a) => a.title.includes("reciprocal of 7"));
+    // One diagnostic offering a cheaper, narrower-range alternative alongside
+    // its primary suggestion, both from optimization/divu-word-by-constant.
+    assert.ok(fixes.length >= 2, `expected several fixes, got ${fixes.length}`);
+
+    const disableLine = actions.filter(
+      (a) =>
+        a.title === "Disable optimization/divu-word-by-constant for this line",
+    );
+    const disableFile = actions.filter(
+      (a) =>
+        a.title === "Disable optimization/divu-word-by-constant for this file",
+    );
+    assert.equal(disableLine.length, 1);
+    assert.equal(disableFile.length, 1);
+  });
+
+  it("numbers each choice's notes and says a shared caveat once", async () => {
+    const client = withClient();
+    await client.initialize(fixture("basic"));
+    const { diagnostics } = await client.open(
+      fixture("basic/divide-alternatives.s"),
+    );
+    const d = diagnostics.find(
+      (x) => x.code === "optimization/divu-word-by-constant",
+    );
+    const notes = (d?.relatedInformation ?? []).map((entry) => entry.message);
+
+    const headers = notes.filter((m) => /^Option \d+ of \d+ --/.test(m));
+    assert.ok(
+      headers.length >= 2,
+      `expected several options, got ${headers.length}`,
+    );
+    assert.match(headers[0], new RegExp(`^Option 1 of ${headers.length} --`));
+
+    // The primary and its cheaper alternative both say the remainder is
+    // provably unused; that caveat does not depend on which was picked, so
+    // it appears once rather than once per choice.
+    const unusedRemainder = notes.filter((m) =>
+      /remainder.*provably unused/.test(m),
+    );
+    assert.equal(unusedRemainder.length, 1, JSON.stringify(notes, null, 2));
+  });
+
+  it("offers a disable action per rule when the alternative is from a different rule", async () => {
+    const client = withClient();
+    await client.initialize(fixture("basic"));
+    const { uri, diagnostics } = await client.open(
+      fixture("basic/multiply-alternatives.s"),
+    );
+    // One diagnostic: mulu-word-power-of-two, always correct, with
+    // mulu-word-low-word-only's cheaper form as its alternative.
+    const d = diagnostics.find(
+      (x) => x.code === "optimization/mulu-word-power-of-two",
+    );
+    assert.ok(
+      d,
+      `expected mulu-word-power-of-two, got ${JSON.stringify(diagnostics.map((x) => x.code))}`,
+    );
+
+    const actions = await client.codeActions(uri, 1);
+    const disableTitles = actions
+      .map((a) => a.title)
+      .filter((t) => t.startsWith("Disable optimization/mulu-word"));
+    assert.deepEqual(
+      new Set(disableTitles),
+      new Set([
+        "Disable optimization/mulu-word-power-of-two for this line",
+        "Disable optimization/mulu-word-power-of-two for this file",
+        "Disable optimization/mulu-word-low-word-only for this line",
+        "Disable optimization/mulu-word-low-word-only for this file",
+      ]),
+    );
+    // Each still offered exactly once, not once per fix.
+    assert.equal(
+      disableTitles.filter(
+        (t) =>
+          t === "Disable optimization/mulu-word-power-of-two for this line",
+      ).length,
+      1,
+    );
+  });
+
   it("offers a quick fix that replaces just the matched line", async () => {
     const client = withClient();
     await client.initialize(fixture("basic"));

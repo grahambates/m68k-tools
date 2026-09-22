@@ -126,11 +126,61 @@ export const divuWordByConstant: Rule = {
         ...shiftInstructions("lsr", dest.register, r.shift),
       ].join("\n");
     // A smaller scale saves the shift, but its multiplier can have more set bits
-    // and cost more than that, so it is only listed if it is cheaper.
+    // and cost more than that, so it is only offered if it is cheaper. Each one
+    // left after that is a genuine tradeoff -- undominated already discarded any
+    // scale that is not both cheaper and narrower than some other candidate --
+    // so every survivor is a real choice for the reader, not noise.
     const cheaper = candidates.filter(
       (r) =>
         r.shift < primary.shift && unsignedCycles(r) < unsignedCycles(primary),
     );
+
+    /** The caveats specific to one candidate: what it is exact for, and its cost. */
+    const candidateNotes = (r: Reciprocal) => [
+      {
+        message: `Scale ${scaleText(r)}, multiplier ceil(${scaleText(r)}/${d}) = ${r.multiplier}: exact for every dividend from 0 to ${r.max}, found by dividing them all. This is only correct if the dividend in ${dest.register.toUpperCase()} stays within that, so its upper word is zero and the quotient cannot overflow. That cannot be proven here; check it.`,
+      },
+      {
+        message:
+          upperUse === "unused"
+            ? "The upper word (DIVU.W's remainder) is provably unused, and N, Z, V and C are dead, so neither the remainder nor the different flag results matter."
+            : `Check that the remainder DIVU.W leaves in the upper word of ${dest.register.toUpperCase()} is not used: this only produces the quotient, and the analysis cannot tell whether the register is read again. N, Z, V and C are dead.`,
+      },
+      ...(xState === "unknown" && writesX(r)
+        ? [
+            {
+              message:
+                "A recipe with a shift also changes X, which DIVU.W leaves alone, and nothing here proves X is unused afterwards.",
+            },
+          ]
+        : []),
+    ];
+    const confidence =
+      upperUse === "unused" ? ("medium" as const) : ("low" as const);
+    // Cheapest and widest first: the one most readers will actually want.
+    const alternatives = cheaper
+      .slice()
+      .reverse()
+      .map((r) => ({
+        ruleId: this.meta.id,
+        category: this.meta.category,
+        severity: this.meta.defaultSeverity,
+        confidence,
+        message: `DIVU.W ${named ? `by ${written}` : `#${d}`},${dest.register.toUpperCase()} can use a smaller-scale reciprocal multiply if the dividend is no more than ${r.max}`,
+        loc: line.mnemonic!.loc,
+        suggestion: {
+          description: `Multiply by the reciprocal of ${named ? written : d}, smaller scale (exact for dividends up to ${r.max})`,
+          replacement: code(r),
+          applicability: "conditional" as const,
+        },
+        notes: candidateNotes(r),
+        data: {
+          divisor: d,
+          dividendAtMost: r.max,
+          upperWordUse: upperUse,
+          named,
+        },
+      }));
 
     // Cheaper recipes for a smaller dividend that are made for this value: a
     // multiplier with fewer set bits, or shifts and adds. They cannot follow a
@@ -151,7 +201,7 @@ export const divuWordByConstant: Rule = {
       ruleId: this.meta.id,
       category: this.meta.category,
       severity: this.meta.defaultSeverity,
-      confidence: upperUse === "unused" ? "medium" : "low",
+      confidence,
       message: `DIVU.W ${named ? `by ${written}` : `#${d}`},${dest.register.toUpperCase()} can be a reciprocal multiply if the dividend is no more than ${primary.max}`,
       loc: line.mnemonic!.loc,
       suggestion: {
@@ -160,9 +210,7 @@ export const divuWordByConstant: Rule = {
         applicability: "conditional",
       },
       notes: [
-        {
-          message: `Scale ${scaleText(primary)}, multiplier ceil(${scaleText(primary)}/${d}) = ${primary.multiplier}: exact for every dividend from 0 to ${primary.max}, found by dividing them all. This is only correct if the dividend in ${dest.register.toUpperCase()} stays within that, so its upper word is zero and the quotient cannot overflow. That cannot be proven here; check it.`,
-        },
+        ...candidateNotes(primary),
         ...(named
           ? [
               {
@@ -170,32 +218,12 @@ export const divuWordByConstant: Rule = {
               },
             ]
           : []),
-        {
-          message:
-            upperUse === "unused"
-              ? "The upper word (DIVU.W's remainder) is provably unused, and N, Z, V and C are dead, so neither the remainder nor the different flag results matter."
-              : `Check that the remainder DIVU.W leaves in the upper word of ${dest.register.toUpperCase()} is not used: this only produces the quotient, and the analysis cannot tell whether the register is read again. N, Z, V and C are dead.`,
-        },
-        ...cheaper
-          .slice()
-          .reverse()
-          .map((r) => ({
-            message: `If the dividend is no more than ${r.max}, a smaller scale needs less: ${oneLine(code(r))} (${unsignedCycles(r)} cycles).`,
-          })),
         ...specific
           .slice()
           .reverse()
           .map((r) => ({
             message: `Made for ${d} and not written from an expression, if the dividend is below ${2 ** r.bits}: ${oneLine(r.code.replaceAll("%d", dest.register).replaceAll("%s", scratch ?? ""))} (${r.cycles} cycles${r.scratch ? `, clobbers ${scratch?.toUpperCase()}` : ""}).`,
           })),
-        ...(xState === "unknown" && writesX(primary)
-          ? [
-              {
-                message:
-                  "A recipe with a shift also changes X, which DIVU.W leaves alone, and nothing here proves X is unused afterwards.",
-              },
-            ]
-          : []),
       ],
       data: {
         divisor: d,
@@ -203,6 +231,7 @@ export const divuWordByConstant: Rule = {
         upperWordUse: upperUse,
         named,
       },
+      alternatives,
     });
   },
 };

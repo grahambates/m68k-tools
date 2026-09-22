@@ -176,18 +176,21 @@ export function lintParsedFile(
     rule.checkFile?.(ctx);
 
     // Rule authors use defaultSeverity in diagnostics. Apply user override in
-    // one central place so rules stay configuration-agnostic.
+    // one central place so rules stay configuration-agnostic. A rule's own
+    // alternatives get the same treatment: they are that rule's findings too.
+    const withSeverity = (d: Diagnostic): Diagnostic => ({
+      ...d,
+      severity,
+      ...(d.suggestion && rule.meta.obfuscated
+        ? { suggestion: { ...d.suggestion, obfuscated: true } }
+        : {}),
+      ...(d.alternatives?.length
+        ? { alternatives: d.alternatives.map(withSeverity) }
+        : {}),
+    });
     const diagnostics = ctx.getDiagnostics() as Diagnostic[];
-    for (let i = before; i < diagnostics.length; i++) {
-      const diagnostic = diagnostics[i];
-      diagnostics[i] = {
-        ...diagnostic,
-        severity,
-        ...(diagnostic.suggestion && rule.meta.obfuscated
-          ? { suggestion: { ...diagnostic.suggestion, obfuscated: true } }
-          : {}),
-      };
-    }
+    for (let i = before; i < diagnostics.length; i++)
+      diagnostics[i] = withSeverity(diagnostics[i]);
   }
 
   const ruleById = new Map(rules.map((rule) => [rule.meta.id, rule] as const));
@@ -197,7 +200,7 @@ export function lintParsedFile(
   const unsuppressed = suppression
     ? rawDiagnostics.filter((diagnostic) => !suppression(diagnostic))
     : rawDiagnostics;
-  const measured = unsuppressed.map((diagnostic) => {
+  const measureOne = (diagnostic: Diagnostic): Diagnostic => {
     if (
       config.measureImpact === false ||
       !config.processors.includes("mc68000")
@@ -215,6 +218,18 @@ export function lintParsedFile(
         return result.known ? result.value : undefined;
       },
     );
+  };
+  // A rule's own alternatives (as opposed to ones consolidateOptimizations
+  // assembles below, which are already flat top-level diagnostics by the time
+  // they are measured) arrive nested under the primary and need the same
+  // measurement individually.
+  const measured = unsuppressed.map((diagnostic) => {
+    const primary = measureOne(diagnostic);
+    if (!diagnostic.alternatives?.length) return primary;
+    return {
+      ...primary,
+      alternatives: diagnostic.alternatives.map(measureOne),
+    };
   });
   const reported = measured.filter((diagnostic) =>
     matchesOptimizationGoal(

@@ -932,12 +932,10 @@ Notes:
 
 - Scale $80000, multiplier ceil($80000/10) = 52429: exact for every dividend from 0 to 65535, found by dividing them all. This is only correct if the dividend in D0 stays within that, so its upper word is zero and the quotient cannot overflow. That cannot be proven here; check it.
 - The upper word (DIVU.W's remainder) is provably unused, and N, Z, V and C are dead, so neither the remainder nor the different flag results matter.
-- If the dividend is no more than 43698, a smaller scale needs less: mulu.w #$40000/10+1,d0 ; swap d0 ; lsr.w #2,d0 (74 cycles).
-- If the dividend is no more than 16388, a smaller scale needs less: mulu.w #$10000/10+1,d0 ; swap d0 (60 cycles).
+- A recipe with a shift also changes X, which DIVU.W leaves alone, and nothing here proves X is unused afterwards.
 - Made for 10 and not written from an expression, if the dividend is below 4096: mulu.w #6554,d0 ; swap d0 (60 cycles).
 - Made for 10 and not written from an expression, if the dividend is below 256: mulu.w #6560,d0 ; swap d0 (56 cycles).
 - Made for 10 and not written from an expression, if the dividend is below 64: mulu.w #6656,d0 ; swap d0 (52 cycles).
-- A recipe with a shift also changes X, which DIVU.W leaves alone, and nothing here proves X is unused afterwards.
 
 ## `optimization/divu-word-power-of-two`
 

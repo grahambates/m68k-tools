@@ -168,10 +168,11 @@ export function codeActionsFor(
   const accept: Applicability[] = ["safe", "conditional", "manual"];
 
   for (const diagnostic of selected) {
-    for (const choice of [
+    const choices = [
       { ...diagnostic, alternatives: undefined },
       ...(diagnostic.alternatives ?? []),
-    ]) {
+    ];
+    for (const choice of choices) {
       if (choice.suggestion?.replacement !== undefined && choice.span) {
         const fix = singleFixEdit(source, choice, accept, options.annotate);
         if (fix) {
@@ -186,7 +187,16 @@ export function codeActionsFor(
           });
         }
       }
+    }
 
+    // One disable action per distinct rule among this diagnostic's choices,
+    // not one per choice: alternatives usually share the primary's rule, and
+    // offering the identical "disable" edit once per alternative just repeats
+    // the same two menu entries for no reason.
+    const rules = new Set<string>();
+    for (const choice of choices) {
+      if (rules.has(choice.ruleId)) continue;
+      rules.add(choice.ruleId);
       actions.push(disableOnLine(document, choice));
       actions.push(disableInFile(document, choice));
     }

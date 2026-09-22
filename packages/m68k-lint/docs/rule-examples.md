@@ -1631,7 +1631,7 @@ Saves -2 bytes, 18(-1,0) cycles, (tradeoff)
 
 Notes:
 
-- The differing X/V/C values are dead after this instruction.
+- The replacement can leave different X/V/C values from MULS; review later flag use.
 
 ## `optimization/muls-word-low-word-only`
 
@@ -1680,7 +1680,7 @@ Saves 0 bytes, 28(0,0) cycles, (overall improvement)
 
 Notes:
 
-- The differing X/V/C values are dead after this instruction.
+- ASL can leave different X/V/C values from MULS; review any later flag use.
 
 ## `optimization/muls-word-selected-constants`
 
@@ -1829,7 +1829,7 @@ Saves -2 bytes, 16(-1,0) cycles, (tradeoff)
 
 Notes:
 
-- The differing X/V/C values are dead after this instruction.
+- The replacement can leave different X/V/C values from MULU; review later flag use.
 
 ## `optimization/mulu-word-low-word-only`
 
@@ -1880,7 +1880,7 @@ Saves -4 bytes, 18(-2,0) cycles, (tradeoff)
 
 Notes:
 
-- The differing X/V/C values are dead after this instruction.
+- LSL can leave different X/V/C values from MULU; review later flag use.
 
 ## `optimization/narrow-address-immediate-word`
 

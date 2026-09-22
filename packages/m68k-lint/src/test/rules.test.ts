@@ -1783,7 +1783,12 @@ describe("v0.12 simple multiply rules", () => {
   });
 
   test("uses EXT+ASL for signed word powers of two and respects flag liveness", () => {
-    const safeSource = ["muls.w #8,d0", "add.l d1,d2", "rts"].join("\n");
+    const safeSource = [
+      "muls.w #8,d0",
+      "move.l d0,d1",
+      "add.l d1,d2",
+      "rts",
+    ].join("\n");
     const safe = lint(safeSource).find(
       (d) => d.ruleId === "optimization/muls-word-power-of-two",
     );
@@ -1794,6 +1799,7 @@ describe("v0.12 simple multiply rules", () => {
       "muls.w #8,d0",
       "bvs .overflow",
       ".overflow:",
+      "move.l d0,d1",
       "rts",
     ].join("\n");
     const live = lint(liveSource).find(
@@ -1814,7 +1820,12 @@ describe("v0.12 simple multiply rules", () => {
 
 describe("v0.13 multiply and disposable-register sequence rules", () => {
   test("offers unsigned word power-of-two multiply replacement and checks CCR liveness", () => {
-    const safeSource = ["mulu.w #8,d0", "add.l d1,d2", "rts"].join("\n");
+    const safeSource = [
+      "mulu.w #8,d0",
+      "move.l d0,d1",
+      "add.l d1,d2",
+      "rts",
+    ].join("\n");
     const safe = lint(safeSource).find(
       (d) => d.ruleId === "optimization/mulu-word-power-of-two",
     );
@@ -1823,9 +1834,13 @@ describe("v0.13 multiply and disposable-register sequence rules", () => {
     );
     expect(safe?.suggestion?.applicability).toBe("safe");
 
-    const liveSource = ["mulu.w #8,d0", "bcs .carry", ".carry:", "rts"].join(
-      "\n",
-    );
+    const liveSource = [
+      "mulu.w #8,d0",
+      "bcs .carry",
+      ".carry:",
+      "move.l d0,d1",
+      "rts",
+    ].join("\n");
     const live = lint(liveSource).find(
       (d) => d.ruleId === "optimization/mulu-word-power-of-two",
     );
@@ -1834,7 +1849,7 @@ describe("v0.13 multiply and disposable-register sequence rules", () => {
 
   test("uses the high-power signed word construction for m=9..15", () => {
     const diagnostic = lint(
-      ["muls.w #1024,d3", "move.l d0,d1", "rts"].join("\n"),
+      ["muls.w #1024,d3", "move.l d3,d1", "rts"].join("\n"),
     ).find((d) => d.ruleId === "optimization/muls-word-high-power-of-two");
     expect(diagnostic?.suggestion?.replacement).toBe(
       "\tswap d3\n\tclr.w d3\n\tasr.l #6,d3",
@@ -1898,7 +1913,7 @@ describe("v0.13 multiply and disposable-register sequence rules", () => {
 
 test("v0.13 uses the high-power unsigned word construction", () => {
   const diagnostic = lint(
-    ["mulu.w #2048,d6", "move.l d0,d1", "rts"].join("\n"),
+    ["mulu.w #2048,d6", "move.l d6,d1", "rts"].join("\n"),
   ).find((d) => d.ruleId === "optimization/mulu-word-high-power-of-two");
   expect(diagnostic?.suggestion?.replacement).toBe(
     "\tswap d6\n\tclr.w d6\n\tlsr.l #5,d6",

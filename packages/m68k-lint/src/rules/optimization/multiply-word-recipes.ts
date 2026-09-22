@@ -5,7 +5,11 @@ import {
   wordFormSize,
   isInstruction,
 } from "../../util/ast.js";
-import { changedFlagsApplicability } from "./helpers.js";
+import {
+  changedFlagsApplicability,
+  isPowerOfTwo,
+  weakerConfidence,
+} from "./helpers.js";
 import { DATA_REGISTERS } from "../../semantics/registers.js";
 import {
   mulsWordFullResultRecipes,
@@ -13,6 +17,28 @@ import {
   muluWordLowWordRecipes,
   type MultiplyRecipe,
 } from "./generated/multiply-recipes.js";
+import { shiftInstructions, wordShiftCycles } from "./reciprocal.js";
+
+/**
+ * A power of two's word-only recipe, synthesized rather than looked up: it is
+ * just an immediate LSL.W (or two, split at 8 places the same as any other
+ * word shift), so it needs no search and has no upper bound at the generated
+ * tables' 256 -- only DIVU.W/MULU.W's own 15-bit shift range. Fills a gap in
+ * the generated low-word tables above that bound; below it, the generated
+ * entry (identical in effect) is used instead.
+ */
+function powerOfTwoLowWordRecipe(
+  magnitude: number,
+): MultiplyRecipe | undefined {
+  if (!isPowerOfTwo(magnitude)) return undefined;
+  const shift = Math.log2(magnitude);
+  if (shift < 1 || shift > 15) return undefined;
+  return {
+    cycles: wordShiftCycles(shift),
+    scratch: false,
+    code: shiftInstructions("lsl", "%d", shift).join("\n"),
+  };
+}
 
 /**
  * A MULS.W immediate is a signed word, so a pattern above 32767 is negative:
@@ -97,12 +123,14 @@ export const flamewingMulsWordFullResultConstants: Rule = {
     const factor = signedWord(value.value);
     const recipe = mulsWordFullResultRecipes[factor];
     if (!recipe) return;
-    // When the upper word is unobserved the word-only recipe is much cheaper,
-    // so leave the constant to muls-word-low-word-only where that can apply.
-    const lowWord = mulsWordLowWordRecipes[factor];
+    // When the upper word is not proven used the word-only recipe is much
+    // cheaper, so leave the constant to muls-word-low-word-only, which now
+    // offers it there too (at lower confidence when merely unknown).
+    const lowWord =
+      mulsWordLowWordRecipes[factor] ?? powerOfTwoLowWordRecipe(factor);
     if (
       lowWord &&
-      ctx.registers.upperWordUseAfter(index, dest.register) === "unused" &&
+      ctx.registers.upperWordUseAfter(index, dest.register) !== "used" &&
       (!lowWord.scratch || deadScratch(ctx, index, dest.register, 0xffff))
     )
       return;
@@ -189,11 +217,15 @@ export const flamewingMulsWordLowWordOnly: Rule = {
     const value = ctx.evaluate(expr);
     if (!value.known) return;
     const factor = signedWord(value.value);
-    const recipe = mulsWordLowWordRecipes[factor];
+    const recipe =
+      mulsWordLowWordRecipes[factor] ?? powerOfTwoLowWordRecipe(factor);
     if (!recipe) return;
 
+    // Proven unused is the clean case; merely unknown (nothing later reads Dn's
+    // old upper word, but it might still be this routine's return value, say)
+    // is still offered, at lower confidence and as a review.
     const upperWordUse = ctx.registers.upperWordUseAfter(index, dest.register);
-    if (upperWordUse !== "unused") return;
+    if (upperWordUse === "used") return;
     const scratch = recipe.scratch
       ? deadScratch(ctx, index, dest.register, 0xffff)
       : undefined;
@@ -205,21 +237,33 @@ export const flamewingMulsWordLowWordOnly: Rule = {
       "V",
       "C",
     ]);
+    const confidence = weakerConfidence(
+      safety.confidence,
+      upperWordUse === "unused" ? "high" : "medium",
+    );
+    const applicability =
+      upperWordUse === "unused" ? safety.applicability : "conditional";
     ctx.report({
       ruleId: this.meta.id,
       category: this.meta.category,
       severity: this.meta.defaultSeverity,
-      confidence: safety.confidence,
-      message: `Only the low word of ${dest.register.toUpperCase()} is observed after MULS.W #${factor}; a shorter word-only sequence suffices`,
+      confidence,
+      message:
+        upperWordUse === "unused"
+          ? `Only the low word of ${dest.register.toUpperCase()} is observed after MULS.W #${factor}; a shorter word-only sequence suffices`
+          : `MULS.W #${factor},${dest.register.toUpperCase()} can use a shorter word-only sequence if its old upper word is not used afterward`,
       loc: line.mnemonic!.loc,
       suggestion: {
         description: `Replace MULS.W #${factor} with a word-only sequence`,
         replacement: render(recipe, dest.register, scratch, true),
-        applicability: safety.applicability,
+        applicability,
       },
       notes: [
         {
-          message: `The analyser proves the old upper word of ${dest.register.toUpperCase()} is discarded before it is read.`,
+          message:
+            upperWordUse === "unused"
+              ? `The analyser proves the old upper word of ${dest.register.toUpperCase()} is discarded before it is read.`
+              : `The analyser cannot prove the old upper word of ${dest.register.toUpperCase()} is unused afterward -- for instance, it may be read past a branch this file does not resolve, or as this routine's return value; confirm it before applying this.`,
         },
         ...(scratch
           ? [
@@ -228,7 +272,7 @@ export const flamewingMulsWordLowWordOnly: Rule = {
               },
             ]
           : []),
-        ...(safety.applicability === "safe"
+        ...(safety.applicability === "safe" && upperWordUse === "unused"
           ? []
           : [
               {
@@ -287,14 +331,19 @@ export const flamewingMuluWordLowWordOnly: Rule = {
     const recipe =
       value.value === 1
         ? { cycles: 0, scratch: false, code: "" }
-        : muluWordLowWordRecipes[value.value];
+        : (muluWordLowWordRecipes[value.value] ??
+          powerOfTwoLowWordRecipe(value.value));
     if (!recipe) return;
 
-    if (
-      ctx.registers.registerBitsUseAfter(index, dest.register, 0xffff0000) !==
-      "unused"
-    )
-      return;
+    // Proven unused is the clean case; merely unknown (nothing later reads Dn's
+    // old upper word, but it might still be this routine's return value, say)
+    // is still offered, at lower confidence and as a review.
+    const upperWordUse = ctx.registers.registerBitsUseAfter(
+      index,
+      dest.register,
+      0xffff0000,
+    );
+    if (upperWordUse === "used") return;
 
     const scratch = recipe.scratch
       ? deadScratch(ctx, index, dest.register, 0xffff)
@@ -311,13 +360,22 @@ export const flamewingMuluWordLowWordOnly: Rule = {
       "V",
       "C",
     ]);
+    const confidence = weakerConfidence(
+      safety.confidence,
+      upperWordUse === "unused" ? "high" : "medium",
+    );
+    const applicability =
+      upperWordUse === "unused" ? safety.applicability : "conditional";
     const replacement = render(recipe, dest.register, scratch, false);
     ctx.report({
       ruleId: this.meta.id,
       category: this.meta.category,
       severity: this.meta.defaultSeverity,
-      confidence: safety.confidence,
-      message: `Only the low word of ${dest.register.toUpperCase()} is observed after MULU.W #${value.value}; a shorter word-only form suffices`,
+      confidence,
+      message:
+        upperWordUse === "unused"
+          ? `Only the low word of ${dest.register.toUpperCase()} is observed after MULU.W #${value.value}; a shorter word-only form suffices`
+          : `MULU.W #${value.value},${dest.register.toUpperCase()} can use a shorter word-only form if its old upper word is not used afterward`,
       loc: line.mnemonic!.loc,
       suggestion: {
         description:
@@ -325,11 +383,14 @@ export const flamewingMuluWordLowWordOnly: Rule = {
             ? "Remove the multiply"
             : `Replace MULU.W #${value.value} with word arithmetic`,
         replacement,
-        applicability: safety.applicability,
+        applicability,
       },
       notes: [
         {
-          message: `The analyser proves bits 16-31 of ${dest.register.toUpperCase()} are discarded before any read.`,
+          message:
+            upperWordUse === "unused"
+              ? `The analyser proves bits 16-31 of ${dest.register.toUpperCase()} are discarded before any read.`
+              : `The analyser cannot prove bits 16-31 of ${dest.register.toUpperCase()} are unused afterward -- for instance, they may be read past a branch this file does not resolve, or as this routine's return value; confirm it before applying this.`,
         },
         ...(scratch
           ? [
@@ -338,7 +399,7 @@ export const flamewingMuluWordLowWordOnly: Rule = {
               },
             ]
           : []),
-        ...(safety.applicability === "safe"
+        ...(safety.applicability === "safe" && upperWordUse === "unused"
           ? []
           : [
               {
@@ -351,6 +412,7 @@ export const flamewingMuluWordLowWordOnly: Rule = {
         factor: value.value,
         scratch,
         differingBits: "16-31",
+        upperWordUse,
         provenance: "generated",
       },
     });

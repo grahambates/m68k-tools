@@ -135,9 +135,9 @@ export function widest(
   return best;
 }
 
-/** LSR.W and ASR.W shift by 1 to 8, so more is two instructions. */
+/** An immediate word shift by 1 to 8 places, so more is two instructions. */
 export function shiftInstructions(
-  mnemonic: "lsr" | "asr",
+  mnemonic: "lsr" | "asr" | "lsl" | "asl",
   register: string,
   count: number,
 ): string[] {
@@ -157,11 +157,15 @@ const ones = (n: number) => n.toString(2).replaceAll("0", "").length;
  * A test checks this against 68kcounter for every multiplier.
  */
 export function unsignedCycles(r: Reciprocal): number {
-  return 42 + 2 * ones(r.multiplier) + 4 + shiftCycles(r.shift);
+  return 42 + 2 * ones(r.multiplier) + 4 + wordShiftCycles(r.shift);
 }
 
-/** The cycles of the shift after the SWAP: one instruction to 8 places, two beyond. */
-const shiftCycles = (shift: number) =>
+/**
+ * 68000 cycles for an immediate word shift/rotate of 0 to 15 places, split into
+ * two instructions past 8. The 6+2n cost is the same for LSR, ASR, LSL and ASL,
+ * so this covers a plain shift as well as the shift after a reciprocal's SWAP.
+ */
+export const wordShiftCycles = (shift: number): number =>
   shift === 0 ? 0 : shift <= 8 ? 6 + 2 * shift : 12 + 2 * shift;
 
 /**
@@ -180,7 +184,7 @@ export function signedCycles(r: Reciprocal, negated = false): number {
     4 +
     (38 + 2 * changes + 4) +
     4 +
-    shiftCycles(r.shift) +
+    wordShiftCycles(r.shift) +
     4 +
     4 +
     4 +

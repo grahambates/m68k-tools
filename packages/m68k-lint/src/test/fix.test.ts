@@ -176,7 +176,7 @@ describe("keeping the original above an opaque rewrite", () => {
 
   // The commented copy is documentation; the live label must stay live.
   test("a label sharing the line stays on the replacement, not in the comment", () => {
-    const output = annotate("start:\tmuls.w\t#10,d0\n\tmove.l\td1,d2\n\trts");
+    const output = annotate("start:\tmuls.w\t#10,d0\n\tmove.l\td0,d2\n\trts");
     expect(output).toContain("start:\text.l\td0");
     expect(parseFile(output).errors).toHaveLength(0);
   });

@@ -1,6 +1,19 @@
 import type { ExpressionNode, ParsedLine } from "m68k-parser";
 import type { RuleContext } from "../../core/context.js";
+import type { Confidence } from "../../core/diagnostic.js";
 import type { Flag } from "../../semantics/flags.js";
+
+const CONFIDENCE_ORDER: readonly Confidence[] = [
+  "low",
+  "medium",
+  "high",
+  "certain",
+];
+
+/** The lower of two confidences, for a report shaped by more than one uncertainty. */
+export function weakerConfidence(a: Confidence, b: Confidence): Confidence {
+  return CONFIDENCE_ORDER.indexOf(a) <= CONFIDENCE_ORDER.indexOf(b) ? a : b;
+}
 
 export function sourceOperand(
   ctx: RuleContext,

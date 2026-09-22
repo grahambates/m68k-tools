@@ -25,6 +25,12 @@ function powerOfTwoTimingUseful(
   );
 }
 
+function strictly68000(
+  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
+): boolean {
+  return ctx.config.processors.every((cpu) => cpu === "mc68000");
+}
+
 export const multiplyWordByZero: Rule = {
   meta: {
     obfuscated: true,
@@ -154,7 +160,7 @@ export const multiplySignedWordPowerOfTwo: Rule = {
     docs: {
       source: "ASP68K",
       note: "Unlike its MULU/high-power-of-two siblings in this file, this one stays a clean win on 68020 too (verified with 68kcounter: 19 fewer cycles, no byte cost).",
-      example: { source: "\tmuls.w #8,d0\n\tadd.l d1,d2" },
+      example: { source: "\tmuls.w #8,d0\n\tmove.l d0,d1" },
     },
   },
   checkLine(ctx, line, index) {
@@ -183,6 +189,14 @@ export const multiplySignedWordPowerOfTwo: Rule = {
       return;
     const shift = Math.log2(value.value);
     if (!Number.isInteger(shift) || shift < 1 || shift > 8) return;
+    // On 68000, sign-extending to a long is wasted work when the old upper
+    // word is never read: muls-word-low-word-only offers a plain ASL.W there,
+    // cheaper, and it now does so even when that is merely not disproven.
+    if (
+      strictly68000(ctx) &&
+      ctx.registers.upperWordUseAfter(index, dest.register) !== "used"
+    )
+      return;
 
     // N/Z describe the final result in both forms. MULS clears V/C and preserves X,
     // whereas ASL derives X/V/C from the shift, so those are the observable differences.
@@ -232,7 +246,7 @@ export const multiplyUnsignedWordPowerOfTwo: Rule = {
     serves: "speed",
     docs: {
       source: "ASP68K",
-      example: { source: "\tmulu.w #8,d0\n\tadd.l d1,d2" },
+      example: { source: "\tmulu.w #8,d0\n\tmove.l d0,d1" },
     },
   },
   checkLine(ctx, line, index) {
@@ -255,6 +269,14 @@ export const multiplyUnsignedWordPowerOfTwo: Rule = {
       return;
     const shift = Math.log2(value.value);
     if (!Number.isInteger(shift) || shift < 1 || shift > 8) return;
+    // On 68000, zero-extending to a long is wasted work when the old upper
+    // word is never read: mulu-word-low-word-only offers a plain LSL.W there,
+    // cheaper, and it now does so even when that is merely not disproven.
+    if (
+      strictly68000(ctx) &&
+      ctx.registers.upperWordUseAfter(index, dest.register) !== "used"
+    )
+      return;
 
     const safety = changedFlagsApplicability(ctx, index, ["X", "V", "C"]);
     const r = dest.register;
@@ -302,7 +324,7 @@ export const multiplySignedWordHighPowerOfTwo: Rule = {
     serves: "speed",
     docs: {
       source: "ASP68K",
-      example: { source: "\tmuls.w #1024,d0\n\tadd.l d1,d2" },
+      example: { source: "\tmuls.w #1024,d0\n\tmove.l d0,d1" },
     },
   },
   checkLine(ctx, line, index) {
@@ -325,6 +347,14 @@ export const multiplySignedWordHighPowerOfTwo: Rule = {
       return;
     const shift = Math.log2(value.value);
     if (!Number.isInteger(shift) || shift < 9 || shift > 15) return;
+    // On 68000, muls-word-low-word-only now covers powers of two above the
+    // generated tables too, with a plain ASL.W; leave it there when the upper
+    // word is not proven used.
+    if (
+      strictly68000(ctx) &&
+      ctx.registers.upperWordUseAfter(index, dest.register) !== "used"
+    )
+      return;
 
     const safety = changedFlagsApplicability(ctx, index, ["X", "V", "C"]);
     const r = dest.register;
@@ -373,7 +403,7 @@ export const multiplyUnsignedWordHighPowerOfTwo: Rule = {
     serves: "speed",
     docs: {
       source: "ASP68K",
-      example: { source: "\tmulu.w #1024,d0\n\tadd.l d1,d2" },
+      example: { source: "\tmulu.w #1024,d0\n\tmove.l d0,d1" },
     },
   },
   checkLine(ctx, line, index) {
@@ -396,6 +426,14 @@ export const multiplyUnsignedWordHighPowerOfTwo: Rule = {
       return;
     const shift = Math.log2(value.value);
     if (!Number.isInteger(shift) || shift < 9 || shift > 15) return;
+    // On 68000, mulu-word-low-word-only now covers powers of two above the
+    // generated tables too, with a plain LSL.W; leave it there when the upper
+    // word is not proven used.
+    if (
+      strictly68000(ctx) &&
+      ctx.registers.upperWordUseAfter(index, dest.register) !== "used"
+    )
+      return;
 
     const safety = changedFlagsApplicability(ctx, index, ["X", "V", "C"]);
     const r = dest.register;

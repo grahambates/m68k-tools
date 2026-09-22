@@ -167,19 +167,19 @@ export const ruleImpactAuditCases: readonly RuleImpactAuditCase[] = [
   },
   {
     ruleId: "optimization/muls-word-power-of-two",
-    source: "muls.w #8,d0\nmoveq #0,d7",
+    source: "muls.w #8,d0\nmove.l d0,d1",
   },
   {
     ruleId: "optimization/mulu-word-power-of-two",
-    source: "mulu.w #8,d0\nmoveq #0,d7",
+    source: "mulu.w #8,d0\nmove.l d0,d1",
   },
   {
     ruleId: "optimization/muls-word-high-power-of-two",
-    source: "muls.w #512,d0\nmoveq #0,d7",
+    source: "muls.w #512,d0\nmove.l d0,d1",
   },
   {
     ruleId: "optimization/mulu-word-high-power-of-two",
-    source: "mulu.w #512,d0\nmoveq #0,d7",
+    source: "mulu.w #512,d0\nmove.l d0,d1",
   },
   {
     ruleId: "optimization/muls-word-selected-constants",
@@ -319,7 +319,7 @@ export const ruleImpactAuditCases: readonly RuleImpactAuditCase[] = [
   },
   {
     ruleId: "optimization/muls-word-full-result-constants",
-    source: "muls.w #13,d0\nmoveq #0,d7",
+    source: "muls.w #13,d0\nmove.l d0,d1",
   },
   {
     ruleId: "optimization/muls-word-low-word-only",
@@ -332,7 +332,7 @@ export const ruleImpactAuditCases: readonly RuleImpactAuditCase[] = [
   {
     ruleId: "optimization/muls-word-full-result-constants",
     caseId: "generated-63",
-    source: "muls.w #63,d0\nmoveq #0,d7",
+    source: "muls.w #63,d0\nmove.l d0,d1",
   },
   {
     ruleId: "optimization/muls-word-low-word-only",
@@ -369,7 +369,7 @@ export const ruleImpactAuditCases: readonly RuleImpactAuditCase[] = [
   {
     ruleId: "optimization/muls-word-full-result-constants",
     caseId: "negative",
-    source: "muls.w #-13,d0\nmoveq #0,d7",
+    source: "muls.w #-13,d0\nmove.l d0,d1",
   },
   {
     ruleId: "optimization/muls-word-low-word-only",

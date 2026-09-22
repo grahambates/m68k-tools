@@ -26,7 +26,10 @@ const lossNote = (lines: string[], ruleId: string) => {
 describe("a derived value loses the name behind it", () => {
   test("a multiplier becomes a shift count", () => {
     expect(
-      lossNote(["muls.w #SCALE,d0"], "optimization/muls-word-power-of-two"),
+      lossNote(
+        ["muls.w #SCALE,d0", "move.l d0,d1"],
+        "optimization/muls-word-power-of-two",
+      ),
     ).toContain("SCALE");
   });
 
@@ -40,7 +43,10 @@ describe("a derived value loses the name behind it", () => {
   // count in terms of the multiplier it came from.
   test("a multiplier that only survives as a shift count", () => {
     expect(
-      lossNote(["muls.w #SCALE,d0"], "optimization/muls-word-power-of-two"),
+      lossNote(
+        ["muls.w #SCALE,d0", "move.l d0,d1"],
+        "optimization/muls-word-power-of-two",
+      ),
     ).toContain("SCALE");
   });
 });

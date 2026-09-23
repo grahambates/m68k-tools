@@ -92,12 +92,31 @@ test("keeps size/speed tradeoffs, unknown measurements, notes and mixed-target a
   }
 });
 
-test("does not combine conditional fixes or partially overlapping sequences", () => {
+test("a safe, cheaper, note-free rewrite drops a strictly worse conditional one outright", () => {
+  // Nothing about b is worth keeping: a is unconditional and costs less in
+  // every column, so b disappears rather than surviving as an alternative
+  // nobody would ever pick.
   const a = candidate("a", 4, 8),
     b = candidate("b", 4, 12);
   b.suggestion!.applicability = "conditional";
-  expect(consolidateOptimizations([a, b], true)).toHaveLength(2);
-  b.suggestion!.applicability = "safe";
+  expect(consolidateOptimizations([a, b], true)).toEqual([a]);
+});
+
+test("a cheaper conditional rewrite ranks below a safe one instead of replacing it", () => {
+  // b is cheaper than a, but conditional rewrites are never trusted enough to
+  // make another diagnostic disappear on cost alone -- only to be offered
+  // beneath it.
+  const a = candidate("a", 4, 12),
+    b = candidate("b", 4, 8);
+  b.suggestion!.applicability = "conditional";
+  const [result] = consolidateOptimizations([a, b], true);
+  expect(result.ruleId).toBe("a");
+  expect(result.alternatives?.map((d) => d.ruleId)).toEqual(["b"]);
+});
+
+test("does not combine partially overlapping sequences", () => {
+  const a = candidate("a", 4, 8),
+    b = candidate("b", 4, 12);
   b.span!.endLine = 2;
   expect(consolidateOptimizations([a, b], true)).toHaveLength(2);
 });
@@ -140,4 +159,19 @@ test("does not hide a replacement when the faster choice increases bus writes", 
   expect(consolidateOptimizations([a, b], true)[0].alternatives).toHaveLength(
     1,
   );
+});
+
+test("a survivor's own pre-existing alternatives are kept, not replaced, when it also groups with another rule", () => {
+  // a already offers its own alternative (say, a rule reporting a few of its
+  // own choices) before it turns out to also share a span with b, an
+  // unrelated rule. Both sets of alternatives should be visible afterward.
+  const a = candidate("a", 4, 8),
+    // A genuine trade-off against a (smaller, but costs more cycles), so
+    // neither dominates the other and both survive.
+    b = candidate("b", 2, 12),
+    ownAlt = candidate("a-alt", 5, 8);
+  a.alternatives = [ownAlt];
+  const [result] = consolidateOptimizations([a, b], true);
+  expect(result.ruleId).toBe("a");
+  expect(result.alternatives?.map((d) => d.ruleId)).toEqual(["a-alt", "b"]);
 });

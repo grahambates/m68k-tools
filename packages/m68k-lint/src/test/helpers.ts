@@ -27,6 +27,24 @@ export function lint(source: string, config?: LintConfig): Diagnostic[] {
   });
 }
 
+/**
+ * A rule's diagnostic wherever consolidation left it: at the top level, or
+ * nested under another rule's as an alternative. Tests that call `lintSource`
+ * directly (rather than this file's `lint`, which turns consolidation off)
+ * want a specific rule's finding regardless of which one led the group.
+ */
+export function findDiagnostic(
+  diagnostics: readonly Diagnostic[],
+  ruleId: string,
+): Diagnostic | undefined {
+  return (
+    diagnostics.find((d) => d.ruleId === ruleId) ??
+    diagnostics
+      .flatMap((d) => d.alternatives ?? [])
+      .find((d) => d.ruleId === ruleId)
+  );
+}
+
 /** Rule IDs reported for a compact fixture, in report order. */
 export function ids(source: string, config?: LintConfig): string[] {
   return lint(source, config).map((d) => d.ruleId);

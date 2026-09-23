@@ -1,4 +1,5 @@
 import { lintSource } from "../core/lint.js";
+import { findDiagnostic } from "./helpers.js";
 
 /**
  * A rule that copies a value through keeps the symbol, so the code still tracks
@@ -15,8 +16,9 @@ const DEFS = "SCALE equ 8\nSMALL equ 3\nBIG equ 100\n";
 const lossNote = (lines: string[], ruleId: string) => {
   const source =
     DEFS + lines.map((l) => `\t${l}`).join("\n") + "\n\tmoveq #0,d7\n\trts";
-  const found = lintSource(source, { processors: ["mc68000"] }).find(
-    (d) => d.ruleId === ruleId,
+  const found = findDiagnostic(
+    lintSource(source, { processors: ["mc68000"] }),
+    ruleId,
   );
   return (found?.notes ?? [])
     .map((n) => n.message)
@@ -66,8 +68,9 @@ describe("a value carried through keeps its name, and says nothing", () => {
 
   test("a compound displacement kept whole", () => {
     const source = "SCREEN_BW equ 320\n\tadda.w #SCREEN_BW/2,a3\n\trts";
-    const found = lintSource(source, { processors: ["mc68000"] }).find(
-      (d) => d.ruleId === "optimization/address-add-to-lea",
+    const found = findDiagnostic(
+      lintSource(source, { processors: ["mc68000"] }),
+      "optimization/address-add-to-lea",
     );
     expect(
       (found?.notes ?? [])
@@ -82,8 +85,9 @@ describe("removal is not loss", () => {
   test("a deletion says nothing about the names it removes", () => {
     const source =
       "COUNT equ 4\n\tmove.w #COUNT,d0\n\tmove.w #200,d0\n\tmove.l d0,(a0)\n\trts";
-    const found = lintSource(source, { processors: ["mc68000"] }).find(
-      (d) => d.ruleId === "suspicious/dead-register-write",
+    const found = findDiagnostic(
+      lintSource(source, { processors: ["mc68000"] }),
+      "suspicious/dead-register-write",
     );
     expect(found?.suggestion?.replacement).toBe("");
     expect(
@@ -102,8 +106,9 @@ describe("removal is not loss", () => {
 describe("a derivation the assembler can express keeps the symbol", () => {
   const replacement = (instruction: string, ruleId: string) => {
     const source = `SPRITE_ON equ 2\nBASE equ 1\n\t${instruction}\n\tmoveq #0,d7\n\trts`;
-    return lintSource(source, { processors: ["mc68000"] }).find(
-      (d) => d.ruleId === ruleId,
+    return findDiagnostic(
+      lintSource(source, { processors: ["mc68000"] }),
+      ruleId,
     )?.suggestion?.replacement;
   };
 
@@ -132,8 +137,9 @@ describe("a derivation the assembler can express keeps the symbol", () => {
   test("a sum is written out when either side is a name", () => {
     const source =
       "SMALL equ 3\n\taddq.l #SMALL,d0\n\taddq.l #2,d0\n\tmoveq #0,d7\n\trts";
-    const found = lintSource(source, { processors: ["mc68000"] }).find(
-      (d) => d.ruleId === "optimization/combine-consecutive-addq",
+    const found = findDiagnostic(
+      lintSource(source, { processors: ["mc68000"] }),
+      "optimization/combine-consecutive-addq",
     );
     expect(found?.suggestion?.replacement).toBe("\taddq.l #SMALL+2,d0");
   });
@@ -141,16 +147,18 @@ describe("a derivation the assembler can express keeps the symbol", () => {
   // `#3+2` keeps nothing and reads worse than `#5`.
   test("two literals are still folded into their total", () => {
     const source = "\taddq.l #3,d0\n\taddq.l #2,d0\n\tmoveq #0,d7\n\trts";
-    const found = lintSource(source, { processors: ["mc68000"] }).find(
-      (d) => d.ruleId === "optimization/combine-consecutive-addq",
+    const found = findDiagnostic(
+      lintSource(source, { processors: ["mc68000"] }),
+      "optimization/combine-consecutive-addq",
     );
     expect(found?.suggestion?.replacement).toBe("\taddq.l #5,d0");
   });
 
   test("an exact halving is written out when the value is named", () => {
     const source = "BYTES equ 200\n\tmove.l #BYTES,d0\n\tmoveq #0,d7\n\trts";
-    const found = lintSource(source, { processors: ["mc68000"] }).find(
-      (d) => d.ruleId === "optimization/move-immediate-double-byte",
+    const found = findDiagnostic(
+      lintSource(source, { processors: ["mc68000"] }),
+      "optimization/move-immediate-double-byte",
     );
     expect(found?.suggestion?.replacement).toBe(
       "\tmoveq #BYTES/2,d0\nadd.b d0,d0".replace("\nadd", "\n\tadd"),

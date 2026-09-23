@@ -70,9 +70,18 @@ describe("what it declines to touch", () => {
   });
 
   test("a conditional suggestion needs asking for", () => {
-    const source = "\tmuls.w\t#10,d0\n\tmove.l\td1,d2\n\trts";
+    const source =
+      "SCALE equ 8\n\tdivu.w\t#SCALE,d0\n\tmove.w\td0,d1\n\tmoveq\t#0,d0\n\trts";
     expect(fix(source).output).toBe(source);
     expect(fix(source, ["safe", "conditional"]).output).not.toBe(source);
+  });
+
+  // A diagnostic offering several genuinely different replacements is never
+  // auto-applied, however permissive `accept` is: picking between them needs a
+  // person, the same as it does for two rules that land on the same span.
+  test("a suggestion with alternatives is left for interactive review", () => {
+    const source = "\tmuls.w\t#10,d0\n\tmove.l\td1,d2\n\trts";
+    expect(fix(source, ["safe", "conditional"]).output).toBe(source);
   });
 
   test("a rewrite that would not parse is rolled back", () => {
@@ -204,8 +213,11 @@ describe("what a fix is worth, not just whether it is equivalent", () => {
       ...(acceptAssessments ? { acceptAssessments } : {}),
     }).output;
 
-  // Safe, and still a decision: two bytes for thirty-two cycles.
-  const tradeoff = "\tmulu.w\t#1,d0\n\tmove.l\td1,d2\n\trts";
+  // Safe, and still a decision: two bytes for thirty-two cycles. Reads all of
+  // d0 afterward so mulu-word-low-word-only's cheaper (but conditional) "just
+  // delete it" alternative does not also apply here and turn this into a
+  // choice between rewrites rather than a plain accept/decline.
+  const tradeoff = "\tmulu.w\t#1,d0\n\tmove.l\td0,d2\n\trts";
 
   test("a safe trade-off is not applied by default", () => {
     expect(apply(tradeoff)).toBe(tradeoff);

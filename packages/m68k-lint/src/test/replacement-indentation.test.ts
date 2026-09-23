@@ -1,5 +1,6 @@
 import { parseFile } from "m68k-parser";
 import { lintSource } from "../core/lint.js";
+import { findDiagnostic } from "./helpers.js";
 
 /**
  * A replacement adopts the indentation of the code it replaces.
@@ -11,9 +12,8 @@ import { lintSource } from "../core/lint.js";
  * automatically later.
  */
 function replacementFor(source: string, ruleId: string): string | undefined {
-  return lintSource(source, { processors: ["mc68000"] }).find(
-    (d) => d.ruleId === ruleId,
-  )?.suggestion?.replacement;
+  return findDiagnostic(lintSource(source, { processors: ["mc68000"] }), ruleId)
+    ?.suggestion?.replacement;
 }
 
 describe("replacements adopt the source indentation", () => {

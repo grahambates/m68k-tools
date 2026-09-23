@@ -1,4 +1,5 @@
 import { lintSource } from "../core/lint.js";
+import { findDiagnostic } from "./helpers.js";
 
 /**
  * A replacement stands in for whole lines, so applying one destroys everything
@@ -12,8 +13,9 @@ import { lintSource } from "../core/lint.js";
  * collapses, so there is no rewrite to offer.
  */
 const suggestion = (lines: string[], ruleId: string) =>
-  lintSource(lines.join("\n"), { processors: ["mc68000"] }).find(
-    (d) => d.ruleId === ruleId,
+  findDiagnostic(
+    lintSource(lines.join("\n"), { processors: ["mc68000"] }),
+    ruleId,
   )?.suggestion;
 
 describe("a label on the first line is kept", () => {

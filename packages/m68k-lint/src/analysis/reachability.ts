@@ -3,6 +3,7 @@ import { getFlagSemantics } from "../semantics/flags.js";
 import { isExecutableLine, isMacroInvocation } from "../util/ast.js";
 import { isBlockBoundary, scanBlocks } from "./blocks.js";
 import { buildControlFlowGraph } from "./cfg.js";
+import { conditionalAssembly } from "./conditionals.js";
 import type { LocalLabelScopes } from "./local-label-scopes.js";
 
 /**
@@ -33,6 +34,11 @@ const startsElsewhere = (directive: string) =>
  *   a jump table, and those entries are reached only by the computed jump;
  * - macro invocations, which stand in for code this cannot see.
  *
+ * An arm of a conditional assembly block that is known not to be assembled is
+ * not code at all here, the same as a macro body: vasm never emits it, so
+ * nothing in it can be unreachable, and the boundary that follows the block
+ * is a fresh starting point regardless of what happens inside the arm.
+ *
  * Reachability then follows the control-flow graph from those. What remains is
  * code after a `bra`, `rts` or similar with nothing pointing at it, which is
  * usually left over from an edit.
@@ -43,6 +49,7 @@ export function findUnreachableLines(
 ): number[] {
   const blocks = scanBlocks(file);
   const cfg = buildControlFlowGraph(file);
+  const assembly = conditionalAssembly(file);
   const executable: number[] = [];
   const seeds: number[] = [];
 
@@ -53,8 +60,10 @@ export function findUnreachableLines(
   let inTable = false;
 
   file.lines.forEach((line, index) => {
-    // A macro body is not code at this point in the file.
-    if (blocks.region[index] !== 0) return;
+    // A macro body, or an arm known not to be assembled, is not code at this
+    // point in the file. Boundary and label state carries across it exactly
+    // as it does across a macro body, so what follows is still seeded.
+    if (blocks.region[index] !== 0 || assembly.unassembled[index]) return;
 
     const directive =
       line.mnemonic?.type === "directive"

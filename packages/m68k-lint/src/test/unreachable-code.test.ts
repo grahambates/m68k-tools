@@ -116,4 +116,58 @@ describe("suspicious/unreachable-code", () => {
     ).map((x) => x.ruleId);
     expect(d).toContain("suspicious/unused-local-label");
   });
+
+  // A single-arm conditional (`ifne`/`endc`, no `else`) whose condition
+  // resolves false is not assembled at all: vasm never emits a branch, a
+  // label or anything else inside it, so reachability inside the arm is not
+  // a question this rule can answer -- and was wrongly answering "no". The
+  // arm's first line was seeded as a fresh entry point (as any conditional
+  // arm is, since the analysis cannot always tell whether control falls into
+  // it), but the control-flow graph gives an unassembled line no successors,
+  // so everything after that first line inside the arm looked unreachable.
+  describe("an arm known not to be assembled", () => {
+    const source = (flag: string) =>
+      fixture(
+        [
+          "start:",
+          "\ttst.w d0",
+          `\tifne ${flag}`,
+          "\tbtst.b #0,frame",
+          "\tbeq .even",
+          "\tsuba.w d2,a3",
+          ".even:",
+          "\tendc",
+          "\ttst.w d1",
+          "\trts",
+        ].join("\n"),
+      );
+
+    test("is not checked for reachability at all", () => {
+      const src = "FLAG equ 0\n" + source("FLAG");
+      expect(
+        lintSource(src, { processors: ["mc68000"] }).filter(
+          (d) => d.ruleId === RULE,
+        ),
+      ).toHaveLength(0);
+    });
+
+    test("an arm that is assembled is still checked normally", () => {
+      const src = "FLAG equ 1\n" + source("FLAG");
+      expect(
+        lintSource(src, { processors: ["mc68000"] }).filter(
+          (d) => d.ruleId === RULE,
+        ),
+      ).toHaveLength(0);
+    });
+
+    test("an arm whose condition cannot be resolved is still checked normally", () => {
+      // FLAG is never defined, so the arm's fate is unknown and it is
+      // treated as ordinary code, exactly as before this fix.
+      expect(
+        lintSource(source("FLAG"), { processors: ["mc68000"] }).filter(
+          (d) => d.ruleId === RULE,
+        ),
+      ).toHaveLength(0);
+    });
+  });
 });

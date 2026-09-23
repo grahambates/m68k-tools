@@ -374,7 +374,11 @@ describe("the rule", () => {
     const d = diagnostic(
       `${quotientOnly("divu.w #5,d0").replace("rts", "moveq #0,d7\nrts")}`,
     );
-    expect(d?.notes?.some((n) => /below 16:/.test(n.message))).toBe(true);
+    expect(
+      d?.alternatives?.some((a) =>
+        /below 16/.test(a.suggestion?.description ?? ""),
+      ),
+    ).toBe(true);
   });
 
   test("leaves out recipes that change X when X is read afterwards", () => {
@@ -484,24 +488,26 @@ describe("the signed rules", () => {
 
   test("lists the forms that round toward zero, for when it matters", () => {
     const d = find(withScratch("divs.w #4,d0"), POW);
-    const exact =
-      d?.notes?.filter((n) =>
-        /round toward zero as DIVS\.W does/.test(n.message),
-      ) ?? [];
+    const exact = d?.alternatives ?? [];
     // One for a sign-extended word, one for any 32-bit dividend.
     expect(exact).toHaveLength(2);
     expect(
       exact.some(
-        (n) =>
-          /swap/.test(n.message) && /between -32768 and 32767/.test(n.message),
+        (a) =>
+          /swap/.test(a.suggestion?.replacement ?? "") &&
+          /between -32768 and 32767/.test(a.message),
       ),
     ).toBe(true);
     expect(
       exact.some(
-        (n) => /subx\.l/.test(n.message) && /and\.l #3,/.test(n.message),
+        (a) =>
+          /subx\.l/.test(a.suggestion?.replacement ?? "") &&
+          /and\.l #3,/.test(a.suggestion?.replacement ?? ""),
       ),
     ).toBe(true);
-    expect(exact.every((n) => /clobbers D7/.test(n.message))).toBe(true);
+    expect(
+      exact.every((a) => /clobbers D7/.test(a.suggestion?.description ?? "")),
+    ).toBe(true);
   });
 
   test("treats a bare DIVS as the word divide it is", () => {
@@ -636,13 +642,15 @@ describe("the signed rules", () => {
     const positive = find(withScratch("divs.w #4,d0"), POW);
     const negative = find(withScratch("divs.w #-4,d0"), POW);
     const cycles = (d: typeof positive) =>
-      (d?.notes ?? [])
-        .filter((n) => /round toward zero/.test(n.message))
-        .map((n) => Number(/\((\d+) cycles/.exec(n.message)?.[1]));
-    expect(negative?.notes?.some((n) => /neg\.l d0 \(/.test(n.message))).toBe(
-      true,
-    );
-    expect(cycles(negative)).toEqual(cycles(positive).map((c) => c + 6));
+      (d?.alternatives ?? []).map(
+        (a) => a.suggestion?.impact?.execution?.cpuCycles?.after,
+      );
+    expect(
+      negative?.alternatives?.some((a) =>
+        a.suggestion?.replacement?.endsWith("neg.l d0"),
+      ),
+    ).toBe(true);
+    expect(cycles(negative)).toEqual(cycles(positive).map((c) => (c ?? 0) + 6));
   });
 
   test("dividing by -1 is a negation", () => {

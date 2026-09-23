@@ -217,6 +217,41 @@ export const divsWordPowerOfTwo: Rule = {
       ...(negative ? [`neg.l ${c.dest}`] : []),
     ];
 
+    // Rounds the same way DIVS.W does, at the cost of a few more instructions
+    // that add 2^k-1 to a negative dividend before shifting -- a real,
+    // selectable alternative to the plain shift above wherever a register is
+    // free for it, not just a caveat about it.
+    const exactAlternatives = scratch
+      ? exact.map((r) => ({
+          ruleId: this.meta.id,
+          category: this.meta.category,
+          severity: this.meta.defaultSeverity,
+          confidence:
+            c.upperUse === "unused" ? ("medium" as const) : ("low" as const),
+          message: `DIVS.W by ${c.divisor} can round toward zero exactly, the way DIVS.W does${r.bits >= 31 ? "" : `, if the dividend is a sign-extended word (${between(r)})`}`,
+          loc: line.mnemonic!.loc,
+          suggestion: {
+            description: `Round toward zero exactly, clobbers ${scratch.toUpperCase()}${r.bits >= 31 ? "" : ` (exact for a dividend ${between(r)})`}`,
+            replacement: render(r, c.dest, scratch, negate),
+            applicability: "conditional" as const,
+          },
+          notes: [
+            { message: remainderNote(c.dest, c.upperUse) },
+            { message: overflow },
+            {
+              message: `${scratch.toUpperCase()} is proven dead after the original divide and is used as scratch.`,
+            },
+            ...(c.xUnknown ? [{ message: xNote }] : []),
+          ],
+          data: {
+            divisor: c.divisor,
+            upperWordUse: c.upperUse,
+            scratch,
+            exactBits: r.bits,
+          },
+        }))
+      : [];
+
     ctx.report({
       ruleId: this.meta.id,
       category: this.meta.category,
@@ -238,9 +273,7 @@ export const divsWordPowerOfTwo: Rule = {
         { message: remainderNote(c.dest, c.upperUse) },
         { message: overflow },
         ...(scratch
-          ? exact.map((r) => ({
-              message: `To round toward zero as DIVS.W does${r.bits >= 31 ? "" : `, if the dividend is a sign-extended word (${between(r)})`}: ${oneLine(render(r, c.dest, scratch, negate))} (${cyclesOf(r, negate)} cycles, clobbers ${scratch.toUpperCase()}).`,
-            }))
+          ? []
           : [
               {
                 message:
@@ -250,6 +283,7 @@ export const divsWordPowerOfTwo: Rule = {
         ...(c.xUnknown ? [{ message: xNote }] : []),
       ],
       data: { divisor: c.divisor, shift, scratch, upperWordUse: c.upperUse },
+      alternatives: exactAlternatives,
     });
   },
 };
@@ -348,11 +382,52 @@ export const divsWordByConstant: Rule = {
     const range = (r: Reciprocal) => `from ${r.min} to ${r.max}`;
     const primaryCycles = signedCycles(primary, negated);
     // A smaller scale saves the shift, but its multiplier can have more changes
-    // between bits and cost more than that, so it is only listed if it is cheaper.
+    // between bits and cost more than that, so it is only offered if it is
+    // cheaper. Each one left after that is a genuine tradeoff, same as the
+    // unsigned rule.
     const cheaper = candidates.filter(
       (r) =>
         r.shift < primary.shift && signedCycles(r, negated) < primaryCycles,
     );
+
+    /** The caveats specific to one candidate: what it is exact for, and its cost. */
+    const candidateNotes = (r: Reciprocal) => [
+      {
+        message: `Scale ${scaleText(r)}, multiplier ceil(${scaleText(r)}/${magnitude}) = ${r.multiplier}, plus one for a negative dividend so that it rounds toward zero: exact for every dividend ${range(r)}, found by dividing them all. This is only correct if the dividend in ${c.dest.toUpperCase()} stays within that, so it fits a signed word and the quotient cannot overflow. That cannot be proven here; check it.`,
+      },
+      { message: remainderNote(c.dest, c.upperUse) },
+      {
+        message: `The low word of ${scratch.toUpperCase()} is proven dead and is used as scratch.`,
+      },
+      ...(c.xUnknown ? [{ message: xNote }] : []),
+    ];
+    const confidence =
+      c.upperUse === "unused" ? ("medium" as const) : ("low" as const);
+    // Widest and cheapest first, same as the unsigned rule.
+    const alternatives = cheaper
+      .slice()
+      .reverse()
+      .map((r) => ({
+        ruleId: this.meta.id,
+        category: this.meta.category,
+        severity: this.meta.defaultSeverity,
+        confidence,
+        message: `DIVS.W ${named ? `by ${written}` : `#${c.divisor}`},${c.dest.toUpperCase()} can use a smaller-scale reciprocal multiply if the dividend is ${range(r)}`,
+        loc: line.mnemonic!.loc,
+        suggestion: {
+          description: `Multiply by the reciprocal of ${named ? written : c.divisor}, smaller scale (exact for dividends ${range(r)})`,
+          replacement: code(r),
+          applicability: "conditional" as const,
+        },
+        notes: candidateNotes(r),
+        data: {
+          divisor: c.divisor,
+          upperWordUse: c.upperUse,
+          scratch,
+          dividendRange: [r.min, r.max],
+          named,
+        },
+      }));
 
     // A dividend that is never negative does not need the correction for
     // rounding toward zero, and the unsigned recipe is cheaper. It has to stay
@@ -391,7 +466,7 @@ export const divsWordByConstant: Rule = {
       ruleId: this.meta.id,
       category: this.meta.category,
       severity: this.meta.defaultSeverity,
-      confidence: c.upperUse === "unused" ? "medium" : "low",
+      confidence,
       message: `DIVS.W ${named ? `by ${written}` : `#${c.divisor}`},${c.dest.toUpperCase()} can be a reciprocal multiply if the dividend is ${range(primary)}`,
       loc: line.mnemonic!.loc,
       suggestion: {
@@ -400,9 +475,7 @@ export const divsWordByConstant: Rule = {
         applicability: "conditional",
       },
       notes: [
-        {
-          message: `Scale ${scaleText(primary)}, multiplier ceil(${scaleText(primary)}/${magnitude}) = ${primary.multiplier}, plus one for a negative dividend so that it rounds toward zero: exact for every dividend ${range(primary)}, found by dividing them all. This is only correct if the dividend in ${c.dest.toUpperCase()} stays within that, so it fits a signed word and the quotient cannot overflow. That cannot be proven here; check it.`,
-        },
+        ...candidateNotes(primary),
         ...(named
           ? [
               {
@@ -410,16 +483,6 @@ export const divsWordByConstant: Rule = {
               },
             ]
           : []),
-        { message: remainderNote(c.dest, c.upperUse) },
-        {
-          message: `The low word of ${scratch.toUpperCase()} is proven dead and is used as scratch.`,
-        },
-        ...cheaper
-          .slice()
-          .reverse()
-          .map((r) => ({
-            message: `If the dividend is ${range(r)}, a smaller scale needs less: ${oneLine(code(r))} (${signedCycles(r, negated)} cycles).`,
-          })),
         ...(notNegative
           ? [
               {
@@ -446,7 +509,6 @@ export const divsWordByConstant: Rule = {
           .map((r) => ({
             message: `Made for ${magnitude} and not written from an expression, if the dividend is also never negative and below ${2 ** r.bits}: ${oneLine(render(r, c.dest, wholeScratch, negated ? "w" : undefined))} (${cyclesOf(r, negated ? "w" : undefined)} cycles${r.scratch ? `, clobbers ${wholeScratch?.toUpperCase()}` : ""}).`,
           })),
-        ...(c.xUnknown ? [{ message: xNote }] : []),
       ],
       data: {
         divisor: c.divisor,
@@ -455,6 +517,7 @@ export const divsWordByConstant: Rule = {
         dividendRange: [primary.min, primary.max],
         named,
       },
+      alternatives,
     });
   },
 };

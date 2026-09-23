@@ -221,12 +221,18 @@ describe("a divisor that is written as an expression", () => {
 
   test("is not offered the recipes made for one value, which would go stale", () => {
     const named = find(`MY_DIV equ 10\n\tdivu #MY_DIV,d0${after}`, ID_U);
-    expect(named?.notes?.some((n) => /Made for/.test(n.message))).toBe(false);
+    expect(
+      named?.alternatives?.some((a) =>
+        /Made for/.test(a.suggestion?.description ?? ""),
+      ),
+    ).toBe(false);
     // The same divisor as a number is.
     const literal = find(`\tdivu #10,d0${after}`, ID_U);
-    expect(literal?.notes?.some((n) => /Made for 10/.test(n.message))).toBe(
-      true,
-    );
+    expect(
+      literal?.alternatives?.some((a) =>
+        /Made for 10/.test(a.suggestion?.description ?? ""),
+      ),
+    ).toBe(true);
   });
 
   test("a power of two still gets a shift, and the name it loses is said out loud", () => {
@@ -314,7 +320,11 @@ describe("a divisor that is a number or a numeric expression", () => {
 
   test("still lists the recipes made for one value, since there is no constant to follow", () => {
     const d = find(`\tdivu #10,d0${after}`, ID_U);
-    expect(d?.notes?.some((n) => /Made for 10/.test(n.message))).toBe(true);
+    expect(
+      d?.alternatives?.some((a) =>
+        /Made for 10/.test(a.suggestion?.description ?? ""),
+      ),
+    ).toBe(true);
   });
 });
 

@@ -24,8 +24,6 @@ import {
   type Reciprocal,
 } from "./reciprocal.js";
 
-const oneLine = (code: string) => code.replaceAll("\n", " ; ");
-
 /** The scale of a reciprocal as it is written in a source: `$10000`, `$80000`. */
 const scaleText = (r: Reciprocal) => `$${(2 ** (16 + r.shift)).toString(16)}`;
 
@@ -184,7 +182,9 @@ export const divuWordByConstant: Rule = {
 
     // Cheaper recipes for a smaller dividend that are made for this value: a
     // multiplier with fewer set bits, or shifts and adds. They cannot follow a
-    // named constant.
+    // named constant, so they are not offered for one at all -- unlike a
+    // smaller scale, there is no way to write one that would still be correct
+    // the day the constant changes.
     const scratch = ctx.registers
       .deadDataRegistersAfter(index)
       .find((r) => r !== dest.register.toLowerCase());
@@ -196,6 +196,58 @@ export const divuWordByConstant: Rule = {
             r.cycles < unsignedCycles(primary) &&
             (!r.scratch || scratch),
         );
+    // Widest and cheapest first, same as the scale alternatives.
+    const specificAlternatives = specific
+      .slice()
+      .reverse()
+      .map((r) => ({
+        ruleId: this.meta.id,
+        category: this.meta.category,
+        severity: this.meta.defaultSeverity,
+        confidence,
+        message: `DIVU.W #${d},${dest.register.toUpperCase()} has a sequence made for this value if the dividend is below ${2 ** r.bits}`,
+        loc: line.mnemonic!.loc,
+        suggestion: {
+          description: `Made for ${d}${r.scratch ? `, clobbers ${scratch?.toUpperCase()}` : ""} (exact for dividends below ${2 ** r.bits})`,
+          replacement: r.code
+            .replaceAll("%d", dest.register)
+            .replaceAll("%s", scratch ?? ""),
+          applicability: "conditional" as const,
+        },
+        notes: [
+          {
+            message: `Made directly for ${d}, not from an expression: it will not follow this constant if it changes, and it is only exact for a dividend below ${2 ** r.bits}, found by dividing them all.`,
+          },
+          {
+            message:
+              upperUse === "unused"
+                ? "The upper word (DIVU.W's remainder) is provably unused, and N, Z, V and C are dead, so neither the remainder nor the different flag results matter."
+                : `Check that the remainder DIVU.W leaves in the upper word of ${dest.register.toUpperCase()} is not used: this only produces the quotient, and the analysis cannot tell whether the register is read again. N, Z, V and C are dead.`,
+          },
+          ...(r.scratch
+            ? [
+                {
+                  message: `${scratch?.toUpperCase()} is proven dead after the original divide and may be clobbered.`,
+                },
+              ]
+            : []),
+          ...(xState === "unknown"
+            ? [
+                {
+                  message:
+                    "This sequence also changes X, which DIVU.W leaves alone, and nothing here proves X is unused afterwards.",
+                },
+              ]
+            : []),
+        ],
+        data: {
+          divisor: d,
+          dividendAtMost: 2 ** r.bits - 1,
+          upperWordUse: upperUse,
+          named: false,
+          madeFor: d,
+        },
+      }));
 
     ctx.report({
       ruleId: this.meta.id,
@@ -218,12 +270,6 @@ export const divuWordByConstant: Rule = {
               },
             ]
           : []),
-        ...specific
-          .slice()
-          .reverse()
-          .map((r) => ({
-            message: `Made for ${d} and not written from an expression, if the dividend is below ${2 ** r.bits}: ${oneLine(r.code.replaceAll("%d", dest.register).replaceAll("%s", scratch ?? ""))} (${r.cycles} cycles${r.scratch ? `, clobbers ${scratch?.toUpperCase()}` : ""}).`,
-          })),
       ],
       data: {
         divisor: d,
@@ -231,7 +277,7 @@ export const divuWordByConstant: Rule = {
         upperWordUse: upperUse,
         named,
       },
-      alternatives,
+      alternatives: [...alternatives, ...specificAlternatives],
     });
   },
 };

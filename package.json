@@ -41,7 +41,7 @@
     "package:assembly": "pnpm --filter m68k-lsp package",
     "package:lint": "pnpm --filter m68k-lint-vscode package",
     "test:coverage:assembly": "vitest run --coverage",
-    "publish:extensions": "pnpm run publish:assembly && pnpm run publish:lint && pnpm run publish:counter",
+    "publish:extensions": "node scripts/publish-extensions.mjs",
     "publish:assembly": "pnpm --filter m68k-lsp run publish",
     "publish:lint": "pnpm --filter m68k-lint-vscode run publish",
     "publish:counter": "pnpm --filter 68kcounter-vscode run publish"

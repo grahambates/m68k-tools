@@ -1,6 +1,6 @@
 {
   "name": "m68k-lint-langserver",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Language server exposing m68k-lint diagnostics and quick fixes over LSP",
   "keywords": [
     "m68k",

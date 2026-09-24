@@ -67,9 +67,14 @@ for (const auditCase of lint.ruleImpactAuditCases) {
     .find((d) => d.ruleId === id && d.suggestion?.replacement !== undefined);
   if (!found) continue;
 
+  // The representative case can carry alternatives now (a cheaper conditional
+  // form alongside a safe default, say). applyOnce refuses to pick between
+  // them unattended, same as it would for a person running --fix, but that
+  // policy is not what this loop is checking: it wants this rule's own
+  // suggestion applied and assembled, so it applies that directly.
   const { output: after } = lint.applyOnce(
     source,
-    [found],
+    [{ ...found, alternatives: undefined }],
     ["safe", "conditional", "manual"],
     "none",
     ["improvement", "tradeoff", "neutral", "regression"],

@@ -295,8 +295,7 @@ function sectionNeutralMacros(file: ParsedFile): Set<string> {
       const mnemonic = line.mnemonic;
       if (mnemonic?.type === "macro")
         return check(nameKey(file, mnemonic.macro));
-      if (mnemonic?.type !== "directive") return true;
-      return !MOVES_SECTION.has(mnemonic.directive.toLowerCase());
+      return !movesSection(line);
     });
     visiting.delete(key);
     if (ok) neutral.add(key);
@@ -315,3 +314,14 @@ const MOVES_SECTION = new Set([
   "include",
   ...Object.keys(SHORTHANDS),
 ]);
+
+/**
+ * Whether a directive can put what follows somewhere other than straight after
+ * what came before: a section switch, a new origin or offset, or an INCLUDE.
+ */
+export function movesSection(line: ParsedLine): boolean {
+  return (
+    line.mnemonic?.type === "directive" &&
+    MOVES_SECTION.has(line.mnemonic.directive.toLowerCase())
+  );
+}

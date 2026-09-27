@@ -141,10 +141,15 @@ async function lintDocumentUncached(
       )
     : undefined;
 
-  const facts = await fileFacts(uri.fsPath, document.getText(), config, {
-    includePaths: includePaths ?? [],
-    sourceRoot,
-  });
+  const facts = {
+    ...(await fileFacts(uri.fsPath, document.getText(), config, {
+      includePaths: includePaths ?? [],
+      sourceRoot,
+    })),
+    ...(projectIndex && {
+      includedByProject: projectIndex.symbols.isIncluded(uri.fsPath),
+    }),
+  };
   return lintSource(
     document.getText(),
     config,

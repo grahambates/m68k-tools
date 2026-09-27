@@ -291,6 +291,31 @@ test("annotation precedence is CLI, project, then obfuscated", () => {
   ).toBe("none");
 });
 
+describe("the end of the program", () => {
+  test("only a file nothing includes is checked for running off its end", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "m68k-lint-eof-"));
+    // Both end without returning; the included one continues in main.s.
+    await writeFile(
+      join(dir, "main.s"),
+      '\tinclude\t"music.s"\nstart:\n\tbsr\tmusic\n\tmoveq\t#0,d0\n',
+    );
+    await writeFile(join(dir, "music.s"), "music:\n\tmoveq\t#1,d1\n");
+    const { out } = await capture(["--no-config", "--format", "json", dir]);
+    const report = JSON.parse(out) as {
+      files: {
+        path: string;
+        diagnostics: { ruleId: string; loc: { line: number } }[];
+      }[];
+    };
+    const ends = report.files.flatMap((file) =>
+      file.diagnostics
+        .filter((d) => d.ruleId === "suspicious/section-fallthrough")
+        .map((d) => `${file.path.split(/[/\\]/).pop()}:${d.loc.line}`),
+    );
+    expect(ends).toEqual(["main.s:4"]);
+  });
+});
+
 describe("files the project ignores", () => {
   /** A system header the project borrows from, and a source that uses it. */
   async function project(ignores: string[]) {

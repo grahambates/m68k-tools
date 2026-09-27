@@ -209,3 +209,23 @@ describe("the project index and case", () => {
     expect(symbols.lookup("foo")?.value).toBe(1);
   });
 });
+
+describe("which files the project includes", () => {
+  const project = index({
+    "main.s": '\tinclude "src/Music.s"\n\tinclude <hw.i>\n\tnop\n',
+    "src/Music.s": "\trts\n",
+    "other.s": '\tinclude "dh0:libs/util.i"\n',
+  });
+
+  test("a file is included when an INCLUDE names it, wherever it is", () => {
+    expect(project.isIncluded("src/Music.s")).toBe(true);
+    expect(project.isIncluded("/abs/elsewhere/music.s")).toBe(true);
+    expect(project.isIncluded("hw.i")).toBe(true);
+    expect(project.isIncluded("C:\\libs\\util.i")).toBe(true);
+  });
+
+  test("a file nothing names is not", () => {
+    expect(project.isIncluded("main.s")).toBe(false);
+    expect(project.isIncluded("other.s")).toBe(false);
+  });
+});

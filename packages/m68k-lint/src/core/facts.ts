@@ -12,4 +12,10 @@ export interface FileFacts {
    * that differs from how it is written. Keyed by the path as written.
    */
   includeCase?: ReadonlyMap<string, string>;
+  /**
+   * Whether another file in the project includes this one. Known only where a
+   * project index was built; an included file continues in its includer, so a
+   * rule treating the end of the file as the end of the program needs `false`.
+   */
+  includedByProject?: boolean;
 }

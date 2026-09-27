@@ -127,15 +127,19 @@ async function lintOne(
 ) {
   let source = await readFile(path, "utf8");
   // What the file system calls each include, for the rule that compares it with
-  // what the source says. Found once, from the text as read.
-  const facts: FileFacts | undefined = needsIncludeCase(config)
-    ? {
-        includeCase: await includeCaseOnDisk(
-          { path: resolve(path), source },
-          { ...includes, fs: nodeIncludeFs() },
-        ),
-      }
-    : undefined;
+  // what the source says, and whether the project includes this file at all.
+  // Found once, from the text as read.
+  const facts: FileFacts = {
+    ...(needsIncludeCase(config) && {
+      includeCase: await includeCaseOnDisk(
+        { path: resolve(path), source },
+        { ...includes, fs: nodeIncludeFs() },
+      ),
+    }),
+    ...(projectIndex && {
+      includedByProject: projectIndex.symbols.isIncluded(path),
+    }),
+  };
   let fixed: FixResult | undefined;
 
   if (options.fix) {

@@ -1,5 +1,7 @@
 import { defaultConfig, type LintConfig } from "../core/config.js";
-import { lint } from "./helpers.js";
+import { lintSource } from "../core/lint.js";
+import type { FileFacts } from "../core/facts.js";
+import { fixture, lint } from "./helpers.js";
 
 const RULE = "suspicious/section-fallthrough";
 const config: LintConfig = { ...defaultConfig, measureImpact: false };
@@ -38,7 +40,6 @@ describe("code running off the end of a section", () => {
     ["a conditional branch", "\tbne start"],
     ["a subroutine call", "\tbsr start"],
     ["DBcc", "\tdbf d0,start"],
-    ["a trap", "\ttrap #0"],
   ])("%s can fall through", (_, last) => {
     expect(flagged(ending(last))).toEqual([4]);
   });
@@ -107,7 +108,7 @@ describe("code running off the end of a section", () => {
       ),
     ],
     ["unreachable code", ending("\trts", "\tnop")],
-    ["the end of the file", ["\tsection code,code", "\tnop"].join("\n")],
+    ["a TRAP, which may be how the program exits", ending("\ttrap #1")],
   ])("stays silent for %s", (_, source) => {
     expect(flagged(source)).toEqual([]);
   });
@@ -118,4 +119,65 @@ describe("code running off the end of a section", () => {
       expect(flagged(ending("\tnop"), { ...config, platform })).toEqual([4]);
     },
   );
+
+  describe("the end of the file", () => {
+    const eof = (source: string, facts?: FileFacts) =>
+      lintSource(
+        fixture(source),
+        config,
+        undefined,
+        undefined,
+        undefined,
+        facts,
+      )
+        .filter((d) => d.ruleId === RULE)
+        .map((d) => [d.loc.line, d.message]);
+    const source = "\tsection code,code\nstart:\n\tmoveq #0,d0\n\tnop";
+
+    test("is reported when no file in the project includes this one", () => {
+      expect(eof(source, { includedByProject: false })).toEqual([
+        [4, "Execution can run off the end of the file"],
+      ]);
+    });
+
+    test("with only one section and no section directive at all", () => {
+      expect(
+        eof("start:\n\tmove.w d0,d1", { includedByProject: false }),
+      ).toEqual([[2, "Execution can run off the end of the file"]]);
+    });
+
+    test("is silent for a file the project includes", () => {
+      // It continues in the file that includes it.
+      expect(eof(source, { includedByProject: true })).toEqual([]);
+    });
+
+    test("is silent without a project index to say", () => {
+      expect(eof(source)).toEqual([]);
+      expect(eof(source, {})).toEqual([]);
+    });
+
+    test("is silent when an INCLUDE after the code continues it", () => {
+      expect(
+        eof(`${source}\n\tinclude "more.s"`, { includedByProject: false }),
+      ).toEqual([]);
+    });
+
+    test("is silent when the code ends properly", () => {
+      expect(
+        eof(`${source}\n\trts\n\tsection vars,bss\nbuf:\tds.b 4`, {
+          includedByProject: false,
+        }),
+      ).toEqual([]);
+    });
+
+    test("data after the code in another section is still the end of the code", () => {
+      // The last thing assembled is data, so this is the section case, not the
+      // end of the file.
+      expect(
+        eof(`${source}\n\tsection vars,bss\nbuf:\tds.b 4`, {
+          includedByProject: false,
+        }),
+      ).toEqual([[4, "Execution can run off the end of the code section"]]);
+    });
+  });
 });

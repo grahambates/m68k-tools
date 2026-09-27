@@ -39,12 +39,26 @@ export interface ProjectSymbols extends ExternalSymbols {
   /** Names the project defines inconsistently, and so cannot answer for. */
   readonly conflicts: readonly string[];
   readonly size: number;
+  /**
+   * Whether any file in the project may include this one.
+   *
+   * Matched by file name alone, without case, rather than by resolving each
+   * INCLUDE through the include paths: two files of the same name both count as
+   * included, which only ever errs towards "included". A rule that treats the
+   * end of a file as the end of the program wants that direction.
+   */
+  isIncluded(path: string): boolean;
 }
 
 export interface ProjectSourceFile {
   /** Path used to tell the user where a value came from. */
   path: string;
   source: string;
+}
+
+/** The file name part of a path, as compared for `isIncluded`. */
+function fileNameKey(path: string): string {
+  return (path.split(/[/\\:]/).pop() ?? path).toLowerCase();
 }
 
 interface Definition {
@@ -103,6 +117,7 @@ function* symbolsBuilder(
   const definitions = new Map<string, Definition>();
   const conflicted = new Set<string>();
   const macros = new ProjectMacros(caseSensitive);
+  const included = new Set<string>();
 
   let read = 0;
   for (const { path, source } of files) {
@@ -120,6 +135,17 @@ function* symbolsBuilder(
     macros.add(path, parsed, source);
 
     parsed.lines.forEach((line, lineIndex) => {
+      // Every INCLUDE counts, even one in a macro or a conditional arm: it can
+      // only make a file look included, which is the cautious answer.
+      if (
+        line.mnemonic?.type === "directive" &&
+        line.mnemonic.directive.toLowerCase() === "include"
+      ) {
+        const operand = line.operands?.[0];
+        if (operand?.type === "string-literal")
+          included.add(fileNameKey(operand.content));
+      }
+
       const definition = constantDefinition(line);
       if (!definition) return;
       if (isInMacroDefinition(blocks, lineIndex)) return;
@@ -164,5 +190,6 @@ function* symbolsBuilder(
       return { value, origin: definitions.get(keyOf(name))!.origin };
     },
     macro: (name) => macros.get(name),
+    isIncluded: (path) => included.has(fileNameKey(path)),
   };
 }

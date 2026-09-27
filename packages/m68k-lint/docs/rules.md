@@ -25,7 +25,7 @@ Valid assembly with a provable semantic or runtime problem.
 | Rule | Default | Obfuscated | Description | Source |
 | --- | --- | --- | --- | --- |
 | `correctness/amiga-bit-mask-constant` | warning | — | Flag DMAB_/INTB_ bit numbers used where DMAF_/INTF_ masks are required, and the reverse *(amiga only)* | — |
-| [`correctness/amiga-cross-section-pc-relative`](rule-examples.md#correctnessamiga-cross-section-pc-relative) | error | — | Flag a PC-relative reference to a label in another section *(amiga only)* | vasm |
+| [`correctness/amiga-cross-section-pc-relative`](rule-examples.md#correctnessamiga-cross-section-pc-relative) | error | — | Flag a PC-relative reference or branch to a label in another section *(amiga only)* | vasm |
 | `correctness/amiga-custom-register-access` | warning | — | Check read/write direction for Amiga custom-chip registers *(amiga only)* | Amiga Hardware Reference Manual |
 | `correctness/amiga-tas-unsupported` | error | — | TAS is not supported by the Amiga architecture *(amiga only)* | Amiga Hardware Reference Manual |
 

@@ -10,7 +10,7 @@ are not themselves part of the change.
 
 ## `correctness/amiga-cross-section-pc-relative`
 
-Flag a PC-relative reference to a label in another section.
+Flag a PC-relative reference or branch to a label in another section.
 
 Before:
 

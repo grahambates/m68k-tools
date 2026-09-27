@@ -266,4 +266,74 @@ describe("cross-section PC-relative references", () => {
     expect(findings(source, { ...amiga, platform: "atari" })).toEqual([]);
     expect(findings(source, { ...amiga, platform: "generic" })).toEqual([]);
   });
+
+  describe("branches", () => {
+    // Each form below was rejected by vasm writing a hunk executable, and each
+    // replacement assembled.
+    const across = (instruction: string, kind = "code") =>
+      `\tsection a,code\n${instruction}\n\trts\n\tsection b,${kind}\nsub:\trts`;
+
+    test.each([
+      ["\tbsr sub", "\tjsr sub"],
+      ["\tbsr.s\tsub", "\tjsr\tsub"],
+      ["\tbra.w sub+2", "\tjmp sub+2"],
+      ["\tBSR.S SUB", "\tJSR SUB"],
+      ["lbl:\tbra sub ; tail", "lbl:\tjmp sub ; tail"],
+    ])("%s is fixed as %s", (instruction, expected) => {
+      const source = across(instruction).replace(/sub:/, (m) =>
+        instruction.includes("SUB") ? "SUB:" : m,
+      );
+      const [d] = findings(source);
+      expect(d).toMatchObject({
+        message: expect.stringMatching(
+          /^Branch to (sub|SUB) in another section$/,
+        ),
+        suggestion: { replacement: expected, applicability: "conditional" },
+      });
+    });
+
+    test("a branch into a data section cannot be merged away", () => {
+      const [d] = findings(across("\tbsr sub", "data"));
+      expect(d).toMatchObject({
+        confidence: "certain",
+        suggestion: { applicability: "safe" },
+      });
+    });
+
+    test("a conditional branch is described, not rewritten", () => {
+      const [d] = findings(across("\tbhs sub"));
+      expect(d?.suggestion).toMatchObject({
+        applicability: "manual",
+        description: expect.stringContaining("bcs.s *+8 then jmp sub"),
+      });
+      expect(d?.suggestion?.replacement).toBeUndefined();
+    });
+
+    test("DBcc is described, not rewritten", () => {
+      const [d] = findings(across("\tdbra d0,sub"));
+      expect(d?.suggestion).toMatchObject({ applicability: "manual" });
+      expect(d?.suggestion?.replacement).toBeUndefined();
+    });
+
+    test("a branch within one section is fine", () => {
+      expect(
+        flagged(
+          "\tsection a,code\n\tbsr sub\n\tbra.s sub\n\tbne sub\n\tsection b,data\n\tdc.w 0\n\tsection a,code\nsub:\trts",
+        ),
+      ).toEqual([]);
+    });
+
+    test("the fixes remove the findings", () => {
+      const source = fixture(
+        "\tsection a,code\n\tbsr.s sub\n\tbra sub\n\tsection b,data\nsub:\trts",
+      );
+      const result = applyFixes(source, (s) => lintSource(s, amiga), {
+        accept: ["safe"],
+      });
+      expect(result.output).toContain("\tjsr sub\n\tjmp sub\n");
+      expect(
+        lintSource(result.output, amiga).filter((d) => d.ruleId === RULE),
+      ).toEqual([]);
+    });
+  });
 });

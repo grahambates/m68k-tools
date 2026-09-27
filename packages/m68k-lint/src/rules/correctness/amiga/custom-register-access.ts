@@ -170,6 +170,13 @@ for (const [address, register] of amigaCustomRegisters) {
     register.name.toLowerCase(),
     address - CUSTOM_BASE,
   );
+  // A pointer pair is usually named as one long register, COP1LC for
+  // COP1LCH/COP1LCL, and written with a single long MOVE.
+  if (/(PT|LC)H$/.test(register.name))
+    amigaCustomSymbolValues.set(
+      register.name.slice(0, -1).toLowerCase(),
+      address - CUSTOM_BASE,
+    );
 }
 amigaCustomSymbolValues.set("custom", CUSTOM_BASE);
 

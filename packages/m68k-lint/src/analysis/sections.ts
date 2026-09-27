@@ -19,6 +19,8 @@ export interface Section {
   kind: SectionKind;
   /** How the source names it, for messages. */
   label: string;
+  /** Memory the loader must use, or undefined for whatever it finds (fast first). */
+  memory?: "chip" | "fast";
 }
 
 export interface SectionAnalysis {
@@ -29,6 +31,8 @@ export interface SectionAnalysis {
    * undefined where this file does not define one in a known section.
    */
   ofLabel(index: number, name: string): Section | undefined;
+  /** The lines of the directives that open or reopen a section, in order. */
+  directivesOf(section: Section): readonly number[];
 }
 
 /**
@@ -71,6 +75,15 @@ export function analyzeSections(file: ParsedFile): SectionAnalysis {
   const at: (Section | undefined)[] = [];
   const labels = new Map<string, Section | null>();
   const stack: (Section | undefined)[] = [];
+  const directives = new Map<string, number[]>();
+  const open = (section: Section | undefined, index: number) => {
+    current = section;
+    if (section)
+      directives.set(section.key, [
+        ...(directives.get(section.key) ?? []),
+        index,
+      ]);
+  };
   let current: Section | undefined = DEFAULT_SECTION;
 
   file.lines.forEach((line, index) => {
@@ -125,7 +138,7 @@ export function analyzeSections(file: ParsedFile): SectionAnalysis {
 
     switch (directive) {
       case "section":
-        current = namedSection(line.operands ?? []);
+        open(namedSection(line.operands ?? []), index);
         return;
       case "pushsection":
         stack.push(current);
@@ -140,12 +153,13 @@ export function analyzeSections(file: ParsedFile): SectionAnalysis {
         return;
     }
     const shorthand = SHORTHANDS[directive];
-    if (shorthand) current = shorthand;
+    if (shorthand) open(shorthand, index);
   });
 
   return {
     at: (index) => at[index],
     ofLabel: (index, name) => labels.get(labelKey(index, name)) ?? undefined,
+    directivesOf: (section) => directives.get(section.key) ?? [],
   };
 }
 
@@ -158,17 +172,17 @@ const DEFAULT_SECTION: Section = {
 function section(
   name: string,
   kind: SectionKind,
-  memory: string | undefined,
+  memory: "chip" | "fast" | undefined,
   label: string,
 ): Section {
   const id = memory ? `${name}.MEMF_${memory.toUpperCase()}` : name;
-  return { key: `${id}\0${kind}`, kind, label };
+  return { key: `${id}\0${kind}`, kind, label, ...(memory ? { memory } : {}) };
 }
 
 /** Section types as vasm reads them, with their memory suffixes. */
 function sectionType(
   name: string,
-): { kind: SectionKind; memory?: string } | undefined {
+): { kind: SectionKind; memory?: "chip" | "fast" } | undefined {
   const match = /^(code|text|data|bss)(?:_([cfp]))?$/.exec(name.toLowerCase());
   if (!match) return undefined;
   const kind = match[1] === "text" ? "code" : (match[1] as SectionKind);

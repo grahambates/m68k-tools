@@ -1,38 +1,12 @@
-import type { ExpressionNode, ParsedLine } from "m68k-parser";
+import type { ParsedLine } from "m68k-parser";
 import type { Rule } from "../../../core/rule.js";
 import type { RuleContext } from "../../../core/context.js";
 import { analyzeSections, type Section } from "../../../analysis/sections.js";
+import { targetLabel } from "../../../analysis/label-addresses.js";
 import { conditionalAssembly } from "../../../analysis/conditionals.js";
 import { scanBlocks } from "../../../analysis/blocks.js";
 import { canonicalMnemonic } from "../../../semantics/mnemonics.js";
 import { replaceOperandInLine } from "../../optimization/helpers.js";
-
-/**
- * The label a PC-relative displacement points at: the label alone, or offset
- * by a constant. Anything else, such as the difference of two labels, is not
- * a reference into another section.
- */
-function targetLabel(
-  ctx: RuleContext,
-  expr: ExpressionNode,
-): string | undefined {
-  switch (expr.type) {
-    case "symbol":
-      return expr.name;
-    case "group":
-      return targetLabel(ctx, expr.expression);
-    case "binary-op": {
-      if (expr.operator !== "+" && expr.operator !== "-") return undefined;
-      const left = targetLabel(ctx, expr.left);
-      if (left !== undefined && ctx.evaluate(expr.right).known) return left;
-      if (expr.operator === "+" && ctx.evaluate(expr.left).known)
-        return targetLabel(ctx, expr.right);
-      return undefined;
-    }
-    default:
-      return undefined;
-  }
-}
 
 /** Each condition and its opposite. */
 const INVERSE: Record<string, string> = {

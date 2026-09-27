@@ -204,10 +204,12 @@ import {
 import { vasmNegativeSignedMultiply } from "./optimization/negative-signed-multiply.js";
 import { amigaTasUnsupported } from "./correctness/amiga/tas-unsupported.js";
 import { amigaCustomRegisterAccess } from "./correctness/amiga/custom-register-access.js";
+import { amigaCrossSectionPcRelative } from "./correctness/amiga/cross-section-pc-relative.js";
 
 export {
   amigaTasUnsupported,
   amigaCustomRegisterAccess,
+  amigaCrossSectionPcRelative,
   vasmNegativeSignedMultiply,
   stackAlignedWordShiftByEight,
   stackAlignedKnownRegisterShifts,
@@ -379,6 +381,7 @@ export const defaultRules: readonly Rule[] = [
   omitRedundantInstructionSize,
   amigaTasUnsupported,
   amigaCustomRegisterAccess,
+  amigaCrossSectionPcRelative,
   vasmNegativeSignedMultiply,
   stackAlignedKnownRegisterShifts,
   stackAlignedWordShiftByEight,

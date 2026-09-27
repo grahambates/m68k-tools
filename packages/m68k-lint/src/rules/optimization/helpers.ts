@@ -34,6 +34,10 @@ export function sourceOperand(
  * replacement against the full source line span, and consumers apply it the same
  * way. An operand-level rewrite therefore still has to produce a complete
  * instruction, not just the new operand text.
+ *
+ * Only the statement is returned, from mnemonic to last operand: the label and
+ * trailing comment are put back when the finding is reported, so including
+ * them here wrote each out twice.
  */
 export function replaceOperandInLine(
   ctx: RuleContext,
@@ -41,11 +45,13 @@ export function replaceOperandInLine(
   operandIndex: number,
   text: string,
 ): string | undefined {
-  const op = line.operands?.[operandIndex];
-  if (!op) return undefined;
+  const operands = line.operands;
+  const op = operands?.[operandIndex];
+  if (!op || !line.mnemonic) return undefined;
   const source = ctx.sourceLine((line.lineNumber ?? 1) - 1);
   if (source === undefined) return undefined;
-  return `${source.slice(0, op.loc.start)}${text}${source.slice(op.loc.end)}`.trim();
+  const end = operands[operands.length - 1].loc.end;
+  return `${source.slice(line.mnemonic.loc.start, op.loc.start)}${text}${source.slice(op.loc.end, end)}`.trim();
 }
 
 /**

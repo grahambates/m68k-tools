@@ -3,7 +3,7 @@
 Extensible static analysis and linting for Motorola 68k assembly, built on
 [`m68k-parser`](https://github.com/grahambates/m68k-tools/tree/main/packages/m68k-parser).
 
-156 built-in rules across correctness, suspicious-construct, optimization and
+162 built-in rules across correctness, suspicious-construct, optimization and
 style checks, backed by condition-code liveness, register liveness, constant
 propagation, stack depth and byte-alignment tracking, and macro expansion. Optimization suggestions on `mc68000` carry **exact** measured
 size and cycle deltas from [`68kcounter`](https://github.com/grahambates/m68k-tools/tree/main/packages/68kcounter),

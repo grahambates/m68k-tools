@@ -8,6 +8,28 @@ suggested replacement -- not the whole example source, which sometimes needs
 extra setup or trailer lines (proving a register dead, killing a flag) that
 are not themselves part of the change.
 
+## `correctness/amiga-cross-section-pc-relative`
+
+Flag a PC-relative reference to a label in another section.
+
+Before:
+
+```asm
+	lea	table(pc),a0
+```
+
+After:
+
+```asm
+	lea	table,a0
+```
+
+Notes:
+
+- table is in the data section, and this instruction in the code section. Sections are separate hunks, loaded independently, so the distance between them is not known when assembling and there is no relocation to fix it up when loading.
+- Code and data sections are never merged into one hunk, so this cannot assemble into an executable.
+- An absolute address is relocated when the program loads. It is 2 bytes longer than the PC-relative form and makes the instruction position-dependent.
+
 ## `optimization/address-add-to-lea`
 
 Use LEA to ADD immediate to an address register.

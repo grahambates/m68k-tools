@@ -168,4 +168,17 @@ describe("replacements adopt the source indentation", () => {
       expect(found).toBe("\ttst.w\td0");
     });
   });
+
+  test("an operand rewrite keeps the label and comment once", () => {
+    // Operand rewrites used to return the whole source line, and the label
+    // and comment put back around it were then written a second time.
+    const found = findDiagnostic(
+      lintSource("lbl:\tmove.l\t0(a0),d0\t; keep", {
+        processors: ["mc68000"],
+        presets: ["style"],
+      }),
+      "optimization/redundant-zero-displacement",
+    )?.suggestion?.replacement;
+    expect(found).toBe("lbl:\tmove.l\t(a0),d0\t; keep");
+  });
 });

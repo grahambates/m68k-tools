@@ -206,12 +206,14 @@ import { amigaTasUnsupported } from "./correctness/amiga/tas-unsupported.js";
 import { amigaCustomRegisterAccess } from "./correctness/amiga/custom-register-access.js";
 import { amigaCrossSectionPcRelative } from "./correctness/amiga/cross-section-pc-relative.js";
 import { amigaDmaOutsideChipRam } from "./correctness/amiga/dma-outside-chip-ram.js";
+import { sectionFallthrough } from "./suspicious/section-fallthrough.js";
 
 export {
   amigaTasUnsupported,
   amigaCustomRegisterAccess,
   amigaCrossSectionPcRelative,
   amigaDmaOutsideChipRam,
+  sectionFallthrough,
   vasmNegativeSignedMultiply,
   stackAlignedWordShiftByEight,
   stackAlignedKnownRegisterShifts,
@@ -385,6 +387,7 @@ export const defaultRules: readonly Rule[] = [
   amigaCustomRegisterAccess,
   amigaCrossSectionPcRelative,
   amigaDmaOutsideChipRam,
+  sectionFallthrough,
   vasmNegativeSignedMultiply,
   stackAlignedKnownRegisterShifts,
   stackAlignedWordShiftByEight,

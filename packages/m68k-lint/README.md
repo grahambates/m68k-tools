@@ -3,7 +3,7 @@
 Extensible static analysis and linting for Motorola 68k assembly, built on
 [`m68k-parser`](https://github.com/grahambates/m68k-tools/tree/main/packages/m68k-parser).
 
-166 built-in rules across correctness, suspicious-construct, optimization and
+167 built-in rules across correctness, suspicious-construct, optimization and
 style checks, backed by condition-code liveness, register liveness, constant
 propagation, stack depth and byte-alignment tracking, and macro expansion. Optimization suggestions on `mc68000` carry **exact** measured
 size and cycle deltas from [`68kcounter`](https://github.com/grahambates/m68k-tools/tree/main/packages/68kcounter),
@@ -131,6 +131,24 @@ includes memory `TST` when that use is unambiguous; a standalone memory touch
 remains accepted. Comparisons with any flags still in use are not called unused.
 Suggestions require manual review, since memory reads and address-register updates
 may have side effects.
+
+`suspicious/buffer-overrun` checks simple postincrement loops across contiguous
+`DC`, `DS` and `DCB` data in any section, including PC-relative tables after code.
+Internal labels and constant-offset aliases are views into the same region, not
+buffer boundaries. It reports accesses into instructions or beyond a known section
+end, accounting for reopened sections and known alignment padding. End-of-file
+bounds require project information establishing that the file is not included by
+another source; crossings into instructions can be checked without that fact.
+Unknown-size output prevents a boundary calculation across it.
+
+The rule recognises excessive `DBRA` counts and inclusive `CMPA.L`/`BLS` end-pointer
+tests. Table contents can be unknown. It requires a single postincrement
+`MOVE`/`CLR`/`TST` access per iteration through each checked pointer and unambiguous
+setup; calls, macros, complex pointer updates and alternate entries are skipped.
+Analysis is capped at 256 instructions per loop and 64 setup instructions per
+register, and calculates extents without simulating iterations. Fixes require
+manual review. Adjacent data tables cannot be distinguished without explicit
+bounds, and other loop forms are not yet checked.
 
 ## Configuration
 

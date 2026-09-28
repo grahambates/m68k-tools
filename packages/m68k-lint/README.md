@@ -3,7 +3,7 @@
 Extensible static analysis and linting for Motorola 68k assembly, built on
 [`m68k-parser`](https://github.com/grahambates/m68k-tools/tree/main/packages/m68k-parser).
 
-165 built-in rules across correctness, suspicious-construct, optimization and
+166 built-in rules across correctness, suspicious-construct, optimization and
 style checks, backed by condition-code liveness, register liveness, constant
 propagation, stack depth and byte-alignment tracking, and macro expansion. Optimization suggestions on `mc68000` carry **exact** measured
 size and cycle deltas from [`68kcounter`](https://github.com/grahambates/m68k-tools/tree/main/packages/68kcounter),
@@ -115,6 +115,14 @@ ctx.flags.isLiveAfter(0, "Z"); // "dead"  - MOVE overwrites it
 ctx.flags.isLiveAfter(0, "X"); // "unknown" - MOVE preserves X, RTS escapes
 ctx.registers.isLiveAfter(0, "d0"); // "dead" | "live" | "unknown"
 ```
+
+Word division leaves the quotient and remainder packed in one register.
+`suspicious/division-result-width` warns when that result is used in long arithmetic,
+comparisons or address calculations without extraction. It accepts word uses,
+packed copies/stores, and explicit extraction with `SWAP`, `EXT.L` or masking.
+The check follows a single unambiguous control-flow path and stops at writes,
+calls, branches and joins; it does not track copies into other registers or memory.
+Suggestions require manual review because using the packed value can be intentional.
 
 ## Configuration
 

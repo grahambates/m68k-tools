@@ -19,6 +19,7 @@ import { zeroSizedStorage } from "./suspicious/zero-sized-storage.js";
 import { conditionAfterPreservedCcr } from "./suspicious/condition-after-preserved-ccr.js";
 import { moveaWordSignExtension } from "./suspicious/movea-word-sign-extension.js";
 import { bitNumberWraparound } from "./suspicious/bit-number-wraparound.js";
+import { divisionResultWidth } from "./suspicious/division-result-width.js";
 import { partialRegisterWrite } from "./suspicious/partial-register-write.js";
 import { unexpectedAbsoluteAddress } from "./suspicious/unexpected-absolute-address.js";
 import {
@@ -239,6 +240,7 @@ export {
   moveaWordSignExtension,
   bitNumberWraparound,
   partialRegisterWrite,
+  divisionResultWidth,
   unexpectedAbsoluteAddress,
   atariTrapStackCleanup,
   amigaBitMaskConstants,
@@ -514,6 +516,7 @@ export const defaultRules: readonly Rule[] = [
   moveaWordSignExtension,
   bitNumberWraparound,
   partialRegisterWrite,
+  divisionResultWidth,
   unexpectedAbsoluteAddress,
   atariTrapStackCleanup,
   amigaBitMaskConstants,

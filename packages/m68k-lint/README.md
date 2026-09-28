@@ -124,6 +124,14 @@ The check follows a single unambiguous control-flow path and stops at writes,
 calls, branches and joins; it does not track copies into other registers or memory.
 Suggestions require manual review because using the packed value can be intentional.
 
+`suspicious/unused-comparison` also explains when a `CMP` or `TST` result is
+lost before a nearby `Bcc`, `Scc` or `DBcc`: notes identify the overwriting
+instructions and the specific flags the conditional instruction reads. This
+includes memory `TST` when that use is unambiguous; a standalone memory touch
+remains accepted. Comparisons with any flags still in use are not called unused.
+Suggestions require manual review, since memory reads and address-register updates
+may have side effects.
+
 ## Configuration
 
 ```sh

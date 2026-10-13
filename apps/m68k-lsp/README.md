@@ -28,6 +28,7 @@ Adds language support for Motorola 68000 Assembly to Visual Studio Code.
 - Hover
   - Instruction/directive documentation
   - Symbol info
+  - Data/address register descriptions from comments and assignments
 - Inlay Hints
   - Evaluated value of constant assignments (see [68kcounter](https://marketplace.visualstudio.com/items?itemName=gigabates.68kcounter) for cycle/size annotations)
 - Multiple workspaces
@@ -49,6 +50,18 @@ Requires VS Code 1.101 or later. For local development, open the monorepo root a
 ### Register analysis scope
 
 Register commands and the remapping view work on the selection. Without one, the scope is the routine around the cursor, from the previous non-local label to the next unconditional `rts`, `rte` or `rtr`. Inside a macro definition it is the macro body, from `macro` to `endm`; labels and returns in a macro body do not start or end a routine around it.
+
+### Register descriptions
+
+Hovering a data or address register shows what it holds at that point in the routine, where that can be read from the source:
+
+- A routine header: comment lines directly above the routine's label, such as `; d0 = frame count`. `d0: …`, `d0 - …`, `d0 …`, `d0.w = …` and lists such as `d0-d2/a0 = …` are also recognised. `Inputs:`, `Outputs:` and `Trashes:` headings group the entries, and lines before any heading are taken as inputs.
+- A comment naming the register, such as `move.w #1,d0 ; d0 = frame count`.
+- A comment on a line that overwrites only that register, such as `move.w #1,d0 ; frame count`. The hover marks this as inferred.
+- A symbolic source operand, such as `lea SomeTable,a0` or `move.l #FRAMES,d0`.
+- A `bsr`/`jsr` to a routine whose header lists the register as an output. A routine that lists it as trashed clears the description.
+
+A description holds until the register is overwritten outright. Read-modify-write instructions such as `addq` keep it. Lines are followed in source order within the routine, so branches are not taken into account.
 
 ### Register remapping warnings
 

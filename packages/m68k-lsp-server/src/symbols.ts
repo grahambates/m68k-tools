@@ -36,6 +36,11 @@ export interface Definition extends NamedSymbol {
    * text to read back.
    */
   declaration?: string;
+  /**
+   * Text of the comment lines directly above a non-local label, without their
+   * prefixes, for reading routine headers such as documented registers.
+   */
+  header?: string[];
 }
 
 export function isDefinition(symbol: NamedSymbol): symbol is Definition {
@@ -114,7 +119,7 @@ const externalDefinitions = new Set(["xref", "nref"]);
 /** Instructions that call a subroutine, for call hierarchy. */
 const callInstructions = new Set(["bsr", "jsr"]);
 
-function isCallInstruction(line: ParsedLine): boolean {
+export function isCallInstruction(line: ParsedLine): boolean {
   return (
     line.mnemonic?.type === "instruction" &&
     callInstructions.has(line.mnemonic.instruction.toLowerCase())
@@ -122,7 +127,7 @@ function isCallInstruction(line: ParsedLine): boolean {
 }
 
 /** First symbol named by an instruction's operands, however deeply nested. */
-function callTargetSymbol(
+export function callTargetSymbol(
   operands: AstNode[] | undefined,
 ): SymbolNode | undefined {
   for (const operand of operands ?? []) {
@@ -167,6 +172,36 @@ function endOfDefinition(line: ParsedLine, lineText: string): number {
   return end;
 }
 
+const markdownSpecialChars = /([*_{}[\]()#+-.!`])/g;
+
+/** Escapes comment text for display as markdown. */
+export function escapeMarkdown(text: string): string {
+  return text.replace(markdownSpecialChars, "\\$1");
+}
+
+/**
+ * Indices of the comment-only lines directly above a line, in source order.
+ * The run ends at the first line with a label, mnemonic or no comment.
+ */
+export function precedingCommentLines(
+  lines: ParsedLine[],
+  index: number,
+): number[] {
+  const indices: number[] = [];
+  for (let i = index - 1; i >= 0; i--) {
+    const previous = lines[i];
+    if (
+      !previous.comment ||
+      previous.label !== undefined ||
+      previous.mnemonic !== undefined
+    ) {
+      break;
+    }
+    indices.unshift(i);
+  }
+  return indices;
+}
+
 /**
  * Documentation comment for a definition.
  *
@@ -189,16 +224,8 @@ function commentFor(
   if (lines[index].comment) {
     commentLines.push(raw(lines[index], index));
   } else {
-    for (let i = index - 1; i >= 0; i--) {
-      const previous = lines[i];
-      if (
-        !previous.comment ||
-        previous.label !== undefined ||
-        previous.mnemonic !== undefined
-      ) {
-        break;
-      }
-      commentLines.unshift(raw(previous, i));
+    for (const i of precedingCommentLines(lines, index)) {
+      commentLines.push(raw(lines[i], i));
     }
   }
 
@@ -217,7 +244,7 @@ function commentFor(
       // Use a tmp placeholder string until special chars are escaped
       .replace(/^\s*[*-=]{3,}\s*$/, "~~~")
       // Escape special chars
-      .replace(/([*_{}[\]()#+-.!`])/g, "\\$1")
+      .replace(markdownSpecialChars, "\\$1")
       // Replace placholder with actual rule
       .replace(/^~~~$/, horizontalRule),
   );
@@ -306,6 +333,12 @@ export function processSymbols(
       } else {
         lastGlobalLabel = def;
         def.locals = new Map();
+        const header = precedingCommentLines(parsed.lines, index).map(
+          (i) => parsed.lines[i].comment!.content,
+        );
+        if (header.length) {
+          def.header = header;
+        }
       }
     }
 

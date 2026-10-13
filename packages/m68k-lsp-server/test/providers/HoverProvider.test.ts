@@ -172,5 +172,96 @@ Start:
 
       expect(hover).toBeTruthy();
     });
+
+    it("describes a general-purpose register from comments", async () => {
+      const textDocument = await createDoc(
+        "example.s",
+        `; Inputs:
+;   d0 = frame count
+; Outputs:
+;   d1 = total
+Draw:
+\tadd.w d0,d1
+\trts`,
+      );
+
+      const hover = await provider.onHover({
+        textDocument,
+        position: { line: 5, character: 8 },
+      });
+
+      expect(hover?.range).toEqual(range(5, 7, 5, 9));
+      expect(hover?.contents).toEqual({
+        kind: lsp.MarkupKind.Markdown,
+        value: "**D0**: frame count\n\n*Input, header of Draw*",
+      });
+
+      const output = await provider.onHover({
+        textDocument,
+        position: { line: 5, character: 11 },
+      });
+      expect((output?.contents as lsp.MarkupContent).value).toBe(
+        "**D1**: output of Draw, total",
+      );
+    });
+
+    it("describes a register assigned from a symbol", async () => {
+      const textDocument = await createDoc(
+        "example.s",
+        `Draw:
+\tlea\tSomeTable,a0
+\tmove.w\t(a0)+,d0\t; d0 = first entry
+\trts`,
+      );
+
+      const at = async (line: number, character: number) =>
+        (
+          (
+            await provider.onHover({
+              textDocument,
+              position: { line, character },
+            })
+          )?.contents as lsp.MarkupContent | undefined
+        )?.value;
+
+      expect(await at(2, 9)).toBe(
+        "**A0**: address of `SomeTable`\n\n*Assigned on line 2*",
+      );
+      expect(await at(2, 14)).toBe("**D0**: first entry\n\n*Comment, line 3*");
+    });
+
+    it("describes registers within a macro body", async () => {
+      const textDocument = await createDoc(
+        "example.s",
+        `; d0 = count
+Wait\tmacro
+\tsubq.w\t#1,d0
+\tbne.s\t*-2
+\tendm`,
+      );
+
+      const hover = await provider.onHover({
+        textDocument,
+        position: { line: 2, character: 12 },
+      });
+      expect((hover?.contents as lsp.MarkupContent).value).toBe(
+        "**D0**: count\n\n*Input, header of Wait*",
+      );
+    });
+
+    it("gives no register hover without a description", async () => {
+      const textDocument = await createDoc(
+        "example.s",
+        `Draw:
+\tmoveq\t#0,d0
+\trts`,
+      );
+
+      const hover = await provider.onHover({
+        textDocument,
+        position: { line: 1, character: 10 },
+      });
+      expect(hover).toBeUndefined();
+    });
   });
 });

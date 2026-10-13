@@ -343,7 +343,7 @@ export function registerRanges(
   }
   return ranges;
 }
-function isNonLocalCodeLabel(line: ParsedLine): boolean {
+export function isNonLocalCodeLabel(line: ParsedLine): boolean {
   return (
     line.label !== undefined &&
     line.label.scope !== "local" &&

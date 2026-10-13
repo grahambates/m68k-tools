@@ -13,7 +13,12 @@ import { type Provider } from ".";
 import { type AstNode, nodeAtPosition } from "../ast";
 import { locationAsRange } from "m68k-parser";
 import { resolveInclude } from "../files";
-import { DefinitionType, getDefinitions } from "../symbols";
+import { DefinitionType, escapeMarkdown, getDefinitions } from "../symbols";
+import { registerName } from "../registerAnalysis";
+import {
+  describeRegister,
+  type RegisterDescriptionResult,
+} from "../registerDescriptions";
 import { mnemonicDocs, registerDocs, sizeDocs } from "../docs/index";
 import type { Size } from "m68k-parser";
 import { type RegisterName } from "../syntax";
@@ -103,6 +108,9 @@ export default class HoverProvider implements Provider {
           node as unknown as SpecialRegisterNode,
           position.line,
         );
+      case "data-register":
+      case "address-register":
+        return this.hoverGeneralRegister(node, textDocument.uri, position);
     }
   }
 
@@ -223,6 +231,60 @@ export default class HoverProvider implements Provider {
       };
     }
   }
+
+  private async hoverGeneralRegister(
+    node: AstNode,
+    uri: string,
+    position: lsp.Position,
+  ) {
+    const register = registerName(node);
+    const result =
+      register && describeRegister(this.ctx, uri, position, register);
+    if (!result) {
+      return;
+    }
+    return {
+      range: locationAsRange(node.loc, position.line),
+      contents: {
+        kind: lsp.MarkupKind.Markdown,
+        value: formatRegisterDescription(register, result),
+      },
+    };
+  }
+}
+
+function formatRegisterDescription(
+  register: string,
+  { current, output, routine }: RegisterDescriptionResult,
+): string {
+  const name = `**${register.toUpperCase()}**`;
+  const sections: string[] = [];
+  if (current) {
+    const text = [
+      escapeMarkdown(current.text),
+      ...(current.code ? ["`" + current.code + "`"] : []),
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const line = current.line + 1;
+    const origin = {
+      header: `Input, header of ${escapeMarkdown(current.routine ?? "")}`,
+      comment: `Comment, line ${line}`,
+      "inferred-comment": `Inferred from comment, line ${line}`,
+      operand: `Assigned on line ${line}`,
+      call: `Output of ${escapeMarkdown(current.routine ?? "")}, line ${line}`,
+    }[current.source];
+    sections.push(`${name}: ${text}`, `*${origin}*`);
+  }
+  if (output) {
+    const target = routine ? ` of ${escapeMarkdown(routine)}` : "";
+    sections.push(
+      current
+        ? `Output${target}: ${escapeMarkdown(output)}`
+        : `${name}: output${target}, ${escapeMarkdown(output)}`,
+    );
+  }
+  return sections.join("\n\n");
 }
 
 function lookupMnemonicDoc(mnemonic: string): MarkupContent | undefined {

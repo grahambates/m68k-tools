@@ -33,6 +33,7 @@ family assembly, using [m68k-parser](https://github.com/grahambates/m68k-tools/t
 - Hover
   - Instruction/directive documentation
   - Symbol info
+  - Data/address register descriptions from comments and assignments
 - Inlay Hints
   - Evaluated value of constant assignments (`equ`/`fequ`/`=`/`set`)
 - Multiple workspaces

@@ -110,6 +110,33 @@ describe("parse AST", () => {
       });
     });
 
+    it.each([
+      ["EPG_au\t\t=\tEPG_ab+1\t$1d", "EPG_ab+1", "$1d"],
+      ["X equ 1 @17", "1", "@17"],
+      ["  dc.w 1 $1c", "1", "$1c"],
+      ["  move.w d0,d1 $1c", "d1", "$1c"],
+    ])(
+      "reads a number after a complete operand in %j as a positional comment",
+      (source, lastOperand, content) => {
+        const result = parseLine(source);
+        expect(result.errors).toEqual([]);
+        const operand = result.value.operands?.at(-1);
+        expect(source.slice(operand?.loc.start, operand?.loc.end)).toBe(
+          lastOperand,
+        );
+        expect(result.value.comment).toMatchObject({
+          hasPrefix: false,
+          content,
+        });
+      },
+    );
+
+    it("keeps a hex number after an operator in the expression", () => {
+      const result = parseLine("  dc.w 1 + $1c");
+      expect(result.errors).toEqual([]);
+      expect(result.value.comment).toBeUndefined();
+    });
+
     describe("operand addressing modes", () => {
       it("parses data registers", () => {
         const line = parseLine("  move d0,d7").value;

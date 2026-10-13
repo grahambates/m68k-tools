@@ -266,6 +266,18 @@ function shouldContinueOperand(
   const nextCh = peek(state);
   const next2 = peekString(state, 2);
 
+  // A hex or octal number after a complete operand begins a positional
+  // comment, as in `EPG_au = EPG_ab+1 $1d`. Neither prefix is a binary
+  // operator, so the number cannot continue the expression. `%` is left out
+  // because it is also the modulo operator.
+  if (
+    /^(\$[0-9a-f]|@[0-7])/i.test(next2) &&
+    operandText.length > 0 &&
+    operandLooksComplete(operandText)
+  ) {
+    return false;
+  }
+
   // Strong operand indicators (punctuation)
   if (isStrongOperandIndicator(nextCh)) {
     return true;

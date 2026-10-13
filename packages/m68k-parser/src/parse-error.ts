@@ -135,7 +135,7 @@ export function unclosedBracket(loc: Location): ParseError {
     "Unclosed bracket - missing ']'",
     loc,
     {
-      hint: "Memory indirect addressing requires matching [ and ]",
+      hint: "Memory indirect addressing and bracketed expressions require matching [ and ]",
     },
   );
 }

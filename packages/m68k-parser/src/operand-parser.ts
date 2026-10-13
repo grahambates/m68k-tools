@@ -83,6 +83,19 @@ function indexOfTopLevel(text: string, char: string): number {
 }
 
 /**
+ * Whether the `[` opening `text` (which starts with `([`) closes on a `]`
+ * followed by `,` or `)`, as memory indirect addressing requires. Otherwise
+ * the brackets group part of an expression. An unclosed bracket still counts,
+ * so the memory indirect parser can report it.
+ */
+function isMemoryIndirectBracket(text: string): boolean {
+  const close = indexOfTopLevel(text.slice(2), "]");
+  if (close < 0) return true;
+  const after = text.slice(2 + close + 1).trimStart();
+  return after.startsWith(",") || after.startsWith(")");
+}
+
+/**
  * Helper to create a register node from a register name
  */
 function createRegisterNode(
@@ -1540,7 +1553,9 @@ export function parseOperand(
   }
 
   // Memory indirect addressing (68020+): ([bd,An,Rn.s*scale],od) or ([bd,An],od) or ([An],od)
-  if (text.startsWith("([")) {
+  // The brackets end the indirect part, so a `]` followed by more expression,
+  // as in `([a+b]*2,a0)`, is a bracketed displacement instead.
+  if (text.startsWith("([") && isMemoryIndirectBracket(text)) {
     return parseMemoryIndirect(text, loc);
   }
 

@@ -408,6 +408,69 @@ describe("Expression Parsing", () => {
         },
       });
     });
+
+    // Asm-One style grouping, used by AsmPro and TRASH'M-One sources
+    it("parses square brackets as a group", () => {
+      const result = parseLine("  moveq #[end-start]/2-1,d7");
+      expect(result.errors).toEqual([]);
+      expect(result.value.operands?.[0]).toMatchObject({
+        type: "immediate",
+        value: {
+          type: "binary-op",
+          operator: "-",
+          left: {
+            type: "binary-op",
+            operator: "/",
+            left: {
+              type: "group",
+              loc: { start: 9, end: 20 },
+              expression: { type: "binary-op", operator: "-" },
+            },
+          },
+        },
+      });
+    });
+
+    it("parses square brackets in a displacement and a directive", () => {
+      const indirect = parseLine("  move.l (regs+[8+4]*4-DT,a4),d0");
+      expect(indirect.errors).toEqual([]);
+      expect(indirect.value.operands?.[0]).toMatchObject({
+        type: "address-register-indirect-displacement",
+        register: { type: "address-register", register: "a4" },
+      });
+
+      const directive = parseLine("  ds.b [DSIZE]*(10+1)");
+      expect(directive.errors).toEqual([]);
+      expect(directive.value.operands?.[0]).toMatchObject({
+        type: "value",
+        value: {
+          type: "binary-op",
+          operator: "*",
+          left: { type: "group", expression: { name: "DSIZE" } },
+          right: { type: "group" },
+        },
+      });
+    });
+
+    it("reads a leading bracketed displacement apart from memory indirect", () => {
+      const grouped = parseLine("  move.l ([a+b]*2,a0),d0");
+      expect(grouped.errors).toEqual([]);
+      expect(grouped.value.operands?.[0]).toMatchObject({
+        type: "address-register-indirect-displacement",
+        displacement: { type: "binary-op", left: { type: "group" } },
+      });
+
+      const indirect = parseLine("  move.l ([a0],d0),d1");
+      expect(indirect.errors).toEqual([]);
+      expect(indirect.value.operands?.[0]).toMatchObject({
+        type: "memory-indirect",
+      });
+    });
+
+    it("requires a group to close with its own bracket", () => {
+      const result = parseLine("  dc.w [1+2)");
+      expect(result.errors).toMatchObject([{ code: "UNCLOSED_BRACKET" }]);
+    });
   });
 
   describe("Operator precedence", () => {

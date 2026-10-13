@@ -13,6 +13,7 @@ import { isInterpolated } from "./tokenizer-utils.js";
 import {
   type ParseError,
   unclosedParen,
+  unclosedBracket,
   invalidExpression,
 } from "./parse-error.js";
 
@@ -154,15 +155,20 @@ export function parseExpression(
       };
     }
 
-    if (token.type === "lparen") {
+    if (token.type === "lparen" || token.type === "lbracket") {
+      // A group closes with its own kind of bracket, so `[a)` is unclosed
+      const close = token.type === "lparen" ? "rparen" : "rbracket";
       advance();
       const expr = parseLogicalOr(); // Start from lowest precedence
-      if (current()?.type === "rparen") {
+      if (current()?.type === close) {
         advance();
       } else {
-        // Missing closing parenthesis
+        // Missing closing parenthesis or bracket
         if (!parseError) {
-          parseError = unclosedParen(tokLoc);
+          parseError =
+            close === "rparen"
+              ? unclosedParen(tokLoc)
+              : unclosedBracket(tokLoc);
         }
       }
       return {

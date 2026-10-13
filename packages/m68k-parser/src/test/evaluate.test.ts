@@ -41,6 +41,19 @@ test.each(["1 2", "1)", "1+", "(1", ""])(
   },
 );
 
+// Square brackets are an Asm-One extension that vasm rejects; they group
+// exactly as parentheses do.
+test("evaluates square brackets as grouping", () => {
+  expect(evaluateConstant(parseExpression("[1+2]<<3").value)).toEqual({
+    known: true,
+    value: 24,
+  });
+  expect(evaluateConstant(parseExpression("[8+[2*3]]/2").value)).toEqual({
+    known: true,
+    value: 7,
+  });
+});
+
 test("resolves zero and preserves unknown results", () => {
   expect(evaluateConstant(parseExpression("count+1").value, () => 0)).toEqual({
     known: true,

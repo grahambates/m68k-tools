@@ -33,6 +33,8 @@ export type ExpressionToken =
   | { type: "macro-parameter"; value: string; position: number }
   | { type: "lparen"; position: number }
   | { type: "rparen"; position: number }
+  | { type: "lbracket"; position: number }
+  | { type: "rbracket"; position: number }
   | { type: "current-address"; position: number }
   | { type: "eof"; position: number };
 
@@ -91,7 +93,8 @@ export function tokenizeExpression(
     const canBeNumberPrefix =
       tokens.length === 0 ||
       prevToken?.type === "operator" ||
-      prevToken?.type === "lparen";
+      prevToken?.type === "lparen" ||
+      prevToken?.type === "lbracket";
 
     if (
       char === "$" &&
@@ -183,7 +186,9 @@ export function tokenizeExpression(
       const isAtStart = tokens.length === 0;
       const afterOperator =
         prevToken &&
-        (prevToken.type === "operator" || prevToken.type === "lparen");
+        (prevToken.type === "operator" ||
+          prevToken.type === "lparen" ||
+          prevToken.type === "lbracket");
 
       if (isAtStart || afterOperator) {
         tokens.push({ type: "current-address", position: i });
@@ -200,6 +205,20 @@ export function tokenizeExpression(
     }
     if (char === ")") {
       tokens.push({ type: "rparen", position: i });
+      i++;
+      continue;
+    }
+
+    // Square brackets group like parentheses in the Asm-One family of
+    // assemblers (AsmPro, TRASH'M-One), as in `#[end-start]/2-1`. vasm
+    // rejects them, so this is an extension beyond the vasm dialect.
+    if (char === "[") {
+      tokens.push({ type: "lbracket", position: i });
+      i++;
+      continue;
+    }
+    if (char === "]") {
+      tokens.push({ type: "rbracket", position: i });
       i++;
       continue;
     }

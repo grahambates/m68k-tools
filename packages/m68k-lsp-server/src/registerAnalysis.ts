@@ -295,6 +295,33 @@ export function findRoutineRange(
   const start = document.parsed.lines[startLine];
   const label = isNonLocalCodeLabel(start) ? start.label : undefined;
 
+  const flowEnd = routineFlowEnd(
+    document.parsed,
+    startLine,
+    macroDefinitionLines,
+    symbolsCaseSensitive(ctx.config),
+  );
+  if (flowEnd === "end-of-file") {
+    return {
+      range: lsp.Range.create(lsp.Position.create(startLine, 0), endOfFile),
+      label: label?.label ?? "Start of file",
+    };
+  }
+  // Code the routine's own flow never reaches, such as a fragment entered
+  // from elsewhere, keeps the narrower scope of the next return after it.
+  if (flowEnd >= cursorLine) {
+    return {
+      range: lsp.Range.create(
+        lsp.Position.create(startLine, 0),
+        lsp.Position.create(
+          flowEnd,
+          lineContentEnd(document.parsed.lines[flowEnd]),
+        ),
+      ),
+      label: label?.label ?? "Start of file",
+    };
+  }
+
   for (
     let index = params.position.line;
     index < document.parsed.lines.length;
@@ -343,6 +370,125 @@ export function registerRanges(
   }
   return ranges;
 }
+/**
+ * Last line a routine's own control flow reaches from its first line.
+ *
+ * Flow falls through to the next line, including into later non-local labels,
+ * and follows branches to local labels, so code after a conditional early
+ * return stays in the routine. Unconditional returns, BRA and JMP end a path;
+ * one to a non-local label is a tail call out of the routine and is not
+ * followed. A jump whose target cannot be resolved, such as `jmp (a0)`, is
+ * assumed to continue into the code after it. Macro definitions are passed
+ * over.
+ *
+ * An indexed jump such as `jmp .table(pc,d0.w)` can land on any entry of the
+ * table at its target, so each consecutive `bra`/`jmp` or `dc` entry there is
+ * reached, and the local labels the entries name are followed.
+ */
+function routineFlowEnd(
+  file: ParsedFile,
+  startLine: number,
+  skippedLines: Set<number>,
+  caseSensitive: boolean,
+): number | "end-of-file" {
+  const { lines } = file;
+  const labels = collectControlFlowLabels(file, caseSensitive);
+  const localTarget = (name: string | undefined, from: number) => {
+    const target = name === undefined ? undefined : labels.resolve(name, from);
+    return target !== undefined && lines[target]?.label?.scope === "local"
+      ? target
+      : undefined;
+  };
+  const reached = new Set<number>();
+  const reachedTables = new Set<number>();
+  const pending: { index: number; table: boolean }[] = [
+    { index: startLine, table: false },
+  ];
+  let last = startLine;
+  while (pending.length) {
+    const { index, table } = pending.pop()!;
+    if (index >= lines.length) {
+      return "end-of-file";
+    }
+    const line = lines[index];
+    const mnemonic =
+      !skippedLines.has(index) && line.mnemonic?.type === "instruction"
+        ? canonicalConditionMnemonic(line.mnemonic.instruction).toLowerCase()
+        : undefined;
+
+    if (table) {
+      const entry =
+        mnemonic === "bra" ||
+        mnemonic === "jmp" ||
+        (line.mnemonic?.type === "directive" &&
+          line.mnemonic.directive.toLowerCase() === "dc");
+      if (entry || !line.mnemonic) {
+        if (!reachedTables.has(index)) {
+          reachedTables.add(index);
+          last = Math.max(last, index);
+          for (const node of walkLine(line)) {
+            const target = localTarget(
+              node.type === "symbol"
+                ? (node as AstNode & { name: string }).name
+                : undefined,
+              index,
+            );
+            if (target !== undefined) {
+              pending.push({ index: target, table: false });
+            }
+          }
+          pending.push({ index: index + 1, table: true });
+        }
+        continue;
+      }
+    }
+
+    if (reached.has(index)) {
+      continue;
+    }
+    reached.add(index);
+    last = Math.max(last, index);
+    // A conditional statement (`iif`) may not run, so it never ends the flow.
+    const conditional = line.inlineCondition !== undefined;
+    if (mnemonic && !conditional && routineReturns.has(mnemonic)) {
+      continue;
+    }
+    if (mnemonic && isBranchMnemonic(mnemonic)) {
+      const target = branchTarget(line);
+      const targetLine = localTarget(target, index);
+      if (targetLine !== undefined) {
+        const operand = line.operands?.at(-1)?.type;
+        pending.push({
+          index: targetLine,
+          table:
+            mnemonic === "jmp" &&
+            (operand === "pc-relative-index" ||
+              operand === "address-register-indirect-index"),
+        });
+      }
+      const unconditional =
+        !conditional && (mnemonic === "bra" || mnemonic === "jmp");
+      // A named target outside the local labels leaves the routine. Without
+      // a name the jump is indirect.
+      if (unconditional && target !== undefined) {
+        continue;
+      }
+    }
+    pending.push({ index: index + 1, table: false });
+  }
+  return last;
+}
+
+/** Column after a line's last statement node, before any comment. */
+function lineContentEnd(line: ParsedLine): number {
+  return (
+    line.operands?.at(-1)?.loc.end ??
+    line.mnemonic?.loc.end ??
+    line.label?.loc.end ??
+    0
+  );
+}
+
 export function isNonLocalCodeLabel(line: ParsedLine): boolean {
   return (
     line.label !== undefined &&

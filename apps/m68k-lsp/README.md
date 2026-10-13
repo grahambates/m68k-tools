@@ -49,7 +49,13 @@ Requires VS Code 1.101 or later. For local development, open the monorepo root a
 
 ### Register analysis scope
 
-Register commands and the remapping view work on the selection. Without one, the scope is the routine around the cursor, from the previous non-local label to the next unconditional `rts`, `rte` or `rtr`. Inside a macro definition it is the macro body, from `macro` to `endm`; labels and returns in a macro body do not start or end a routine around it.
+Register commands and the remapping view work on the selection. Without one, the scope is the routine around the cursor. It starts at the previous non-local label and covers every line the routine's control flow reaches from there:
+
+- Flow falls through to the next line, including into a later non-local label, and follows branches to local labels. Code after a conditional early return is therefore part of the routine.
+- An unconditional `rts`, `rte`, `rtr`, `bra` or `jmp` ends a path. A branch or jump to a non-local label is treated as a tail call and not followed.
+- An indexed jump such as `jmp .table(pc,d0.w)` reaches every `bra`/`jmp` or `dc` entry of the table at its target, and the local labels those entries name. A jump with no named target, such as `jmp (a0)`, is assumed to continue into the code after it.
+
+If the cursor is on code the routine's flow never reaches, the scope ends at the next unconditional return after the cursor instead. Inside a macro definition it is the macro body, from `macro` to `endm`; labels and returns in a macro body do not start or end a routine around it.
 
 ### Register descriptions
 
@@ -73,7 +79,7 @@ Registers that are free to reuse after the cursor, because nothing reachable fro
 
 Registers the routine's header comment lists under `Outputs:` are labelled `output` in the panel. They are never reported as available, because their value at the cursor is what the routine returns unless something later overwrites it.
 
-Each row in the remapping panel shows the lines where the register is first and last used in scope, such as `L12–30`, or just `L12` when both are on one line. Click either number to move the cursor there. When the scope comes from a selection, the editor scrolls to the line and keeps the selection, so the scope does not change.
+Each row in the remapping panel shows the lines where the register is first and last used in scope, such as `L12–30`, or just `L12` when both are on one line. Click either number to move the cursor there. The scope at the top of the panel shows its first and last lines in the same way, such as `Scope: Draw · L5–31`. When the scope comes from a selection, the editor scrolls to the line and keeps the selection, so the scope does not change.
 
 Hover over a register row in the remapping panel to highlight its usage lines in the current scope. Lines that may write the register use the stronger write-occurrence highlight; lines that only read it use the normal occurrence highlight. Both are also marked in the overview ruler. Highlights clear when the pointer leaves. Keyboard focus also shows the preview, clearing on blur. Usage highlights are separate from mapping previews and clear on Reset or a scope change.
 

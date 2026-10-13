@@ -188,9 +188,15 @@ export function activate(context: ExtensionContext): void {
   };
   context.subscriptions.push(usageReadHighlight, usageWriteHighlight);
   const revealUse = (register: string, end: "first" | "last") => {
-    const snapshot = remappingContext;
     const usage = previewUsage?.registers.find(({ name }) => name === register);
-    const position = end === "last" ? usage?.lastUse : usage?.firstUse;
+    revealPosition(end === "last" ? usage?.lastUse : usage?.firstUse);
+  };
+  const revealScope = (end: "start" | "end") => {
+    const range = remappingContext?.range;
+    revealPosition(end === "end" ? range?.end : range?.start);
+  };
+  const revealPosition = (position?: { line: number; character: number }) => {
+    const snapshot = remappingContext;
     const editor = window.activeTextEditor;
     if (!snapshot?.isCurrent() || !position || !editor) {
       return;
@@ -314,7 +320,12 @@ export function activate(context: ExtensionContext): void {
       documentVersion: usage.documentVersion,
     };
     return {
-      scope: `${scope.label ? `${scope.label} · ` : ""}lines ${range.start.line + 1}-${range.end.line + 1}`,
+      scope: scope.label || "Selection",
+      // A selection scope is a VS Code Selection, which serialises as an array.
+      scopeRange: {
+        start: { line: range.start.line, character: range.start.character },
+        end: { line: range.end.line, character: range.end.character },
+      },
       registers: usage.registers,
       colors: enabled
         ? Object.fromEntries(
@@ -459,6 +470,7 @@ export function activate(context: ExtensionContext): void {
     clearPreview,
     highlightUsage,
     revealUse,
+    revealScope,
   );
 
   const listRegistersInSelection = async () => {

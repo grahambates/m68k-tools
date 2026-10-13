@@ -1,4 +1,4 @@
-import type { RegisterUsage } from "@m68k-lsp/protocol";
+import type { Range, RegisterUsage } from "@m68k-lsp/protocol";
 import {
   type Disposable,
   type Webview,
@@ -10,6 +10,8 @@ export type RegisterViewUsage = Omit<RegisterUsage, "references">;
 
 export interface RegisterRemappingModel {
   scope: string;
+  /** Start and end of the scope, shown as links after its label. */
+  scopeRange?: Range;
   registers: RegisterViewUsage[];
   colors?: { [k: string]: string | undefined };
 }
@@ -45,6 +47,7 @@ export class RegisterRemappingView implements WebviewViewProvider, Disposable {
       register: string,
       end: "first" | "last",
     ) => void = () => {},
+    private readonly revealScope: (end: "start" | "end") => void = () => {},
   ) {}
 
   resolveWebviewView(view: WebviewView): void {
@@ -62,7 +65,9 @@ export class RegisterRemappingView implements WebviewViewProvider, Disposable {
         register?: string;
         end?: string;
       }) => {
-        if (message.type === "reveal") {
+        if (message.type === "revealScope") {
+          this.revealScope(message.end === "end" ? "end" : "start");
+        } else if (message.type === "reveal") {
           if (typeof message.register === "string") {
             this.revealUse(
               message.register,
@@ -354,6 +359,46 @@ function webviewHtml(webview: Webview): string {
       }
     }
 
+    function lineLink(position, prefix, title, message) {
+      const link = document.createElement('button');
+      const line = position.line + 1;
+      link.className = 'use';
+      link.textContent = prefix + line;
+      link.title = title + ' on line ' + line;
+      link.setAttribute('aria-label', link.title);
+      link.addEventListener('click', () => vscode.postMessage(message));
+      return link;
+    }
+
+    function lineRange(start, end, title, message) {
+      const range = document.createElement('span');
+      range.className = 'use-range';
+      range.append(lineLink(start, 'L', 'Go to ' + title.start, message('start')));
+      if (end && end.line !== start.line) {
+        const dash = document.createElement('span');
+        dash.textContent = '–';
+        range.append(dash, lineLink(end, '', 'Go to ' + title.end, message('end')));
+      }
+      return range;
+    }
+
+    function renderScope() {
+      scope.textContent = 'Scope: ' + (model?.scope || 'none');
+      if (model?.scopeRange) {
+        const separator = document.createElement('span');
+        separator.textContent = ' · ';
+        scope.append(
+          separator,
+          lineRange(
+            model.scopeRange.start,
+            model.scopeRange.end,
+            { start: 'start of scope', end: 'end of scope' },
+            (end) => ({ type: 'revealScope', end }),
+          ),
+        );
+      }
+    }
+
     function renderRows() {
       rows.replaceChildren();
       const usageByName = new Map(model.registers.map((usage) => [usage.name, usage]));
@@ -385,24 +430,15 @@ function webviewHtml(webview: Webview): string {
         access.className = available ? 'access available' : 'access';
         access.textContent = accessLabel(usage);
         access.title = available ? access.textContent + ', available after the cursor' : access.textContent;
-        const useRange = document.createElement('span');
-        useRange.className = 'use-range';
-        const useLink = (end, position, prefix) => {
-          const link = document.createElement('button');
-          const line = position.line + 1;
-          link.className = 'use';
-          link.textContent = prefix + line;
-          link.title = 'Go to ' + end + ' use of ' + register.toUpperCase() + ' on line ' + line;
-          link.setAttribute('aria-label', link.title);
-          link.addEventListener('click', () => vscode.postMessage({ type: 'reveal', register, end }));
-          return link;
-        };
-        useRange.append(useLink('first', usage.firstUse, 'L'));
-        if (usage.lastUse && usage.lastUse.line !== usage.firstUse.line) {
-          const dash = document.createElement('span');
-          dash.textContent = '–';
-          useRange.append(dash, useLink('last', usage.lastUse, ''));
-        }
+        const useRange = lineRange(
+          usage.firstUse,
+          usage.lastUse,
+          {
+            start: 'first use of ' + register.toUpperCase(),
+            end: 'last use of ' + register.toUpperCase(),
+          },
+          (end) => ({ type: 'reveal', register, end: end === 'start' ? 'first' : 'last' }),
+        );
         const select = document.createElement('select');
         const selectedDestination = mappings[register] || register;
         select.setAttribute('aria-label', 'Map ' + register.toUpperCase());
@@ -430,7 +466,7 @@ function webviewHtml(webview: Webview): string {
       model = nextModel;
       mappings = {};
       rows.replaceChildren();
-      scope.textContent = 'Scope: ' + (model?.scope || 'none');
+      renderScope();
       empty.textContent = model ? 'No registers used in this scope.' : 'Open an M68k file to begin.';
       empty.hidden = !!model?.registers.length;
       if (!model) {

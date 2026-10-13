@@ -1025,6 +1025,129 @@ Second:
       });
     });
 
+    it("continues past an early return that a branch skips", async () => {
+      const textDocument = await createDoc(
+        "early-return.s",
+        `Foo:
+  tst.w d0
+  bne .continue
+  rts
+.continue
+ move.w d0,d1
+ rts
+`,
+      );
+
+      for (const line of [1, 5]) {
+        expect(
+          provider.onRoutineRange({
+            textDocument,
+            position: lsp.Position.create(line, 2),
+          }),
+        ).toEqual({ range: range(0, 0, 6, 4), label: "Foo" });
+      }
+    });
+
+    it("ends at a tail call without following it", async () => {
+      const textDocument = await createDoc(
+        "tail-call.s",
+        `Foo:
+ tst.w d0
+ beq.s .done
+ moveq #1,d1
+ bra Bar
+.done:
+ rts
+Bar:
+ rts
+`,
+      );
+
+      expect(
+        provider.onRoutineRange({
+          textDocument,
+          position: lsp.Position.create(3, 2),
+        }),
+      ).toEqual({ range: range(0, 0, 6, 4), label: "Foo" });
+    });
+
+    it("follows a jump table through its local targets", async () => {
+      const textDocument = await createDoc(
+        "jump-table.s",
+        `Dispatch:
+ add.w d0,d0
+ jmp .table(pc,d0.w)
+.table:
+ bra.s .first
+ bra.s .second
+.first:
+ moveq #1,d1
+ rts
+.second:
+ moveq #2,d1
+ rts
+`,
+      );
+
+      expect(
+        provider.onRoutineRange({
+          textDocument,
+          position: lsp.Position.create(1, 2),
+        }),
+      ).toEqual({ range: range(0, 0, 11, 4), label: "Dispatch" });
+    });
+
+    it("follows the labels named by a table of offsets", async () => {
+      const textDocument = await createDoc(
+        "offset-table.s",
+        `Dispatch:
+ add.w d0,d0
+ move.w .offsets(pc,d0.w),d0
+ jmp .offsets(pc,d0.w)
+.offsets:
+ dc.w .first-.offsets
+ dc.w .second-.offsets
+.first:
+ rts
+.second:
+ moveq #2,d1
+ rts
+`,
+      );
+
+      expect(
+        provider.onRoutineRange({
+          textDocument,
+          position: lsp.Position.create(1, 2),
+        }),
+      ).toEqual({ range: range(0, 0, 11, 4), label: "Dispatch" });
+    });
+
+    it("scopes code the routine's flow never reaches to its next return", async () => {
+      const textDocument = await createDoc(
+        "unreached.s",
+        `Foo:
+ rts
+.fragment:
+ moveq #1,d0
+ rts
+`,
+      );
+
+      expect(
+        provider.onRoutineRange({
+          textDocument,
+          position: lsp.Position.create(0, 1),
+        }),
+      ).toEqual({ range: range(0, 0, 1, 4), label: "Foo" });
+      expect(
+        provider.onRoutineRange({
+          textDocument,
+          position: lsp.Position.create(3, 2),
+        }),
+      ).toEqual({ range: range(0, 0, 4, 4), label: "Foo" });
+    });
+
     it("does not end a routine at a return that is conditional", async () => {
       const textDocument = await createDoc(
         "conditional-return.s",

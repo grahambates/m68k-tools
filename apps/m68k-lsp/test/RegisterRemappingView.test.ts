@@ -48,7 +48,11 @@ it.each([undefined, { d0: "#e06c75" }])(
       /<script nonce="[^"]+">([\s\S]*?)<\/script>/,
     )![1];
     const model = {
-      scope: "test",
+      scope: "Draw",
+      scopeRange: {
+        start: { line: 4, character: 0 },
+        end: { line: 30, character: 4 },
+      },
       registers: [
         {
           name: "d0",
@@ -82,6 +86,19 @@ it.each([undefined, { d0: "#e06c75" }])(
           return elements.get(id);
         },
       },
+    });
+    const scope = elements.get("scope")!;
+    expect(scope.textContent).toBe("Scope: Draw · L5–31");
+    const [scopeStart, , scopeEnd] = scope.children[1].children;
+    scopeStart.listeners.click();
+    expect(postMessage).toHaveBeenLastCalledWith({
+      type: "revealScope",
+      end: "start",
+    });
+    scopeEnd.listeners.click();
+    expect(postMessage).toHaveBeenLastCalledWith({
+      type: "revealScope",
+      end: "end",
     });
     const rows = elements.get("rows")!.children;
     expect(rows).toHaveLength(2);
@@ -320,6 +337,7 @@ it("routes usage highlights and reveals, clearing highlights on refresh and disp
   let receive!: (message: unknown) => Promise<void>;
   const highlight = vi.fn();
   const reveal = vi.fn();
+  const revealScope = vi.fn();
   const view = new RegisterRemappingView(
     vi.fn(),
     vi.fn(),
@@ -327,6 +345,7 @@ it("routes usage highlights and reveals, clearing highlights on refresh and disp
     undefined,
     highlight,
     reveal,
+    revealScope,
   );
   view.resolveWebviewView({
     visible: true,
@@ -348,6 +367,10 @@ it("routes usage highlights and reveals, clearing highlights on refresh and disp
   expect(reveal).toHaveBeenLastCalledWith("d3", "first");
   await receive({ type: "reveal", register: "d3", end: "last" });
   expect(reveal).toHaveBeenLastCalledWith("d3", "last");
+  await receive({ type: "revealScope", end: "end" });
+  expect(revealScope).toHaveBeenLastCalledWith("end");
+  await receive({ type: "revealScope" });
+  expect(revealScope).toHaveBeenLastCalledWith("start");
   await receive({ type: "highlight", register: "a1" });
   await view.refresh();
   expect(highlight).toHaveBeenLastCalledWith();

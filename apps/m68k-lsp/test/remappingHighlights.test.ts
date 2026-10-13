@@ -1,4 +1,5 @@
 import {
+  availabilityHighlightRanges,
   remappingHighlights,
   usageHighlightLines,
 } from "../src/remappingHighlights";
@@ -62,4 +63,36 @@ test("highlights a usage line as a write when any reference on it may write", ()
       ref(3, "unknown"),
     ]),
   ).toEqual({ read: [0, 3], write: [1, 2] });
+});
+test("splits availability runs by kind, whatever the availability at the cursor", () => {
+  const run = (line: number) => ({
+    start: { line, character: 0 },
+    end: { line, character: 0 },
+  });
+  expect(
+    availabilityHighlightRanges({
+      name: "d0",
+      references: [],
+      firstUse: { line: 0, character: 0 },
+      lastUse: { line: 0, character: 0 },
+      read: true,
+      written: true,
+      availability: "unavailable",
+      availabilityRanges: [
+        { range: run(1), availability: "available", untilOverwritten: true },
+        { range: run(4), availability: "available" },
+        { range: run(5), availability: "unknown" },
+        { range: run(6), availability: "available", untilOverwritten: true },
+      ],
+    }),
+  ).toEqual({
+    free: [run(4)],
+    untilOverwritten: [run(1), run(6)],
+    unknown: [run(5)],
+  });
+  expect(availabilityHighlightRanges(undefined)).toEqual({
+    free: [],
+    untilOverwritten: [],
+    unknown: [],
+  });
 });

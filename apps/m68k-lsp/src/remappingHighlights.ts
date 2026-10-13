@@ -1,4 +1,5 @@
 import type {
+  RegisterUsage,
   RegisterUsageReference,
   RegisterUsageResult,
   Range,
@@ -63,4 +64,28 @@ export function usageHighlightLines(references: RegisterUsageReference[]): {
       .filter((line) => !write.has(line)),
   );
   return { read: [...read], write: [...write] };
+}
+
+/**
+ * Availability runs of a register for highlighting, split into free to the end
+ * of the flow, free only until a later write, and unknown. Every run in the
+ * scope is included, whatever the register's availability at the cursor.
+ */
+export function availabilityHighlightRanges(usage: RegisterUsage | undefined): {
+  free: Range[];
+  untilOverwritten: Range[];
+  unknown: Range[];
+} {
+  const runs = usage?.availabilityRanges ?? [];
+  const of = (keep: (run: (typeof runs)[number]) => boolean) =>
+    runs.filter(keep).map(({ range }) => range);
+  return {
+    free: of(
+      (run) => run.availability === "available" && !run.untilOverwritten,
+    ),
+    untilOverwritten: of(
+      (run) => run.availability === "available" && !!run.untilOverwritten,
+    ),
+    unknown: of((run) => run.availability === "unknown"),
+  };
 }

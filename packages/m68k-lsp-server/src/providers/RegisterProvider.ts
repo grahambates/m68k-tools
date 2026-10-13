@@ -45,23 +45,20 @@ export default class RegisterProvider implements Provider {
   onRegisterUsage(
     params: RegisterUsageParams,
   ): RegisterUsageResult | undefined {
-    const usage = analyzeRegisterUsage(this.ctx, params);
-    const header = usage
-      ? routineHeaderAt(
-          this.ctx,
-          params.textDocument.uri,
-          params.position ?? params.range.start,
-        )
-      : undefined;
+    const header = routineHeaderAt(
+      this.ctx,
+      params.textDocument.uri,
+      params.position ?? params.range.start,
+    );
+    const outputs = new Set(
+      [...(header?.registers ?? [])]
+        .filter(([, entry]) => entry.output)
+        .map(([name]) => name),
+    );
+    const usage = analyzeRegisterUsage(this.ctx, params, { outputs });
     for (const register of usage?.registers ?? []) {
-      if (!header?.registers.get(register.name)?.output) {
-        continue;
-      }
-      register.output = true;
-      // Nothing after the position touches it, so its current value is what
-      // the routine returns.
-      if (register.availability === "available") {
-        register.availability = "unavailable";
+      if (outputs.has(register.name)) {
+        register.output = true;
       }
     }
     return usage;

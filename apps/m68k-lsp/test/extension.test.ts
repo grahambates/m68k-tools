@@ -37,7 +37,7 @@ vi.mock(
   "vscode",
   () => ({
     DecorationRangeBehavior: { ClosedClosed: 1 },
-    OverviewRulerLane: { Center: 2 },
+    OverviewRulerLane: { Center: 2, Left: 1 },
     TextEditorRevealType: { InCenterIfOutsideViewport: 2 },
     Range: class {},
     ThemeColor: class {

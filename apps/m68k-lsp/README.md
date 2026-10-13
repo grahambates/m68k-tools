@@ -55,7 +55,7 @@ Register commands and the remapping view work on the selection. Without one, the
 - An unconditional `rts`, `rte`, `rtr`, `bra` or `jmp` ends a path. A branch or jump to a non-local label is treated as a tail call and not followed.
 - An indexed jump such as `jmp .table(pc,d0.w)` reaches every `bra`/`jmp` or `dc` entry of the table at its target, and the local labels those entries name. A jump with no named target, such as `jmp (a0)`, is assumed to continue into the code after it.
 
-If the cursor is on code the routine's flow never reaches, the scope ends at the next unconditional return after the cursor instead. Inside a macro definition it is the macro body, from `macro` to `endm`; labels and returns in a macro body do not start or end a routine around it.
+If the cursor is on code the routine's flow never reaches, such as a fragment entered from elsewhere, the scope runs to the end of that code's own flow instead. Blank lines, comments and data between routines have no scope; select lines to analyse them. Inside a macro definition it is the macro body, from `macro` to `endm`; labels and returns in a macro body do not start or end a routine around it.
 
 ### Register descriptions
 
@@ -75,13 +75,13 @@ The remapping view previews warnings for newly invalid register operand forms al
 
 If macro analysis is incomplete or includes references that cannot safely be edited, the preview still validates explicit instructions and indicates the unchecked references. The existing restrictions on applying an incomplete edit plan remain in effect.
 
-Registers that are free to reuse after the cursor have their access summary shown in green; hover over it for the full status. A register is free when no path the code can take from the cursor reads it before overwriting it in full:
+Registers that are free to reuse after the cursor have their access summary shown in green, or in orange when they are free only until a later write overwrites them. It is grey italic when availability is unknown, because the code after the cursor includes a call or macro that could not be analysed. Hover over it for the full status. Hovering a register row also marks every run of lines in the scope where the register is free, with a bar at the line's edge alongside the read and write highlights. This includes runs before the cursor and inside loops. A run starts and ends on code, so it only covers a label that it carries on past. Each run is green where nothing later touches the register, orange where it stays free only until a later write, or grey where availability is unknown. The panel's text colour describes the register after the cursor line. A register is free when no path the code can take from the cursor reads it before overwriting it in full:
 
 - The flow follows branches, including back round a loop, and the lines a macro call expands to, in order.
-- Only a whole-register write ends a path. That means a write to an address register, `moveq`, `lea`, `movem`, or a `.l` write to a data register. A `.b` or `.w` write keeps the upper bits, so it counts as a use. So does a write under `iif` or inside an `if` block, since it may not happen.
+- Bits are tracked by width. A read needs the low byte, word or long word of the register, at the operation's size: word when none is given, the index size for an index register, and all 32 bits for an address register. A write frees the earlier value once it replaces every bit still to be read. So a `.w` write followed only by `.w` reads frees the register before it, but not if a `.l` read follows. Writes to address registers, `moveq`, `lea` and `movem` loads replace all 32 bits. A write under `iif` or inside an `if` block may not happen, so it replaces nothing.
 - Any register a called subroutine in the same file touches counts as used. A call that can't be resolved, or a macro that can't be fully expanded, makes the answer unknown.
 
-Registers the routine's header comment lists under `Outputs:` are labelled `output` in the panel. They are never reported as available, because their value at the cursor is what the routine returns unless something later overwrites it.
+Registers the routine's header comment lists under `Outputs:` are labelled `output` in the panel. A return counts as reading them, so an output is only available when every path overwrites it before returning.
 
 Each row in the remapping panel shows the lines where the register is first and last used in scope, such as `L12–30`, or just `L12` when both are on one line. Click either number to move the cursor there. The scope at the top of the panel shows its first and last lines in the same way, such as `Scope: Draw · L5–31`. When the scope comes from a selection, the editor scrolls to the line and keeps the selection, so the scope does not change.
 

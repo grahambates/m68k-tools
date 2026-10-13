@@ -1,6 +1,7 @@
 import type {
   RegisterAccess,
   RegisterAvailability,
+  RegisterAvailabilityRange,
   RegisterUsage,
   RegisterUsageReference,
   RegisterUsageParams,
@@ -125,6 +126,10 @@ const conditionalBranches = new Set([
 export function analyzeRegisterUsage(
   ctx: Context,
   params: RegisterUsageParams,
+  options: {
+    /** Registers the routine returns, whose values are needed at a return. */
+    outputs?: ReadonlySet<string>;
+  } = {},
 ): RegisterUsageResult | undefined {
   const document = ctx.store.get(params.textDocument.uri);
   if (!isProcessed(document)) {
@@ -212,6 +217,7 @@ export function analyzeRegisterUsage(
         lineTexts,
         params.range,
         params.position,
+        options.outputs ?? new Set(),
       )
     : undefined;
   return {
@@ -220,7 +226,17 @@ export function analyzeRegisterUsage(
     registers: Array.from(usages, ([name, references]) => {
       const usage = summariseUsage(name, references);
       if (liveness) {
-        usage.availability = liveness(name);
+        const { availability, untilOverwritten, lines } = liveness(name);
+        usage.availability = availability;
+        if (untilOverwritten) {
+          usage.availableUntilOverwritten = true;
+        }
+        if (lines.length) {
+          usage.availabilityRanges = lineRuns(lines, (index) => {
+            const type = document.parsed.lines[index]?.mnemonic?.type;
+            return type === "instruction" || type === "macro";
+          });
+        }
       }
       return usage;
     }),
@@ -293,49 +309,45 @@ export function findRoutineRange(
       label: label?.label ?? "Start of file",
     };
   }
-  // Code the routine's own flow never reaches, such as a fragment entered
-  // from elsewhere, keeps the narrower scope of the next return after it.
+  const caseSensitive = symbolsCaseSensitive(ctx.config);
+  const scopeTo = (end: number) => ({
+    range: lsp.Range.create(
+      lsp.Position.create(startLine, 0),
+      lsp.Position.create(end, lineContentEnd(document.parsed.lines[end])),
+    ),
+    label: label?.label ?? "Start of file",
+  });
   if (flowEnd >= cursorLine) {
-    return {
-      range: lsp.Range.create(
-        lsp.Position.create(startLine, 0),
-        lsp.Position.create(
-          flowEnd,
-          lineContentEnd(document.parsed.lines[flowEnd]),
-        ),
-      ),
-      label: label?.label ?? "Start of file",
-    };
+    return scopeTo(flowEnd);
   }
 
-  for (
-    let index = params.position.line;
-    index < document.parsed.lines.length;
-    index++
-  ) {
-    const line = document.parsed.lines[index];
-    const mnemonic = line.mnemonic;
-    // A return that only happens if a condition holds does not end the routine.
+  // Past the routine's flow, code it never reaches, such as a fragment
+  // entered from elsewhere, still belongs to the routine, up to where that
+  // code's own flow ends. Blank lines, comments and data between routines
+  // belong to none.
+  for (let index = cursorLine; index > flowEnd; index--) {
+    const mnemonic = document.parsed.lines[index].mnemonic?.type;
     if (
-      !macroDefinitionLines.has(index) &&
-      mnemonic?.type === "instruction" &&
-      line.inlineCondition === undefined &&
-      routineReturns.has(mnemonic.instruction.toLowerCase())
+      macroDefinitionLines.has(index) ||
+      (mnemonic !== "instruction" && mnemonic !== "macro")
     ) {
+      continue;
+    }
+    const fragmentEnd = routineFlowEnd(
+      document.parsed,
+      index,
+      macroDefinitionLines,
+      caseSensitive,
+    );
+    if (fragmentEnd === "end-of-file") {
       return {
-        range: lsp.Range.create(
-          lsp.Position.create(startLine, 0),
-          lsp.Position.create(index, mnemonic.loc.end),
-        ),
+        range: lsp.Range.create(lsp.Position.create(startLine, 0), endOfFile),
         label: label?.label ?? "Start of file",
       };
     }
+    return fragmentEnd >= cursorLine ? scopeTo(fragmentEnd) : undefined;
   }
-
-  return {
-    range: lsp.Range.create(lsp.Position.create(startLine, 0), endOfFile),
-    label: label?.label ?? "Start of file",
-  };
+  return undefined;
 }
 
 export function registerRanges(
@@ -484,11 +496,62 @@ export function isNonLocalCodeLabel(line: ParsedLine): boolean {
 }
 
 /**
- * What one step of execution does to a register: uses its current value, or
- * replaces all of it. A partial write counts as a use, because the bits it
- * keeps carry the old value on.
+ * Consecutive lines of the same kind as ranges, each from the start of its
+ * first line to the start of its last.
+ *
+ * A run starts and ends on code: labels, blank lines and comments at its edges
+ * are left out, so a run only covers a label it carries on past. A run with no
+ * code is dropped.
  */
-type RegisterEffect = "read" | "kill";
+function lineRuns(
+  lines: AvailabilityLines,
+  isCode: (line: number) => boolean,
+): RegisterAvailabilityRange[] {
+  const groups: AvailabilityLines[] = [];
+  for (const item of lines) {
+    const group = groups.at(-1);
+    const last = group?.at(-1);
+    if (
+      group &&
+      last &&
+      last.line === item.line - 1 &&
+      last.availability === item.availability &&
+      last.untilOverwritten === item.untilOverwritten
+    ) {
+      group.push(item);
+    } else {
+      groups.push([item]);
+    }
+  }
+  return groups.flatMap((group) => {
+    const first = group.findIndex(({ line }) => isCode(line));
+    if (first < 0) {
+      return [];
+    }
+    let last = group.length - 1;
+    while (!isCode(group[last].line)) {
+      last--;
+    }
+    const { availability, untilOverwritten } = group[first];
+    return [
+      {
+        range: lsp.Range.create(group[first].line, 0, group[last].line, 0),
+        availability,
+        ...(untilOverwritten ? { untilOverwritten: true } : {}),
+      },
+    ];
+  });
+}
+
+/**
+ * What one step of execution does to a register: how many low-order bits of
+ * its current value it reads, and how many it replaces (8, 16 or 32; 0 for
+ * none). The read happens before the write.
+ */
+interface RegisterEffect {
+  read: number;
+  write: number;
+}
 
 /**
  * The register effects of a line, in execution order: one step for an
@@ -498,15 +561,39 @@ type RegisterEffect = "read" | "kill";
 type LineSteps = (Map<string, RegisterEffect> | "unknown")[];
 
 /**
- * Which registers are free to reuse after a position: not read again, on any
- * path the flow can take from there, before something overwrites them.
+ * Lines in the scope that leave a register alone while its value is not
+ * needed, or might not be, in order. `untilOverwritten` marks free lines where
+ * it stays free only until a later write replaces it.
+ */
+type AvailabilityLines = {
+  line: number;
+  availability: "available" | "unknown";
+  untilOverwritten: boolean;
+}[];
+
+interface RegisterLiveness {
+  /** Whether the register is free after the position's line. */
+  availability: RegisterAvailability;
+  /** Free only until a later write replaces it, not to the end of the flow. */
+  untilOverwritten?: true;
+  lines: AvailabilityLines;
+}
+
+/**
+ * Which registers are free to reuse after a position, and where in the scope
+ * each is free: no bit of its value is read again, on any path the flow can
+ * take, before something overwrites that bit. Worked out as backward liveness
+ * over the flow graph of the scope and everything reachable from it, tracking
+ * how many low-order bits are still needed (see `accessBits`), so a word write
+ * frees a register that is only read as a word afterwards.
  *
- * Flow starts from wherever the cursor line's own instruction goes, so a
- * loop's closing branch leads back into the loop. A path ends at a return or
- * at a definite overwrite of the whole register (see `wholeRegisterWrite`).
+ * At the cursor, flow starts from wherever the cursor line's own instruction
+ * goes, so a loop's closing branch leads back into the loop. A path ends at a
+ * return.
  * A same-file subroutine counts as reading every register it touches; one
  * that cannot be resolved makes the answer unknown. A branch whose target
- * cannot be resolved makes every register unavailable.
+ * cannot be resolved makes every register unavailable. A return reads the
+ * routine's outputs.
  */
 function registerLiveness(
   ctx: Context,
@@ -516,7 +603,8 @@ function registerLiveness(
   lineTexts: string[],
   scope: lsp.Range,
   position: lsp.Position,
-): (register: string) => RegisterAvailability {
+  outputs: ReadonlySet<string>,
+): (register: string) => RegisterLiveness {
   const { lines } = file;
   const labels = collectControlFlowLabels(
     file,
@@ -638,67 +726,177 @@ function registerLiveness(
   };
 
   const endLine = Math.min(scope.end.line, lines.length - 1);
-  const origin = position.line >= scope.start.line ? position.line : undefined;
+
+  // The flow graph: every line in the scope and everything reachable from it.
+  interface FlowNode {
+    next: number[];
+    /** Flow can leave here: a return, or running off the end of the file. */
+    exit: boolean;
+    /** A branch whose target cannot be resolved; it may go anywhere. */
+    escape: boolean;
+    call?: number | "unresolved";
+  }
+  const nodes = new Map<number, FlowNode>();
+  const pending: number[] = [];
+  for (let index = scope.start.line; index <= endLine; index++) {
+    pending.push(index);
+  }
+  while (pending.length) {
+    const index = pending.pop()!;
+    if (index >= lines.length || nodes.has(index)) {
+      continue;
+    }
+    const flow = successors(index);
+    if (flow === "escape") {
+      nodes.set(index, { next: [], exit: false, escape: true });
+      continue;
+    }
+    const next = flow.next.filter((line) => line < lines.length);
+    nodes.set(index, {
+      next,
+      exit: next.length < flow.next.length || !flow.next.length,
+      escape: false,
+      call: flow.call,
+    });
+    pending.push(...next);
+  }
+  const order = [...nodes.keys()].sort((a, b) => b - a);
 
   return (register) => {
-    if (position.line > endLine) {
-      return "available";
+    // How much the register's value is needed: not at all, possibly (code
+    // that could not be analysed), or certainly.
+    // How much of the register's value is needed: the number of low-order
+    // bits later code reads, and whether code that could not be analysed
+    // might read it.
+    interface Need {
+      bits: number;
+      unknown: boolean;
     }
-    let unknown = false;
-    const visited = new Set<number>();
-    const pending: number[] = [];
-    // The cursor line itself counts only if the flow comes back to it.
-    const visit = (index: number, fromOrigin: boolean): boolean => {
-      if (!fromOrigin) {
-        for (const step of stepsFor(index)) {
-          if (step === "unknown") {
-            unknown = true;
-            continue;
-          }
-          const effect = step.get(register);
-          if (effect === "read") {
-            return true;
-          }
-          if (effect === "kill") {
-            return false;
-          }
-        }
+    const NONE: Need = { bits: 0, unknown: false };
+    const join = (a: Need, b: Need): Need => ({
+      bits: Math.max(a.bits, b.bits),
+      unknown: a.unknown || b.unknown,
+    });
+    const same = (a: Need, b: Need) =>
+      a.bits === b.bits && a.unknown === b.unknown;
+    const exitNeed: Need = outputs.has(register)
+      ? { bits: 32, unknown: false }
+      : NONE;
+
+    const callNeed = (node: FlowNode): Need | undefined => {
+      if (node.call === undefined) {
+        return undefined;
       }
-      const flow = successors(index);
-      if (flow === "escape") {
-        return true;
+      if (node.call === "unresolved") {
+        return { bits: 0, unknown: true };
       }
-      if (flow.call === "unresolved") {
-        unknown = true;
-      } else if (flow.call !== undefined) {
-        const callee = calleeRegisters(flow.call);
-        if (
-          callee === "all" ||
-          (callee !== "unknown" && callee.has(register))
-        ) {
-          return true;
-        }
-        unknown ||= callee === "unknown";
-      }
-      pending.push(...flow.next);
-      return false;
+      const callee = calleeRegisters(node.call);
+      return callee === "all" || (callee !== "unknown" && callee.has(register))
+        ? { bits: 32, unknown: false }
+        : callee === "unknown"
+          ? { bits: 0, unknown: true }
+          : undefined;
     };
-    if (origin === undefined) {
-      pending.push(scope.start.line);
-    } else if (visit(origin, true)) {
-      return "unavailable";
-    }
-    while (pending.length) {
-      const index = pending.pop()!;
-      if (index >= lines.length || visited.has(index)) {
-        continue;
+    /** Need on entry to a line, given the need after it. */
+    const transfer = (index: number, node: FlowNode, after: Need): Need => {
+      if (node.escape) {
+        return { bits: 32, unknown: false };
       }
-      visited.add(index);
-      if (visit(index, false)) {
-        return "unavailable";
+      // The call runs after the line's operands are evaluated.
+      let need = join(after, callNeed(node) ?? NONE);
+      const steps = stepsFor(index);
+      for (let step = steps.length - 1; step >= 0; step--) {
+        const effects = steps[step];
+        if (effects === "unknown") {
+          need = { ...need, unknown: true };
+          continue;
+        }
+        const effect = effects.get(register);
+        if (!effect) {
+          continue;
+        }
+        // A write leaves the earlier value unneeded once it replaces every bit
+        // still to be read; otherwise the bits it keeps carry the old value.
+        if (effect.write && need.bits <= effect.write) {
+          need = NONE;
+        }
+        if (effect.read) {
+          need = { ...need, bits: Math.max(need.bits, effect.read) };
+        }
+      }
+      return need;
+    };
+    /** Whether a line does anything to the register, or might. */
+    const touches = (index: number, node: FlowNode): boolean =>
+      node.escape ||
+      callNeed(node) !== undefined ||
+      stepsFor(index).some((step) => step === "unknown" || step.has(register));
+
+    const needIn = new Map<number, Need>();
+    const touchedIn = new Map<number, boolean>();
+    const needOut = (node: FlowNode): Need =>
+      node.next.reduce(
+        (need, next) => join(need, needIn.get(next) ?? NONE),
+        node.exit ? exitNeed : NONE,
+      );
+    const touchedOut = (node: FlowNode): boolean =>
+      node.next.some((next) => touchedIn.get(next));
+    for (let changed = true; changed;) {
+      changed = false;
+      for (const index of order) {
+        const node = nodes.get(index)!;
+        const need = transfer(index, node, needOut(node));
+        const touched = touches(index, node) || touchedOut(node);
+        if (
+          !same(need, needIn.get(index) ?? NONE) ||
+          touched !== (touchedIn.get(index) ?? false)
+        ) {
+          needIn.set(index, need);
+          touchedIn.set(index, touched);
+          changed = true;
+        }
       }
     }
-    return unknown ? "unknown" : "available";
+    const status = (need: Need) =>
+      need.bits ? "unavailable" : need.unknown ? "unknown" : "available";
+
+    // Lines that leave the register alone while its value is not needed, or
+    // where that depends on code that could not be analysed.
+    const free: AvailabilityLines = [];
+    for (let index = scope.start.line; index <= endLine; index++) {
+      const node = nodes.get(index);
+      const need = status(needIn.get(index) ?? NONE);
+      if (node && need !== "unavailable" && !touches(index, node)) {
+        free.push({
+          line: index,
+          availability: need,
+          untilOverwritten: need === "available" && touchedOut(node),
+        });
+      }
+    }
+
+    // At the cursor, what matters is what happens after its line runs.
+    let need: Need;
+    let touched: boolean;
+    const origin = nodes.get(position.line);
+    if (position.line > endLine) {
+      need = NONE;
+      touched = false;
+    } else if (position.line < scope.start.line || !origin) {
+      need = needIn.get(scope.start.line) ?? NONE;
+      touched = touchedIn.get(scope.start.line) ?? false;
+    } else {
+      need = needOut(origin);
+      touched = touchedOut(origin);
+    }
+    const availability = status(need);
+    return {
+      availability,
+      ...(availability === "available" && touched
+        ? { untilOverwritten: true }
+        : {}),
+      lines: free,
+    };
   };
 }
 
@@ -746,10 +944,9 @@ function lineSteps(
 }
 
 /**
- * What a single line does to each register it names. Sources are read before
- * the destination is written, so a register both read and written is read.
- * A write that does not replace the whole register, or that may not happen,
- * is a read too.
+ * What a single line does to each register it names: the bits it reads and
+ * replaces (see `RegisterEffect`). A write that may not happen, under `iif`
+ * or in an `if` block, replaces nothing.
  */
 function lineEffects(
   line: ParsedLine,
@@ -757,52 +954,149 @@ function lineEffects(
 ): Map<string, RegisterEffect> {
   const effects = new Map<string, RegisterEffect>();
   const conditional = inConditional || line.inlineCondition !== undefined;
-  for (const node of walkLine(line)) {
-    const single = canonicalGeneralPurposeRegister(registerName(node));
-    const listed =
-      node.type === "register-list"
-        ? ((node as AstNode & { registers?: unknown }).registers as unknown[])
-        : undefined;
-    const registers = single
-      ? [single]
-      : Array.isArray(listed)
-        ? listed.flatMap((item) => canonicalGeneralPurposeRegister(item) ?? [])
-        : [];
-    if (!registers.length) {
-      continue;
-    }
-    const access = registerAccess(node, line);
-    for (const register of registers) {
-      const kill =
-        access === "write" &&
-        !conditional &&
-        wholeRegisterWrite(line, register);
-      if (!kill || !effects.has(register)) {
-        effects.set(register, kill ? "kill" : "read");
+  const operands = (line.operands ?? []) as AstNode[];
+  for (const [operandIndex, operand] of operands.entries()) {
+    for (const node of [operand, ...descendants(operand)]) {
+      const single = canonicalGeneralPurposeRegister(registerName(node));
+      const listed =
+        node.type === "register-list"
+          ? ((node as AstNode & { registers?: unknown }).registers as unknown[])
+          : undefined;
+      const registers = single
+        ? [single]
+        : Array.isArray(listed)
+          ? listed.flatMap(
+              (item) => canonicalGeneralPurposeRegister(item) ?? [],
+            )
+          : [];
+      if (!registers.length) {
+        continue;
+      }
+      const access = registerAccess(node, line);
+      for (const register of registers) {
+        const bits = accessBits(
+          line,
+          operand,
+          node,
+          operandIndex === operands.length - 1,
+          register,
+        );
+        const read = access === "write" ? 0 : bits.read;
+        const write =
+          (access === "write" || access === "readwrite") && !conditional
+            ? bits.write
+            : 0;
+        const previous = effects.get(register);
+        effects.set(register, {
+          read: Math.max(previous?.read ?? 0, read),
+          // Two writes on one line are not expected; keep the narrower.
+          write:
+            previous?.write && write
+              ? Math.min(previous.write, write)
+              : (previous?.write ?? 0) || write,
+        });
       }
     }
   }
   return effects;
 }
 
+const qualifierBits: Partial<Record<string, number>> = {
+  b: 8,
+  w: 16,
+  l: 32,
+  s: 32,
+};
+
+/** Instructions that operate on a whole data register whatever their size. */
+const longRegisterInstructions = new Set([
+  "bchg",
+  "bclr",
+  "bset",
+  "btst",
+  "exg",
+  "lea",
+  "moveq",
+  "swap",
+]);
+
+/** Instructions that only ever write a byte. */
+const byteWriteInstructions = new Set(["abcd", "nbcd", "sbcd", "tas"]);
+
 /**
- * Whether a write replaces all 32 bits of a register. Writes to an address
- * register are sign-extended, as are MOVEM loads; MOVEQ and LEA are long.
- * A data register is only replaced by a long write: byte and word writes keep
- * the upper bits, which may still be read.
+ * How many low-order bits of a register an operand reads and replaces.
+ *
+ * Address registers are always used and written whole: word writes to them
+ * are sign-extended. A register inside an addressing mode is an address, read
+ * whole, or an index, read at its index size (a word by default). A data
+ * register operand is read and written at the operation size, which is a word
+ * when the source gives none, with these exceptions: MOVEM loads and the
+ * destination of a word MULU/MULS are sign- or zero-extended to the whole
+ * register, a word DIVU/DIVS reads the whole dividend, DBcc counts in a word,
+ * Scc and the BCD instructions write a byte, and some instructions always
+ * work on all 32 bits. A size the register cannot have reads it whole and
+ * replaces nothing.
  */
-function wholeRegisterWrite(line: ParsedLine, register: string): boolean {
+function accessBits(
+  line: ParsedLine,
+  operand: AstNode,
+  node: AstNode,
+  destination: boolean,
+  register: string,
+): RegisterEffect {
   if (register.startsWith("a")) {
-    return true;
+    return { read: 32, write: 32 };
   }
+  if (node !== operand) {
+    const index = [operand, ...descendants(operand)].find(
+      (item) =>
+        (item as AstNode & { indexRegister?: unknown }).indexRegister === node,
+    ) as (AstNode & { indexSize?: AstNode & { size?: string } }) | undefined;
+    if (index) {
+      return {
+        read: index.indexSize?.size?.toLowerCase() === "l" ? 32 : 16,
+        write: 0,
+      };
+    }
+    return { read: 32, write: 0 };
+  }
+
   const mnemonic =
     line.mnemonic?.type === "instruction"
-      ? line.mnemonic.instruction.toLowerCase()
+      ? canonicalConditionMnemonic(line.mnemonic.instruction).toLowerCase()
       : undefined;
-  if (mnemonic === "moveq" || mnemonic === "lea" || mnemonic === "movem") {
-    return true;
+  if (!mnemonic) {
+    return { read: 32, write: 0 };
   }
-  return line.qualifier?.type === "size" && line.qualifier.size === "l";
+  const qualifier =
+    line.qualifier?.type === "size"
+      ? line.qualifier.size.toLowerCase()
+      : undefined;
+  const size = qualifier === undefined ? 16 : qualifierBits[qualifier];
+  if (size === undefined) {
+    return { read: 32, write: 0 };
+  }
+  if (longRegisterInstructions.has(mnemonic) || mnemonic.startsWith("bf")) {
+    return { read: 32, write: 32 };
+  }
+  if (mnemonic === "movem") {
+    return { read: size, write: 32 };
+  }
+  if (mnemonic.startsWith("db")) {
+    return { read: 16, write: 16 };
+  }
+  if (destination && size === 16) {
+    if (mnemonic === "divu" || mnemonic === "divs") {
+      return { read: 32, write: 32 };
+    }
+    if (mnemonic === "mulu" || mnemonic === "muls") {
+      return { read: 16, write: 32 };
+    }
+  }
+  if (byteWriteInstructions.has(mnemonic) || /^s(?!ub|wap)/.test(mnemonic)) {
+    return { read: size, write: 8 };
+  }
+  return { read: size, write: size };
 }
 
 function expandMacroCall(

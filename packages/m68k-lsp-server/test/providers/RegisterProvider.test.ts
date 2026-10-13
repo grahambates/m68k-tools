@@ -250,7 +250,11 @@ describe("RegisterProvider", () => {
       expect(byName.get("d0")?.availability).toBe("available");
       expect(byName.get("d1")?.availability).toBe("available");
       expect(byName.get("d2")?.availability).toBe("unavailable");
-      expect(byName.get("d3")?.availability).toBe("unavailable");
+      // Only written afterwards, and nothing reads the word it keeps.
+      expect(byName.get("d3")).toMatchObject({
+        availability: "available",
+        availableUntilOverwritten: true,
+      });
     });
 
     it("marks documented outputs and never reports them available", async () => {
@@ -330,9 +334,10 @@ Done:
       expect(
         result?.registers.find(({ name }) => name === "d0")?.availability,
       ).toBe("unavailable");
+      // Only written by the later MOVE.W, which nothing reads.
       expect(
         result?.registers.find(({ name }) => name === "d1")?.availability,
-      ).toBe("unavailable");
+      ).toBe("available");
     });
 
     it("follows a backward conditional branch that revisits the cursor line", async () => {
@@ -356,12 +361,13 @@ Done:
       );
 
       expect(byName.get("d0")?.availability).toBe("unavailable");
-      expect(byName.get("d1")?.availability).toBe("unavailable");
+      // Rewritten by the MOVE.W the loop returns to, and never read.
+      expect(byName.get("d1")?.availability).toBe("available");
       expect(byName.get("d2")?.availability).toBe("unavailable");
     });
 
     it.each(["dbf d7,.loop", "bne.s .loop", "bra.s .loop"])(
-      "keeps loop registers unavailable with the cursor on %s",
+      "keeps registers a loop carries over unavailable with the cursor on %s",
       async (branch) => {
         const textDocument = await createDoc(
           "loop-branch.s",
@@ -384,9 +390,12 @@ Done:
           result?.registers.map((usage) => [usage.name, usage]),
         );
 
-        for (const register of ["a0", "d0", "d1"]) {
+        // The pointer and the total carry over between iterations.
+        for (const register of ["a0", "d1"]) {
           expect(byName.get(register)?.availability).toBe("unavailable");
         }
+        // Each iteration reloads the word of D0 it reads.
+        expect(byName.get("d0")?.availability).toBe("available");
       },
     );
 
@@ -419,6 +428,35 @@ Done:
           ),
         ).toMatchObject({ d1: "unavailable", d2: "available" });
       });
+
+      it.each([
+        ["move.w #1,d2", "add.w d2,d1", "available"],
+        ["move.w #1,d2", "add.l d2,d1", "unavailable"],
+        ["move.b #1,d2", "add.w d2,d1", "unavailable"],
+        ["moveq #1,d2", "add.l d2,d1", "available"],
+        ["move.w #1,d2", "move.w (a0,d2.w),d1", "available"],
+        ["move.w #1,d2", "move.w (a0,d2),d1", "available"],
+        ["move.w #1,d2", "move.w (a0,d2.l),d1", "unavailable"],
+        ["move.w #1,d2", "divu.w #3,d2", "unavailable"],
+        ["move.w #1,d2", "mulu.w #3,d2", "available"],
+      ])(
+        "compares the bits written with those read: %s then %s",
+        async (write, read, expected) => {
+          // Lines before the first use, at the start of the routine.
+          expect(
+            (
+              await availability(
+                `Start:
+ nop
+ ${write}
+ ${read}
+ rts`,
+                0,
+              )
+            ).d2,
+          ).toBe(expected);
+        },
+      );
 
       it.each([
         ["move.l #0,d2", "available"],
@@ -533,6 +571,154 @@ Accumulate macro
           d2: "available",
           d7: "unavailable",
         });
+      });
+
+      const usageAt = async (text: string, line: number) => {
+        const textDocument = await createDoc("liveness.s", text);
+        const result = provider.onRegisterUsage({
+          textDocument,
+          range: range(0, 0, text.split("\n").length, 0),
+          position: lsp.Position.create(line, 1),
+        });
+        return new Map(result?.registers.map((usage) => [usage.name, usage]));
+      };
+
+      it("reports where in the scope a register is free", async () => {
+        const usage = await usageAt(
+          `Start:
+ move.l d2,d3
+ nop
+ nop
+ moveq #0,d2
+ add.l d2,d1
+ rts`,
+          1,
+        );
+
+        expect(usage.get("d2")).toMatchObject({
+          availability: "available",
+          availableUntilOverwritten: true,
+          availabilityRanges: [
+            {
+              range: range(2, 0, 3, 0),
+              availability: "available",
+              untilOverwritten: true,
+            },
+            { range: range(6, 0, 6, 0), availability: "available" },
+          ],
+        });
+        // Free on the label before its write too, but a run of nothing but a
+        // label is left out.
+        expect(usage.get("d3")).toMatchObject({
+          availability: "available",
+          availabilityRanges: [
+            { range: range(2, 0, 6, 0), availability: "available" },
+          ],
+        });
+        expect(usage.get("d3")?.availableUntilOverwritten).toBeUndefined();
+        expect(usage.get("d1")).toMatchObject({
+          availability: "unavailable",
+          availabilityRanges: [
+            { range: range(6, 0, 6, 0), availability: "available" },
+          ],
+        });
+      });
+
+      it("keeps a label inside a run that carries on past it", async () => {
+        const usage = await usageAt(
+          `Start:
+ nop
+.next:
+
+ nop
+.done:
+ moveq #0,d2
+ add.l d2,d1
+ rts`,
+          1,
+        );
+
+        expect(usage.get("d2")?.availabilityRanges).toEqual([
+          {
+            range: range(1, 0, 4, 0),
+            availability: "available",
+            untilOverwritten: true,
+          },
+          { range: range(8, 0, 8, 0), availability: "available" },
+        ]);
+      });
+
+      it("reports runs that depend on unresolved code as unknown", async () => {
+        const usage = await usageAt(
+          `Start:
+ nop
+ jsr (a0)
+ moveq #0,d2
+ add.l d2,d1
+ rts`,
+          1,
+        );
+
+        expect(usage.get("d2")).toMatchObject({
+          availability: "unknown",
+          availabilityRanges: [
+            { range: range(1, 0, 1, 0), availability: "unknown" },
+            { range: range(5, 0, 5, 0), availability: "available" },
+          ],
+        });
+      });
+
+      it("finds free lines inside a loop as well as after it", async () => {
+        const usage = await usageAt(
+          `Start:
+ moveq #7,d7
+.loop:
+ moveq #0,d2
+ add.l d2,d1
+ nop
+ dbf d7,.loop
+ rts`,
+          1,
+        );
+
+        // Runs stop short of the labels at their edges.
+        expect(usage.get("d2")?.availabilityRanges).toEqual([
+          {
+            range: range(1, 0, 1, 0),
+            availability: "available",
+            untilOverwritten: true,
+          },
+          {
+            range: range(5, 0, 6, 0),
+            availability: "available",
+            untilOverwritten: true,
+          },
+          // After the loop nothing touches it again.
+          { range: range(7, 0, 7, 0), availability: "available" },
+        ]);
+      });
+
+      it("frees an output only when every return overwrites it", async () => {
+        const source = (alternative: string) => `; Outputs: d0 = result
+Start:
+ move.l d0,d1
+ tst.w d1
+ beq.s .other
+ moveq #1,d0
+ rts
+.other:
+ ${alternative}
+ rts`;
+
+        expect(
+          (await usageAt(source("moveq #2,d0"), 2)).get("d0"),
+        ).toMatchObject({
+          availability: "available",
+          availableUntilOverwritten: true,
+        });
+        expect((await usageAt(source("nop"), 2)).get("d0")?.availability).toBe(
+          "unavailable",
+        );
       });
 
       it("counts registers a called subroutine touches as used", async () => {
@@ -1338,6 +1524,61 @@ Bar:
           position: lsp.Position.create(1, 2),
         }),
       ).toEqual({ range: range(0, 0, 11, 4), label: "Dispatch" });
+    });
+
+    it("has no scope between the end of one routine and the next", async () => {
+      const textDocument = await createDoc(
+        "between-routines.s",
+        `Foo:
+ moveq #1,d0
+ rte
+
+; Next routine
+Bar:
+ moveq #2,d1
+ rts
+`,
+      );
+
+      for (const line of [3, 4]) {
+        expect(
+          provider.onRoutineRange({
+            textDocument,
+            position: lsp.Position.create(line, 0),
+          }),
+        ).toBeUndefined();
+      }
+      expect(
+        provider.onRoutineRange({
+          textDocument,
+          position: lsp.Position.create(6, 1),
+        }),
+      ).toEqual({ range: range(5, 0, 7, 4), label: "Bar" });
+    });
+
+    it("has no scope around data or after an unreached fragment", async () => {
+      const textDocument = await createDoc(
+        "fragment-gaps.s",
+        `Foo:
+ rts
+
+.fragment:
+ moveq #1,d0
+ rts
+
+.table: dc.w 1,2
+`,
+      );
+
+      const at = (line: number) =>
+        provider.onRoutineRange({
+          textDocument,
+          position: lsp.Position.create(line, 0),
+        });
+      expect(at(2)).toBeUndefined();
+      expect(at(4)).toEqual({ range: range(0, 0, 5, 4), label: "Foo" });
+      expect(at(6)).toBeUndefined();
+      expect(at(7)).toBeUndefined();
     });
 
     it("scopes code the routine's flow never reaches to its next return", async () => {

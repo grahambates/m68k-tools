@@ -67,8 +67,17 @@ it.each([undefined, { d0: "#e06c75" }])(
           read: false,
           written: true,
           availability: "available",
+          availableUntilOverwritten: true,
           firstUse: { line: 12, character: 9 },
           lastUse: { line: 12, character: 12 },
+        },
+        {
+          name: "d2",
+          read: true,
+          written: false,
+          availability: "unknown",
+          firstUse: { line: 13, character: 9 },
+          lastUse: { line: 13, character: 9 },
         },
       ],
       colors,
@@ -101,11 +110,19 @@ it.each([undefined, { d0: "#e06c75" }])(
       end: "end",
     });
     const rows = elements.get("rows")!.children;
-    expect(rows).toHaveLength(2);
+    expect(rows).toHaveLength(3);
     expect(rows[0].children[1].textContent).toBe("read, output");
     expect(rows[0].children[1].className).toBe("access");
     expect(rows[1].children[1].textContent).toBe("write");
-    expect(rows[1].children[1].className).toBe("access available");
+    expect(rows[1].children[1].className).toBe("access available temporary");
+    expect(rows[1].children[1].title).toBe(
+      "write, available after the cursor until overwritten",
+    );
+    expect(rows[2].children[1].textContent).toBe("read");
+    expect(rows[2].children[1].className).toBe("access availability-unknown");
+    expect(rows[2].children[1].title).toBe(
+      "read, availability after the cursor unknown",
+    );
     const useRange = rows[0].children[2];
     expect(useRange.textContent).toBe("L12–30");
     const [first, , last] = useRange.children;
@@ -376,4 +393,33 @@ it("routes usage highlights and reveals, clearing highlights on refresh and disp
   expect(highlight).toHaveBeenLastCalledWith();
   view.dispose();
   expect(highlight).toHaveBeenLastCalledWith();
+});
+
+it("explains that there is no routine at the cursor", () => {
+  const webview = { html: "", cspSource: "test", onDidReceiveMessage: vi.fn() };
+  new RegisterRemappingView(vi.fn(), vi.fn()).resolveWebviewView({
+    webview,
+    onDidChangeVisibility: vi.fn(),
+  } as unknown as WebviewView);
+  const elements = new Map<string, Element>();
+  const script = webview.html.match(
+    /<script nonce="[^"]+">([\s\S]*?)<\/script>/,
+  )![1];
+  runInNewContext(script + '\nrender({ scope: "", registers: [] });', {
+    acquireVsCodeApi: () => ({ getState() {}, postMessage: vi.fn() }),
+    window: { addEventListener() {} },
+    document: {
+      body: new Element(),
+      createElement: () => new Element(),
+      getElementById: (id: string) => {
+        if (!elements.has(id)) elements.set(id, new Element());
+        return elements.get(id);
+      },
+    },
+  });
+  expect(elements.get("scope")!.textContent).toBe("Scope: none");
+  expect(elements.get("empty")!.textContent).toBe(
+    "The cursor is not inside a routine. Select lines to analyse them.",
+  );
+  expect(elements.get("empty")!.hidden).toBe(false);
 });

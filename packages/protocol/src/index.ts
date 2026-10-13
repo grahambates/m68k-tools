@@ -18,6 +18,14 @@ export interface RegisterUsageReference {
   access: RegisterAccess;
 }
 
+export interface RegisterAvailabilityRange {
+  /** From the start of the run's first line to the start of its last. */
+  range: Range;
+  availability: "available" | "unknown";
+  /** Free only until a later write replaces the register. */
+  untilOverwritten?: boolean;
+}
+
 export interface RegisterUsage {
   name: string;
   references: RegisterUsageReference[];
@@ -30,6 +38,16 @@ export interface RegisterUsage {
   /** The routine's header comment documents the register as an output. */
   output?: boolean;
   availability?: RegisterAvailability;
+  /**
+   * The register is available only until a later write replaces it, rather
+   * than for the rest of the flow from the position.
+   */
+  availableUntilOverwritten?: boolean;
+  /**
+   * Runs of lines in the range that leave the register alone while its value
+   * is not needed (`available`), or might not be (`unknown`).
+   */
+  availabilityRanges?: RegisterAvailabilityRange[];
 }
 
 export interface RegisterUsageResult {

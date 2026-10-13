@@ -1,4 +1,5 @@
 import {
+  availabilityHighlightRanges,
   remappingHighlights,
   usageHighlightLines,
 } from "./remappingHighlights";
@@ -163,13 +164,29 @@ export function activate(context: ExtensionContext): void {
     overviewRulerLane: OverviewRulerLane.Center,
     rangeBehavior: DecorationRangeBehavior.ClosedClosed,
   });
+  // Lines where the register is free, marked at the edge so they do not
+  // compete with the read and write backgrounds.
+  const freeHighlight = (color: string) =>
+    window.createTextEditorDecorationType({
+      isWholeLine: true,
+      borderWidth: "0 0 0 2px",
+      borderStyle: "solid",
+      borderColor: new ThemeColor(color),
+      overviewRulerColor: new ThemeColor(color),
+      overviewRulerLane: OverviewRulerLane.Left,
+      rangeBehavior: DecorationRangeBehavior.ClosedClosed,
+    });
+  const usageFreeHighlight = freeHighlight("charts.green");
+  const usageTemporarilyFreeHighlight = freeHighlight("charts.orange");
+  const usageUnknownHighlight = freeHighlight("descriptionForeground");
   const highlightUsage = (register?: string) => {
     const snapshot = remappingContext;
-    const references =
+    const usage =
       register && snapshot?.isCurrent()
-        ? (previewUsage?.registers.find((usage) => usage.name === register)
-            ?.references ?? [])
-        : [];
+        ? previewUsage?.registers.find(({ name }) => name === register)
+        : undefined;
+    const references = usage?.references ?? [];
+    const free = availabilityHighlightRanges(usage);
     // Multiple operands on one line must not stack translucent backgrounds.
     const lines = usageHighlightLines(references);
     const toRanges = (lines: number[]) =>
@@ -184,9 +201,27 @@ export function activate(context: ExtensionContext): void {
         usageWriteHighlight,
         current ? toRanges(lines.write) : [],
       );
+      editor.setDecorations(
+        usageFreeHighlight,
+        current ? free.free.map(toEditorRange) : [],
+      );
+      editor.setDecorations(
+        usageTemporarilyFreeHighlight,
+        current ? free.untilOverwritten.map(toEditorRange) : [],
+      );
+      editor.setDecorations(
+        usageUnknownHighlight,
+        current ? free.unknown.map(toEditorRange) : [],
+      );
     }
   };
-  context.subscriptions.push(usageReadHighlight, usageWriteHighlight);
+  context.subscriptions.push(
+    usageReadHighlight,
+    usageWriteHighlight,
+    usageFreeHighlight,
+    usageTemporarilyFreeHighlight,
+    usageUnknownHighlight,
+  );
   const revealUse = (register: string, end: "first" | "last") => {
     const usage = previewUsage?.registers.find(({ name }) => name === register);
     revealPosition(end === "last" ? usage?.lastUse : usage?.firstUse);
@@ -300,8 +335,12 @@ export function activate(context: ExtensionContext): void {
       editor.document.version === version &&
       editor.selection.isEqual(selection);
     const scope = await registerCommandScope(editor, false);
-    if (!stillCurrent() || !scope) {
+    if (!stillCurrent()) {
       return;
+    }
+    // Between routines there is nothing to analyse until lines are selected.
+    if (!scope) {
+      return { scope: "", registers: [] };
     }
     const { range } = scope;
     const usage = await client.sendRequest(RegisterUsageRequest, {
@@ -782,7 +821,7 @@ async function registerCommandScope(
   });
   if (!scope && showWarning) {
     void window.showWarningMessage(
-      "Could not determine a register analysis scope.",
+      "The cursor is not inside a routine. Select the lines to analyse.",
     );
   }
   return scope;

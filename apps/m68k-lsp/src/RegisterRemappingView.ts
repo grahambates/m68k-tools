@@ -224,6 +224,8 @@ function webviewHtml(webview: Webview): string {
     .register { cursor: default; background: transparent; border: none; padding: 2px 4px; text-align: left; color: inherit; font-family: var(--vscode-editor-font-family); font-weight: 600; }
     .access { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .access.available { color: var(--vscode-charts-green, var(--vscode-testing-iconPassed)); }
+    .access.available.temporary { color: var(--vscode-charts-orange, var(--vscode-editorWarning-foreground)); }
+    .access.availability-unknown { color: var(--vscode-descriptionForeground); font-style: italic; }
     .use-range { white-space: nowrap; font-family: var(--vscode-editor-font-family); color: var(--vscode-descriptionForeground); }
     .use { height: auto; padding: 0 2px; border: none; background: transparent; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); }
     .use:hover { color: var(--vscode-textLink-activeForeground); text-decoration: underline; }
@@ -313,7 +315,6 @@ function webviewHtml(webview: Webview): string {
       const parts = [access];
       if (usage.input) parts.push('input');
       if (usage.output) parts.push('output');
-      if (usage.availability === 'unknown') parts.push('availability unknown');
       return parts.join(', ');
     }
 
@@ -427,9 +428,23 @@ function webviewHtml(webview: Webview): string {
         if (color) name.style.color = color;
         const access = document.createElement('div');
         const available = usage.availability === 'available';
-        access.className = available ? 'access available' : 'access';
+        const temporary = available && usage.availableUntilOverwritten;
+        const unknown = usage.availability === 'unknown';
+        access.className = temporary
+          ? 'access available temporary'
+          : available
+            ? 'access available'
+            : unknown
+              ? 'access availability-unknown'
+              : 'access';
         access.textContent = accessLabel(usage);
-        access.title = available ? access.textContent + ', available after the cursor' : access.textContent;
+        access.title = temporary
+          ? access.textContent + ', available after the cursor until overwritten'
+          : available
+            ? access.textContent + ', available after the cursor'
+            : unknown
+              ? access.textContent + ', availability after the cursor unknown'
+              : access.textContent;
         const useRange = lineRange(
           usage.firstUse,
           usage.lastUse,
@@ -467,7 +482,11 @@ function webviewHtml(webview: Webview): string {
       mappings = {};
       rows.replaceChildren();
       renderScope();
-      empty.textContent = model ? 'No registers used in this scope.' : 'Open an M68k file to begin.';
+      empty.textContent = !model
+        ? 'Open an M68k file to begin.'
+        : model.scopeRange
+          ? 'No registers used in this scope.'
+          : 'The cursor is not inside a routine. Select lines to analyse them.';
       empty.hidden = !!model?.registers.length;
       if (!model) {
         validate();

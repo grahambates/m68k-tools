@@ -1,5 +1,4 @@
 import {
-  descendants,
   type ExpressionNode,
   type OperandNode,
   type ParsedLine,
@@ -231,37 +230,66 @@ function knownAddressRegisterBefore(
   return undefined;
 }
 
+/** The terms of a sum, each with its sign: `a-(b+1)` is +a, -b, -1. */
+function signedTerms(
+  expr: ExpressionNode,
+  sign = 1,
+): { sign: number; expr: ExpressionNode }[] {
+  if (expr.type === "group") return signedTerms(expr.expression, sign);
+  if (
+    expr.type === "unary-op" &&
+    (expr.operator === "+" || expr.operator === "-")
+  )
+    return signedTerms(expr.operand, expr.operator === "-" ? -sign : sign);
+  if (
+    expr.type === "binary-op" &&
+    (expr.operator === "+" || expr.operator === "-")
+  )
+    return [
+      ...signedTerms(expr.left, sign),
+      ...signedTerms(expr.right, expr.operator === "-" ? -sign : sign),
+    ];
+  return [{ sign, expr }];
+}
+
 /**
- * The register named by a displacement such as `bltamod(a6)` when the base
- * register's value is not known. The canonical names are offsets from CUSTOM
- * and are not used with any other base, so the name alone identifies the
- * register. A bare number proves nothing, so at least one name must be a
- * register's; and a project that defines the name to something else has its
- * own meaning for it.
+ * The register named by a displacement such as `bltamod(a6)` when the base and
+ * displacement do not resolve to an address. The canonical names are offsets
+ * from CUSTOM and are not used with any other base, so the name alone
+ * identifies the register. A common optimisation points the base at a register
+ * part way into the block and subtracts that from each name, as in
+ * `bltamod-C(a6)` or `bltamod-bltcon0(a6)`, so whatever else is subtracted is
+ * taken to be that adjustment.
+ *
+ * Exactly one register name must be added. A bare number proves nothing, and a
+ * project that defines the name to something else has its own meaning for it.
+ * Numeric literals are kept, so `intreqr+1(a6)` is still the low byte.
  */
 function customRegisterDisplacement(
   ctx: RuleContext,
   displacement: ExpressionNode,
 ): number | undefined {
-  const names: string[] = [];
-  for (const node of [displacement, ...descendants(displacement)]) {
-    const { name } = node as { name?: unknown };
-    if (node.type === "symbol" && typeof name === "string") names.push(name);
-  }
-  let named = false;
-  for (const name of names) {
-    const key = name.toLowerCase();
+  let named: number | undefined;
+  let adjustment = 0;
+  for (const { sign, expr } of signedTerms(displacement)) {
+    if (expr.type === "numeric-literal") {
+      adjustment += sign * expr.value;
+      continue;
+    }
+    if (expr.type !== "symbol" || sign < 0) continue;
+    const key = expr.name.toLowerCase();
     // `custom+x(a6)` is not an offset from CUSTOM.
     if (key === "custom") return undefined;
     const canonical = amigaCustomSymbolValues.get(key);
     if (canonical === undefined) continue;
-    const project = ctx.symbols.evaluate(name);
+    const project = ctx.symbols.evaluate(expr.name);
     if (project.known && project.value !== canonical) return undefined;
-    named = true;
+    if (named !== undefined) return undefined;
+    named = canonical;
   }
-  if (!named) return undefined;
-  const offset = evaluateAmigaExpression(ctx, displacement);
-  if (offset === undefined || offset < 0 || offset >= 0x200) return undefined;
+  if (named === undefined) return undefined;
+  const offset = named + adjustment;
+  if (offset < 0 || offset >= 0x200) return undefined;
   return CUSTOM_BASE + offset;
 }
 
@@ -294,10 +322,9 @@ export function amigaEffectiveAddress(
     const register = normalizeRegister(op.register.register);
     if (!register) return undefined;
     const base = knownAddressRegisterBefore(ctx, lineIndex, register);
-    if (base === undefined)
-      return customRegisterDisplacement(ctx, op.displacement);
     const displacement = evaluateAmigaExpression(ctx, op.displacement);
-    if (displacement === undefined) return undefined;
+    if (base === undefined || displacement === undefined)
+      return customRegisterDisplacement(ctx, op.displacement);
     return (base + displacement) >>> 0;
   }
 

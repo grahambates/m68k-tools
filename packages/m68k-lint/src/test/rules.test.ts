@@ -3561,6 +3561,15 @@ describe("Amiga custom-register direction table", () => {
     expect(flags("    move.w DMACON(a5),d0")).toBe(true);
     expect(flags("    move.w intreqr(a6),d0")).toBe(false);
     expect(flags("    move.w d0,bltamod(a6)")).toBe(false);
+    // A base pointed part way into the block, with that offset subtracted.
+    expect(flags("    clr.w bltamod-C(a6)")).toBe(true);
+    expect(flags("C equ $40\n    clr.w bltamod-C(a6)")).toBe(true);
+    expect(flags("    clr.w bltamod-bltcon0(a6)")).toBe(true);
+    expect(flags("    move.w d0,bltamod-bltcon0(a6)")).toBe(false);
+    expect(flags("    move.w intreqr+1-C(a6),d0")).toBe(false);
+    // Only a subtracted name, or two added, does not say which register.
+    expect(flags("    clr.w C-bltamod(a6)")).toBe(false);
+    expect(flags("    clr.w bltamod+bltcon0(a6)")).toBe(false);
     // A number, or a name the project gives its own value, could be anything.
     expect(flags("    clr.w $64(a6)")).toBe(false);
     expect(flags("bltamod equ 4\n    clr.w bltamod(a6)")).toBe(false);

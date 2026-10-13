@@ -417,6 +417,18 @@ export function processSymbols(
       }
     }
 
+    // A macro call names the macro in its mnemonic, also when it is the
+    // statement of an `iif`.
+    for (const mnemonic of [line.mnemonic, line.inlineStatement?.mnemonic]) {
+      if (mnemonic?.type === "macro") {
+        addReference(
+          mnemonic.macro,
+          locationAsRange(mnemonic.loc, index),
+          mnemonic.macro.includes("\\"),
+        );
+      }
+    }
+
     // Operands of a register equate name registers, not symbols.
     if (directive && registerDefinitions.has(directive)) {
       continue;

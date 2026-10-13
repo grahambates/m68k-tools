@@ -70,6 +70,28 @@ describe("ReferencesProvider", () => {
       });
     });
 
+    it("returns the calls of a macro", async () => {
+      const textDocument = await createDoc(
+        "macro-calls.s",
+        `Copy macro
+ move.l \\1,\\2
+ endm
+ Copy d0,d1
+ Copy.w d2,d3`,
+      );
+
+      const references = await provider.onReferences({
+        position: lsp.Position.create(0, 1),
+        textDocument,
+        context: { includeDeclaration: false },
+      });
+
+      expect(references).toEqual([
+        { uri: textDocument.uri, range: range(3, 1, 3, 5) },
+        { uri: textDocument.uri, range: range(4, 1, 4, 5) },
+      ]);
+    });
+
     it("returns references for a local definition", async () => {
       const textDocument = await createDoc(
         "example.s",

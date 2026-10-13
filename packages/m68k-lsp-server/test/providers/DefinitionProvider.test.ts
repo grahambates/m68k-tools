@@ -72,6 +72,28 @@ describe("DefinitionProvider", () => {
       expect(definitions[0].range).toEqual(range(1, 0, 1, 7));
     });
 
+    it.each([
+      ["a call", " Copy.w d0,d1", 2],
+      ["an iif statement", " iif DEBUG Copy d0", 11],
+    ])("returns a macro definition for %s", async (_, call, column) => {
+      const textDocument = await createDoc(
+        "macro-call.s",
+        `Copy macro
+ move.\\0 \\1,\\2
+ endm
+${call}`,
+      );
+
+      const definitions = await provider.onDefinition({
+        position: lsp.Position.create(3, column),
+        textDocument,
+      });
+
+      expect(definitions).toHaveLength(1);
+      expect(definitions[0].uri).toBe(textDocument.uri);
+      expect(definitions[0].range).toEqual(range(0, 0, 2, 5));
+    });
+
     it("returns a contant definition in included doc", async () => {
       const textDocument = await createDoc(
         "example123.s",

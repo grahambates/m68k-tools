@@ -14,7 +14,11 @@ import { type AstNode, nodeAtPosition } from "../ast";
 import { locationAsRange } from "m68k-parser";
 import { resolveInclude } from "../files";
 import { DefinitionType, escapeMarkdown, getDefinitions } from "../symbols";
-import { registerName } from "../registerAnalysis";
+import {
+  canonicalGeneralPurposeRegister,
+  createAliasResolver,
+  registerName,
+} from "../registerAnalysis";
 import {
   describeRegister,
   type RegisterDescriptionResult,
@@ -111,6 +115,8 @@ export default class HoverProvider implements Provider {
       case "data-register":
       case "address-register":
         return this.hoverGeneralRegister(node, textDocument.uri, position);
+      case "register-list":
+        return this.hoverRegisterList(node, textDocument.uri, position);
     }
   }
 
@@ -182,6 +188,19 @@ export default class HoverProvider implements Provider {
               value: formatDeclaration(def.declaration),
             });
           }
+          // What an alias for a single register holds here, as for the
+          // register itself.
+          const [register, ...more] =
+            def.type === DefinitionType.Register
+              ? (createAliasResolver(this.ctx, document.uri)(def.name) ?? [])
+              : [];
+          const described =
+            register && !more.length
+              ? describeRegister(this.ctx, document.uri, position, register)
+              : undefined;
+          if (register && described) {
+            contents.push(formatRegisterDescription(register, described));
+          }
           break;
         }
         default:
@@ -230,6 +249,35 @@ export default class HoverProvider implements Provider {
         },
       };
     }
+  }
+
+  /** The descriptions of the registers in a list that have one. */
+  private async hoverRegisterList(
+    node: AstNode,
+    uri: string,
+    position: lsp.Position,
+  ) {
+    const registers = (node as AstNode & { registers?: unknown }).registers;
+    const sections = (Array.isArray(registers) ? registers : []).flatMap(
+      (item) => {
+        const register = canonicalGeneralPurposeRegister(item);
+        const result =
+          register && describeRegister(this.ctx, uri, position, register);
+        return register && result
+          ? [formatRegisterDescription(register, result)]
+          : [];
+      },
+    );
+    if (!sections.length) {
+      return;
+    }
+    return {
+      range: locationAsRange(node.loc, position.line),
+      contents: {
+        kind: lsp.MarkupKind.Markdown,
+        value: sections.join("\n\n***\n\n"),
+      },
+    };
   }
 
   private async hoverGeneralRegister(

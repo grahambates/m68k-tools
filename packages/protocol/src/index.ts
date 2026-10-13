@@ -14,7 +14,12 @@ export type RegisterAvailability = "available" | "unavailable" | "unknown";
 export interface RegisterUsageReference {
   range: Range;
   spelling: string;
-  kind: "explicit" | "register-list" | "macro-expansion";
+  /**
+   * How the register is named: by itself, in a register list, through an
+   * `equr`/`equrl`/`reg` alias, or by code a macro call expands to. Only
+   * explicit references can be edited in place.
+   */
+  kind: "explicit" | "register-list" | "alias" | "macro-expansion";
   access: RegisterAccess;
 }
 

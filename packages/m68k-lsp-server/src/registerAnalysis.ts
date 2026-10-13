@@ -18,6 +18,7 @@ import {
   expandMacro,
   isLocalLabelName,
   macroInvocation,
+  parseLine,
   symbolKey,
 } from "m68k-parser";
 import type {
@@ -34,6 +35,7 @@ import { type Context } from "./context";
 import { symbolsCaseSensitive } from "./config";
 import { isProcessed } from "./DocumentProcessor";
 import { getUnitFilesByDistance } from "./files";
+import { DefinitionType, resolveDefinitionByName } from "./symbols";
 import { locationAsRange } from "m68k-parser";
 
 const registerNodeTypes = new Set([
@@ -139,47 +141,29 @@ export function analyzeRegisterUsage(
   }
 
   const usages = new Map<string, RegisterUsageReference[]>();
+  const aliases = createAliasResolver(ctx, params.textDocument.uri);
   let incomplete = false;
   for (const { node, line } of walkFile(document.parsed)) {
-    const range = locationAsRange(node.loc);
-    if (!rangesOverlap(params.range, range)) {
-      continue;
-    }
-
     if (
-      line.mnemonic?.type === "macro" &&
-      findMacroDefinition(line.mnemonic.macro, params.textDocument.uri, ctx)
+      definesRegisters(line) ||
+      (line.mnemonic?.type === "macro" &&
+        findMacroDefinition(line.mnemonic.macro, params.textDocument.uri, ctx))
     ) {
       continue;
     }
-
-    const register = canonicalGeneralPurposeRegister(registerName(node));
-    if (register) {
-      addReference(usages, register, {
-        range,
-        spelling: document.document.getText(range),
-        kind: "explicit",
-        access: registerAccess(node, line),
-      });
-      continue;
-    }
-
-    if (node.type === "register-list") {
-      const registers = (node as AstNode & { registers?: unknown }).registers;
-      if (!Array.isArray(registers)) {
+    for (const found of registersAt(node, aliases)) {
+      const range = locationAsRange(found.node.loc);
+      if (!rangesOverlap(params.range, range)) {
         continue;
       }
       const reference: RegisterUsageReference = {
         range,
         spelling: document.document.getText(range),
-        kind: "register-list",
-        access: registerAccess(node, line),
+        kind: found.kind,
+        access: registerAccess(found.node, line),
       };
-      for (const item of registers) {
-        const listed = canonicalGeneralPurposeRegister(item);
-        if (listed) {
-          addReference(usages, listed, reference);
-        }
+      for (const register of found.registers) {
+        addReference(usages, register, reference);
       }
     }
   }
@@ -206,7 +190,7 @@ export function analyzeRegisterUsage(
       continue;
     }
     for (const expanded of expansion.lines)
-      addExpandedRegisters(expanded.line, expanded, callRange, usages);
+      addExpandedRegisters(expanded.line, expanded, callRange, usages, aliases);
     incomplete ||= expansion.incomplete;
   }
 
@@ -326,19 +310,41 @@ export function findBlockRange(
 
   // Past the block's flow, code it never reaches, such as a fragment
   // entered from elsewhere, still belongs to the block, up to where that
-  // code's own flow ends. Blank lines, comments and data between blocks
-  // belong to none.
-  for (let index = cursorLine; index > flowEnd; index--) {
-    const mnemonic = document.parsed.lines[index].mnemonic?.type;
-    if (
-      macroDefinitionLines.has(index) ||
-      (mnemonic !== "instruction" && mnemonic !== "macro")
-    ) {
-      continue;
+  // code's own flow ends. A label leads into the code after it. Blank lines,
+  // comments and data between blocks belong to none.
+  const lines = document.parsed.lines;
+  const isCode = (index: number) => {
+    const type = lines[index].mnemonic?.type;
+    return (
+      !macroDefinitionLines.has(index) &&
+      (type === "instruction" || type === "macro")
+    );
+  };
+  let codeLine: number | undefined;
+  if (lines[cursorLine].label && !isCode(cursorLine)) {
+    for (let index = cursorLine + 1; index < lines.length; index++) {
+      if (isCode(index)) {
+        codeLine = index;
+        break;
+      }
+      if (lines[index].mnemonic || isNonLocalCodeLabel(lines[index])) {
+        break;
+      }
     }
+  }
+  for (
+    let index = cursorLine;
+    codeLine === undefined && index > flowEnd;
+    index--
+  ) {
+    if (isCode(index)) {
+      codeLine = index;
+    }
+  }
+  if (codeLine !== undefined) {
     const fragmentEnd = blockFlowEnd(
       document.parsed,
-      index,
+      codeLine,
       macroDefinitionLines,
       caseSensitive,
     );
@@ -609,12 +615,12 @@ export function createFlowGraph(
   file: ParsedFile,
   blocks: BlockStructure,
   ctx: Context,
+  uri: string,
+  lineTexts: string[],
 ): (index: number) => FlowNode {
   const { lines } = file;
-  const labels = collectControlFlowLabels(
-    file,
-    symbolsCaseSensitive(ctx.config),
-  );
+  const caseSensitive = symbolsCaseSensitive(ctx.config);
+  const labels = collectControlFlowLabels(file, caseSensitive);
   const macroDefinitionLines = collectMacroDefinitionLines(blocks.blocks);
   const nodes = new Map<number, FlowNode>();
   return (index: number): FlowNode => {
@@ -663,9 +669,87 @@ export function createFlowGraph(
         call,
       };
     })();
-    nodes.set(index, node);
-    return node;
+    nodes.set(index, withMacroFlow(index, node));
+    return nodes.get(index)!;
   };
+
+  // A macro call goes wherever its expansion's branches lead out of it, and
+  // may return if the expansion does.
+  function withMacroFlow(index: number, node: FlowNode): FlowNode {
+    const line = lines[index];
+    if (line.mnemonic?.type !== "macro" || macroDefinitionLines.has(index)) {
+      return node;
+    }
+    const expansion = expandMacroCall(ctx, uri, line, lineTexts[index] ?? "");
+    const flow = expansion && expansionFlow(expansion, caseSensitive);
+    if (!flow?.hasFlow) {
+      return node;
+    }
+    if (flow.indirect) {
+      return { next: [], exit: false, escape: true };
+    }
+    const next = [...node.next];
+    for (const target of flow.targets) {
+      const targetLine = labels.resolve(target, index);
+      if (targetLine === undefined) {
+        return { next: [], exit: false, escape: true };
+      }
+      if (!next.includes(targetLine)) {
+        next.push(targetLine);
+      }
+    }
+    return { ...node, next, exit: node.exit || flow.returns };
+  }
+}
+
+/**
+ * The control flow inside a macro expansion: whether it has any (labels,
+ * branches or returns of its own), the labels it branches to outside itself,
+ * whether it can return, and whether it jumps somewhere it does not name.
+ */
+function expansionFlow(
+  expansion: MacroExpansion<lsp.Range>,
+  caseSensitive: boolean,
+): {
+  hasFlow: boolean;
+  targets: string[];
+  returns: boolean;
+  indirect: boolean;
+} {
+  const lines = expansion.lines.filter(({ expandedCall }) => !expandedCall);
+  const internal = new Set(
+    lines.flatMap(({ line }) =>
+      line.label ? [symbolKey(line.label.label, caseSensitive)] : [],
+    ),
+  );
+  const flow = {
+    hasFlow: internal.size > 0,
+    targets: [] as string[],
+    returns: false,
+    indirect: false,
+  };
+  for (const { line } of lines) {
+    const mnemonic =
+      line.mnemonic?.type === "instruction"
+        ? canonicalConditionMnemonic(line.mnemonic.instruction).toLowerCase()
+        : undefined;
+    if (!mnemonic) {
+      continue;
+    }
+    if (routineReturns.has(mnemonic)) {
+      flow.hasFlow = true;
+      flow.returns = true;
+    } else if (isBranchMnemonic(mnemonic)) {
+      flow.hasFlow = true;
+      const target = branchTarget(line);
+      if (target === undefined) {
+        flow.indirect = true;
+      } else if (!internal.has(symbolKey(target, caseSensitive))) {
+        flow.targets.push(target);
+      }
+    }
+  }
+  return flow;
 }
 
 /**
@@ -696,6 +780,7 @@ function registerLiveness(
 ): (register: string) => RegisterLiveness {
   const { lines } = file;
   const macroDefinitionLines = collectMacroDefinitionLines(blocks.blocks);
+  const aliases = createAliasResolver(ctx, uri);
 
   const stepsCache = new Map<number, LineSteps>();
   const stepsFor = (index: number): LineSteps => {
@@ -710,13 +795,14 @@ function registerLiveness(
         enclosingBlocks(blocks, index).some(
           (block) => block.kind === "conditional",
         ),
+        aliases,
       );
       stepsCache.set(index, steps);
     }
     return steps;
   };
 
-  const nodeAt = createFlowGraph(file, blocks, ctx);
+  const nodeAt = createFlowGraph(file, blocks, ctx, uri, lineTexts);
 
   /** Lines reachable from some roots, last first for backward passes. */
   const reachableCache = new Map<string, number[]>();
@@ -1048,6 +1134,7 @@ function lineSteps(
   lineText: string,
   inMacroDefinition: boolean,
   inConditional: boolean,
+  aliases: AliasResolver,
 ): LineSteps {
   // A macro body runs where the macro is called, not where it is defined.
   if (inMacroDefinition) {
@@ -1057,6 +1144,12 @@ function lineSteps(
     const expansion = expandMacroCall(ctx, uri, line, lineText);
     if (expansion) {
       const steps: LineSteps = [];
+      // Branches inside the expansion are not followed, so where it has any,
+      // none of its writes is certain to happen.
+      const branching = expansionFlow(
+        expansion,
+        symbolsCaseSensitive(ctx.config),
+      ).hasFlow;
       let conditionalDepth = 0;
       for (const expanded of expansion.lines) {
         const directive =
@@ -1070,8 +1163,24 @@ function lineSteps(
         }
         if (!expanded.expandedCall) {
           steps.push(
-            lineEffects(expanded.line, inConditional || conditionalDepth > 0),
+            lineEffects(
+              expanded.line,
+              inConditional || branching || conditionalDepth > 0,
+              aliases,
+            ),
           );
+          // Subroutines called from inside a macro are not followed.
+          const mnemonic =
+            expanded.line.mnemonic?.type === "instruction"
+              ? expanded.line.mnemonic.instruction.toLowerCase()
+              : undefined;
+          if (mnemonic === "bsr" || mnemonic === "jsr") {
+            steps.push("unknown");
+          }
+          // A nested call whose definition could not be found.
+          if (expanded.line.mnemonic?.type === "macro") {
+            steps.push("unknown");
+          }
         }
       }
       if (expansion.incomplete) {
@@ -1079,8 +1188,11 @@ function lineSteps(
       }
       return steps;
     }
+    // A call to a macro with no definition the workspace can find may use any
+    // register; the ones it is passed are taken as read.
+    return [lineEffects(line, inConditional, aliases), "unknown"];
   }
-  return [lineEffects(line, inConditional)];
+  return [lineEffects(line, inConditional, aliases)];
 }
 
 /**
@@ -1091,27 +1203,19 @@ function lineSteps(
 function lineEffects(
   line: ParsedLine,
   inConditional: boolean,
+  aliases: AliasResolver,
 ): Map<string, RegisterEffect> {
   const effects = new Map<string, RegisterEffect>();
+  if (definesRegisters(line)) {
+    return effects;
+  }
   const conditional = inConditional || line.inlineCondition !== undefined;
   const operands = (line.operands ?? []) as AstNode[];
   for (const [operandIndex, operand] of operands.entries()) {
-    for (const node of [operand, ...descendants(operand)]) {
-      const single = canonicalGeneralPurposeRegister(registerName(node));
-      const listed =
-        node.type === "register-list"
-          ? ((node as AstNode & { registers?: unknown }).registers as unknown[])
-          : undefined;
-      const registers = single
-        ? [single]
-        : Array.isArray(listed)
-          ? listed.flatMap(
-              (item) => canonicalGeneralPurposeRegister(item) ?? [],
-            )
-          : [];
-      if (!registers.length) {
-        continue;
-      }
+    for (const found of [operand, ...descendants(operand)].flatMap((node) =>
+      registersAt(node, aliases),
+    )) {
+      const { node, registers } = found;
       const access = registerAccess(node, line);
       for (const register of registers) {
         const bits = accessBits(
@@ -1237,6 +1341,46 @@ function accessBits(
     return { read: size, write: 8 };
   }
   return { read: size, write: size };
+}
+
+/**
+ * Calls in a range to macros with no definition the workspace can find,
+ * directly or from inside a macro that is defined, by the line they are made
+ * on. Analysis cannot see which registers such a macro uses.
+ */
+export function undefinedMacroCalls(
+  ctx: Context,
+  uri: string,
+  range: lsp.Range,
+): { line: number; name: string }[] {
+  const document = ctx.store.get(uri);
+  if (!isProcessed(document)) {
+    return [];
+  }
+  const lineTexts = document.document.getText().split(/\r?\n/g);
+  const macroDefinitionLines = collectMacroDefinitionLines(
+    document.blocks.blocks,
+  );
+  const calls: { line: number; name: string }[] = [];
+  const last = Math.min(range.end.line, document.parsed.lines.length - 1);
+  for (let index = range.start.line; index <= last; index++) {
+    const line = document.parsed.lines[index];
+    if (line.mnemonic?.type !== "macro" || macroDefinitionLines.has(index)) {
+      continue;
+    }
+    const expansion = expandMacroCall(ctx, uri, line, lineTexts[index] ?? "");
+    const names = expansion
+      ? expansion.lines.flatMap(({ line: expanded, expandedCall }) =>
+          expanded.mnemonic?.type === "macro" && !expandedCall
+            ? [expanded.mnemonic.macro]
+            : [],
+        )
+      : [line.mnemonic.macro];
+    for (const name of new Set(names)) {
+      calls.push({ line: index, name: name.toUpperCase() });
+    }
+  }
+  return calls;
 }
 
 function expandMacroCall(
@@ -1403,40 +1547,171 @@ function addExpandedRegisters(
   expanded: ExpandedLine,
   callRange: lsp.Range,
   usages: Map<string, RegisterUsageReference[]>,
+  aliases: AliasResolver,
 ) {
+  if (definesRegisters(line)) {
+    return;
+  }
   for (const node of walkLine(line)) {
-    const register = canonicalGeneralPurposeRegister(registerName(node));
-    if (register) {
-      addReference(usages, register, {
-        range: sourceRangeForLocation(node.loc, expanded.spans) ?? callRange,
-        spelling: expanded.text.slice(node.loc.start, node.loc.end),
-        kind: literalRegisterSpan(node.loc, expanded.spans)
-          ? "explicit"
-          : "macro-expansion",
-        access: registerAccess(node, line),
-      });
-      continue;
-    }
-    if (node.type !== "register-list") {
-      continue;
-    }
-    const registers = (node as AstNode & { registers?: unknown }).registers;
-    if (!Array.isArray(registers)) {
-      continue;
-    }
-    const reference: RegisterUsageReference = {
-      range: sourceRangeForLocation(node.loc, expanded.spans) ?? callRange,
-      spelling: expanded.text.slice(node.loc.start, node.loc.end),
-      kind: "macro-expansion",
-      access: registerAccess(node, line),
-    };
-    for (const item of registers) {
-      const listed = canonicalGeneralPurposeRegister(item);
-      if (listed) {
-        addReference(usages, listed, reference);
+    for (const found of registersAt(node, aliases)) {
+      const { loc } = found.node;
+      const reference: RegisterUsageReference = {
+        range: sourceRangeForLocation(loc, expanded.spans) ?? callRange,
+        spelling: expanded.text.slice(loc.start, loc.end),
+        kind:
+          found.kind === "explicit" && literalRegisterSpan(loc, expanded.spans)
+            ? "explicit"
+            : "macro-expansion",
+        access: registerAccess(found.node, line),
+      };
+      for (const register of found.registers) {
+        addReference(usages, register, reference);
       }
     }
   }
+}
+
+/** The kinds of node that name general-purpose registers. */
+interface NodeRegisters {
+  /** The node standing for the registers, whose access they share. */
+  node: AstNode;
+  registers: string[];
+  kind: "explicit" | "register-list" | "alias";
+}
+
+/**
+ * Names `equr`/`equrl`/`reg` aliases resolve to, as general-purpose
+ * registers, or undefined for a name that is not such an alias.
+ */
+type AliasResolver = (name: string) => string[] | undefined;
+
+/**
+ * Resolves register aliases through the symbols visible from a document,
+ * remembering each answer.
+ */
+export function createAliasResolver(ctx: Context, uri: string): AliasResolver {
+  const cache = new Map<string, string[] | undefined>();
+  return (name) => {
+    if (!cache.has(name)) {
+      const definition = resolveDefinitionByName(uri, name, ctx);
+      cache.set(
+        name,
+        (definition?.type === DefinitionType.Register ||
+          definition?.type === DefinitionType.RegisterList) &&
+          definition.declaration
+          ? aliasedRegisters(definition.declaration)
+          : undefined,
+      );
+    }
+    return cache.get(name);
+  };
+}
+
+/**
+ * The general-purpose registers an alias definition line names, such as `d0`
+ * in `count equr d0` or the list in `saved reg d2-d3/a2`. Directive operands
+ * parse as expressions, so the operand's text is read as a register list.
+ */
+function aliasedRegisters(declaration: string): string[] | undefined {
+  const operand = parseLine(declaration).value.operands?.[0];
+  if (!operand) {
+    return;
+  }
+  const text = declaration.slice(operand.loc.start, operand.loc.end).trim();
+  const registers: string[] = [];
+  for (const group of text.split("/")) {
+    const [first, last, extra] = group
+      .split("-")
+      .map((name) => canonicalGeneralPurposeRegister(name.trim()));
+    if (!first || extra !== undefined || (group.includes("-") && !last)) {
+      return;
+    }
+    if (!last) {
+      registers.push(first);
+      continue;
+    }
+    if (first[0] !== last[0] || last[1] < first[1]) {
+      return;
+    }
+    for (let n = Number(first[1]); n <= Number(last[1]); n++) {
+      registers.push(first[0] + n);
+    }
+  }
+  return registers.length ? [...new Set(registers)] : undefined;
+}
+
+function listedRegisters(node: AstNode): string[] {
+  const registers = (node as AstNode & { registers?: unknown }).registers;
+  return Array.isArray(registers)
+    ? registers.flatMap((item) => canonicalGeneralPurposeRegister(item) ?? [])
+    : [];
+}
+
+/**
+ * The general-purpose registers a node names: a register, a register list, or
+ * an alias for either. An alias is only taken where a register can stand: as a
+ * whole operand, such as `count` in `move.w count,d1`, or as an addressing
+ * mode's base or index register, such as `ptr` in `(ptr)+`.
+ */
+function registersAt(node: AstNode, aliases: AliasResolver): NodeRegisters[] {
+  const single = canonicalGeneralPurposeRegister(registerName(node));
+  if (single) {
+    return [{ node, registers: [single], kind: "explicit" }];
+  }
+  if (node.type === "register-list") {
+    const registers = listedRegisters(node);
+    return registers.length ? [{ node, registers, kind: "register-list" }] : [];
+  }
+  const found: NodeRegisters[] = [];
+  const fields = node as AstNode & {
+    address?: AstNode & { name?: unknown };
+    addressSize?: unknown;
+    register?: unknown;
+    baseRegister?: unknown;
+    indexRegister?: unknown;
+  };
+  if (
+    node.type === "absolute-address" &&
+    fields.address?.type === "symbol" &&
+    fields.addressSize === undefined &&
+    typeof fields.address.name === "string"
+  ) {
+    const registers = aliases(fields.address.name);
+    if (registers) {
+      found.push({ node, registers, kind: "alias" });
+    }
+  }
+  for (const value of [
+    fields.register,
+    fields.baseRegister,
+    fields.indexRegister,
+  ]) {
+    const symbol = value as (AstNode & { name?: unknown }) | undefined;
+    if (symbol?.type === "symbol" && typeof symbol.name === "string") {
+      const registers = aliases(symbol.name);
+      if (registers) {
+        found.push({ node: symbol, registers, kind: "alias" });
+      }
+    }
+  }
+  return found;
+}
+
+/** Directives that define register aliases rather than use registers. */
+const registerDefinitionDirectives = new Set([
+  "equr",
+  "equrl",
+  "fequr",
+  "fequrl",
+  "freg",
+  "reg",
+]);
+
+function definesRegisters(line: ParsedLine): boolean {
+  return (
+    line.mnemonic?.type === "directive" &&
+    registerDefinitionDirectives.has(line.mnemonic.directive.toLowerCase())
+  );
 }
 
 // Only a whole, unchanged register argument can safely be edited at its source.
@@ -1515,7 +1790,7 @@ function registerAccess(node: AstNode, line: ParsedLine): RegisterAccess {
       : "read";
   }
 
-  if (mnemonic === "movem" && node.type === "register-list") {
+  if (mnemonic === "movem") {
     return operandIndex === 0 ? "read" : "write";
   }
   if (mnemonic === "exg" || mnemonic === "link" || mnemonic.startsWith("db")) {

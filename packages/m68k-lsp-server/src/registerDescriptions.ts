@@ -332,7 +332,13 @@ export function describeRegister(
   // the one every path reaching it agrees on, so one set in one branch does
   // not carry past where the branches join. Code with no way in from the
   // block's flow starts with no description.
-  const nodeAt = createFlowGraph(document.parsed, document.blocks, ctx);
+  const nodeAt = createFlowGraph(
+    document.parsed,
+    document.blocks,
+    ctx,
+    uri,
+    lineTexts,
+  );
   const endLine = Math.min(block.range.end.line, lines.length - 1);
   const predecessors = new Map<number, number[]>();
   for (let index = startLine; index <= endLine; index++) {

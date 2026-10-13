@@ -163,6 +163,113 @@ describe("RegisterProvider", () => {
       );
     });
 
+    describe("register aliases", () => {
+      const usageOf = async (text: string, extra?: string) => {
+        const textDocument = await createDoc("aliases.s", text);
+        if (extra) {
+          const include = await createDoc("aliases.i", extra);
+          ctx.store.get(textDocument.uri)!.referencedUris.push(include.uri);
+        }
+        const result = provider.onRegisterUsage({
+          textDocument,
+          range: range(0, 0, text.split("\n").length, 0),
+        });
+        return new Map(result?.registers.map((usage) => [usage.name, usage]));
+      };
+
+      it("resolves aliases where a register can stand", async () => {
+        const usage = await usageOf(`count equr d0
+ptr equr a0
+idx equr d3
+ move.w count,d1
+ addq.w #1,count
+ move.w (ptr)+,d2
+ lea 4(ptr),ptr
+ move.w (a1,idx.w),d4
+ move.w #count,d5
+`);
+        // The EQUR lines define the aliases rather than use the registers.
+        expect(usage.get("d0")?.references).toEqual([
+          {
+            range: range(3, 8, 3, 13),
+            spelling: "count",
+            kind: "alias",
+            access: "read",
+          },
+          {
+            range: range(4, 11, 4, 16),
+            spelling: "count",
+            kind: "alias",
+            access: "readwrite",
+          },
+        ]);
+        expect(
+          usage.get("a0")?.references.map(({ kind, access }) => [kind, access]),
+        ).toEqual([
+          ["alias", "readwrite"],
+          ["alias", "read"],
+          ["alias", "write"],
+        ]);
+        expect(usage.get("d3")?.references).toMatchObject([
+          { kind: "alias", access: "read", spelling: "idx" },
+        ]);
+      });
+
+      it("resolves register list aliases and aliases from other files", async () => {
+        const usage = await usageOf(
+          ` movem.l saved,-(sp)
+ movem.l (sp)+,saved
+`,
+          "saved reg d2-d3/a2\n",
+        );
+        for (const register of ["d2", "d3", "a2"]) {
+          expect(
+            usage.get(register)?.references.map(({ access }) => access),
+          ).toEqual(["read", "write"]);
+        }
+      });
+
+      it("keeps a register used through an alias unavailable", async () => {
+        const textDocument = await createDoc(
+          "alias-liveness.s",
+          `count equr d0
+Start:
+ nop
+ add.w count,d1
+ rts`,
+        );
+        const result = provider.onRegisterUsage({
+          textDocument,
+          range: range(1, 0, 4, 4),
+          position: lsp.Position.create(2, 1),
+        });
+        expect(
+          result?.registers.find(({ name }) => name === "d0")?.availability,
+        ).toBe("unavailable");
+      });
+
+      it("refuses to remap a register used through an alias", async () => {
+        const textDocument = await createDoc(
+          "alias-remap.s",
+          `count equr d0
+ moveq #0,d0
+ add.w count,d1
+`,
+        );
+        const result = provider.onRegisterRemap({
+          textDocument,
+          documentVersion: 0,
+          range: range(1, 0, 3, 0),
+          mappings: { d0: "d2" },
+        });
+        expect(result).toMatchObject({
+          edits: [],
+          error: "unsupported-reference",
+          unsupported: [{ kind: "alias", spelling: "count" }],
+        });
+      });
+    });
+
     it("expands register lists while preserving their source range", async () => {
       const textDocument = await createDoc(
         "register-list.s",
@@ -552,6 +659,143 @@ Accumulate macro
             )
           ).d2,
         ).toBe("unavailable");
+      });
+
+      describe("control flow inside macros", () => {
+        it("does not count a write a macro may branch around", async () => {
+          expect(
+            (
+              await availability(
+                `ClearIf macro
+ beq.s .skip\\@
+ moveq #0,\\1
+.skip\\@:
+ endm
+Start:
+ move.l d2,d3
+ ClearIf d2
+ add.l d2,d1
+ rts`,
+                6,
+              )
+            ).d2,
+          ).toBe("unavailable");
+        });
+
+        it("still counts the writes of a macro without branches", async () => {
+          expect(
+            (
+              await availability(
+                `Clear macro
+ moveq #0,\\1
+ endm
+Start:
+ move.l d2,d3
+ Clear d2
+ add.l d2,d1
+ rts`,
+                4,
+              )
+            ).d2,
+          ).toBe("available");
+        });
+
+        it("follows a macro's branch to the caller's label", async () => {
+          expect(
+            (
+              await availability(
+                `BranchIf macro
+ bne \\1
+ endm
+Start:
+ move.l d2,d3
+ BranchIf .uses
+ rts
+.uses:
+ add.l d2,d1
+ rts`,
+                4,
+              )
+            ).d2,
+          ).toBe("unavailable");
+        });
+
+        it("treats a return inside a macro as a return", async () => {
+          expect(
+            (
+              await availability(
+                `Return macro
+ rts
+ endm
+; Outputs: d0 = result
+Start:
+ move.l d0,d1
+ Return
+ moveq #0,d0
+ rts`,
+                5,
+              )
+            ).d0,
+          ).toBe("unavailable");
+        });
+
+        it("does not follow a subroutine called inside a macro", async () => {
+          expect(
+            (
+              await availability(
+                `Call macro
+ bsr \\1
+ endm
+Start:
+ move.l d2,d3
+ Call Helper
+ rts
+Helper:
+ rts`,
+                4,
+              )
+            ).d2,
+          ).toBe("unknown");
+        });
+      });
+
+      it("treats a call to an undefined macro as possibly using anything", async () => {
+        expect(
+          await availability(
+            `Start:
+ move.l d2,d3
+ Mystery d4
+ moveq #0,d2
+ add.l d2,d1
+ rts`,
+            1,
+          ),
+        ).toMatchObject({
+          // Passed to it, so taken as read.
+          d4: "unavailable",
+          // It may read either before the overwrite or the end.
+          d2: "unknown",
+          d3: "unknown",
+          // Read after it anyway.
+          d1: "unavailable",
+        });
+      });
+
+      it("treats an undefined macro called by a defined one as unknown", async () => {
+        const result = await availability(
+          `Outer macro
+ moveq #0,d2
+ Inner
+ endm
+Start:
+ move.l d2,d3
+ Outer
+ add.l d2,d1
+ rts`,
+          5,
+        );
+        // Outer overwrites D2 before Inner can run; D3 is left to Inner.
+        expect(result).toMatchObject({ d2: "available", d3: "unknown" });
       });
 
       it("frees a register each loop iteration overwrites first", async () => {
@@ -1695,6 +1939,8 @@ Bar:
           position: lsp.Position.create(line, 0),
         });
       expect(at(2)).toBeUndefined();
+      // The fragment's label leads into its code.
+      expect(at(3)).toEqual({ range: range(0, 0, 5, 4), label: "Foo" });
       expect(at(4)).toEqual({ range: range(0, 0, 5, 4), label: "Foo" });
       expect(at(6)).toBeUndefined();
       expect(at(7)).toBeUndefined();
@@ -2065,6 +2311,41 @@ Inner:
         }
       },
     );
+
+    it("warns that undefined macros in the scope cannot be checked", async () => {
+      const textDocument = await createDoc(
+        "undefined-macro-remap.s",
+        `Wrap macro
+ Inner
+ endm
+ move.l d1,d2
+ Mystery
+ Wrap
+`,
+      );
+      const result = provider.onRegisterRemap({
+        textDocument,
+        documentVersion: 0,
+        range: range(3, 0, 6, 0),
+        mappings: { d2: "d3" },
+      });
+      expect(result?.error).toBeUndefined();
+      expect(result?.edits).toHaveLength(1);
+      expect(result?.warnings).toEqual([
+        "Line 5: MYSTERY is a macro with no definition the workspace can find, so the registers it uses cannot be checked.",
+        "Line 6: INNER is a macro with no definition the workspace can find, so the registers it uses cannot be checked.",
+      ]);
+
+      // Nothing to warn about when the mapping changes nothing.
+      expect(
+        provider.onRegisterRemap({
+          textDocument,
+          documentVersion: 0,
+          range: range(3, 0, 6, 0),
+          mappings: { d2: "d2" },
+        })?.warnings,
+      ).toBeUndefined();
+    });
 
     it("returns invalid-code warnings without withholding edits", async () => {
       const textDocument = await createDoc("invalid-remap.s", " moveq #1,d0\n");

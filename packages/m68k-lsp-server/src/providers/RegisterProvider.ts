@@ -25,6 +25,7 @@ import {
   analyzeRegisterUsage,
   canonicalGeneralPurposeRegister,
   findBlockRange,
+  undefinedMacroCalls,
   registerRanges,
 } from "../registerAnalysis";
 import { parseRoutineHeader, blockHeaderAt } from "../registerDescriptions";
@@ -208,6 +209,17 @@ export default class RegisterProvider implements Provider {
       if (register?.input) {
         warnings.push(
           `Line ${register.firstUse.line + 1}: ${source.toUpperCase()} is an input register. Remapping it to ${destination.toUpperCase()} requires updating the code outside this scope that supplies its value.`,
+        );
+      }
+    }
+    if (plannedEdits.length) {
+      for (const { line, name } of undefinedMacroCalls(
+        this.ctx,
+        params.textDocument.uri,
+        params.range,
+      )) {
+        warnings.push(
+          `Line ${line + 1}: ${name} is a macro with no definition the workspace can find, so the registers it uses cannot be checked.`,
         );
       }
     }

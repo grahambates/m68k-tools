@@ -205,6 +205,46 @@ Draw:
       );
     });
 
+    it("describes the registers in a list that have descriptions", async () => {
+      const textDocument = await createDoc(
+        "example.s",
+        `; d0 = frame count
+; a0 = screen
+Draw:
+\tmovem.l\td0-d1/a0,-(sp)
+\trts`,
+      );
+
+      const hover = await provider.onHover({
+        textDocument,
+        position: { line: 3, character: 10 },
+      });
+      expect(hover?.range).toEqual(range(3, 9, 3, 17));
+      expect((hover?.contents as lsp.MarkupContent).value).toBe(
+        "**D0**: frame count\n\n*Input, header of Draw*\n\n***\n\n**A0**: screen\n\n*Input, header of Draw*",
+      );
+    });
+
+    it("describes the register behind an alias", async () => {
+      const textDocument = await createDoc(
+        "example.s",
+        `count equr d0
+Draw:
+\tmoveq\t#0,count\t; count of frames
+\taddq.w\t#1,count
+\trts`,
+      );
+
+      const hover = await provider.onHover({
+        textDocument,
+        position: { line: 3, character: 12 },
+      });
+      expect(hover?.contents).toEqual([
+        { language: "vasmmot", value: "count equr d0" },
+        "**D0**: count of frames\n\n*Inferred from comment, line 3*",
+      ]);
+    });
+
     it("describes a register assigned from a symbol", async () => {
       const textDocument = await createDoc(
         "example.s",

@@ -37,6 +37,7 @@ vi.mock(
   "vscode",
   () => ({
     DecorationRangeBehavior: { ClosedClosed: 1 },
+    OverviewRulerLane: { Center: 2 },
     Range: class {},
     ThemeColor: class {
       constructor(readonly id: string) {}

@@ -1,5 +1,8 @@
-import { remappingHighlights } from "../src/remappingHighlights";
-import type { RegisterUsageResult } from "@m68k-lsp/protocol";
+import {
+  remappingHighlights,
+  usageHighlightLines,
+} from "../src/remappingHighlights";
+import type { RegisterAccess, RegisterUsageResult } from "@m68k-lsp/protocol";
 
 const usage: RegisterUsageResult = {
   documentVersion: 1,
@@ -41,4 +44,22 @@ test("associates validation warnings only with affected lines", () => {
   expect(marks.map((m) => m.warning)).toEqual([true, false]);
   expect(marks[0].hover).toContain("Invalid MOVEQ");
   expect(remappingHighlights(usage, {}, [])).toEqual([]);
+});
+test("highlights a usage line as a write when any reference on it may write", () => {
+  const ref = (line: number, access: RegisterAccess) => ({
+    range: { start: { line, character: 1 }, end: { line, character: 3 } },
+    spelling: "d0",
+    kind: "explicit" as const,
+    access,
+  });
+  expect(
+    usageHighlightLines([
+      ref(0, "read"),
+      ref(0, "read"),
+      ref(1, "read"),
+      ref(1, "write"),
+      ref(2, "readwrite"),
+      ref(3, "unknown"),
+    ]),
+  ).toEqual({ read: [0, 3], write: [1, 2] });
 });

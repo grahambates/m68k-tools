@@ -1,4 +1,7 @@
-import { remappingHighlights } from "./remappingHighlights";
+import {
+  remappingHighlights,
+  usageHighlightLines,
+} from "./remappingHighlights";
 import {
   RegisterRangesRequest,
   RegisterUsageRequest,
@@ -16,6 +19,7 @@ import type {
 import * as path from "path";
 import {
   DecorationRangeBehavior,
+  OverviewRulerLane,
   ThemeColor,
   type DecorationOptions,
   type ExtensionContext,
@@ -140,9 +144,22 @@ export function activate(context: ExtensionContext): void {
     borderColor: new ThemeColor("editorWarning.foreground"),
     rangeBehavior: DecorationRangeBehavior.ClosedClosed,
   });
-  const usageHighlight = window.createTextEditorDecorationType({
+  const usageReadHighlight = window.createTextEditorDecorationType({
     isWholeLine: true,
     backgroundColor: new ThemeColor("editor.wordHighlightBackground"),
+    overviewRulerColor: new ThemeColor(
+      "editorOverviewRuler.wordHighlightForeground",
+    ),
+    overviewRulerLane: OverviewRulerLane.Center,
+    rangeBehavior: DecorationRangeBehavior.ClosedClosed,
+  });
+  const usageWriteHighlight = window.createTextEditorDecorationType({
+    isWholeLine: true,
+    backgroundColor: new ThemeColor("editor.wordHighlightStrongBackground"),
+    overviewRulerColor: new ThemeColor(
+      "editorOverviewRuler.wordHighlightStrongForeground",
+    ),
+    overviewRulerLane: OverviewRulerLane.Center,
     rangeBehavior: DecorationRangeBehavior.ClosedClosed,
   });
   const highlightUsage = (register?: string) => {
@@ -153,16 +170,22 @@ export function activate(context: ExtensionContext): void {
             ?.references ?? [])
         : [];
     // Multiple operands on one line must not stack translucent backgrounds.
-    const lines = new Set(references.map(({ range }) => range.start.line));
-    const ranges = [...lines].map((line) => new Range(line, 0, line, 0));
+    const lines = usageHighlightLines(references);
+    const toRanges = (lines: number[]) =>
+      lines.map((line) => new Range(line, 0, line, 0));
     for (const editor of window.visibleTextEditors) {
+      const current = editor.document.uri.toString() === snapshot?.uri;
       editor.setDecorations(
-        usageHighlight,
-        editor.document.uri.toString() === snapshot?.uri ? ranges : [],
+        usageReadHighlight,
+        current ? toRanges(lines.read) : [],
+      );
+      editor.setDecorations(
+        usageWriteHighlight,
+        current ? toRanges(lines.write) : [],
       );
     }
   };
-  context.subscriptions.push(usageHighlight);
+  context.subscriptions.push(usageReadHighlight, usageWriteHighlight);
   const clearPreview = () => {
     previewGeneration++;
     for (const editor of window.visibleTextEditors) {

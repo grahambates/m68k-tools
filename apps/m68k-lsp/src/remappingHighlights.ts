@@ -1,4 +1,8 @@
-import type { RegisterUsageResult, Range } from "@m68k-lsp/protocol";
+import type {
+  RegisterUsageReference,
+  RegisterUsageResult,
+  Range,
+} from "@m68k-lsp/protocol";
 
 export interface RemappingHighlight {
   range: Range;
@@ -37,4 +41,26 @@ export function remappingHighlights(
         };
       });
   });
+}
+
+/**
+ * Groups reference lines for whole-line usage highlights. A line counts as a
+ * write when any reference on it may write the register, matching the strong
+ * highlight VS Code uses for write occurrences; other lines are reads.
+ */
+export function usageHighlightLines(references: RegisterUsageReference[]): {
+  read: number[];
+  write: number[];
+} {
+  const write = new Set(
+    references
+      .filter(({ access }) => access === "write" || access === "readwrite")
+      .map(({ range }) => range.start.line),
+  );
+  const read = new Set(
+    references
+      .map(({ range }) => range.start.line)
+      .filter((line) => !write.has(line)),
+  );
+  return { read: [...read], write: [...write] };
 }

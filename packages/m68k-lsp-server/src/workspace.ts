@@ -69,6 +69,11 @@ export async function indexWorkspace(
     }
   }
 
+  // Includes were resolved as each file was indexed, which for a file reached
+  // before the main source including it means without knowing where vasm
+  // would look. Now the include graph is known, resolve them again.
+  await processor.settleIncludes();
+
   ctx.logger.info(`Indexed ${indexed} file(s) in ${Date.now() - started}ms`);
   return indexed;
 }

@@ -98,7 +98,7 @@ export default class FileOperationsProvider implements Provider {
       }
     }
     if (changed) {
-      await processor.refreshIncludes();
+      await processor.settleIncludes();
       this.ctx.connection.sendNotification(IndexChangedNotification);
     }
   }

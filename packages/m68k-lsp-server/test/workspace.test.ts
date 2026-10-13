@@ -142,6 +142,20 @@ describe("indexWorkspace", () => {
     expect(main?.referencedUris[0]).toContain("defs.i");
   });
 
+  it("resolves includes relative to a main source indexed after them", async () => {
+    // vasm finds `code/defs.i` from the main source's directory. The walk
+    // reaches code/a.s before main.s, when no main source is known yet.
+    await write("proj/main.s", ' include "code/a.s"\n');
+    await write("proj/code/a.s", ' include "code/defs.i"\n');
+    const defs = await write("proj/code/defs.i", "FOO equ 1\n");
+
+    const ctx = await contextFor();
+    await indexWorkspace(ctx, new DocumentProcessor(ctx));
+
+    const a = [...ctx.store.values()].find((d) => d.uri.endsWith("code/a.s"));
+    expect(a?.referencedUris).toEqual([defs]);
+  });
+
   it("leaves an already open document alone", async () => {
     const uri = await write("main.s", "Start:\n rts\n");
 

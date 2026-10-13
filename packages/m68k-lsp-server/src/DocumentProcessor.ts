@@ -177,14 +177,40 @@ export default class DocumentProcessor {
     }
   }
 
-  /** Reconnect includes after files appear, disappear, or change their incdirs. */
-  async refreshIncludes(): Promise<void> {
+  /**
+   * Reconnect includes after files appear, disappear, or change their incdirs.
+   *
+   * Returns whether any document's includes resolved differently.
+   */
+  async refreshIncludes(): Promise<boolean> {
+    let changed = false;
     for (const document of Array.from(this.ctx.store.values())) {
       if (document.symbols.includes.length) {
+        const before = document.referencedUris;
         await this.resolveReferences(
           document,
           this.ctx.documentUpdates.get(document.uri),
         );
+        if (!sameMembers(before, document.referencedUris)) {
+          changed = true;
+        }
+      }
+    }
+    return changed;
+  }
+
+  /**
+   * Resolve includes again until they settle.
+   *
+   * Where vasm finds an include depends on the main source it is assembled
+   * from, and a file indexed before the file that includes it has none yet.
+   * Each pass can reveal further main sources, so repeat while anything
+   * changes, up to a bound in case two resolutions keep undoing each other.
+   */
+  async settleIncludes(maxPasses = 8): Promise<void> {
+    for (let pass = 0; pass < maxPasses; pass++) {
+      if (!(await this.refreshIncludes())) {
+        return;
       }
     }
   }
@@ -214,6 +240,10 @@ export default class DocumentProcessor {
     }
     await this.index(uri);
   }
+}
+
+function sameMembers(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((item) => b.includes(item));
 }
 
 /** Definitions by lower-cased name; where a name is defined twice, the later wins. */

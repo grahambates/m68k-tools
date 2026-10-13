@@ -1131,6 +1131,87 @@ Second:
         label: "Handler",
       });
     });
+
+    it("limits the scope to the body of the macro being defined", async () => {
+      const textDocument = await createDoc(
+        "macro-scope.s",
+        `Start:
+ moveq #0,d2
+Copy macro
+.loop:
+ move.l (\\1)+,d0
+ rts
+ endm
+ rts
+`,
+      );
+
+      const scope = provider.onRoutineRange({
+        textDocument,
+        position: lsp.Position.create(4, 2),
+      });
+
+      expect(scope).toEqual({
+        range: range(2, 0, 6, 5),
+        label: "Copy",
+      });
+      const usage = provider.onRegisterUsage({
+        textDocument,
+        range: scope!.range,
+      });
+      expect(usage?.registers.map(({ name }) => name)).toEqual(["d0"]);
+    });
+
+    it("runs to the end of the file in an unterminated macro", async () => {
+      const textDocument = await createDoc(
+        "unterminated-macro.s",
+        "Copy macro\n move.l d0,d1\n",
+      );
+
+      expect(
+        provider.onRoutineRange({
+          textDocument,
+          position: lsp.Position.create(1, 2),
+        }),
+      ).toEqual({
+        range: range(0, 0, 2, 0),
+        label: "Copy",
+      });
+    });
+
+    it("ignores labels and returns in a macro body outside it", async () => {
+      const textDocument = await createDoc(
+        "routine-around-macro.s",
+        `Start:
+ moveq #0,d2
+Copy macro
+Inner:
+ rts
+ endm
+ moveq #1,d3
+ rts
+`,
+      );
+
+      expect(
+        provider.onRoutineRange({
+          textDocument,
+          position: lsp.Position.create(6, 2),
+        }),
+      ).toEqual({
+        range: range(0, 0, 7, 4),
+        label: "Start",
+      });
+      expect(
+        provider.onRoutineRange({
+          textDocument,
+          position: lsp.Position.create(1, 2),
+        }),
+      ).toEqual({
+        range: range(0, 0, 7, 4),
+        label: "Start",
+      });
+    });
   });
 
   describe("incomplete macro analysis", () => {

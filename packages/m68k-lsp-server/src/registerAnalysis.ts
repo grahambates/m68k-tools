@@ -12,6 +12,7 @@ import * as lsp from "vscode-languageserver";
 import {
   analyzeLocalLabelScopes,
   canonicalConditionMnemonic,
+  enclosingBlocks,
   expandMacro,
   isLocalLabelName,
   macroInvocation,
@@ -249,17 +250,43 @@ export function findRoutineRange(
     return;
   }
 
+  const lastLine = document.parsed.lines.length - 1;
+  const cursorLine = Math.min(params.position.line, lastLine);
+  const endOfFile = document.document.positionAt(
+    document.document.getText().length,
+  );
+
+  // Within a macro definition the scope is its body, from MACRO to ENDM, as a
+  // routine runs from its label to its return.
+  const macro = enclosingBlocks(document.blocks, cursorLine)
+    .filter((block) => block.kind === "macro")
+    .at(-1);
+  if (macro) {
+    const endMnemonic =
+      macro.end === undefined
+        ? undefined
+        : document.parsed.lines[macro.end]?.mnemonic;
+    return {
+      range: lsp.Range.create(
+        lsp.Position.create(macro.start, 0),
+        endMnemonic
+          ? lsp.Position.create(macro.end!, endMnemonic.loc.end)
+          : endOfFile,
+      ),
+      label: macro.name ?? "Macro",
+    };
+  }
+
+  // Outside one, a macro body's labels and returns belong to the macro and
+  // neither start nor end the routine.
+  const macroDefinitionLines = collectMacroDefinitionLines(
+    document.blocks.blocks,
+  );
+
   let startLine: number | undefined;
-  for (
-    let index = Math.min(
-      params.position.line,
-      document.parsed.lines.length - 1,
-    );
-    index >= 0;
-    index--
-  ) {
+  for (let index = cursorLine; index >= 0; index--) {
     const line = document.parsed.lines[index];
-    if (isNonLocalCodeLabel(line)) {
+    if (!macroDefinitionLines.has(index) && isNonLocalCodeLabel(line)) {
       startLine = index;
       break;
     }
@@ -277,6 +304,7 @@ export function findRoutineRange(
     const mnemonic = line.mnemonic;
     // A return that only happens if a condition holds does not end the routine.
     if (
+      !macroDefinitionLines.has(index) &&
       mnemonic?.type === "instruction" &&
       line.inlineCondition === undefined &&
       routineReturns.has(mnemonic.instruction.toLowerCase())
@@ -292,10 +320,7 @@ export function findRoutineRange(
   }
 
   return {
-    range: lsp.Range.create(
-      lsp.Position.create(startLine, 0),
-      document.document.positionAt(document.document.getText().length),
-    ),
+    range: lsp.Range.create(lsp.Position.create(startLine, 0), endOfFile),
     label: label?.label ?? "Start of file",
   };
 }

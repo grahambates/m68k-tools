@@ -46,6 +46,10 @@ ChangeLog is located [here](https://github.com/grahambates/m68k-tools/blob/main/
 
 Requires VS Code 1.101 or later. For local development, open the monorepo root and select **Assembly: Extension** in Run and Debug.
 
+### Register analysis scope
+
+Register commands and the remapping view work on the selection. Without one, the scope is the routine around the cursor, from the previous non-local label to the next unconditional `rts`, `rte` or `rtr`. Inside a macro definition it is the macro body, from `macro` to `endm`; labels and returns in a macro body do not start or end a routine around it.
+
 ### Register remapping warnings
 
 The remapping view previews warnings for newly invalid register operand forms alongside destination conflicts. Both are advisory: Apply remains available. Valid substitutions between data and address registers are allowed. The preview matches complete operand alternatives from the instruction documentation, including register classes and source/destination addressing modes. Unrecognised documentation forms are left unchecked. It also checks address bases, byte-sized address-register use and newly introduced parser errors; it does not assemble the complete program or prove that its behaviour is unchanged.

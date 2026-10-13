@@ -8,7 +8,9 @@ import { isProcessed } from "./DocumentProcessor";
 import {
   analyzeRegisterUsage,
   canonicalGeneralPurposeRegister,
+  createAliasResolver,
   createFlowGraph,
+  findStackSaves,
   findBlockRange,
   registerName,
 } from "./registerAnalysis";
@@ -284,6 +286,12 @@ export function describeRegister(
       }
     : undefined;
 
+  const saves = findStackSaves(
+    document.parsed,
+    document.blocks,
+    createAliasResolver(ctx, uri),
+  );
+
   /** The description after a line, given the one before it. */
   const transfer = (
     index: number,
@@ -294,6 +302,13 @@ export function describeRegister(
     const documented = comment ? parseRegisterComment(comment) : undefined;
     if (documented?.registers.includes(target)) {
       return { text: documented.description, source: "comment", line: index };
+    }
+
+    // A restore from the stack brings back what the register held when it
+    // was saved.
+    const save = saves.saveOf(index, target);
+    if (save !== undefined && entering.has(save)) {
+      return entering.get(save);
     }
 
     const accesses = accessesByLine.get(index);
@@ -351,6 +366,7 @@ export function describeRegister(
     }
   }
   const after = new Map<number, RegisterDescription | undefined>();
+  const entering = new Map<number, RegisterDescription | undefined>();
   for (let changed = true; changed;) {
     changed = false;
     for (let index = startLine; index <= endLine; index++) {
@@ -369,6 +385,7 @@ export function describeRegister(
       )
         ? candidates[0]
         : undefined;
+      entering.set(index, before);
       const description = transfer(index, before);
       if (
         !after.has(index) ||

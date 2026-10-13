@@ -661,6 +661,114 @@ Accumulate macro
         ).toBe("unavailable");
       });
 
+      describe("registers saved on the stack", () => {
+        const helper = (save: string, restore: string) => `Helper:
+ ${save}
+ moveq #0,d2
+ add.l d2,d0
+ ${restore}
+ rts`;
+
+        it("does not treat a saved register as an input", async () => {
+          const textDocument = await createDoc(
+            "saved.s",
+            helper("movem.l d2/a2,-(sp)", "movem.l (sp)+,d2/a2"),
+          );
+          const result = provider.onRegisterUsage({
+            textDocument,
+            range: range(0, 0, 5, 4),
+            position: lsp.Position.create(1, 1),
+          });
+          const byName = new Map(
+            result?.registers.map((usage) => [usage.name, usage]),
+          );
+          expect(byName.get("d2")).toMatchObject({
+            input: false,
+            availability: "available",
+          });
+          // Saved and restored, never otherwise used.
+          expect(byName.get("a2")?.input).toBeUndefined();
+          expect(byName.get("d0")?.input).toBe(true);
+        });
+
+        it.each([
+          ["movem.l d2/a2,-(sp)", "movem.l (sp)+,d2/a2", " nop", "available"],
+          ["move.l d2,-(sp)", "move.l (sp)+,d2", " nop", "available"],
+          // The caller still needs it after the call.
+          [
+            "movem.l d2,-(sp)",
+            "movem.l (sp)+,d2",
+            " add.l d2,d1",
+            "unavailable",
+          ],
+          // A word restore sign-extends rather than restoring all of it.
+          ["movem.w d2,-(sp)", "movem.w (sp)+,d2", " nop", "unavailable"],
+          // Pushed but never popped back.
+          ["move.l d2,-(sp)", "addq.l #4,sp", " nop", "unavailable"],
+        ])(
+          "sees through a callee that saves with %s and restores with %s",
+          async (save, restore, after, expected) => {
+            const result = await availability(
+              `Caller:
+ move.l d1,d2
+ bsr Helper
+${after}
+ rts
+${helper(save, restore)}`,
+              1,
+            );
+            expect(result.d2).toBe(expected);
+          },
+        );
+
+        it("keeps a register free to the end across a callee that preserves it", async () => {
+          const textDocument = await createDoc(
+            "preserved-call.s",
+            `Caller:
+ move.l d1,d2
+ bsr Helper
+ rts
+${helper("movem.l d2,-(sp)", "movem.l (sp)+,d2")}`,
+          );
+          const result = provider.onRegisterUsage({
+            textDocument,
+            range: range(0, 0, 3, 4),
+            position: lsp.Position.create(1, 1),
+          });
+          const d2 = result?.registers.find(({ name }) => name === "d2");
+          expect(d2?.availability).toBe("available");
+          expect(d2?.availableUntilOverwritten).toBeUndefined();
+        });
+
+        it.each([
+          ["; Outputs: d2 = result", "unavailable"],
+          ["; Draws the frame", "available"],
+        ])(
+          "passes what each restore needs back to the save: %s",
+          async (header, expected) => {
+            expect(
+              (
+                await availability(
+                  `${header}
+Start:
+ nop
+ movem.l d2,-(sp)
+ moveq #0,d2
+ tst.w d0
+ beq.s .early
+ movem.l (sp)+,d2
+ rts
+.early:
+ movem.l (sp)+,d2
+ rts`,
+                  2,
+                )
+              ).d2,
+            ).toBe(expected);
+          },
+        );
+      });
+
       describe("control flow inside macros", () => {
         it("does not count a write a macro may branch around", async () => {
           expect(

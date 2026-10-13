@@ -291,6 +291,20 @@ Foo:
       ).toBeUndefined();
     });
 
+    it("brings a description back when a register is restored", async () => {
+      expect(
+        (
+          await describeAt(`; d2 = count
+Foo:
+  movem.l d2,-(sp)
+  moveq #0,d2 ; d2 = scratch
+  movem.l (sp)+,d2
+  move.w |d2,d1
+  rts`)
+        )?.current,
+      ).toMatchObject({ text: "count", source: "header" });
+    });
+
     it("describes code the block's flow enters only by a branch", async () => {
       expect(
         (

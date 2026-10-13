@@ -142,6 +142,7 @@ export function analyzeRegisterUsage(
 
   const usages = new Map<string, RegisterUsageReference[]>();
   const aliases = createAliasResolver(ctx, params.textDocument.uri);
+  const saves = findStackSaves(document.parsed, document.blocks, aliases);
   let incomplete = false;
   for (const { node, line } of walkFile(document.parsed)) {
     if (
@@ -211,7 +212,13 @@ export function analyzeRegisterUsage(
     documentVersion: document.document.version,
     ...(incomplete ? { incomplete: true } : {}),
     registers: Array.from(usages, ([name, references]) => {
-      const usage = summariseUsage(name, references);
+      const usage = summariseUsage(
+        name,
+        references,
+        (line) =>
+          saves.restoresOf(line, name) !== undefined ||
+          saves.saveOf(line, name) !== undefined,
+      );
       if (liveness) {
         const { availability, untilOverwritten, lines } = liveness(name);
         usage.availability = availability;
@@ -781,6 +788,7 @@ function registerLiveness(
   const { lines } = file;
   const macroDefinitionLines = collectMacroDefinitionLines(blocks.blocks);
   const aliases = createAliasResolver(ctx, uri);
+  const saves = findStackSaves(file, blocks, aliases);
 
   const stepsCache = new Map<number, LineSteps>();
   const stepsFor = (index: number): LineSteps => {
@@ -883,17 +891,29 @@ function registerLiveness(
         }
       }
     }
+    // Registers the subroutine saves and restores are handed back unchanged.
+    for (const register of saves.preservedFrom(start)) {
+      touched.delete(register);
+    }
     const result = unknown ? "unknown" : touched;
     calleeCache.set(start, result);
     return result;
   };
 
   /** Need on entry to a line, given the need after it. */
-  const transfer = (index: number, register: string, after: Need): Need => {
+  const transfer = (
+    index: number,
+    register: string,
+    after: Need,
+    needOutAt: (index: number) => Need,
+  ): Need => {
     const node = nodeAt(index);
     if (node.escape) {
       return ALL;
     }
+    // A saved register's value is kept on the stack, not read: whatever is
+    // needed once it is restored is needed before it is saved.
+    const restores = saves.restoresOf(index, register);
     // The call runs after the line's operands are evaluated.
     let need = node.call ? throughCall(node.call, register, after) : after;
     const steps = stepsFor(index);
@@ -912,9 +932,12 @@ function registerLiveness(
       if (effect.write && need.bits <= effect.write) {
         need = NONE;
       }
-      if (effect.read) {
+      if (effect.read && !restores) {
         need = { ...need, bits: Math.max(need.bits, effect.read) };
       }
+    }
+    for (const restore of restores ?? []) {
+      need = joinNeed(need, needOutAt(restore));
     }
     return need;
   };
@@ -937,6 +960,7 @@ function registerLiveness(
           index,
           register,
           needOut(index, needIn, exitNeed),
+          (line) => needOut(line, needIn, exitNeed),
         );
         if (!sameNeed(need, needIn.get(index) ?? NONE)) {
           needIn.set(index, need);
@@ -1571,6 +1595,122 @@ function addExpandedRegisters(
   }
 }
 
+/**
+ * Registers a block saves on the stack and restores: a `.l` MOVEM or MOVE of
+ * a register to `-(sp)` and back from `(sp)+`. Each region from one non-local
+ * label to the next is matched separately. A register is paired when the
+ * region saves it exactly once and restores it at least once after that; a
+ * register saved more than once, or restored without a save, is not.
+ */
+export interface StackSaves {
+  /** The lines restoring a register saved on a line, if it is paired. */
+  restoresOf(saveLine: number, register: string): number[] | undefined;
+  /** The line that saved a register a line restores, if it is paired. */
+  saveOf(restoreLine: number, register: string): number | undefined;
+  /** Registers saved and restored in the region a line starts. */
+  preservedFrom(line: number): ReadonlySet<string>;
+}
+
+export function findStackSaves(
+  file: ParsedFile,
+  blocks: BlockStructure,
+  aliases: AliasResolver,
+): StackSaves {
+  const { lines } = file;
+  const macroDefinitionLines = collectMacroDefinitionLines(blocks.blocks);
+  const saves = new Map<string, number[]>();
+  const restores = new Map<string, number[]>();
+  const regionOf: number[] = [];
+  let region = 0;
+  for (const [index, line] of lines.entries()) {
+    if (macroDefinitionLines.has(index)) {
+      regionOf.push(region);
+      continue;
+    }
+    if (isNonLocalCodeLabel(line)) {
+      region++;
+    }
+    regionOf.push(region);
+    const transfer = stackTransfer(line, aliases);
+    for (const register of transfer?.registers ?? []) {
+      const key = `${region}:${register}`;
+      const lines = transfer!.kind === "save" ? saves : restores;
+      (lines.get(key) ?? lines.set(key, []).get(key)!).push(index);
+    }
+  }
+
+  const restoresBySave = new Map<string, number[]>();
+  const saveByRestore = new Map<string, number>();
+  const preserved = new Map<number, Set<string>>();
+  for (const [key, saveLines] of saves) {
+    if (saveLines.length !== 1) {
+      continue;
+    }
+    const [save] = saveLines;
+    const restoreLines = (restores.get(key) ?? []).filter(
+      (line) => line > save,
+    );
+    if (!restoreLines.length) {
+      continue;
+    }
+    const register = key.slice(key.indexOf(":") + 1);
+    restoresBySave.set(`${save}:${register}`, restoreLines);
+    for (const restore of restoreLines) {
+      saveByRestore.set(`${restore}:${register}`, save);
+    }
+    const regionIndex = regionOf[save];
+    (
+      preserved.get(regionIndex) ??
+      preserved.set(regionIndex, new Set()).get(regionIndex)!
+    ).add(register);
+  }
+  return {
+    restoresOf: (line, register) => restoresBySave.get(`${line}:${register}`),
+    saveOf: (line, register) => saveByRestore.get(`${line}:${register}`),
+    preservedFrom: (line) => preserved.get(regionOf[line]) ?? new Set(),
+  };
+}
+
+/** Whether a line pushes registers onto the stack or pops them off it. */
+function stackTransfer(
+  line: ParsedLine,
+  aliases: AliasResolver,
+): { kind: "save" | "restore"; registers: string[] } | undefined {
+  const mnemonic =
+    line.mnemonic?.type === "instruction"
+      ? line.mnemonic.instruction.toLowerCase()
+      : undefined;
+  const size =
+    line.qualifier?.type === "size" ? line.qualifier.size.toLowerCase() : "";
+  const operands = (line.operands ?? []) as AstNode[];
+  if (
+    (mnemonic !== "movem" && mnemonic !== "move" && mnemonic !== "movea") ||
+    size !== "l" ||
+    operands.length !== 2 ||
+    line.inlineCondition !== undefined
+  ) {
+    return;
+  }
+  const stack = (operand: AstNode, type: string) =>
+    operand.type === type &&
+    canonicalGeneralPurposeRegister(
+      registerName((operand as AstNode & { register: AstNode }).register),
+    ) === "a7";
+  const direct = (operand: AstNode) =>
+    registersAt(operand, aliases)
+      .filter(({ node }) => node === operand)
+      .flatMap(({ registers }) => registers);
+  const [source, destination] = operands;
+  if (stack(destination, "address-register-indirect-predec")) {
+    const registers = direct(source);
+    return registers.length ? { kind: "save", registers } : undefined;
+  }
+  if (stack(source, "address-register-indirect-postinc")) {
+    const registers = direct(destination);
+    return registers.length ? { kind: "restore", registers } : undefined;
+  }
+}
+
 /** The kinds of node that name general-purpose registers. */
 interface NodeRegisters {
   /** The node standing for the registers, whose access they share. */
@@ -1740,8 +1880,12 @@ function sourceRangeForLocation(
 function summariseUsage(
   name: string,
   references: RegisterUsageReference[],
+  savedOrRestored: (line: number) => boolean,
 ): RegisterUsage {
-  const firstAccess = references[0]?.access;
+  // Saving a register to restore it later does not use its value.
+  const firstAccess = references.find(
+    ({ range }) => !savedOrRestored(range.start.line),
+  )?.access;
   return {
     name,
     references,

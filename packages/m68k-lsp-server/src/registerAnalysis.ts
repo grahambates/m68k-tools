@@ -1,5 +1,6 @@
 import type {
   RegisterAccess,
+  RegisterAvailability,
   RegisterUsage,
   RegisterUsageReference,
   RegisterUsageParams,
@@ -20,7 +21,9 @@ import {
 } from "m68k-parser";
 import type {
   Block,
+  BlockStructure,
   ExpandedMacroLine,
+  MacroExpansion,
   MacroDefinition,
   ParsedFile,
   ParsedLine,
@@ -186,38 +189,29 @@ export function analyzeRegisterUsage(
     if (!rangesOverlap(params.range, callRange)) {
       continue;
     }
-    const definition = findMacroDefinition(
-      line.mnemonic.macro,
-      params.textDocument.uri,
+    const expansion = expandMacroCall(
       ctx,
+      params.textDocument.uri,
+      line,
+      lineTexts[index] ?? "",
     );
-    if (!definition) {
+    if (!expansion) {
       continue;
     }
-    const lineText = lineTexts[index] ?? "";
-    const expansion = expandMacro(
-      definition,
-      macroInvocation<lsp.Range>(line, lineText, (text, loc) => ({
-        origin: locationAsRange(loc),
-        literal: !!canonicalGeneralPurposeRegister(text),
-      })),
-      {
-        resolve: (name) =>
-          findMacroDefinition(name, params.textDocument.uri, ctx),
-        fallbackOrigin: callRange,
-      },
-    );
     for (const expanded of expansion.lines)
       addExpandedRegisters(expanded.line, expanded, callRange, usages);
     incomplete ||= expansion.incomplete;
   }
 
-  const reachability = params.position
-    ? reachableLinesAfterPosition(
+  const liveness = params.position
+    ? registerLiveness(
+        ctx,
+        params.textDocument.uri,
         document.parsed,
+        document.blocks,
+        lineTexts,
         params.range,
         params.position,
-        symbolsCaseSensitive(ctx.config),
       )
     : undefined;
   return {
@@ -225,16 +219,8 @@ export function analyzeRegisterUsage(
     ...(incomplete ? { incomplete: true } : {}),
     registers: Array.from(usages, ([name, references]) => {
       const usage = summariseUsage(name, references);
-      if (reachability) {
-        usage.availability =
-          reachability.touched.has(name) ||
-          references.some((reference) =>
-            reachability.lines.has(reference.range.start.line),
-          )
-            ? "unavailable"
-            : incomplete || reachability.unknown
-              ? "unknown"
-              : "available";
+      if (liveness) {
+        usage.availability = liveness(name);
       }
       return usage;
     }),
@@ -497,99 +483,352 @@ export function isNonLocalCodeLabel(line: ParsedLine): boolean {
   );
 }
 
-function reachableLinesAfterPosition(
+/**
+ * What one step of execution does to a register: uses its current value, or
+ * replaces all of it. A partial write counts as a use, because the bits it
+ * keeps carry the old value on.
+ */
+type RegisterEffect = "read" | "kill";
+
+/**
+ * The register effects of a line, in execution order: one step for an
+ * instruction, one per expanded line for a macro call. `unknown` stands for
+ * code that could not be expanded, which may do anything.
+ */
+type LineSteps = (Map<string, RegisterEffect> | "unknown")[];
+
+/**
+ * Which registers are free to reuse after a position: not read again, on any
+ * path the flow can take from there, before something overwrites them.
+ *
+ * Flow starts from wherever the cursor line's own instruction goes, so a
+ * loop's closing branch leads back into the loop. A path ends at a return or
+ * at a definite overwrite of the whole register (see `wholeRegisterWrite`).
+ * A same-file subroutine counts as reading every register it touches; one
+ * that cannot be resolved makes the answer unknown. A branch whose target
+ * cannot be resolved makes every register unavailable.
+ */
+function registerLiveness(
+  ctx: Context,
+  uri: string,
   file: ParsedFile,
+  blocks: BlockStructure,
+  lineTexts: string[],
   scope: lsp.Range,
   position: lsp.Position,
-  caseSensitive: boolean,
-): { lines: Set<number>; touched: Set<string>; unknown: boolean } {
+): (register: string) => RegisterAvailability {
   const { lines } = file;
-  const startLine = Math.max(scope.start.line, position.line + 1);
-  const endLine = Math.min(scope.end.line, lines.length - 1);
-  if (startLine > endLine) {
-    return { lines: new Set(), touched: new Set(), unknown: false };
-  }
+  const labels = collectControlFlowLabels(
+    file,
+    symbolsCaseSensitive(ctx.config),
+  );
+  const macroDefinitionLines = collectMacroDefinitionLines(blocks.blocks);
 
-  const labels = collectControlFlowLabels(file, caseSensitive);
-  const reachable = new Set<number>();
-  const touched = new Set<string>();
-  let unknown = false;
-  const pending = [startLine];
-  while (pending.length) {
-    const lineIndex = pending.pop()!;
-    if (
-      lineIndex < 0 ||
-      lineIndex >= lines.length ||
-      reachable.has(lineIndex)
-    ) {
-      continue;
+  const stepsCache = new Map<number, LineSteps>();
+  const stepsFor = (index: number): LineSteps => {
+    let steps = stepsCache.get(index);
+    if (!steps) {
+      steps = lineSteps(
+        ctx,
+        uri,
+        lines[index],
+        lineTexts[index] ?? "",
+        macroDefinitionLines.has(index),
+        enclosingBlocks(blocks, index).some(
+          (block) => block.kind === "conditional",
+        ),
+      );
+      stepsCache.set(index, steps);
     }
-    reachable.add(lineIndex);
-    const line = lines[lineIndex];
-    addTouchedRegisters(line, touched);
+    return steps;
+  };
+
+  /** Where flow can go after a line, or `escape` for an unresolved branch. */
+  const successors = (
+    index: number,
+  ): { next: number[]; call?: number | "unresolved" } | "escape" => {
+    const line = lines[index];
     const mnemonic =
-      line.mnemonic?.type === "instruction"
+      !macroDefinitionLines.has(index) && line.mnemonic?.type === "instruction"
         ? line.mnemonic.instruction.toLowerCase()
         : undefined;
-    if (mnemonic === "bsr" || mnemonic === "jsr") {
-      const target = controlFlowTarget(line);
-      const targetLine =
-        target === undefined ? undefined : labels.resolve(target, lineIndex);
-      if (targetLine === undefined) {
-        unknown = true;
-      } else {
-        pending.push(targetLine);
-      }
-    }
     // A conditional statement (`iif`) may not run, so it never ends the flow.
     const conditional = line.inlineCondition !== undefined;
-    if (conditional || !mnemonic || !routineReturns.has(mnemonic)) {
-      if (mnemonic && isBranchMnemonic(mnemonic)) {
-        const target = branchTarget(line);
-        const targetLine =
-          target === undefined ? undefined : labels.resolve(target, lineIndex);
-        if (targetLine === undefined) {
-          return {
-            lines: new Set(
-              Array.from(
-                { length: endLine - scope.start.line + 1 },
-                (_, offset) => scope.start.line + offset,
-              ),
-            ),
-            touched: new Set(generalPurposeRegisters),
-            unknown: false,
-          };
-        }
-        pending.push(targetLine);
+    let call: number | "unresolved" | undefined;
+    if (mnemonic === "bsr" || mnemonic === "jsr") {
+      const target = controlFlowTarget(line);
+      call =
+        (target === undefined ? undefined : labels.resolve(target, index)) ??
+        "unresolved";
+    }
+    if (!conditional && mnemonic && routineReturns.has(mnemonic)) {
+      return { next: [], call };
+    }
+    const next: number[] = [];
+    if (mnemonic && isBranchMnemonic(mnemonic)) {
+      const target = branchTarget(line);
+      const targetLine =
+        target === undefined ? undefined : labels.resolve(target, index);
+      if (targetLine === undefined) {
+        return "escape";
       }
-      if (conditional || (mnemonic !== "bra" && mnemonic !== "jmp")) {
-        pending.push(lineIndex + 1);
+      next.push(targetLine);
+      if (!conditional && (mnemonic === "bra" || mnemonic === "jmp")) {
+        return { next, call };
       }
     }
-  }
-  return { lines: reachable, touched, unknown };
+    next.push(index + 1);
+    return { next, call };
+  };
+
+  // Registers a subroutine may touch, following its own flow and calls.
+  const calleeCache = new Map<number, Set<string> | "unknown" | "all">();
+  const calleeRegisters = (start: number): Set<string> | "unknown" | "all" => {
+    const cached = calleeCache.get(start);
+    if (cached) {
+      return cached;
+    }
+    const touched = new Set<string>();
+    let unknown = false;
+    const visited = new Set<number>();
+    const pending = [start];
+    // Recursion sees the registers found so far, which is the fixed point.
+    calleeCache.set(start, touched);
+    while (pending.length) {
+      const index = pending.pop()!;
+      if (index >= lines.length || visited.has(index)) {
+        continue;
+      }
+      visited.add(index);
+      for (const step of stepsFor(index)) {
+        if (step === "unknown") {
+          unknown = true;
+        } else {
+          for (const register of step.keys()) {
+            touched.add(register);
+          }
+        }
+      }
+      const flow = successors(index);
+      if (flow === "escape") {
+        calleeCache.set(start, "all");
+        return "all";
+      }
+      if (flow.call === "unresolved") {
+        unknown = true;
+      } else if (flow.call !== undefined) {
+        const nested = calleeRegisters(flow.call);
+        if (nested === "all") {
+          calleeCache.set(start, "all");
+          return "all";
+        }
+        if (nested === "unknown") {
+          unknown = true;
+        } else {
+          for (const register of nested) {
+            touched.add(register);
+          }
+        }
+      }
+      pending.push(...flow.next);
+    }
+    const result = unknown ? "unknown" : touched;
+    calleeCache.set(start, result);
+    return result;
+  };
+
+  const endLine = Math.min(scope.end.line, lines.length - 1);
+  const origin = position.line >= scope.start.line ? position.line : undefined;
+
+  return (register) => {
+    if (position.line > endLine) {
+      return "available";
+    }
+    let unknown = false;
+    const visited = new Set<number>();
+    const pending: number[] = [];
+    // The cursor line itself counts only if the flow comes back to it.
+    const visit = (index: number, fromOrigin: boolean): boolean => {
+      if (!fromOrigin) {
+        for (const step of stepsFor(index)) {
+          if (step === "unknown") {
+            unknown = true;
+            continue;
+          }
+          const effect = step.get(register);
+          if (effect === "read") {
+            return true;
+          }
+          if (effect === "kill") {
+            return false;
+          }
+        }
+      }
+      const flow = successors(index);
+      if (flow === "escape") {
+        return true;
+      }
+      if (flow.call === "unresolved") {
+        unknown = true;
+      } else if (flow.call !== undefined) {
+        const callee = calleeRegisters(flow.call);
+        if (
+          callee === "all" ||
+          (callee !== "unknown" && callee.has(register))
+        ) {
+          return true;
+        }
+        unknown ||= callee === "unknown";
+      }
+      pending.push(...flow.next);
+      return false;
+    };
+    if (origin === undefined) {
+      pending.push(scope.start.line);
+    } else if (visit(origin, true)) {
+      return "unavailable";
+    }
+    while (pending.length) {
+      const index = pending.pop()!;
+      if (index >= lines.length || visited.has(index)) {
+        continue;
+      }
+      visited.add(index);
+      if (visit(index, false)) {
+        return "unavailable";
+      }
+    }
+    return unknown ? "unknown" : "available";
+  };
 }
 
-function addTouchedRegisters(line: ParsedLine, touched: Set<string>): void {
-  for (const node of walkLine(line)) {
-    const register = canonicalGeneralPurposeRegister(registerName(node));
-    if (register) {
-      touched.add(register);
-      continue;
-    }
-    if (node.type !== "register-list") {
-      continue;
-    }
-    const registers = (node as AstNode & { registers?: unknown }).registers;
-    if (Array.isArray(registers)) {
-      for (const item of registers) {
-        const listed = canonicalGeneralPurposeRegister(item);
-        if (listed) {
-          touched.add(listed);
+/** Register effects of a line, in execution order (see `LineSteps`). */
+function lineSteps(
+  ctx: Context,
+  uri: string,
+  line: ParsedLine,
+  lineText: string,
+  inMacroDefinition: boolean,
+  inConditional: boolean,
+): LineSteps {
+  // A macro body runs where the macro is called, not where it is defined.
+  if (inMacroDefinition) {
+    return [];
+  }
+  if (line.mnemonic?.type === "macro") {
+    const expansion = expandMacroCall(ctx, uri, line, lineText);
+    if (expansion) {
+      const steps: LineSteps = [];
+      let conditionalDepth = 0;
+      for (const expanded of expansion.lines) {
+        const directive =
+          expanded.line.mnemonic?.type === "directive"
+            ? expanded.line.mnemonic.directive.toLowerCase()
+            : undefined;
+        if (directive && directive !== "iif" && directive.startsWith("if")) {
+          conditionalDepth++;
+        } else if (directive === "endc" || directive === "endif") {
+          conditionalDepth = Math.max(0, conditionalDepth - 1);
         }
+        if (!expanded.expandedCall) {
+          steps.push(
+            lineEffects(expanded.line, inConditional || conditionalDepth > 0),
+          );
+        }
+      }
+      if (expansion.incomplete) {
+        steps.push("unknown");
+      }
+      return steps;
+    }
+  }
+  return [lineEffects(line, inConditional)];
+}
+
+/**
+ * What a single line does to each register it names. Sources are read before
+ * the destination is written, so a register both read and written is read.
+ * A write that does not replace the whole register, or that may not happen,
+ * is a read too.
+ */
+function lineEffects(
+  line: ParsedLine,
+  inConditional: boolean,
+): Map<string, RegisterEffect> {
+  const effects = new Map<string, RegisterEffect>();
+  const conditional = inConditional || line.inlineCondition !== undefined;
+  for (const node of walkLine(line)) {
+    const single = canonicalGeneralPurposeRegister(registerName(node));
+    const listed =
+      node.type === "register-list"
+        ? ((node as AstNode & { registers?: unknown }).registers as unknown[])
+        : undefined;
+    const registers = single
+      ? [single]
+      : Array.isArray(listed)
+        ? listed.flatMap((item) => canonicalGeneralPurposeRegister(item) ?? [])
+        : [];
+    if (!registers.length) {
+      continue;
+    }
+    const access = registerAccess(node, line);
+    for (const register of registers) {
+      const kill =
+        access === "write" &&
+        !conditional &&
+        wholeRegisterWrite(line, register);
+      if (!kill || !effects.has(register)) {
+        effects.set(register, kill ? "kill" : "read");
       }
     }
   }
+  return effects;
+}
+
+/**
+ * Whether a write replaces all 32 bits of a register. Writes to an address
+ * register are sign-extended, as are MOVEM loads; MOVEQ and LEA are long.
+ * A data register is only replaced by a long write: byte and word writes keep
+ * the upper bits, which may still be read.
+ */
+function wholeRegisterWrite(line: ParsedLine, register: string): boolean {
+  if (register.startsWith("a")) {
+    return true;
+  }
+  const mnemonic =
+    line.mnemonic?.type === "instruction"
+      ? line.mnemonic.instruction.toLowerCase()
+      : undefined;
+  if (mnemonic === "moveq" || mnemonic === "lea" || mnemonic === "movem") {
+    return true;
+  }
+  return line.qualifier?.type === "size" && line.qualifier.size === "l";
+}
+
+function expandMacroCall(
+  ctx: Context,
+  uri: string,
+  line: ParsedLine,
+  lineText: string,
+): MacroExpansion<lsp.Range> | undefined {
+  if (line.mnemonic?.type !== "macro") {
+    return;
+  }
+  const definition = findMacroDefinition(line.mnemonic.macro, uri, ctx);
+  if (!definition) {
+    return;
+  }
+  return expandMacro(
+    definition,
+    macroInvocation<lsp.Range>(line, lineText, (text, loc) => ({
+      origin: locationAsRange(loc),
+      literal: !!canonicalGeneralPurposeRegister(text),
+    })),
+    {
+      resolve: (name) => findMacroDefinition(name, uri, ctx),
+      fallbackOrigin: locationAsRange(line.mnemonic.loc),
+    },
+  );
 }
 
 interface ControlFlowLabels {

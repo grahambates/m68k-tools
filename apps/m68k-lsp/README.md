@@ -75,7 +75,11 @@ The remapping view previews warnings for newly invalid register operand forms al
 
 If macro analysis is incomplete or includes references that cannot safely be edited, the preview still validates explicit instructions and indicates the unchecked references. The existing restrictions on applying an incomplete edit plan remain in effect.
 
-Registers that are free to reuse after the cursor, because nothing reachable from it touches them, have their access summary shown in green. Hover over it for the full status.
+Registers that are free to reuse after the cursor have their access summary shown in green; hover over it for the full status. A register is free when no path the code can take from the cursor reads it before overwriting it in full:
+
+- The flow follows branches, including back round a loop, and the lines a macro call expands to, in order.
+- Only a whole-register write ends a path. That means a write to an address register, `moveq`, `lea`, `movem`, or a `.l` write to a data register. A `.b` or `.w` write keeps the upper bits, so it counts as a use. So does a write under `iif` or inside an `if` block, since it may not happen.
+- Any register a called subroutine in the same file touches counts as used. A call that can't be resolved, or a macro that can't be fully expanded, makes the answer unknown.
 
 Registers the routine's header comment lists under `Outputs:` are labelled `output` in the panel. They are never reported as available, because their value at the cursor is what the routine returns unless something later overwrites it.
 

@@ -360,6 +360,223 @@ Done:
       expect(byName.get("d2")?.availability).toBe("unavailable");
     });
 
+    it.each(["dbf d7,.loop", "bne.s .loop", "bra.s .loop"])(
+      "keeps loop registers unavailable with the cursor on %s",
+      async (branch) => {
+        const textDocument = await createDoc(
+          "loop-branch.s",
+          `Start:
+ moveq #7,d7
+.loop:
+ move.w (a0)+,d0
+ add.w d0,d1
+ ${branch}
+ rts
+`,
+        );
+
+        const result = provider.onRegisterUsage({
+          textDocument,
+          range: range(0, 0, 6, 4),
+          position: lsp.Position.create(5, 2),
+        });
+        const byName = new Map(
+          result?.registers.map((usage) => [usage.name, usage]),
+        );
+
+        for (const register of ["a0", "d0", "d1"]) {
+          expect(byName.get(register)?.availability).toBe("unavailable");
+        }
+      },
+    );
+
+    describe("liveness", () => {
+      const availability = async (text: string, line: number) => {
+        const textDocument = await createDoc("liveness.s", text);
+        const lines = text.split("\n").length;
+        const result = provider.onRegisterUsage({
+          textDocument,
+          range: range(0, 0, lines, 0),
+          position: lsp.Position.create(line, 1),
+        });
+        return Object.fromEntries(
+          result?.registers.map(({ name, availability }) => [
+            name,
+            availability,
+          ]) ?? [],
+        );
+      };
+
+      it("frees a register overwritten before it is read again", async () => {
+        expect(
+          await availability(
+            `Start:
+ move.w d2,d1
+ moveq #0,d2
+ add.w d2,d1
+ rts`,
+            1,
+          ),
+        ).toMatchObject({ d1: "unavailable", d2: "available" });
+      });
+
+      it.each([
+        ["move.l #0,d2", "available"],
+        ["clr.l d2", "available"],
+        ["move.w #0,d2", "unavailable"],
+        ["move.b (a0),d2", "unavailable"],
+        ["st d2", "unavailable"],
+      ])(
+        "treats %s as overwriting the register: %s",
+        async (write, expected) => {
+          expect(
+            (
+              await availability(
+                `Start:
+ nop
+ ${write}
+ add.l d2,d1
+ rts`,
+                1,
+              )
+            ).d2,
+          ).toBe(expected);
+        },
+      );
+
+      it("treats any address register write as a whole overwrite", async () => {
+        expect(
+          (
+            await availability(
+              `Start:
+ nop
+ movea.w #0,a1
+ move.l a1,d0
+ rts`,
+              1,
+            )
+          ).a1,
+        ).toBe("available");
+      });
+
+      it("does not count a conditional write as an overwrite", async () => {
+        for (const write of [
+          " iif DEBUG moveq #0,d2",
+          " ifd DEBUG\n moveq #0,d2\n endc",
+        ]) {
+          expect(
+            (
+              await availability(
+                `Start:
+ nop
+${write}
+ add.l d2,d1
+ rts`,
+                1,
+              )
+            ).d2,
+          ).toBe("unavailable");
+        }
+      });
+
+      it("follows the order of a macro's expanded lines", async () => {
+        const macros = `Clear macro
+ moveq #0,\\1
+ endm
+Accumulate macro
+ add.l \\1,d1
+ moveq #0,\\1
+ endm
+`;
+        expect(
+          (
+            await availability(
+              macros +
+                `Start:
+ nop
+ Clear d2
+ add.l d2,d1
+ rts`,
+              8,
+            )
+          ).d2,
+        ).toBe("available");
+        expect(
+          (
+            await availability(
+              macros +
+                `Start:
+ nop
+ Accumulate d2
+ add.l d2,d1
+ rts`,
+              8,
+            )
+          ).d2,
+        ).toBe("unavailable");
+      });
+
+      it("frees a register each loop iteration overwrites first", async () => {
+        expect(
+          await availability(
+            `Start:
+ moveq #7,d7
+.loop:
+ moveq #0,d2
+ add.l d2,d1
+ dbf d7,.loop
+ rts`,
+            5,
+          ),
+        ).toMatchObject({
+          d1: "unavailable",
+          d2: "available",
+          d7: "unavailable",
+        });
+      });
+
+      it("counts registers a called subroutine touches as used", async () => {
+        const result = await availability(
+          `Start:
+ move.l d2,d3
+ bsr Helper
+ rts
+Helper:
+ moveq #0,d2
+ rts`,
+          1,
+        );
+        // Step 1 does not look inside callees for overwrites.
+        expect(result).toMatchObject({ d2: "unavailable", d3: "available" });
+      });
+    });
+
+    it("frees registers only used past a return under the cursor", async () => {
+      const textDocument = await createDoc(
+        "early-return-availability.s",
+        `Foo:
+ tst.w d0
+ bne.s .continue
+ rts
+.continue:
+ move.w d2,d1
+ rts
+`,
+      );
+
+      const result = provider.onRegisterUsage({
+        textDocument,
+        range: range(0, 0, 6, 4),
+        position: lsp.Position.create(3, 2),
+      });
+      const byName = new Map(
+        result?.registers.map((usage) => [usage.name, usage]),
+      );
+
+      expect(byName.get("d1")?.availability).toBe("available");
+      expect(byName.get("d2")?.availability).toBe("available");
+    });
+
     it("is conservative when a branch target cannot be resolved", async () => {
       const textDocument = await createDoc(
         "unresolved-loop.s",

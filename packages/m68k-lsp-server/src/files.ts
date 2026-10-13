@@ -2,7 +2,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
 import { promises as fsp } from "fs";
 import { resolve } from "path";
-import { fileURLToPath, pathToFileURL } from "url";
+import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { isAssemblySource, walkFiles } from "@m68k-lsp/workspace-files";
 
@@ -411,7 +411,10 @@ export async function getAsmFilesInDir(
   isExcluded?: (uri: string, isDirectory: boolean) => boolean,
 ): Promise<string[]> {
   const root = fileURLToPath(uri);
-  const toUri = (path: string) => pathToFileURL(path).toString();
+  // Encoded as the client and include resolution encode them. Node's own
+  // file URLs leave characters such as `(` and `@` as they are, so the same
+  // file would be stored under two keys.
+  const toUri = (path: string) => URI.file(path).toString();
 
   const paths = await walkFiles(root, {
     prune: isExcluded

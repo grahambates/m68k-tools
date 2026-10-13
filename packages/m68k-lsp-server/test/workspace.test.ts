@@ -4,6 +4,7 @@ import { tmpdir } from "os";
 import { join } from "path";
 import { pathToFileURL } from "url";
 import type * as lsp from "vscode-languageserver";
+import { URI } from "vscode-uri";
 
 import { createContext } from "../src/context";
 import DocumentProcessor from "../src/DocumentProcessor";
@@ -154,6 +155,18 @@ describe("indexWorkspace", () => {
 
     const a = [...ctx.store.values()].find((d) => d.uri.endsWith("code/a.s"));
     expect(a?.referencedUris).toEqual([defs]);
+  });
+
+  it("keys files as the client and include resolution do", async () => {
+    await write("my (game)@1/main.s", ' include "defs.i"\nStart:\n rts\n');
+    const defs = join(dir, "my (game)@1/defs.i");
+    await write("my (game)@1/defs.i", "CUSTOM equ $dff000\n");
+
+    const ctx = await contextFor();
+    await indexWorkspace(ctx, new DocumentProcessor(ctx));
+
+    expect(ctx.store.size).toBe(2);
+    expect(ctx.store.has(URI.file(defs).toString())).toBe(true);
   });
 
   it("leaves an already open document alone", async () => {

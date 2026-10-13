@@ -8,7 +8,8 @@ import { isProcessed } from "./DocumentProcessor";
 import {
   analyzeRegisterUsage,
   canonicalGeneralPurposeRegister,
-  findRoutineRange,
+  createFlowGraph,
+  findBlockRange,
   registerName,
 } from "./registerAnalysis";
 import {
@@ -32,7 +33,7 @@ export interface RegisterHeaderEntry {
 }
 
 export type RegisterDescriptionSource =
-  /** The current routine's header documents it as an input. */
+  /** The header of the current block's label documents it as an input. */
   | "header"
   /** A comment naming the register. */
   | "comment"
@@ -58,7 +59,7 @@ export interface RegisterDescription {
 export interface RegisterDescriptionResult {
   /** Meaning of the register at the requested position, if known. */
   current?: RegisterDescription;
-  /** What the current routine's header says it returns in the register. */
+  /** What the current block's header says it returns in the register. */
   output?: string;
   routine?: string;
 }
@@ -185,17 +186,17 @@ export function parseRoutineHeader(
 }
 
 export interface RoutineHeader {
-  /** Zero-based line of the routine's label. */
+  /** Zero-based line of the block's label. */
   line: number;
   name: string;
   registers: Map<string, RegisterHeaderEntry>;
 }
 
 /**
- * Header of the routine around a position: the comment lines directly above
- * its non-local label. Undefined when the routine has no label.
+ * Header of the block around a position: the comment lines directly above
+ * its non-local label. Undefined when the block has no label.
  */
-export function routineHeaderAt(
+export function blockHeaderAt(
   ctx: Context,
   uri: string,
   position: lsp.Position,
@@ -204,12 +205,12 @@ export function routineHeaderAt(
   if (!isProcessed(document)) {
     return;
   }
-  const routine = findRoutineRange(ctx, { textDocument: { uri }, position });
-  if (!routine) {
+  const block = findBlockRange(ctx, { textDocument: { uri }, position });
+  if (!block) {
     return;
   }
   const { lines } = document.parsed;
-  const line = routine.range.start.line;
+  const line = block.range.start.line;
   const label = lines[line]?.label;
   if (!label || label.scope === "local") {
     return;
@@ -227,11 +228,12 @@ export function routineHeaderAt(
 
 /**
  * Meaning of a general-purpose register at a position, from comments and
- * assignments earlier in its routine.
+ * assignments earlier in its block.
  *
- * Lines are followed in source order from the routine's label: a description
- * holds until a comment replaces it or an instruction overwrites the register
- * outright. Read-modify-write instructions keep it. Branches are not followed.
+ * Lines are followed along the block's control flow from its label: a
+ * description holds until a comment replaces it or an instruction overwrites
+ * the register outright, and only where every path reaching a line agrees on
+ * it. Read-modify-write instructions keep it.
  */
 export function describeRegister(
   ctx: Context,
@@ -244,22 +246,22 @@ export function describeRegister(
   if (!isProcessed(document) || !target) {
     return;
   }
-  const routine = findRoutineRange(ctx, { textDocument: { uri }, position });
-  if (!routine) {
+  const block = findBlockRange(ctx, { textDocument: { uri }, position });
+  if (!block) {
     return;
   }
 
   const { lines } = document.parsed;
   const lineTexts = document.document.getText().split(/\r?\n/g);
-  const startLine = routine.range.start.line;
-  const routineHeader = routineHeaderAt(ctx, uri, position);
+  const startLine = block.range.start.line;
+  const routineHeader = blockHeaderAt(ctx, uri, position);
   const routineName = routineHeader?.name;
   const header = routineHeader?.registers.get(target);
 
   const accessesByLine = new Map<number, Map<string, Set<RegisterAccess>>>();
   const usage = analyzeRegisterUsage(ctx, {
     textDocument: { uri },
-    range: routine.range,
+    range: block.range,
   });
   for (const { name: used, references } of usage?.registers ?? []) {
     for (const { range, access } of references) {
@@ -273,7 +275,7 @@ export function describeRegister(
     }
   }
 
-  let current: RegisterDescription | undefined = header?.input
+  const entry: RegisterDescription | undefined = header?.input
     ? {
         text: header.input,
         source: "header",
@@ -281,51 +283,99 @@ export function describeRegister(
         routine: routineName,
       }
     : undefined;
-  const lastLine = Math.min(position.line, routine.range.end.line);
-  for (let index = startLine; index <= lastLine; index++) {
+
+  /** The description after a line, given the one before it. */
+  const transfer = (
+    index: number,
+    before: RegisterDescription | undefined,
+  ): RegisterDescription | undefined => {
     const line = lines[index];
     const comment = line.comment?.content.trim();
     const documented = comment ? parseRegisterComment(comment) : undefined;
     if (documented?.registers.includes(target)) {
-      current = {
-        text: documented.description,
-        source: "comment",
-        line: index,
-      };
-      continue;
+      return { text: documented.description, source: "comment", line: index };
     }
 
     const accesses = accessesByLine.get(index);
     if (accesses?.get(target)?.has("write")) {
       const written = [...accesses].filter(([, access]) => access.has("write"));
-      current =
-        comment && !documented && written.length === 1
-          ? { text: comment, source: "inferred-comment", line: index }
-          : operandDescription(line, lineTexts[index] ?? "", index, target);
-      continue;
+      return comment && !documented && written.length === 1
+        ? { text: comment, source: "inferred-comment", line: index }
+        : operandDescription(line, lineTexts[index] ?? "", index, target);
     }
 
     if (isCallInstruction(line)) {
       const callee = callTargetSymbol(line.operands as AstNode[] | undefined);
       if (!callee || isLocalLabelName(callee.name)) {
-        continue;
+        return before;
       }
       const definition = resolveDefinitionByName(uri, callee.name, ctx);
-      const entry = definition?.header
+      const calleeEntry = definition?.header
         ? parseRoutineHeader(definition.header).get(target)
         : undefined;
-      if (entry?.output) {
-        current = {
-          text: entry.output,
+      if (calleeEntry?.output) {
+        return {
+          text: calleeEntry.output,
           source: "call",
           line: index,
           routine: definition!.name,
         };
-      } else if (entry?.trashed) {
-        current = undefined;
+      }
+      if (calleeEntry?.trashed) {
+        return undefined;
+      }
+    }
+    return before;
+  };
+
+  // Forward over the block's flow: the description on entry to a line is
+  // the one every path reaching it agrees on, so one set in one branch does
+  // not carry past where the branches join. Code with no way in from the
+  // block's flow starts with no description.
+  const nodeAt = createFlowGraph(document.parsed, document.blocks, ctx);
+  const endLine = Math.min(block.range.end.line, lines.length - 1);
+  const predecessors = new Map<number, number[]>();
+  for (let index = startLine; index <= endLine; index++) {
+    for (const next of nodeAt(index).next) {
+      if (next >= startLine && next <= endLine) {
+        (predecessors.get(next) ?? predecessors.set(next, []).get(next)!).push(
+          index,
+        );
       }
     }
   }
+  const after = new Map<number, RegisterDescription | undefined>();
+  for (let changed = true; changed;) {
+    changed = false;
+    for (let index = startLine; index <= endLine; index++) {
+      const incoming = predecessors.get(index) ?? [];
+      const reached = incoming.filter((line) => after.has(line));
+      const candidates =
+        index === startLine || !incoming.length
+          ? [index === startLine ? entry : undefined]
+          : [];
+      candidates.push(...reached.map((line) => after.get(line)));
+      if (!candidates.length) {
+        continue;
+      }
+      const before = candidates.every((candidate) =>
+        sameMeaning(candidate, candidates[0]),
+      )
+        ? candidates[0]
+        : undefined;
+      const description = transfer(index, before);
+      if (
+        !after.has(index) ||
+        !sameDescription(after.get(index), description)
+      ) {
+        after.set(index, description);
+        changed = true;
+      }
+    }
+  }
+  const current = after.has(position.line)
+    ? after.get(position.line)
+    : transfer(position.line, undefined);
 
   const output = header?.output;
   if (!current && !output) {
@@ -367,4 +417,34 @@ function operandDescription(
         ? ""
         : "loaded from";
   return { text, code, source: "operand", line: index };
+}
+
+function sameDescription(
+  a: RegisterDescription | undefined,
+  b: RegisterDescription | undefined,
+): boolean {
+  return (
+    a === b ||
+    (a !== undefined &&
+      b !== undefined &&
+      a.text === b.text &&
+      a.code === b.code &&
+      a.source === b.source &&
+      a.line === b.line &&
+      a.routine === b.routine)
+  );
+}
+
+/** Whether two descriptions say the same, wherever they came from. */
+function sameMeaning(
+  a: RegisterDescription | undefined,
+  b: RegisterDescription | undefined,
+): boolean {
+  return (
+    a === b ||
+    (a !== undefined &&
+      b !== undefined &&
+      a.text === b.text &&
+      a.code === b.code)
+  );
 }

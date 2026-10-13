@@ -486,7 +486,7 @@ function webviewHtml(webview: Webview): string {
         ? 'Open an M68k file to begin.'
         : model.scopeRange
           ? 'No registers used in this scope.'
-          : 'The cursor is not inside a routine. Select lines to analyse them.';
+          : 'The cursor is not inside a block. Select lines to analyse them.';
       empty.hidden = !!model?.registers.length;
       if (!model) {
         validate();

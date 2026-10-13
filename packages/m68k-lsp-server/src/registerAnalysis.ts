@@ -7,8 +7,8 @@ import type {
   RegisterUsageParams,
   RegisterUsageResult,
   RegisterRangesResult,
-  RoutineRangeParams,
-  RoutineRangeResult,
+  BlockRangeParams,
+  BlockRangeResult,
 } from "@m68k-lsp/protocol";
 import * as lsp from "vscode-languageserver";
 import {
@@ -127,8 +127,10 @@ export function analyzeRegisterUsage(
   ctx: Context,
   params: RegisterUsageParams,
   options: {
-    /** Registers the routine returns, whose values are needed at a return. */
+    /** Registers the block's header documents as outputs, needed at a return. */
     outputs?: ReadonlySet<string>;
+    /** What a called routine that is not in this file does, if documented. */
+    calleeContract?: (name: string) => RoutineContract | undefined;
   } = {},
 ): RegisterUsageResult | undefined {
   const document = ctx.store.get(params.textDocument.uri);
@@ -218,6 +220,7 @@ export function analyzeRegisterUsage(
         params.range,
         params.position,
         options.outputs ?? new Set(),
+        options.calleeContract ?? (() => undefined),
       )
     : undefined;
   return {
@@ -243,10 +246,10 @@ export function analyzeRegisterUsage(
   };
 }
 
-export function findRoutineRange(
+export function findBlockRange(
   ctx: Context,
-  params: RoutineRangeParams,
-): RoutineRangeResult | undefined {
+  params: BlockRangeParams,
+): BlockRangeResult | undefined {
   const document = ctx.store.get(params.textDocument.uri);
   if (!isProcessed(document)) {
     return;
@@ -259,7 +262,7 @@ export function findRoutineRange(
   );
 
   // Within a macro definition the scope is its body, from MACRO to ENDM, as a
-  // routine runs from its label to its return.
+  // block runs from its label to the end of its flow.
   const macro = enclosingBlocks(document.blocks, cursorLine)
     .filter((block) => block.kind === "macro")
     .at(-1);
@@ -280,7 +283,7 @@ export function findRoutineRange(
   }
 
   // Outside one, a macro body's labels and returns belong to the macro and
-  // neither start nor end the routine.
+  // neither start nor end the block.
   const macroDefinitionLines = collectMacroDefinitionLines(
     document.blocks.blocks,
   );
@@ -297,7 +300,7 @@ export function findRoutineRange(
   const start = document.parsed.lines[startLine];
   const label = isNonLocalCodeLabel(start) ? start.label : undefined;
 
-  const flowEnd = routineFlowEnd(
+  const flowEnd = blockFlowEnd(
     document.parsed,
     startLine,
     macroDefinitionLines,
@@ -321,9 +324,9 @@ export function findRoutineRange(
     return scopeTo(flowEnd);
   }
 
-  // Past the routine's flow, code it never reaches, such as a fragment
-  // entered from elsewhere, still belongs to the routine, up to where that
-  // code's own flow ends. Blank lines, comments and data between routines
+  // Past the block's flow, code it never reaches, such as a fragment
+  // entered from elsewhere, still belongs to the block, up to where that
+  // code's own flow ends. Blank lines, comments and data between blocks
   // belong to none.
   for (let index = cursorLine; index > flowEnd; index--) {
     const mnemonic = document.parsed.lines[index].mnemonic?.type;
@@ -333,7 +336,7 @@ export function findRoutineRange(
     ) {
       continue;
     }
-    const fragmentEnd = routineFlowEnd(
+    const fragmentEnd = blockFlowEnd(
       document.parsed,
       index,
       macroDefinitionLines,
@@ -369,12 +372,12 @@ export function registerRanges(
   return ranges;
 }
 /**
- * Last line a routine's own control flow reaches from its first line.
+ * Last line a block's own control flow reaches from its first line.
  *
  * Flow falls through to the next line, including into later non-local labels,
  * and follows branches to local labels, so code after a conditional early
- * return stays in the routine. Unconditional returns, BRA and JMP end a path;
- * one to a non-local label is a tail call out of the routine and is not
+ * return stays in the block. Unconditional returns, BRA and JMP end a path;
+ * one to a non-local label is a tail call out of the block and is not
  * followed. A jump whose target cannot be resolved, such as `jmp (a0)`, is
  * assumed to continue into the code after it. Macro definitions are passed
  * over.
@@ -383,7 +386,7 @@ export function registerRanges(
  * table at its target, so each consecutive `bra`/`jmp` or `dc` entry there is
  * reached, and the local labels the entries name are followed.
  */
-function routineFlowEnd(
+function blockFlowEnd(
   file: ParsedFile,
   startLine: number,
   skippedLines: Set<number>,
@@ -466,7 +469,7 @@ function routineFlowEnd(
       }
       const unconditional =
         !conditional && (mnemonic === "bra" || mnemonic === "jmp");
-      // A named target outside the local labels leaves the routine. Without
+      // A named target outside the local labels leaves the block. Without
       // a name the jump is indirect.
       if (unconditional && target !== undefined) {
         continue;
@@ -579,6 +582,92 @@ interface RegisterLiveness {
   lines: AvailabilityLines;
 }
 
+/** A subroutine call: its first line in this file, or the name it is called by. */
+export interface FlowCall {
+  line?: number;
+  name?: string;
+}
+
+/** Where flow can go after a line. */
+export interface FlowNode {
+  next: number[];
+  /** Flow can leave here: a return, or running off the end of the file. */
+  exit: boolean;
+  /** A branch whose target cannot be resolved; it may go anywhere. */
+  escape: boolean;
+  call?: FlowCall;
+}
+
+/**
+ * The control flow of a file, line by line: each line's successors, built on
+ * demand. Flow falls through, follows branches to labels in the file, and
+ * ends at returns; a conditional (`iif`) statement never ends it. Lines in
+ * macro definitions are passed over. A call continues after itself, with the
+ * subroutine it calls noted on the line rather than followed.
+ */
+export function createFlowGraph(
+  file: ParsedFile,
+  blocks: BlockStructure,
+  ctx: Context,
+): (index: number) => FlowNode {
+  const { lines } = file;
+  const labels = collectControlFlowLabels(
+    file,
+    symbolsCaseSensitive(ctx.config),
+  );
+  const macroDefinitionLines = collectMacroDefinitionLines(blocks.blocks);
+  const nodes = new Map<number, FlowNode>();
+  return (index: number): FlowNode => {
+    const cached = nodes.get(index);
+    if (cached) {
+      return cached;
+    }
+    const line = lines[index];
+    const mnemonic =
+      !macroDefinitionLines.has(index) && line.mnemonic?.type === "instruction"
+        ? line.mnemonic.instruction.toLowerCase()
+        : undefined;
+    // A conditional statement (`iif`) may not run, so it never ends the flow.
+    const conditional = line.inlineCondition !== undefined;
+    let call: FlowCall | undefined;
+    if (mnemonic === "bsr" || mnemonic === "jsr") {
+      const name = controlFlowTarget(line);
+      call = {
+        name,
+        line: name === undefined ? undefined : labels.resolve(name, index),
+      };
+    }
+    const node = ((): FlowNode => {
+      if (!conditional && mnemonic && routineReturns.has(mnemonic)) {
+        return { next: [], exit: true, escape: false, call };
+      }
+      const next: number[] = [];
+      if (mnemonic && isBranchMnemonic(mnemonic)) {
+        const target = branchTarget(line);
+        const targetLine =
+          target === undefined ? undefined : labels.resolve(target, index);
+        if (targetLine === undefined) {
+          return { next: [], exit: false, escape: true };
+        }
+        next.push(targetLine);
+        if (!conditional && (mnemonic === "bra" || mnemonic === "jmp")) {
+          return { next, exit: false, escape: false, call };
+        }
+      }
+      next.push(index + 1);
+      const inFile = next.filter((target) => target < lines.length);
+      return {
+        next: inFile,
+        exit: inFile.length < next.length,
+        escape: false,
+        call,
+      };
+    })();
+    nodes.set(index, node);
+    return node;
+  };
+}
+
 /**
  * Which registers are free to reuse after a position, and where in the scope
  * each is free: no bit of its value is read again, on any path the flow can
@@ -589,11 +678,10 @@ interface RegisterLiveness {
  *
  * At the cursor, flow starts from wherever the cursor line's own instruction
  * goes, so a loop's closing branch leads back into the loop. A path ends at a
- * return.
- * A same-file subroutine counts as reading every register it touches; one
- * that cannot be resolved makes the answer unknown. A branch whose target
- * cannot be resolved makes every register unavailable. A return reads the
- * routine's outputs.
+ * return, which reads the outputs the block's header documents. Calls are
+ * followed through the
+ * subroutine (see `throughCall`). A branch whose target cannot be resolved
+ * makes every register unavailable.
  */
 function registerLiveness(
   ctx: Context,
@@ -604,12 +692,9 @@ function registerLiveness(
   scope: lsp.Range,
   position: lsp.Position,
   outputs: ReadonlySet<string>,
+  calleeContract: (name: string) => RoutineContract | undefined,
 ): (register: string) => RegisterLiveness {
   const { lines } = file;
-  const labels = collectControlFlowLabels(
-    file,
-    symbolsCaseSensitive(ctx.config),
-  );
   const macroDefinitionLines = collectMacroDefinitionLines(blocks.blocks);
 
   const stepsCache = new Map<number, LineSteps>();
@@ -631,42 +716,29 @@ function registerLiveness(
     return steps;
   };
 
-  /** Where flow can go after a line, or `escape` for an unresolved branch. */
-  const successors = (
-    index: number,
-  ): { next: number[]; call?: number | "unresolved" } | "escape" => {
-    const line = lines[index];
-    const mnemonic =
-      !macroDefinitionLines.has(index) && line.mnemonic?.type === "instruction"
-        ? line.mnemonic.instruction.toLowerCase()
-        : undefined;
-    // A conditional statement (`iif`) may not run, so it never ends the flow.
-    const conditional = line.inlineCondition !== undefined;
-    let call: number | "unresolved" | undefined;
-    if (mnemonic === "bsr" || mnemonic === "jsr") {
-      const target = controlFlowTarget(line);
-      call =
-        (target === undefined ? undefined : labels.resolve(target, index)) ??
-        "unresolved";
+  const nodeAt = createFlowGraph(file, blocks, ctx);
+
+  /** Lines reachable from some roots, last first for backward passes. */
+  const reachableCache = new Map<string, number[]>();
+  const reachable = (roots: number[]): number[] => {
+    const key = roots.join(",");
+    const cached = reachableCache.get(key);
+    if (cached) {
+      return cached;
     }
-    if (!conditional && mnemonic && routineReturns.has(mnemonic)) {
-      return { next: [], call };
-    }
-    const next: number[] = [];
-    if (mnemonic && isBranchMnemonic(mnemonic)) {
-      const target = branchTarget(line);
-      const targetLine =
-        target === undefined ? undefined : labels.resolve(target, index);
-      if (targetLine === undefined) {
-        return "escape";
+    const seen = new Set<number>();
+    const pending = [...roots];
+    while (pending.length) {
+      const index = pending.pop()!;
+      if (index >= lines.length || seen.has(index)) {
+        continue;
       }
-      next.push(targetLine);
-      if (!conditional && (mnemonic === "bra" || mnemonic === "jmp")) {
-        return { next, call };
-      }
+      seen.add(index);
+      pending.push(...nodeAt(index).next);
     }
-    next.push(index + 1);
-    return { next, call };
+    const order = [...seen].sort((a, b) => b - a);
+    reachableCache.set(key, order);
+    return order;
   };
 
   // Registers a subroutine may touch, following its own flow and calls.
@@ -678,16 +750,14 @@ function registerLiveness(
     }
     const touched = new Set<string>();
     let unknown = false;
-    const visited = new Set<number>();
-    const pending = [start];
     // Recursion sees the registers found so far, which is the fixed point.
     calleeCache.set(start, touched);
-    while (pending.length) {
-      const index = pending.pop()!;
-      if (index >= lines.length || visited.has(index)) {
-        continue;
+    for (const index of reachable([start])) {
+      const node = nodeAt(index);
+      if (node.escape) {
+        calleeCache.set(start, "all");
+        return "all";
       }
-      visited.add(index);
       for (const step of stepsFor(index)) {
         if (step === "unknown") {
           unknown = true;
@@ -697,161 +767,205 @@ function registerLiveness(
           }
         }
       }
-      const flow = successors(index);
-      if (flow === "escape") {
+      if (!node.call) {
+        continue;
+      }
+      if (node.call.line === undefined) {
+        const contract =
+          node.call.name === undefined
+            ? undefined
+            : calleeContract(node.call.name);
+        if (contract) {
+          for (const register of contract.keys()) {
+            touched.add(register);
+          }
+        } else {
+          unknown = true;
+        }
+        continue;
+      }
+      const nested = calleeRegisters(node.call.line);
+      if (nested === "all") {
         calleeCache.set(start, "all");
         return "all";
       }
-      if (flow.call === "unresolved") {
+      if (nested === "unknown") {
         unknown = true;
-      } else if (flow.call !== undefined) {
-        const nested = calleeRegisters(flow.call);
-        if (nested === "all") {
-          calleeCache.set(start, "all");
-          return "all";
-        }
-        if (nested === "unknown") {
-          unknown = true;
-        } else {
-          for (const register of nested) {
-            touched.add(register);
-          }
+      } else {
+        for (const register of nested) {
+          touched.add(register);
         }
       }
-      pending.push(...flow.next);
     }
     const result = unknown ? "unknown" : touched;
     calleeCache.set(start, result);
     return result;
   };
 
-  const endLine = Math.min(scope.end.line, lines.length - 1);
-
-  // The flow graph: every line in the scope and everything reachable from it.
-  interface FlowNode {
-    next: number[];
-    /** Flow can leave here: a return, or running off the end of the file. */
-    exit: boolean;
-    /** A branch whose target cannot be resolved; it may go anywhere. */
-    escape: boolean;
-    call?: number | "unresolved";
-  }
-  const nodes = new Map<number, FlowNode>();
-  const pending: number[] = [];
-  for (let index = scope.start.line; index <= endLine; index++) {
-    pending.push(index);
-  }
-  while (pending.length) {
-    const index = pending.pop()!;
-    if (index >= lines.length || nodes.has(index)) {
-      continue;
+  /** Need on entry to a line, given the need after it. */
+  const transfer = (index: number, register: string, after: Need): Need => {
+    const node = nodeAt(index);
+    if (node.escape) {
+      return ALL;
     }
-    const flow = successors(index);
-    if (flow === "escape") {
-      nodes.set(index, { next: [], exit: false, escape: true });
-      continue;
+    // The call runs after the line's operands are evaluated.
+    let need = node.call ? throughCall(node.call, register, after) : after;
+    const steps = stepsFor(index);
+    for (let step = steps.length - 1; step >= 0; step--) {
+      const effects = steps[step];
+      if (effects === "unknown") {
+        need = { ...need, unknown: true };
+        continue;
+      }
+      const effect = effects.get(register);
+      if (!effect) {
+        continue;
+      }
+      // A write leaves the earlier value unneeded once it replaces every bit
+      // still to be read; otherwise the bits it keeps carry the old value.
+      if (effect.write && need.bits <= effect.write) {
+        need = NONE;
+      }
+      if (effect.read) {
+        need = { ...need, bits: Math.max(need.bits, effect.read) };
+      }
     }
-    const next = flow.next.filter((line) => line < lines.length);
-    nodes.set(index, {
-      next,
-      exit: next.length < flow.next.length || !flow.next.length,
-      escape: false,
-      call: flow.call,
-    });
-    pending.push(...next);
-  }
-  const order = [...nodes.keys()].sort((a, b) => b - a);
+    return need;
+  };
 
-  return (register) => {
-    // How much the register's value is needed: not at all, possibly (code
-    // that could not be analysed), or certainly.
-    // How much of the register's value is needed: the number of low-order
-    // bits later code reads, and whether code that could not be analysed
-    // might read it.
-    interface Need {
-      bits: number;
-      unknown: boolean;
-    }
-    const NONE: Need = { bits: 0, unknown: false };
-    const join = (a: Need, b: Need): Need => ({
-      bits: Math.max(a.bits, b.bits),
-      unknown: a.unknown || b.unknown,
-    });
-    const same = (a: Need, b: Need) =>
-      a.bits === b.bits && a.unknown === b.unknown;
-    const exitNeed: Need = outputs.has(register)
-      ? { bits: 32, unknown: false }
-      : NONE;
-
-    const callNeed = (node: FlowNode): Need | undefined => {
-      if (node.call === undefined) {
-        return undefined;
-      }
-      if (node.call === "unresolved") {
-        return { bits: 0, unknown: true };
-      }
-      const callee = calleeRegisters(node.call);
-      return callee === "all" || (callee !== "unknown" && callee.has(register))
-        ? { bits: 32, unknown: false }
-        : callee === "unknown"
-          ? { bits: 0, unknown: true }
-          : undefined;
-    };
-    /** Need on entry to a line, given the need after it. */
-    const transfer = (index: number, node: FlowNode, after: Need): Need => {
-      if (node.escape) {
-        return { bits: 32, unknown: false };
-      }
-      // The call runs after the line's operands are evaluated.
-      let need = join(after, callNeed(node) ?? NONE);
-      const steps = stepsFor(index);
-      for (let step = steps.length - 1; step >= 0; step--) {
-        const effects = steps[step];
-        if (effects === "unknown") {
-          need = { ...need, unknown: true };
-          continue;
-        }
-        const effect = effects.get(register);
-        if (!effect) {
-          continue;
-        }
-        // A write leaves the earlier value unneeded once it replaces every bit
-        // still to be read; otherwise the bits it keeps carry the old value.
-        if (effect.write && need.bits <= effect.write) {
-          need = NONE;
-        }
-        if (effect.read) {
-          need = { ...need, bits: Math.max(need.bits, effect.read) };
-        }
-      }
-      return need;
-    };
-    /** Whether a line does anything to the register, or might. */
-    const touches = (index: number, node: FlowNode): boolean =>
-      node.escape ||
-      callNeed(node) !== undefined ||
-      stepsFor(index).some((step) => step === "unknown" || step.has(register));
-
+  /**
+   * Need on entry to each line reachable from some roots, given the need
+   * wherever the flow leaves: backward liveness, iterated to a fixed point.
+   */
+  const solve = (
+    register: string,
+    roots: number[],
+    exitNeed: Need,
+  ): Map<number, Need> => {
     const needIn = new Map<number, Need>();
-    const touchedIn = new Map<number, boolean>();
-    const needOut = (node: FlowNode): Need =>
-      node.next.reduce(
-        (need, next) => join(need, needIn.get(next) ?? NONE),
-        node.exit ? exitNeed : NONE,
-      );
-    const touchedOut = (node: FlowNode): boolean =>
-      node.next.some((next) => touchedIn.get(next));
+    const order = reachable(roots);
     for (let changed = true; changed;) {
       changed = false;
       for (const index of order) {
-        const node = nodes.get(index)!;
-        const need = transfer(index, node, needOut(node));
-        const touched = touches(index, node) || touchedOut(node);
-        if (
-          !same(need, needIn.get(index) ?? NONE) ||
-          touched !== (touchedIn.get(index) ?? false)
-        ) {
+        const need = transfer(
+          index,
+          register,
+          needOut(index, needIn, exitNeed),
+        );
+        if (!sameNeed(need, needIn.get(index) ?? NONE)) {
           needIn.set(index, need);
+          changed = true;
+        }
+      }
+    }
+    return needIn;
+  };
+  const needOut = (
+    index: number,
+    needIn: Map<number, Need>,
+    exitNeed: Need,
+  ): Need => {
+    const node = nodeAt(index);
+    return node.next.reduce(
+      (need, next) => joinNeed(need, needIn.get(next) ?? NONE),
+      node.exit ? exitNeed : NONE,
+    );
+  };
+
+  /**
+   * Need before a call, given the need once it returns. A subroutine in this
+   * file is analysed through its own flow, its returns needing what the
+   * caller needs afterwards, recursion included. One defined elsewhere is taken at its header's word: inputs are read, outputs
+   * and trashed registers overwritten, and other registers kept. A call with
+   * neither may do anything.
+   */
+  const summaries = new Map<string, Need>();
+  // Summaries being worked out, outermost first, with their current
+  // approximations. A recursive call sees the approximation, starting from
+  // needing nothing, and its caller is recomputed until that settles. Results
+  // that relied on an unsettled approximation are not kept.
+  const stack: string[] = [];
+  const approximations = new Map<string, Need>();
+  const provisional = new Set<string>();
+  const throughCall = (call: FlowCall, register: string, after: Need): Need => {
+    if (call.line !== undefined) {
+      const key = `${call.line}:${register}:${after.bits}:${after.unknown}`;
+      const settled = summaries.get(key);
+      if (settled) {
+        return settled;
+      }
+      const recursive = stack.indexOf(key);
+      if (recursive >= 0) {
+        for (const caller of stack.slice(recursive + 1)) {
+          provisional.add(caller);
+        }
+        return approximations.get(key)!;
+      }
+      stack.push(key);
+      let need = NONE;
+      approximations.set(key, need);
+      for (;;) {
+        const next = solve(register, [call.line], after).get(call.line) ?? NONE;
+        approximations.set(key, next);
+        if (sameNeed(next, need)) {
+          break;
+        }
+        need = next;
+      }
+      stack.pop();
+      approximations.delete(key);
+      if (!provisional.delete(key)) {
+        summaries.set(key, need);
+      }
+      return need;
+    }
+    const contract =
+      call.name === undefined ? undefined : calleeContract(call.name);
+    if (!contract) {
+      return joinNeed(after, { bits: 0, unknown: true });
+    }
+    const entry = contract.get(register);
+    return entry?.reads ? ALL : entry?.writes ? NONE : after;
+  };
+  const callTouches = (call: FlowCall, register: string): boolean => {
+    if (call.line !== undefined) {
+      const callee = calleeRegisters(call.line);
+      return callee !== "unknown" && callee !== "all"
+        ? callee.has(register)
+        : true;
+    }
+    const contract =
+      call.name === undefined ? undefined : calleeContract(call.name);
+    return contract ? contract.has(register) : true;
+  };
+
+  const endLine = Math.min(scope.end.line, lines.length - 1);
+  const scopeLines: number[] = [];
+  for (let index = scope.start.line; index <= endLine; index++) {
+    scopeLines.push(index);
+  }
+
+  return (register) => {
+    const exitNeed: Need = outputs.has(register) ? ALL : NONE;
+    const needIn = solve(register, scopeLines, exitNeed);
+
+    /** Whether a line does anything to the register, or might. */
+    const touches = (index: number): boolean => {
+      const node = nodeAt(index);
+      return (
+        node.escape ||
+        (node.call !== undefined && callTouches(node.call, register)) ||
+        stepsFor(index).some((step) => step === "unknown" || step.has(register))
+      );
+    };
+    const touchedIn = new Map<number, boolean>();
+    const touchedOut = (index: number) =>
+      nodeAt(index).next.some((next) => touchedIn.get(next));
+    for (let changed = true; changed;) {
+      changed = false;
+      for (const index of reachable(scopeLines)) {
+        const touched = touches(index) || touchedOut(index);
+        if (touched !== (touchedIn.get(index) ?? false)) {
           touchedIn.set(index, touched);
           changed = true;
         }
@@ -863,14 +977,13 @@ function registerLiveness(
     // Lines that leave the register alone while its value is not needed, or
     // where that depends on code that could not be analysed.
     const free: AvailabilityLines = [];
-    for (let index = scope.start.line; index <= endLine; index++) {
-      const node = nodes.get(index);
+    for (const index of scopeLines) {
       const need = status(needIn.get(index) ?? NONE);
-      if (node && need !== "unavailable" && !touches(index, node)) {
+      if (need !== "unavailable" && !touches(index)) {
         free.push({
           line: index,
           availability: need,
-          untilOverwritten: need === "available" && touchedOut(node),
+          untilOverwritten: need === "available" && touchedOut(index),
         });
       }
     }
@@ -878,16 +991,15 @@ function registerLiveness(
     // At the cursor, what matters is what happens after its line runs.
     let need: Need;
     let touched: boolean;
-    const origin = nodes.get(position.line);
     if (position.line > endLine) {
       need = NONE;
       touched = false;
-    } else if (position.line < scope.start.line || !origin) {
+    } else if (position.line < scope.start.line) {
       need = needIn.get(scope.start.line) ?? NONE;
       touched = touchedIn.get(scope.start.line) ?? false;
     } else {
-      need = needOut(origin);
-      touched = touchedOut(origin);
+      need = needOut(position.line, needIn, exitNeed);
+      touched = touchedOut(position.line);
     }
     const availability = status(need);
     return {
@@ -899,6 +1011,34 @@ function registerLiveness(
     };
   };
 }
+
+/**
+ * How much of a register's value is needed: the number of low-order bits
+ * later code reads, and whether code that could not be analysed might read
+ * it.
+ */
+interface Need {
+  bits: number;
+  unknown: boolean;
+}
+const NONE: Need = { bits: 0, unknown: false };
+const ALL: Need = { bits: 32, unknown: false };
+function joinNeed(a: Need, b: Need): Need {
+  return { bits: Math.max(a.bits, b.bits), unknown: a.unknown || b.unknown };
+}
+function sameNeed(a: Need, b: Need): boolean {
+  return a.bits === b.bits && a.unknown === b.unknown;
+}
+
+/**
+ * What a routine's header says it does with registers, for calls to routines
+ * that cannot be analysed here: which it reads, and which it overwrites.
+ * Registers it does not mention are kept.
+ */
+export type RoutineContract = ReadonlyMap<
+  string,
+  { reads: boolean; writes: boolean }
+>;
 
 /** Register effects of a line, in execution order (see `LineSteps`). */
 function lineSteps(

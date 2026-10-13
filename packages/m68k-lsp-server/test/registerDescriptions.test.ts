@@ -224,7 +224,89 @@ Calc:
     expect(await describeAt(source("d2"))).toBeUndefined();
   });
 
-  it("does not carry descriptions across routines", async () => {
+  describe("along control flow", () => {
+    const branches = (one: string, two: string) => `Foo:
+  tst.w d1
+  beq.s .other
+  moveq #1,d0 ; d0 = ${one}
+  bra.s .done
+.other:
+  moveq #2,d0 ; d0 = ${two}
+.done:
+  move.w |d0,d2
+  rts`;
+
+    it("drops a description the joining branches disagree on", async () => {
+      expect(await describeAt(branches("one", "two"))).toBeUndefined();
+    });
+
+    it("keeps a description the joining branches agree on", async () => {
+      expect(
+        (await describeAt(branches("count", "count")))?.current,
+      ).toMatchObject({ text: "count", source: "comment" });
+    });
+
+    it("keeps a description from before a branch it survives", async () => {
+      expect(
+        (
+          await describeAt(`; d0 = count
+Foo:
+  tst.w d1
+  beq.s .skip
+  addq.w #1,d0
+.skip:
+  move.w |d0,d2
+  rts`)
+        )?.current,
+      ).toMatchObject({ text: "count", source: "header" });
+    });
+
+    it("does not let a skipped reassignment replace a description", async () => {
+      expect(
+        await describeAt(`; d0 = count
+Foo:
+  tst.w d1
+  beq.s .skip
+  moveq #0,d0 ; d0 = index
+.skip:
+  move.w |d0,d2
+  rts`),
+      ).toBeUndefined();
+    });
+
+    it("joins a loop's entry with its back edge", async () => {
+      const loop = (body: string) => `; d0 = count
+Foo:
+.loop:
+  move.w |d0,d1
+  ${body}
+  bne.s .loop
+  rts`;
+      expect((await describeAt(loop("subq.w #1,d0")))?.current).toMatchObject({
+        text: "count",
+        source: "header",
+      });
+      expect(
+        await describeAt(loop("moveq #0,d0 ; d0 = index")),
+      ).toBeUndefined();
+    });
+
+    it("describes code the block's flow enters only by a branch", async () => {
+      expect(
+        (
+          await describeAt(`Foo:
+  moveq #1,d0 ; d0 = count
+  bne.s .later
+  rts
+.later:
+  move.w |d0,d1
+  rts`)
+        )?.current,
+      ).toMatchObject({ text: "count", line: 1 });
+    });
+  });
+
+  it("does not carry descriptions across blocks", async () => {
     expect(
       await describeAt(`First:
   moveq #1,d0 ; d0 = count

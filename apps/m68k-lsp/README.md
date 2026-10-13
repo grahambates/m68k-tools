@@ -49,25 +49,25 @@ Requires VS Code 1.101 or later. For local development, open the monorepo root a
 
 ### Register analysis scope
 
-Register commands and the remapping view work on the selection. Without one, the scope is the routine around the cursor. It starts at the previous non-local label and covers every line the routine's control flow reaches from there:
+Register commands and the remapping view work on the selection. Without one, the scope is the block around the cursor. A block starts at the previous non-local label and covers every line its control flow reaches from there:
 
-- Flow falls through to the next line, including into a later non-local label, and follows branches to local labels. Code after a conditional early return is therefore part of the routine.
+- Flow falls through to the next line, including into a later non-local label, and follows branches to local labels. Code after a conditional early return is therefore part of the block. Every non-local label starts a new block.
 - An unconditional `rts`, `rte`, `rtr`, `bra` or `jmp` ends a path. A branch or jump to a non-local label is treated as a tail call and not followed.
 - An indexed jump such as `jmp .table(pc,d0.w)` reaches every `bra`/`jmp` or `dc` entry of the table at its target, and the local labels those entries name. A jump with no named target, such as `jmp (a0)`, is assumed to continue into the code after it.
 
-If the cursor is on code the routine's flow never reaches, such as a fragment entered from elsewhere, the scope runs to the end of that code's own flow instead. Blank lines, comments and data between routines have no scope; select lines to analyse them. Inside a macro definition it is the macro body, from `macro` to `endm`; labels and returns in a macro body do not start or end a routine around it.
+If the cursor is on code the block's flow never reaches, such as a fragment entered from elsewhere, the scope runs to the end of that code's own flow instead. Blank lines, comments and data between blocks have no scope; select lines to analyse them. Inside a macro definition the scope is the macro body, from `macro` to `endm`; labels and returns in a macro body do not start or end a block around it.
 
 ### Register descriptions
 
-Hovering a data or address register shows what it holds at that point in the routine, where that can be read from the source:
+Hovering a data or address register shows what it holds at that point in the block, where that can be read from the source:
 
-- A routine header: comment lines directly above the routine's label, such as `; d0 = frame count`. `d0: …`, `d0 - …`, `d0 …`, `d0.w = …` and lists such as `d0-d2/a0 = …` are also recognised. `Inputs:`, `Outputs:` and `Trashes:` headings group the entries, and lines before any heading are taken as inputs.
+- A routine header: comment lines directly above the block's label, such as `; d0 = frame count`. `d0: …`, `d0 - …`, `d0 …`, `d0.w = …` and lists such as `d0-d2/a0 = …` are also recognised. `Inputs:`, `Outputs:` and `Trashes:` headings group the entries, and lines before any heading are taken as inputs.
 - A comment naming the register, such as `move.w #1,d0 ; d0 = frame count`.
 - A comment on a line that overwrites only that register, such as `move.w #1,d0 ; frame count`. The hover marks this as inferred.
 - A symbolic source operand, such as `lea SomeTable,a0` or `move.l #FRAMES,d0`.
 - A `bsr`/`jsr` to a routine whose header lists the register as an output. A routine that lists it as trashed clears the description.
 
-A description holds until the register is overwritten outright. Read-modify-write instructions such as `addq` keep it. Lines are followed in source order within the routine, so branches are not taken into account.
+A description holds until the register is overwritten outright. Read-modify-write instructions such as `addq` keep it. Descriptions follow the block's control flow. Where branches join, a description is kept only if every path into that line agrees on it, so one set in a single branch doesn't carry past the join. The same applies at the top of a loop.
 
 ### Register remapping warnings
 
@@ -75,13 +75,17 @@ The remapping view previews warnings for newly invalid register operand forms al
 
 If macro analysis is incomplete or includes references that cannot safely be edited, the preview still validates explicit instructions and indicates the unchecked references. The existing restrictions on applying an incomplete edit plan remain in effect.
 
+### Register availability
+
 Registers that are free to reuse after the cursor have their access summary shown in green, or in orange when they are free only until a later write overwrites them. It is grey italic when availability is unknown, because the code after the cursor includes a call or macro that could not be analysed. Hover over it for the full status. Hovering a register row also marks every run of lines in the scope where the register is free, with a bar at the line's edge alongside the read and write highlights. This includes runs before the cursor and inside loops. A run starts and ends on code, so it only covers a label that it carries on past. Each run is green where nothing later touches the register, orange where it stays free only until a later write, or grey where availability is unknown. The panel's text colour describes the register after the cursor line. A register is free when no path the code can take from the cursor reads it before overwriting it in full:
 
 - The flow follows branches, including back round a loop, and the lines a macro call expands to, in order.
 - Bits are tracked by width. A read needs the low byte, word or long word of the register, at the operation's size: word when none is given, the index size for an index register, and all 32 bits for an address register. A write frees the earlier value once it replaces every bit still to be read. So a `.w` write followed only by `.w` reads frees the register before it, but not if a `.l` read follows. Writes to address registers, `moveq`, `lea` and `movem` loads replace all 32 bits. A write under `iif` or inside an `if` block may not happen, so it replaces nothing.
-- Any register a called subroutine in the same file touches counts as used. A call that can't be resolved, or a macro that can't be fully expanded, makes the answer unknown.
+- A `bsr` or `jsr` to a subroutine in the same file is followed through the subroutine, including nested and recursive calls. A register the subroutine overwrites before reading is free before the call, and one it leaves alone carries on to the code after the call.
+- A call to a routine in another file uses its header comment as a contract. Registers under `Inputs:` are read, those under `Outputs:` or `Trashes:` are overwritten, and others are kept. A header must document at least one register to count.
+- A call with no target that can be resolved and no documented header, or a macro that can't be fully expanded, makes the answer unknown.
 
-Registers the routine's header comment lists under `Outputs:` are labelled `output` in the panel. A return counts as reading them, so an output is only available when every path overwrites it before returning.
+Registers the block's routine header lists under `Outputs:` are labelled `output` in the panel. A return counts as reading them, so an output is only available when every path overwrites it before returning.
 
 Each row in the remapping panel shows the lines where the register is first and last used in scope, such as `L12–30`, or just `L12` when both are on one line. Click either number to move the cursor there. The scope at the top of the panel shows its first and last lines in the same way, such as `Scope: Draw · L5–31`. When the scope comes from a selection, the editor scrolls to the line and keeps the selection, so the scope does not change.
 

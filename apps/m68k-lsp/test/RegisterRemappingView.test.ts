@@ -395,7 +395,7 @@ it("routes usage highlights and reveals, clearing highlights on refresh and disp
   expect(highlight).toHaveBeenLastCalledWith();
 });
 
-it("explains that there is no routine at the cursor", () => {
+it("explains that there is no block at the cursor", () => {
   const webview = { html: "", cspSource: "test", onDidReceiveMessage: vi.fn() };
   new RegisterRemappingView(vi.fn(), vi.fn()).resolveWebviewView({
     webview,
@@ -419,7 +419,7 @@ it("explains that there is no routine at the cursor", () => {
   });
   expect(elements.get("scope")!.textContent).toBe("Scope: none");
   expect(elements.get("empty")!.textContent).toBe(
-    "The cursor is not inside a routine. Select lines to analyse them.",
+    "The cursor is not inside a block. Select lines to analyse them.",
   );
   expect(elements.get("empty")!.hidden).toBe(false);
 });

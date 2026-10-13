@@ -201,7 +201,7 @@ describe("indexWorkspace", () => {
     expect(ctx.store.get(uri)).toBe(opened);
     const provider = new RegisterProvider(ctx);
     const textDocument = { uri };
-    const scope = provider.onRoutineRange({
+    const scope = provider.onBlockRange({
       textDocument,
       position: { line: 1, character: 2 },
     });

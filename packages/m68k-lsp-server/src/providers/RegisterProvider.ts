@@ -4,7 +4,7 @@ import {
   RegisterUsageRequest,
   RegisterSwapRequest,
   RegisterRemapRequest,
-  RoutineRangeRequest,
+  BlockRangeRequest,
 } from "@m68k-lsp/protocol";
 import type {
   RegisterUsageParams,
@@ -13,20 +13,22 @@ import type {
   RegisterSwapResult,
   RegisterRemapParams,
   RegisterRemapResult,
-  RoutineRangeParams,
-  RoutineRangeResult,
+  BlockRangeParams,
+  BlockRangeResult,
 } from "@m68k-lsp/protocol";
 import * as lsp from "vscode-languageserver";
 import { type Provider } from ".";
 import { type Context } from "../context";
 import { isProcessed } from "../DocumentProcessor";
 import {
+  type RoutineContract,
   analyzeRegisterUsage,
   canonicalGeneralPurposeRegister,
-  findRoutineRange,
+  findBlockRange,
   registerRanges,
 } from "../registerAnalysis";
-import { routineHeaderAt } from "../registerDescriptions";
+import { parseRoutineHeader, blockHeaderAt } from "../registerDescriptions";
+import { resolveDefinitionByName } from "../symbols";
 
 export default class RegisterProvider implements Provider {
   constructor(protected readonly ctx: Context) {}
@@ -38,14 +40,14 @@ export default class RegisterProvider implements Provider {
     connection.onRequest(RegisterUsageRequest, this.onRegisterUsage.bind(this));
     connection.onRequest(RegisterSwapRequest, this.onRegisterSwap.bind(this));
     connection.onRequest(RegisterRemapRequest, this.onRegisterRemap.bind(this));
-    connection.onRequest(RoutineRangeRequest, this.onRoutineRange.bind(this));
+    connection.onRequest(BlockRangeRequest, this.onBlockRange.bind(this));
     return {};
   }
 
   onRegisterUsage(
     params: RegisterUsageParams,
   ): RegisterUsageResult | undefined {
-    const header = routineHeaderAt(
+    const header = blockHeaderAt(
       this.ctx,
       params.textDocument.uri,
       params.position ?? params.range.start,
@@ -55,7 +57,11 @@ export default class RegisterProvider implements Provider {
         .filter(([, entry]) => entry.output)
         .map(([name]) => name),
     );
-    const usage = analyzeRegisterUsage(this.ctx, params, { outputs });
+    const usage = analyzeRegisterUsage(this.ctx, params, {
+      outputs,
+      calleeContract: (name) =>
+        routineContract(this.ctx, params.textDocument.uri, name),
+    });
     for (const register of usage?.registers ?? []) {
       if (outputs.has(register.name)) {
         register.output = true;
@@ -64,8 +70,8 @@ export default class RegisterProvider implements Provider {
     return usage;
   }
 
-  onRoutineRange(params: RoutineRangeParams): RoutineRangeResult | undefined {
-    return findRoutineRange(this.ctx, params);
+  onBlockRange(params: BlockRangeParams): BlockRangeResult | undefined {
+    return findBlockRange(this.ctx, params);
   }
 
   onRegisterSwap(params: RegisterSwapParams): RegisterSwapResult | undefined {
@@ -234,5 +240,31 @@ function matchRegisterCase(spelling: string, register: string): string {
 function uniqueEdits(edits: lsp.TextEdit[]): lsp.TextEdit[] {
   return Array.from(
     new Map(edits.map((edit) => [JSON.stringify(edit), edit])).values(),
+  );
+}
+
+/**
+ * What the header comment of a called routine says it does with registers,
+ * for a routine whose code is not analysed with the caller. A header that
+ * documents no registers is no contract.
+ */
+function routineContract(
+  ctx: Context,
+  uri: string,
+  name: string,
+): RoutineContract | undefined {
+  const header = resolveDefinitionByName(uri, name, ctx)?.header;
+  const entries = header ? parseRoutineHeader(header) : undefined;
+  if (!entries?.size) {
+    return;
+  }
+  return new Map(
+    Array.from(entries, ([register, entry]) => [
+      register,
+      {
+        reads: entry.input !== undefined,
+        writes: entry.output !== undefined || !!entry.trashed,
+      },
+    ]),
   );
 }

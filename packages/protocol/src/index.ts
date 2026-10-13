@@ -35,7 +35,7 @@ export interface RegisterUsage {
   read: boolean;
   written: boolean;
   input?: boolean;
-  /** The routine's header comment documents the register as an output. */
+  /** The header comment above the block's label documents it as an output. */
   output?: boolean;
   availability?: RegisterAvailability;
   /**
@@ -63,12 +63,12 @@ export interface RegisterUsageParams {
   position?: Position;
 }
 
-export interface RoutineRangeParams {
+export interface BlockRangeParams {
   textDocument: TextDocumentIdentifier;
   position: Position;
 }
 
-export interface RoutineRangeResult {
+export interface BlockRangeResult {
   range: Range;
   label: string;
 }
@@ -143,11 +143,11 @@ export const RegisterRemapRequest = new RequestType<
   RegisterRemapResult | undefined,
   void
 >("m68k/registerRemap");
-export const RoutineRangeRequest = new RequestType<
-  RoutineRangeParams,
-  RoutineRangeResult | undefined,
+export const BlockRangeRequest = new RequestType<
+  BlockRangeParams,
+  BlockRangeResult | undefined,
   void
->("m68k/routineRange");
+>("m68k/blockRange");
 export const IndexChangedNotification = new NotificationType0(
   "m68k/indexChanged",
 );

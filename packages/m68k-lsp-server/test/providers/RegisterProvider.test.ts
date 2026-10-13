@@ -48,7 +48,7 @@ describe("RegisterProvider", () => {
         expect.any(Function),
       );
       expect(conn.onRequest).toHaveBeenCalledWith(
-        expect.objectContaining({ method: "m68k/routineRange" }),
+        expect.objectContaining({ method: "m68k/blockRange" }),
         expect.any(Function),
       );
       expect(capabilities).toEqual({});
@@ -442,7 +442,7 @@ Done:
       ])(
         "compares the bits written with those read: %s then %s",
         async (write, read, expected) => {
-          // Lines before the first use, at the start of the routine.
+          // Lines before the first use, at the start of the block.
           expect(
             (
               await availability(
@@ -721,7 +721,123 @@ Start:
         );
       });
 
-      it("counts registers a called subroutine touches as used", async () => {
+      it.each([
+        // The callee reads it.
+        [" add.l d2,d0\n rts", " nop", "unavailable"],
+        // The callee keeps it, and the caller reads it afterwards.
+        [" nop\n rts", " add.l d2,d1", "unavailable"],
+        // The callee keeps it, and nothing reads it afterwards.
+        [" nop\n rts", " nop", "available"],
+        // The callee replaces only the word the caller reads.
+        [" move.w #0,d2\n rts", " add.w d2,d1", "available"],
+        // The callee replaces a word, but the caller reads all of it.
+        [" move.w #0,d2\n rts", " add.l d2,d1", "unavailable"],
+      ])(
+        "follows the register through a call: %j then %j",
+        async (callee, after, expected) => {
+          expect(
+            (
+              await availability(
+                `Start:
+ move.l d2,d3
+ bsr Helper
+${after}
+ rts
+Helper:
+${callee}`,
+                1,
+              )
+            ).d2,
+          ).toBe(expected);
+        },
+      );
+
+      it("settles mutually recursive calls", async () => {
+        const result = await availability(
+          `Start:
+ nop
+ bsr Even
+ rts
+Even:
+ tst.w d0
+ beq.s .done
+ subq.w #1,d0
+ bsr Odd
+.done:
+ rts
+Odd:
+ moveq #0,d2
+ tst.w d0
+ beq.s .done
+ subq.w #1,d0
+ bsr Even
+.done:
+ rts`,
+          1,
+        );
+        expect(result).toMatchObject({
+          d0: "unavailable",
+          // Odd overwrites it before anything reads it.
+          d2: "available",
+        });
+      });
+
+      it("takes a routine in another file at its header's word", async () => {
+        const library = await createDoc(
+          "library.i",
+          `; Inputs: d0 = count
+; Trashes: d2
+Helper:
+ rts
+; Clears the screen
+Undocumented:
+ rts
+`,
+        );
+        const source = (callee: string) => `Start:
+ nop
+ bsr ${callee}
+ add.l d2,d1
+ add.l d3,d1
+ rts`;
+        const caller = await createDoc("caller.s", source("Helper"));
+        ctx.store.get(caller.uri)!.referencedUris.push(library.uri);
+
+        const at = (textDocument: typeof caller) => {
+          const result = provider.onRegisterUsage({
+            textDocument,
+            range: range(0, 0, 6, 0),
+            position: lsp.Position.create(1, 1),
+          });
+          return Object.fromEntries(
+            result?.registers.map(({ name, availability }) => [
+              name,
+              availability,
+            ]) ?? [],
+          );
+        };
+        expect(at(caller)).toMatchObject({
+          // Trashed by the call before the caller reads it.
+          d2: "available",
+          // Not mentioned, so kept, and read after the call.
+          d3: "unavailable",
+        });
+
+        // Without a documented contract the call may read anything, unless
+        // the caller definitely reads the register afterwards anyway.
+        const other = await createDoc(
+          "other.s",
+          `Start:
+ move.l d2,d3
+ bsr Undocumented
+ add.l d3,d1
+ rts`,
+        );
+        ctx.store.get(other.uri)!.referencedUris.push(library.uri);
+        expect(at(other)).toMatchObject({ d2: "unknown", d3: "unavailable" });
+      });
+
+      it("follows a call through the subroutine", async () => {
         const result = await availability(
           `Start:
  move.l d2,d3
@@ -732,8 +848,8 @@ Helper:
  rts`,
           1,
         );
-        // Step 1 does not look inside callees for overwrites.
-        expect(result).toMatchObject({ d2: "unavailable", d3: "available" });
+        // The callee overwrites D2 before anything reads it.
+        expect(result).toMatchObject({ d2: "available", d3: "available" });
       });
     });
 
@@ -873,7 +989,10 @@ Helper:
  bsr Helper
  rts
 Helper:
+ tst.w d3
+ beq.s .done
  bsr Helper
+.done:
  move.w d0,d2
  rts
 `,
@@ -1401,7 +1520,7 @@ Select macro
     });
   });
 
-  describe("#onRoutineRange()", () => {
+  describe("#onBlockRange()", () => {
     it("returns the previous non-local label through the next RTS", async () => {
       const textDocument = await createDoc(
         "routine.s",
@@ -1418,7 +1537,7 @@ Second:
       );
 
       expect(
-        provider.onRoutineRange({
+        provider.onBlockRange({
           textDocument,
           position: lsp.Position.create(7, 4),
         }),
@@ -1443,7 +1562,7 @@ Second:
 
       for (const line of [1, 5]) {
         expect(
-          provider.onRoutineRange({
+          provider.onBlockRange({
             textDocument,
             position: lsp.Position.create(line, 2),
           }),
@@ -1467,7 +1586,7 @@ Bar:
       );
 
       expect(
-        provider.onRoutineRange({
+        provider.onBlockRange({
           textDocument,
           position: lsp.Position.create(3, 2),
         }),
@@ -1493,7 +1612,7 @@ Bar:
       );
 
       expect(
-        provider.onRoutineRange({
+        provider.onBlockRange({
           textDocument,
           position: lsp.Position.create(1, 2),
         }),
@@ -1519,14 +1638,14 @@ Bar:
       );
 
       expect(
-        provider.onRoutineRange({
+        provider.onBlockRange({
           textDocument,
           position: lsp.Position.create(1, 2),
         }),
       ).toEqual({ range: range(0, 0, 11, 4), label: "Dispatch" });
     });
 
-    it("has no scope between the end of one routine and the next", async () => {
+    it("has no scope between the end of one block and the next", async () => {
       const textDocument = await createDoc(
         "between-routines.s",
         `Foo:
@@ -1542,14 +1661,14 @@ Bar:
 
       for (const line of [3, 4]) {
         expect(
-          provider.onRoutineRange({
+          provider.onBlockRange({
             textDocument,
             position: lsp.Position.create(line, 0),
           }),
         ).toBeUndefined();
       }
       expect(
-        provider.onRoutineRange({
+        provider.onBlockRange({
           textDocument,
           position: lsp.Position.create(6, 1),
         }),
@@ -1571,7 +1690,7 @@ Bar:
       );
 
       const at = (line: number) =>
-        provider.onRoutineRange({
+        provider.onBlockRange({
           textDocument,
           position: lsp.Position.create(line, 0),
         });
@@ -1581,7 +1700,7 @@ Bar:
       expect(at(7)).toBeUndefined();
     });
 
-    it("scopes code the routine's flow never reaches to its next return", async () => {
+    it("scopes code the block's flow never reaches to the end of its own flow", async () => {
       const textDocument = await createDoc(
         "unreached.s",
         `Foo:
@@ -1593,20 +1712,20 @@ Bar:
       );
 
       expect(
-        provider.onRoutineRange({
+        provider.onBlockRange({
           textDocument,
           position: lsp.Position.create(0, 1),
         }),
       ).toEqual({ range: range(0, 0, 1, 4), label: "Foo" });
       expect(
-        provider.onRoutineRange({
+        provider.onBlockRange({
           textDocument,
           position: lsp.Position.create(3, 2),
         }),
       ).toEqual({ range: range(0, 0, 4, 4), label: "Foo" });
     });
 
-    it("does not end a routine at a return that is conditional", async () => {
+    it("does not end a block at a return that is conditional", async () => {
       const textDocument = await createDoc(
         "conditional-return.s",
         `First:
@@ -1617,7 +1736,7 @@ Bar:
       );
 
       expect(
-        provider.onRoutineRange({
+        provider.onBlockRange({
           textDocument,
           position: lsp.Position.create(1, 2),
         }),
@@ -1634,7 +1753,7 @@ Bar:
       );
 
       expect(
-        provider.onRoutineRange({
+        provider.onBlockRange({
           textDocument,
           position: lsp.Position.create(0, 2),
         }),
@@ -1644,7 +1763,7 @@ Bar:
       });
     });
 
-    it("includes preamble code through the first routine RTS", async () => {
+    it("includes preamble code through the first block's RTS", async () => {
       const textDocument = await createDoc(
         "preamble-label.s",
         ` moveq #1,d0
@@ -1654,7 +1773,7 @@ Start:
 `,
       );
 
-      const scope = provider.onRoutineRange({
+      const scope = provider.onBlockRange({
         textDocument,
         position: lsp.Position.create(0, 2),
       });
@@ -1678,7 +1797,7 @@ Start:
 `,
       );
 
-      const scope = provider.onRoutineRange({
+      const scope = provider.onBlockRange({
         textDocument,
         position: lsp.Position.create(1, 20),
       });
@@ -1704,7 +1823,7 @@ Tail:
 `,
       );
 
-      const scope = provider.onRoutineRange({
+      const scope = provider.onBlockRange({
         textDocument,
         position: lsp.Position.create(1, 2),
       });
@@ -1731,7 +1850,7 @@ Second:
 `,
       );
 
-      const scope = provider.onRoutineRange({
+      const scope = provider.onBlockRange({
         textDocument,
         position: lsp.Position.create(1, 2),
       });
@@ -1757,7 +1876,7 @@ Second:
       );
 
       expect(
-        provider.onRoutineRange({
+        provider.onBlockRange({
           textDocument,
           position: lsp.Position.create(1, 2),
         }),
@@ -1781,7 +1900,7 @@ Copy macro
 `,
       );
 
-      const scope = provider.onRoutineRange({
+      const scope = provider.onBlockRange({
         textDocument,
         position: lsp.Position.create(4, 2),
       });
@@ -1804,7 +1923,7 @@ Copy macro
       );
 
       expect(
-        provider.onRoutineRange({
+        provider.onBlockRange({
           textDocument,
           position: lsp.Position.create(1, 2),
         }),
@@ -1829,7 +1948,7 @@ Inner:
       );
 
       expect(
-        provider.onRoutineRange({
+        provider.onBlockRange({
           textDocument,
           position: lsp.Position.create(6, 2),
         }),
@@ -1838,7 +1957,7 @@ Inner:
         label: "Start",
       });
       expect(
-        provider.onRoutineRange({
+        provider.onBlockRange({
           textDocument,
           position: lsp.Position.create(1, 2),
         }),

@@ -8,12 +8,12 @@ import {
   RegisterUsageRequest,
   RegisterSwapRequest,
   RegisterRemapRequest,
-  RoutineRangeRequest,
+  BlockRangeRequest,
   IndexChangedNotification,
 } from "@m68k-lsp/protocol";
 import type {
   RegisterUsageResult,
-  RoutineRangeResult,
+  BlockRangeResult,
   Range as ProtocolRange,
   TextEdit,
 } from "@m68k-lsp/protocol";
@@ -55,8 +55,8 @@ interface RemappingContext {
   documentVersion: number;
 }
 
-type RegisterCommandScope = Pick<RoutineRangeResult, "range"> &
-  Partial<Pick<RoutineRangeResult, "label">>;
+type RegisterCommandScope = Pick<BlockRangeResult, "range"> &
+  Partial<Pick<BlockRangeResult, "label">>;
 
 const generalPurposeRegisters = [
   "d0",
@@ -242,7 +242,7 @@ export function activate(context: ExtensionContext): void {
       position.line,
       position.character,
     );
-    // Moving the cursor re-scopes the panel to the routine around it, which
+    // Moving the cursor re-scopes the panel to the block around it, which
     // keeps the scope only when it already came from the cursor.
     if (editor.selection.isEmpty) {
       void window.showTextDocument(editor.document, {
@@ -338,7 +338,7 @@ export function activate(context: ExtensionContext): void {
     if (!stillCurrent()) {
       return;
     }
-    // Between routines there is nothing to analyse until lines are selected.
+    // Between blocks there is nothing to analyse until lines are selected.
     if (!scope) {
       return { scope: "", registers: [] };
     }
@@ -815,13 +815,13 @@ async function registerCommandScope(
   if (!editor.selection.isEmpty) {
     return { range: editor.selection };
   }
-  const scope = await client.sendRequest(RoutineRangeRequest, {
+  const scope = await client.sendRequest(BlockRangeRequest, {
     textDocument: { uri: editor.document.uri.toString() },
     position: editor.selection.active,
   });
   if (!scope && showWarning) {
     void window.showWarningMessage(
-      "The cursor is not inside a routine. Select the lines to analyse.",
+      "The cursor is not inside a block. Select the lines to analyse.",
     );
   }
   return scope;

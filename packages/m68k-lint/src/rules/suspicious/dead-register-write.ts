@@ -34,10 +34,22 @@ function isInertOperand(op: OperandNode): boolean {
 }
 
 /**
+ * Postincrement and predecrement step their address register as a side effect
+ * of a memory access. In `clr.l (a2)+` that step is the only register written,
+ * but the store is the point of the instruction, so a dead pointer afterwards
+ * does not make it removable.
+ */
+function stepsPointer(line: ParsedLine): boolean {
+  return (line.operands ?? []).some(
+    (op) =>
+      op.type === "address-register-indirect-postinc" ||
+      op.type === "address-register-indirect-predec",
+  );
+}
+
+/**
  * Whether removing the instruction could lose a memory access. LEA never
- * dereferences, so it is exempt however its operand is written. Postincrement
- * and predecrement do not reach here: they write their address register too, so
- * the single-register check below excludes them.
+ * dereferences, so it is exempt however its operand is written.
  */
 function readsMemory(line: ParsedLine, mnemonic: string): boolean {
   if (mnemonic === "lea") return false;
@@ -81,6 +93,7 @@ export const deadRegisterWrite: Rule = {
     // but removing it is still sound only if d1 is dead, which the check below
     // establishes. What matters here is that nothing else is affected.
     if (registers.writes.size !== 1) return;
+    if (stepsPointer(line)) return;
     const [written] = [...registers.writes];
 
     const flags = getFlagSemantics(line);

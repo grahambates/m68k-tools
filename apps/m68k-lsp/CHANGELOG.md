@@ -1,5 +1,17 @@
 # m68k-lsp
 
+## 0.14.0
+
+### Minor Changes
+
+- c2f9966: Limit the default register analysis scope to the macro body when the cursor is inside a macro definition, from `macro` to `endm`, as a routine runs from its label to its return. Labels and returns inside a macro body no longer start or end the routine scope around the definition.
+
+### Patch Changes
+
+- 1877d65: Resolve includes again once workspace indexing finishes, so that an include found relative to its main source connects even when the including file was indexed first. Definitions, references and hover in such files no longer depend on the file being open.
+- 305ff55: Index workspace files under the same URIs the editor and include resolution use. Files under paths containing characters such as spaces, parentheses or `@` are no longer indexed twice, which duplicated their references and symbols.
+- 83ca493: Go to definition, find references, document highlights and rename work on macro calls again, including a call made by an `iif` statement. A call's mnemonic was not recorded as a reference to the macro after the symbol table moved to the m68k-parser AST, so the cursor on a call found nothing.
+
 ## 0.13.0
 
 ### Minor Changes

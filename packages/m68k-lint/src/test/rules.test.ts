@@ -3246,8 +3246,7 @@ describe("dead register write", () => {
   });
 
   test("leaves a stepped pointer alone", () => {
-    // Postincrement and predecrement write their address register too, so the
-    // single-register check excludes them: removing one would stop the pointer
+    // Removing one would lose the memory access and stop the pointer
     // advancing.
     expect(
       lines([
@@ -3266,6 +3265,25 @@ describe("dead register write", () => {
         "moveq #0,d7",
         "rts",
       ]),
+    ).toEqual([]);
+  });
+
+  test("keeps a store through a pointer that is overwritten afterwards", () => {
+    // The step is the only register written, but removing the instruction
+    // would lose the store.
+    expect(
+      lines([
+        "move.l a1,a2",
+        "rept COUNT",
+        "clr.l (a2)+",
+        "endr",
+        "move.l a3,a2",
+        "move.l (a2),d0",
+        "rts",
+      ]),
+    ).toEqual([]);
+    expect(
+      lines(["move.w d0,-(a2)", "move.l a3,a2", "move.l (a2),d0", "rts"]),
     ).toEqual([]);
   });
 

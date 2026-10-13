@@ -1,5 +1,21 @@
 # m68k-lint-langserver
 
+## 0.6.0
+
+### Minor Changes
+
+- 5bdd2b3: Added `correctness/amiga-cross-section-pc-relative`, an error on the Amiga platform for a PC-relative reference such as `lea table(pc),a0`, or a branch, to a label this file defines in another section. Each section is a separate hunk, so vasm rejects the reference when writing an executable, and vlink when linking. The fix drops the `(pc)` and uses the absolute address. It is safe from code to data or BSS, and conditional between two code sections, or among data and BSS, which small code (`-sc`) or small data (`-sd`) linking would merge. BSR and BRA are fixed as JSR and JMP. Indexed forms such as `tab(pc,d0.w)`, Bcc and DBcc have no absolute equivalent, so they are reported with a suggested rewrite but no automatic fix. Sections are matched as vasm matches them, by name, type and memory attribute. The rule stays silent wherever the section cannot be worked out from the file: after an INCLUDE, ORG or OFFSET, after a macro that may switch sections, or after a conditional block whose arms end in different sections.
+- a7640da: Added `correctness/amiga-dma-outside-chip-ram`, an error on the Amiga platform when a copper, audio, blitter, bitplane, sprite or disk DMA pointer is set to a label in a section that is not in chip RAM. It covers a long MOVE of `#label` into the pointer, or of a register loaded with `lea label,An`, `lea label(pc),An`, `move.l #label,Rn` or a copy of one, following the register back through the code before it. A section with no memory attribute is reported with high confidence: AmigaDOS loads it into fast RAM whenever there is any, so the code works on a chip-RAM-only machine and fails on an expanded one. An explicitly fast section is reported as certain. The suggestion names the section directive to change to a `_c` type. Pointers poked into a copper list, addresses computed at run time, and loads before a subroutine call or an opaque macro are not followed.
+
+  The Amiga custom-register rules now also recognise the long names for pointer pairs, such as `COP1LC`, `AUD0LC`, `BLTDPT`, `BPL1PT` and `SPR0PT`, as well as the `H`/`L` halves.
+
+- 9a9bb98: Added `suspicious/fallthrough-into-data`, a warning for code that can run straight on into DC, DS, DCB or INCBIN data in the same section, which would then be executed as instructions. Falling into word or long data is reported with low confidence, since that is how hand-assembled or self-modifying instructions are written, with a note on disabling the rule for the line when it is deliberate. A subroutine call followed by data is not reported, as that is the inline-argument idiom (`bsr Print` then `dc.b "text",0`).
+- 7140d2a: Added `suspicious/section-fallthrough`, a warning for code that can run off the end of a section: the last instruction before a switch to another section is not a return, an unconditional branch or jump, or ILLEGAL. Where sections are placed is decided by the output format or linker, not the source order: in an Amiga executable each section is a separate hunk, so execution continues into whatever memory follows it, and a TOS program gathers all code sections ahead of the data, so it runs into the next code section instead of what the source shows next. Reopening the same section continues it and is not reported. The rule is silent where the section cannot be worked out, where the last line is a macro it cannot see into or is made conditional by IIF, and for unreachable code. A call that never returns, such as one to exit the program, cannot be told from one that does and is reported. The end of the file counts as the end of the program when the project index shows that no other file includes it, so a program with only one section is checked too; an included file, or one linted without a project, is not. After a TRAP the rule is silent, since that may be how the program exits (GEMDOS `Pterm0` is `trap #1`).
+
+### Patch Changes
+
+- 5bdd2b3: Fixed suggestions that rewrite a single operand (`optimization/redundant-zero-displacement`, `portability/include-case` and `correctness/amiga-bit-mask-constant`) writing the line's label and trailing comment twice, so `lbl: move.l 0(a0),d0 ; c` was replaced with `lbl: lbl: move.l (a0),d0 ; c ; c`.
+
 ## 0.5.0
 
 ### Minor Changes

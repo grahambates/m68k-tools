@@ -1,5 +1,11 @@
 # m68k-parser
 
+## 2.3.0
+
+### Minor Changes
+
+- a913499: Register lists with ranges that span data and address registers, such as `d0-a6` in `movem.l d0-a6,-(sp)`, expand as vasm assembles them: through D0-D7 then A0-A7, with the ends in either order. They previously expanded to no registers. Lists may also name `sp`, and each register is listed once, in MOVEM mask order. The new `parseRegisterList` export expands such a list from text.
+
 ## 2.2.0
 
 ### Minor Changes

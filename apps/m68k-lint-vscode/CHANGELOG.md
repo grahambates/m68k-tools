@@ -1,5 +1,19 @@
 # m68k-lint-vscode
 
+## 0.7.0
+
+### Minor Changes
+
+- 5170da4: `optimization/unneeded-register-save` offers a safe fix: it trims the register list on the save and every matching restore together, or removes them all when nothing needs saving, keeping labels and comments. With one register left it uses MOVE, as a conditional fix where the flags MOVE sets may still be read, such as by a caller after the return. Word saves are still left to be fixed by hand, because their restore sign-extends.
+
+  Suggestions can now rewrite several runs of lines at once through `Suggestion.edits`, applied together with the suggestion's own span or not at all, by `--fix`, interactive review and the language server's quick fixes, which carry one text edit per run.
+
+### Patch Changes
+
+- 364ee67: `correctness/amiga-custom-register-access` now recognises a custom register by its include name in a displacement when the base register's value is not known, including the offset-base form where the base points part way into the block, such as `clr.w bltamod(a6)` or `clr.w bltamod-C(a6)`.
+- 830208b: `suspicious/dead-register-write` no longer reports a store through a postincrement or predecrement pointer, such as `clr.l (a2)+`, when the pointer is overwritten afterwards.
+- a913499: Register lists with ranges that span data and address registers, such as `d0-a6` in `movem.l d0-a6,-(sp)`, expand as vasm assembles them: through D0-D7 then A0-A7, with the ends in either order. They previously expanded to no registers. Lists may also name `sp`, and each register is listed once, in MOVEM mask order. The new `parseRegisterList` export expands such a list from text.
+
 ## 0.6.0
 
 ### Minor Changes

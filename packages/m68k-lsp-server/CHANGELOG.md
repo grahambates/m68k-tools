@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.15.0
+
+### Minor Changes
+
+- 472a183: Register analysis resolves `equr`, `equrl` and `reg` aliases, including ones defined in included files, so uses such as `move.w count,d1` or `(ptr)+` count towards the aliased register's usage and availability. Register usage results report them with the reference kind `alias`, and remapping or swapping a register used through an alias is refused as an unsupported reference. Alias definition lines no longer count as uses of their registers. Hovering an alias shows the register's description.
+- 09e2109: Hovering a data or address register shows what it holds, read from routine header comments (including `Inputs:`/`Outputs:`/`Trashes:` sections), comments on assignments, symbolic source operands such as `lea SomeTable,a0`, and the documented outputs of called routines.
+- 25d7abf: Register hover descriptions follow the block's control flow instead of source order. Where branches or a loop join, a description is kept only if every path reaching the line agrees on it.
+- e6afc18: Available registers report how long they stay free: register usage results include `availableUntilOverwritten` and `availabilityRanges`, every run of lines in the scope where the register is free or its availability is unknown, with free runs marked if they stay free only until a later write. The remapping panel shows registers free after the cursor only until a later overwrite in orange, and unknown availability in grey italic in place of the `availability unknown` label. Hovering a row marks all of the register's runs in green, orange or grey; each run starts and ends on code, leaving out labels at its edges. A documented output is now available when every path overwrites it before returning.
+- 472a183: Hovering a register list, such as the `d0-d2/a0` in `movem`, shows the description of each register in it that has one. With the cursor on the local label of a fragment the block's flow never reaches, the scope covers that fragment instead of being empty.
+- 25d7abf: Register liveness follows `bsr`/`jsr` calls through subroutines in the same file, including nested and recursive calls, instead of treating every register a subroutine touches as used. A register the subroutine overwrites before reading is free before the call. Calls to routines in other files use their header comment's `Inputs:`, `Outputs:` and `Trashes:` as a contract.
+- e6afc18: Register liveness tracks how many bits of a register later code reads, so a byte or word write frees the register before it when only the bits it replaces are read afterwards. There is no scope between blocks, such as on blank lines, comments or data after a return, instead of the scope running into the next block, and the remapping panel says so.
+- 2980900: Register availability uses liveness rather than any later access. A register is available when no path from the cursor reads it before overwriting it in full, following macro expansions in order. Byte and word writes to data registers, and conditional writes, do not count as overwrites.
+- 2cd4b0a: Registers documented as outputs in a routine's header comment are marked `output` in register usage results and the remapping panel, and are no longer reported as available.
+- 2cd4b0a: The register remapping panel shows the lines where each register is first and last used in scope, as links that jump to them. Registers available after the cursor are shown in green instead of being labelled `available`. Register usage results include the last use as `lastUse`.
+- 25d7abf: The register analysis scope is now called a block: the code from a non-local label to where its control flow ends. Messages in the remapping panel and register commands say "block" instead of "routine". The private protocol's `m68k/routineRange` request is now `m68k/blockRange`.
+- aa46393: Register analysis recognises registers a block saves on the stack and restores with `.l` `movem` or `move`. A subroutine that preserves a register no longer counts as using it, so the register stays available across the call. A preserved register is not marked as an input, and its hover description comes back after the restore.
+- 472a183: A call to a macro with no definition the workspace can find, directly or from inside another macro, makes register availability unknown from that point instead of counting only the registers passed to it. Register remapping warns about such calls in the scope, since the registers they use cannot be checked.
+- a913499: Hovering a routine's label, at its definition or in a `bsr`/`jsr`, summarises the registers it reads and modifies as its callers see them, following the subroutines it calls, for example `Reads D0/A0 · Modifies D0–D1/A0`. Changes a stack restore undoes are not counted as modifications.
+- 795c636: The scope used by register analysis and the remapping panel follows control flow from its non-local label instead of ending at the first `rts`. Code after a conditional early return, and the targets of local jump tables, are now part of the scope. Branches to other non-local labels are treated as tail calls.
+
+### Patch Changes
+
+- 2980900: Register availability follows the branch on the cursor line, so registers used in a loop are no longer reported as available when the cursor is on the loop's closing `dbf`, `bne` or `bra`. With the cursor on an early `rts`, registers used only after it are now available.
+- a913499: Register lists with ranges that span data and address registers, such as `d0-a6` in `movem.l d0-a6,-(sp)`, expand as vasm assembles them: through D0-D7 then A0-A7, with the ends in either order. They previously expanded to no registers. Lists may also name `sp`, and each register is listed once, in MOVEM mask order. The new `parseRegisterList` export expands such a list from text.
+- 472a183: Register liveness accounts for control flow inside macro expansions. A macro with labels, branches or returns of its own no longer counts its writes as definite overwrites. Its branches to the caller's labels and its returns are followed from the call, and a subroutine called inside a macro makes availability unknown instead of being ignored.
+- a913499: Registers stashed on the stack at several points in a routine are recognised: each restore pairs with the nearest earlier save of the register, instead of a register only being treated as preserved when the routine saves it exactly once.
+- 03d5843: A routine's register summary no longer says it may modify any register when code it runs can't be analysed but registers are saved on the stack around that code. It names the registers that could still change, such as `Modifies possibly D0–D1/A0–A1` for a call inside a `d2-d7/a2-a6` save. This includes a branch that can't be resolved, such as a tail call into another file or `jmp (a0)`, in the routine or in a subroutine it calls.
+
+  After such a branch, register availability is now unknown rather than unavailable, and a routine's summary says it possibly reads other registers there rather than listing them as read.
+
+- Updated dependencies [a913499]
+  - m68k-parser@2.3.0
+
 ## 0.14.0
 
 ### Minor Changes

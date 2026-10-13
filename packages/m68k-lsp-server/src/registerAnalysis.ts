@@ -775,8 +775,8 @@ function expansionFlow(
  * goes, so a loop's closing branch leads back into the loop. A path ends at a
  * return, which reads the outputs the block's header documents. Calls are
  * followed through the
- * subroutine (see `throughCall`). A branch whose target cannot be resolved
- * makes every register unavailable.
+ * subroutine (see `throughCall`). After a branch whose target cannot be
+ * resolved, any register may be needed, so none is known to be free.
  */
 function registerLiveness(
   ctx: Context,
@@ -841,7 +841,7 @@ function registerLiveness(
 
   // Registers a subroutine may touch, or only those it may change, following
   // its own flow and calls. Changes a stack restore undoes do not count.
-  type CalleeRegisters = CodeRegisters | "all";
+  type CalleeRegisters = CodeRegisters;
   const calleeCaches = {
     touched: new Map<number, CalleeRegisters>(),
     modified: new Map<number, CalleeRegisters>(),
@@ -856,18 +856,27 @@ function registerLiveness(
       return cached;
     }
     const found = new Set<string>();
-    let unknown = false;
+    // Code that could not be analysed may do anything to a register, except
+    // one a stack save around it will put back.
+    const uncertain = new Set<string>();
+    const unknownAt = (index: number, registers: Iterable<string>) => {
+      for (const register of registers) {
+        if (!saves.covers(index, register)) {
+          uncertain.add(register);
+        }
+      }
+    };
     // Recursion sees the registers found so far, which is the fixed point.
-    cache.set(start, { registers: found, unknown: false });
+    cache.set(start, { registers: found, uncertain, unknown: false });
     for (const index of reachable([start])) {
       const node = nodeAt(index);
+      // A jump that could go anywhere is code that could not be analysed.
       if (node.escape) {
-        cache.set(start, "all");
-        return "all";
+        unknownAt(index, generalPurposeRegisters);
       }
       for (const step of stepsFor(index)) {
         if (step === "unknown") {
-          unknown = true;
+          unknownAt(index, generalPurposeRegisters);
           continue;
         }
         for (const [register, effect] of step) {
@@ -893,7 +902,7 @@ function registerLiveness(
             ? undefined
             : calleeContract(node.call.name);
         if (!contract) {
-          unknown = true;
+          unknownAt(index, generalPurposeRegisters);
           continue;
         }
         for (const [register, { writes }] of contract) {
@@ -907,18 +916,14 @@ function registerLiveness(
         continue;
       }
       const nested = calleeSet(node.call.line, kind);
-      if (nested === "all") {
-        cache.set(start, "all");
-        return "all";
-      }
-      unknown ||= nested.unknown;
+      unknownAt(index, nested.uncertain);
       for (const register of nested.registers) {
         if (!saves.covers(index, register)) {
           found.add(register);
         }
       }
     }
-    const result = { registers: found, unknown };
+    const result = { registers: found, uncertain, unknown: uncertain.size > 0 };
     cache.set(start, result);
     return result;
   };
@@ -932,8 +937,10 @@ function registerLiveness(
     needOutAt: (index: number) => Need,
   ): Need => {
     const node = nodeAt(index);
+    // Where a jump that could go anywhere leads, any register may be needed;
+    // that is not known to be so. Its own operands are read as usual.
     if (node.escape) {
-      return ALL;
+      after = { bits: 0, unknown: true };
     }
     // A saved register's value is kept on the stack, not read: whatever is
     // needed once it is restored is needed before it is saved.
@@ -1064,9 +1071,7 @@ function registerLiveness(
   const callTouches = (call: FlowCall, register: string): boolean => {
     if (call.line !== undefined) {
       const callee = calleeRegisters(call.line);
-      return (
-        callee === "all" || callee.unknown || callee.registers.has(register)
-      );
+      return callee.registers.has(register) || callee.uncertain.has(register);
     }
     const contract =
       call.name === undefined ? undefined : calleeContract(call.name);
@@ -1156,6 +1161,8 @@ function registerLiveness(
  */
 interface CodeRegisters {
   registers: Set<string>;
+  /** Registers code that could not be analysed may involve. */
+  uncertain: Set<string>;
   unknown: boolean;
 }
 
@@ -1165,9 +1172,10 @@ interface LivenessAnalysis {
   availability(register: string): RegisterLiveness;
   /**
    * Registers the code from a line may leave changed when it returns,
-   * following its calls; `all` after a jump that could go anywhere.
+   * following its calls, and those code that could not be analysed, such as
+   * a jump that could go anywhere, may change.
    */
-  modifiedFrom(line: number): CodeRegisters | "all";
+  modifiedFrom(line: number): CodeRegisters;
 }
 
 /** What a routine does with the general-purpose registers. */
@@ -1178,8 +1186,11 @@ export interface RoutineRegisters {
   mayReadOthers: boolean;
   /** Registers it may leave changed when it returns. */
   modifies: string[];
-  /** Code it runs could not be analysed, so it may change others. */
-  mayModifyOthers: boolean;
+  /**
+   * Registers it may also change through code that could not be analysed:
+   * those not saved on the stack around that code.
+   */
+  mayModify: string[];
 }
 
 /**
@@ -1230,11 +1241,11 @@ export function routineRegisters(
       .filter(([, availability]) => availability === "unavailable")
       .map(([register]) => register),
     mayReadOthers: entry.some(([, availability]) => availability === "unknown"),
-    modifies:
-      modified === "all"
-        ? []
-        : registers.filter((register) => modified.registers.has(register)),
-    mayModifyOthers: modified === "all" || modified.unknown,
+    modifies: registers.filter((register) => modified.registers.has(register)),
+    mayModify: registers.filter(
+      (register) =>
+        modified.uncertain.has(register) && !modified.registers.has(register),
+    ),
   };
 }
 

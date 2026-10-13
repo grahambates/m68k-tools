@@ -286,6 +286,58 @@ ${after}\trts`),
         },
       );
 
+      it.each([
+        [
+          "\tbra\tElsewhere",
+          "Reads possibly any · Modifies possibly D0–D1/A0–A1",
+        ],
+        [
+          "\tjmp\t(a0)",
+          "Reads A0 and possibly others · Modifies possibly D0–D1/A0–A1",
+        ],
+      ])(
+        "applies the caller's save to a callee that jumps somewhere unknown (%j)",
+        async (exit, expected) => {
+          expect(
+            await summaryOf(`InitTables:
+\tmovem.l\td2-d7/a2-a6,-(sp)
+\tbsr\tInitMap
+\tmovem.l\t(sp)+,d2-d7/a2-a6
+\trts
+InitMap:
+\tmoveq\t#1,d3
+${exit}`),
+          ).toBe(expected);
+        },
+      );
+
+      it.each([
+        // Everything the call could change is saved around it.
+        ["d0-a6", "", "Reads A6 and possibly others"],
+        // Only the registers the save leaves out may be changed.
+        [
+          "d2-d7/a2-a6",
+          "",
+          "Reads A6 and possibly others · Modifies possibly D0–D1/A0–A1",
+        ],
+        [
+          "d2-d7/a2-a6",
+          "\tmoveq\t#0,d0\n",
+          "Reads A6 and possibly others · Modifies D0 and possibly D1/A0–A1",
+        ],
+      ])(
+        "leaves what a save around unanalysed code restores out of what it may modify (%s)",
+        async (list, after, expected) => {
+          expect(
+            await summaryOf(`Library:
+\tmovem.l\t${list},-(sp)
+\tjsr\t(a6)
+\tmovem.l\t(sp)+,${list}
+${after}\trts`),
+          ).toBe(expected);
+        },
+      );
+
       it("notes code it could not analyse", async () => {
         expect(await summaryAt(11, 2)).toBe(
           "Reads D4/A6 and possibly others · Modifies D5 and possibly others",

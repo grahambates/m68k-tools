@@ -323,19 +323,38 @@ export default class HoverProvider implements Provider {
  * noting where code it runs could not be analysed.
  */
 function formatRoutineRegisters(summary: RoutineRegisters): string | undefined {
-  const part = (label: string, registers: string[], others: boolean) =>
-    registers.length || others
-      ? `${label} ${
-          registers.length
-            ? formatRegisterList(registers) +
-              (others ? " and possibly others" : "")
+  const reads =
+    summary.reads.length || summary.mayReadOthers
+      ? `Reads ${
+          summary.reads.length
+            ? formatRegisterList(summary.reads) +
+              (summary.mayReadOthers ? " and possibly others" : "")
             : "possibly any"
         }`
       : undefined;
-  const parts = [
-    part("Reads", summary.reads, summary.mayReadOthers),
-    part("Modifies", summary.modifies, summary.mayModifyOthers),
-  ].filter(Boolean);
+  // What code that could not be analysed may change, unless it is saved on
+  // the stack around that code. Named when it is not everything left.
+  // The stack pointer is never in a summary, so D0-D7 and A0-A6 are all.
+  const others = 15 - summary.modifies.length;
+  const possibly = summary.mayModify.length
+    ? summary.mayModify.length === others
+      ? summary.modifies.length
+        ? "and possibly others"
+        : "possibly any"
+      : `${summary.modifies.length ? "and possibly " : "possibly "}${formatRegisterList(summary.mayModify)}`
+    : undefined;
+  const modifies =
+    summary.modifies.length || possibly
+      ? `Modifies ${[
+          summary.modifies.length
+            ? formatRegisterList(summary.modifies)
+            : undefined,
+          possibly,
+        ]
+          .filter(Boolean)
+          .join(" ")}`
+      : undefined;
+  const parts = [reads, modifies].filter(Boolean);
   return parts.length ? parts.join(" · ") : undefined;
 }
 

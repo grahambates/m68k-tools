@@ -74,7 +74,7 @@ Hovering a non-local code label, where it's defined or in a `bsr`/`jsr`, summari
 - It reads registers whose values it uses before writing them.
 - It modifies registers it may leave changed when it returns, including through the subroutines it calls. A change a stack restore undoes doesn't count.
 
-Where it runs code that can't be analysed, the summary says it may read or modify others. The stack pointer is left out, on the assumption that pushes and pops balance. The summary is available for routines in files the server has open.
+Where it runs code that can't be analysed, the summary says it may read or modify others. A register saved on the stack around that code is put back, so it's left out of what the routine may modify, and the summary names the registers that remain, such as `Modifies possibly D0–D1/A0–A1` for a library call inside a `d2-d7/a2-a6` save. The stack pointer is left out, on the assumption that pushes and pops balance. The summary is available for routines in files the server has open.
 
 A description holds until the register is overwritten outright. Restoring a register saved on the stack brings back the description it had when it was saved. Read-modify-write instructions such as `addq` keep it. Descriptions follow the block's control flow. Where branches join, a description is kept only if every path into that line agrees on it, so one set in a single branch doesn't carry past the join. The same applies at the top of a loop.
 

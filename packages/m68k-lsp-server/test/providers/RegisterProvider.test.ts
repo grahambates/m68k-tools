@@ -1247,11 +1247,11 @@ Helper:
         position: lsp.Position.create(1, 5),
       });
 
-      expect(
-        result?.registers.every(
-          ({ availability }) => availability === "unavailable",
-        ),
-      ).toBe(true);
+      // Where the branch goes, any register may be needed, so none is free;
+      // that they are needed is not known either.
+      expect(result?.registers.map(({ availability }) => availability)).toEqual(
+        ["unknown", "unknown"],
+      );
     });
 
     it("marks untouched registers unknown across a reachable subroutine call", async () => {

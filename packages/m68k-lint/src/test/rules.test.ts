@@ -3555,6 +3555,19 @@ describe("Amiga custom-register direction table", () => {
     expect(flags("    lea CUSTOM,a6\n    move.w #0,COLOR00(a6)")).toBe(false);
   });
 
+  test("identifies a register by its name when the base is unknown", () => {
+    // The names are offsets from CUSTOM and used with no other base.
+    expect(flags("    clr.w bltamod(a6)")).toBe(true);
+    expect(flags("    move.w DMACON(a5),d0")).toBe(true);
+    expect(flags("    move.w intreqr(a6),d0")).toBe(false);
+    expect(flags("    move.w d0,bltamod(a6)")).toBe(false);
+    // A number, or a name the project gives its own value, could be anything.
+    expect(flags("    clr.w $64(a6)")).toBe(false);
+    expect(flags("bltamod equ 4\n    clr.w bltamod(a6)")).toBe(false);
+    // A base known to be something other than CUSTOM wins over the name.
+    expect(flags("    lea $40000,a6\n    clr.w bltamod(a6)")).toBe(false);
+  });
+
   test("stays silent on the deliberately omitted ECS/AGA sync block", () => {
     // $1C0-$1FE mixes directions and varies by chipset, so it is not tabulated.
     // Omission must produce no diagnostic rather than a guess.

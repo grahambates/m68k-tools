@@ -1,4 +1,9 @@
-import type { ExpressionNode, OperandNode, ParsedLine } from "m68k-parser";
+import {
+  descendants,
+  type ExpressionNode,
+  type OperandNode,
+  type ParsedLine,
+} from "m68k-parser";
 import type { Rule } from "../../../core/rule.js";
 import type { RuleContext } from "../../../core/context.js";
 import { canonicalMnemonic } from "../../../semantics/mnemonics.js";
@@ -227,6 +232,40 @@ function knownAddressRegisterBefore(
 }
 
 /**
+ * The register named by a displacement such as `bltamod(a6)` when the base
+ * register's value is not known. The canonical names are offsets from CUSTOM
+ * and are not used with any other base, so the name alone identifies the
+ * register. A bare number proves nothing, so at least one name must be a
+ * register's; and a project that defines the name to something else has its
+ * own meaning for it.
+ */
+function customRegisterDisplacement(
+  ctx: RuleContext,
+  displacement: ExpressionNode,
+): number | undefined {
+  const names: string[] = [];
+  for (const node of [displacement, ...descendants(displacement)]) {
+    const { name } = node as { name?: unknown };
+    if (node.type === "symbol" && typeof name === "string") names.push(name);
+  }
+  let named = false;
+  for (const name of names) {
+    const key = name.toLowerCase();
+    // `custom+x(a6)` is not an offset from CUSTOM.
+    if (key === "custom") return undefined;
+    const canonical = amigaCustomSymbolValues.get(key);
+    if (canonical === undefined) continue;
+    const project = ctx.symbols.evaluate(name);
+    if (project.known && project.value !== canonical) return undefined;
+    named = true;
+  }
+  if (!named) return undefined;
+  const offset = evaluateAmigaExpression(ctx, displacement);
+  if (offset === undefined || offset < 0 || offset >= 0x200) return undefined;
+  return CUSTOM_BASE + offset;
+}
+
+/**
  * Resolve an operand to a custom-register address, understanding both literal
  * absolute addresses and the CUSTOM-base include convention. Shared with the
  * bit/mask constant rule so both agree on what counts as a hardware register.
@@ -255,8 +294,10 @@ export function amigaEffectiveAddress(
     const register = normalizeRegister(op.register.register);
     if (!register) return undefined;
     const base = knownAddressRegisterBefore(ctx, lineIndex, register);
+    if (base === undefined)
+      return customRegisterDisplacement(ctx, op.displacement);
     const displacement = evaluateAmigaExpression(ctx, op.displacement);
-    if (base === undefined || displacement === undefined) return undefined;
+    if (displacement === undefined) return undefined;
     return (base + displacement) >>> 0;
   }
 
@@ -297,7 +338,7 @@ export const amigaCustomRegisterAccess: Rule = {
     tags: ["amiga", "hardware", "custom-registers"],
     docs: {
       source: "Amiga Hardware Reference Manual",
-      note: "Custom-chip registers are read-only or write-only and must be accessed using the documented direction.",
+      note: "Custom-chip registers are read-only or write-only and must be accessed using the documented direction. A displacement written with a register's include name, as in `bltamod(a6)`, identifies that register even when the base register's value is not known.",
     },
   },
   checkLine(ctx, line, lineIndex) {

@@ -529,6 +529,44 @@ describe("parse AST", () => {
         });
       });
 
+      it("expands ranges across data and address registers as vasm does", () => {
+        // Checked against the masks vasm assembles `movem.l <list>,-(sp)` to:
+        // a range runs through D0-D7 then A0-A7, either way round, and SP is
+        // A7. Each register is listed once.
+        const registers = (list: string) =>
+          (
+            parseLine(`  movem.l ${list},-(sp)`).value.operands?.[0] as {
+              registers?: string[];
+            }
+          ).registers;
+        const all = [
+          "d0",
+          "d1",
+          "d2",
+          "d3",
+          "d4",
+          "d5",
+          "d6",
+          "d7",
+          "a0",
+          "a1",
+          "a2",
+          "a3",
+          "a4",
+          "a5",
+          "a6",
+          "a7",
+        ];
+        expect(registers("d0-a6")).toEqual(all.slice(0, 15)); // $fffe
+        expect(registers("a6-d0")).toEqual(all.slice(0, 15)); // $fffe
+        expect(registers("d5-a1")).toEqual(["d5", "d6", "d7", "a0", "a1"]); // $07c0
+        expect(registers("d0-sp")).toEqual(all); // $ffff
+        expect(registers("a0-d7")).toEqual(["d7", "a0"]); // $0180
+        expect(registers("d3-d1")).toEqual(["d1", "d2", "d3"]); // $7000
+        expect(registers("d0-d3/d2")).toEqual(["d0", "d1", "d2", "d3"]);
+        expect(registers("d2/sp")).toEqual(["d2", "a7"]);
+      });
+
       it("parses register lists", () => {
         // Simple register range
         const range = parseLine("  movem d0-d7,-(sp)").value;

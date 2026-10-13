@@ -69,6 +69,13 @@ Hovering a data or address register shows what it holds at that point in the blo
 
 Hovering an `equr` alias for a register shows the same description as the register, below the alias's definition. Hovering a register list, such as `d0-d2/a0` in `movem`, shows the description of each register in it that has one.
 
+Hovering a non-local code label, where it's defined or in a `bsr`/`jsr`, summarises what the routine does with registers, as its callers see them, such as `Reads D0/A0 · Modifies D0–D1/A0`:
+
+- It reads registers whose values it uses before writing them.
+- It modifies registers it may leave changed when it returns, including through the subroutines it calls. A change a stack restore undoes doesn't count.
+
+Where it runs code that can't be analysed, the summary says it may read or modify others. The stack pointer is left out, on the assumption that pushes and pops balance. The summary is available for routines in files the server has open.
+
 A description holds until the register is overwritten outright. Restoring a register saved on the stack brings back the description it had when it was saved. Read-modify-write instructions such as `addq` keep it. Descriptions follow the block's control flow. Where branches join, a description is kept only if every path into that line agrees on it, so one set in a single branch doesn't carry past the join. The same applies at the top of a loop.
 
 ### Register remapping warnings
@@ -85,7 +92,7 @@ Registers that are free to reuse after the cursor have their access summary show
 - Registers named through `equr`, `equrl` or `reg` aliases count as the registers they stand for, where an alias is used as a whole operand or as an addressing mode's base or index register. A register used through an alias can't be remapped or swapped in place; change its alias definition instead.
 - Bits are tracked by width. A read needs the low byte, word or long word of the register, at the operation's size: word when none is given, the index size for an index register, and all 32 bits for an address register. A write frees the earlier value once it replaces every bit still to be read. So a `.w` write followed only by `.w` reads frees the register before it, but not if a `.l` read follows. Writes to address registers, `moveq`, `lea` and `movem` loads replace all 32 bits. A write under `iif` or inside an `if` block may not happen, so it replaces nothing.
 - A `bsr` or `jsr` to a subroutine in the same file is followed through the subroutine, including nested and recursive calls. A register the subroutine overwrites before reading is free before the call, and one it leaves alone carries on to the code after the call.
-- A register a block saves on the stack and restores, with a `.l` `movem` or `move` to `-(sp)` and back from `(sp)+`, is treated as kept rather than used. Its value at the save is what comes back at each restore, so a subroutine that preserves a register doesn't count as using it, and a preserved register isn't marked as an input. Each region between non-local labels is matched separately. A register is only paired when it's saved once and restored after that, so unmatched pushes and pops keep the usual treatment.
+- A register a block saves on the stack and restores, with a `.l` `movem` or `move` to `-(sp)` and back from `(sp)+`, is treated as kept rather than used. Its value at the save is what comes back at each restore, so a subroutine that preserves a register doesn't count as using it, and a preserved register isn't marked as an input. Each restore pairs with the nearest earlier save of that register between the same non-local labels, so a register can be stashed at several points in a routine, and a save can have several restores, as on early exits. A push with no restore, such as an argument for a call, keeps the usual treatment.
 - A call to a routine in another file uses its header comment as a contract. Registers under `Inputs:` are read, those under `Outputs:` or `Trashes:` are overwritten, and others are kept. A header must document at least one register to count.
 - A call with no target that can be resolved and no documented header makes the answer unknown. So does a macro that can't be fully expanded, or one with no definition the workspace can find, including one called from inside another macro. The registers passed to an undefined macro count as read.
 

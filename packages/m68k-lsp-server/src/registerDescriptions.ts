@@ -1,11 +1,12 @@
 import type { RegisterAccess } from "@m68k-lsp/protocol";
-import { isLocalLabelName } from "m68k-parser";
+import { isLocalLabelName, parseRegisterList } from "m68k-parser";
 import type { ParsedLine } from "m68k-parser";
 import type * as lsp from "vscode-languageserver";
 import { type AstNode, descendants } from "./ast";
 import { type Context } from "./context";
 import { isProcessed } from "./DocumentProcessor";
 import {
+  type RoutineContract,
   analyzeRegisterUsage,
   canonicalGeneralPurposeRegister,
   createAliasResolver,
@@ -127,24 +128,11 @@ function parseRegisterNames(text: string): string[] | undefined {
   return items.flatMap(expandRegisterList);
 }
 
+/** The registers a list in a comment names, allowing spaces around `-`/`/`. */
 function expandRegisterList(text: string): string[] {
-  const registers: string[] = [];
-  for (const group of text.split(/\s*\/\s*/)) {
-    const [first, last] = group
-      .split(/\s*-\s*/)
-      .map((name) => canonicalGeneralPurposeRegister(name));
-    if (!first) {
-      continue;
-    }
-    if (last && last[0] === first[0] && last[1] >= first[1]) {
-      for (let n = Number(first[1]); n <= Number(last[1]); n++) {
-        registers.push(first[0] + n);
-      }
-    } else {
-      registers.push(first, ...(last ? [last] : []));
-    }
-  }
-  return [...new Set(registers)];
+  return (parseRegisterList(text.replace(/\s*([-/])\s*/g, "$1")) ?? []).map(
+    (register) => canonicalGeneralPurposeRegister(register)!,
+  );
 }
 
 /**
@@ -469,5 +457,31 @@ function sameMeaning(
       b !== undefined &&
       a.text === b.text &&
       a.code === b.code)
+  );
+}
+
+/**
+ * What the header comment of a called routine says it does with registers,
+ * for a routine whose code is not analysed with the caller. A header that
+ * documents no registers is no contract.
+ */
+export function routineContract(
+  ctx: Context,
+  uri: string,
+  name: string,
+): RoutineContract | undefined {
+  const header = resolveDefinitionByName(uri, name, ctx)?.header;
+  const entries = header ? parseRoutineHeader(header) : undefined;
+  if (!entries?.size) {
+    return;
+  }
+  return new Map(
+    Array.from(entries, ([register, entry]) => [
+      register,
+      {
+        reads: entry.input !== undefined,
+        writes: entry.output !== undefined || !!entry.trashed,
+      },
+    ]),
   );
 }

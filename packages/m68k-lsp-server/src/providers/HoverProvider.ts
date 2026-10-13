@@ -11,16 +11,19 @@ import * as lsp from "vscode-languageserver";
 import { type TextDocument } from "vscode-languageserver-textdocument";
 import { type Provider } from ".";
 import { type AstNode, nodeAtPosition } from "../ast";
-import { locationAsRange } from "m68k-parser";
+import { isLocalLabelName, locationAsRange } from "m68k-parser";
 import { resolveInclude } from "../files";
 import { DefinitionType, escapeMarkdown, getDefinitions } from "../symbols";
 import {
+  type RoutineRegisters,
   canonicalGeneralPurposeRegister,
   createAliasResolver,
   registerName,
+  routineRegisters,
 } from "../registerAnalysis";
 import {
   describeRegister,
+  routineContract,
   type RegisterDescriptionResult,
 } from "../registerDescriptions";
 import { mnemonicDocs, registerDocs, sizeDocs } from "../docs/index";
@@ -203,8 +206,22 @@ export default class HoverProvider implements Provider {
           }
           break;
         }
-        default:
+        default: {
           contents.push(`(${def.type}) ${def.name}`);
+          const summary =
+            def.type === DefinitionType.Label && !isLocalLabelName(def.name)
+              ? routineRegisters(
+                  this.ctx,
+                  def.location.uri,
+                  def.selectionRange.start.line,
+                  (name) => routineContract(this.ctx, def.location.uri, name),
+                )
+              : undefined;
+          const text = summary && formatRoutineRegisters(summary);
+          if (text) {
+            contents.push(text);
+          }
+        }
       }
 
       return {
@@ -299,6 +316,50 @@ export default class HoverProvider implements Provider {
       },
     };
   }
+}
+
+/**
+ * What a routine does with registers, as `Reads D0 · Modifies D0–D1/A0`,
+ * noting where code it runs could not be analysed.
+ */
+function formatRoutineRegisters(summary: RoutineRegisters): string | undefined {
+  const part = (label: string, registers: string[], others: boolean) =>
+    registers.length || others
+      ? `${label} ${
+          registers.length
+            ? formatRegisterList(registers) +
+              (others ? " and possibly others" : "")
+            : "possibly any"
+        }`
+      : undefined;
+  const parts = [
+    part("Reads", summary.reads, summary.mayReadOthers),
+    part("Modifies", summary.modifies, summary.mayModifyOthers),
+  ].filter(Boolean);
+  return parts.length ? parts.join(" · ") : undefined;
+}
+
+/** Registers in MOVEM-list form: `D0–D2/A0`. */
+function formatRegisterList(registers: string[]): string {
+  const groups: string[] = [];
+  for (const kind of ["d", "a"]) {
+    const numbers = registers
+      .filter((register) => register[0] === kind)
+      .map((register) => Number(register[1]))
+      .sort((a, b) => a - b);
+    for (let i = 0; i < numbers.length; i++) {
+      let j = i;
+      while (numbers[j + 1] === numbers[j] + 1) {
+        j++;
+      }
+      const first = `${kind.toUpperCase()}${numbers[i]}`;
+      groups.push(
+        j === i ? first : `${first}–${kind.toUpperCase()}${numbers[j]}`,
+      );
+      i = j;
+    }
+  }
+  return groups.join("/");
 }
 
 function formatRegisterDescription(

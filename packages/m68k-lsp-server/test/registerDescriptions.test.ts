@@ -37,6 +37,13 @@ describe("parseRegisterComment", () => {
       "a1",
       "a7",
     ]);
+    // Ranges run D0-D7 then A0-A7, as in vasm.
+    expect(parseRegisterComment("d6-a1 = state")?.registers).toEqual([
+      "d6",
+      "d7",
+      "a0",
+      "a1",
+    ]);
     expect(parseRegisterComment("d0.w = count")).toEqual({
       registers: ["d0"],
       size: "w",

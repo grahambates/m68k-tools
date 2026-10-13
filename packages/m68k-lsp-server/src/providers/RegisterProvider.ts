@@ -21,15 +21,13 @@ import { type Provider } from ".";
 import { type Context } from "../context";
 import { isProcessed } from "../DocumentProcessor";
 import {
-  type RoutineContract,
   analyzeRegisterUsage,
   canonicalGeneralPurposeRegister,
   findBlockRange,
   undefinedMacroCalls,
   registerRanges,
 } from "../registerAnalysis";
-import { parseRoutineHeader, blockHeaderAt } from "../registerDescriptions";
-import { resolveDefinitionByName } from "../symbols";
+import { blockHeaderAt, routineContract } from "../registerDescriptions";
 
 export default class RegisterProvider implements Provider {
   constructor(protected readonly ctx: Context) {}
@@ -252,31 +250,5 @@ function matchRegisterCase(spelling: string, register: string): string {
 function uniqueEdits(edits: lsp.TextEdit[]): lsp.TextEdit[] {
   return Array.from(
     new Map(edits.map((edit) => [JSON.stringify(edit), edit])).values(),
-  );
-}
-
-/**
- * What the header comment of a called routine says it does with registers,
- * for a routine whose code is not analysed with the caller. A header that
- * documents no registers is no contract.
- */
-function routineContract(
-  ctx: Context,
-  uri: string,
-  name: string,
-): RoutineContract | undefined {
-  const header = resolveDefinitionByName(uri, name, ctx)?.header;
-  const entries = header ? parseRoutineHeader(header) : undefined;
-  if (!entries?.size) {
-    return;
-  }
-  return new Map(
-    Array.from(entries, ([register, entry]) => [
-      register,
-      {
-        reads: entry.input !== undefined,
-        writes: entry.output !== undefined || !!entry.trashed,
-      },
-    ]),
   );
 }

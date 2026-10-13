@@ -19,6 +19,7 @@ import {
   isLocalLabelName,
   macroInvocation,
   parseLine,
+  parseRegisterList,
   symbolKey,
 } from "m68k-parser";
 import type {
@@ -220,7 +221,8 @@ export function analyzeRegisterUsage(
           saves.saveOf(line, name) !== undefined,
       );
       if (liveness) {
-        const { availability, untilOverwritten, lines } = liveness(name);
+        const { availability, untilOverwritten, lines } =
+          liveness.availability(name);
         usage.availability = availability;
         if (untilOverwritten) {
           usage.availableUntilOverwritten = true;
@@ -567,6 +569,8 @@ function lineRuns(
 interface RegisterEffect {
   read: number;
   write: number;
+  /** The line may change the register, even where `write` is 0. */
+  modifies?: boolean;
 }
 
 /**
@@ -784,7 +788,7 @@ function registerLiveness(
   position: lsp.Position,
   outputs: ReadonlySet<string>,
   calleeContract: (name: string) => RoutineContract | undefined,
-): (register: string) => RegisterLiveness {
+): LivenessAnalysis {
   const { lines } = file;
   const macroDefinitionLines = collectMacroDefinitionLines(blocks.blocks);
   const aliases = createAliasResolver(ctx, uri);
@@ -835,29 +839,48 @@ function registerLiveness(
     return order;
   };
 
-  // Registers a subroutine may touch, following its own flow and calls.
-  const calleeCache = new Map<number, Set<string> | "unknown" | "all">();
-  const calleeRegisters = (start: number): Set<string> | "unknown" | "all" => {
-    const cached = calleeCache.get(start);
+  // Registers a subroutine may touch, or only those it may change, following
+  // its own flow and calls. Changes a stack restore undoes do not count.
+  type CalleeRegisters = CodeRegisters | "all";
+  const calleeCaches = {
+    touched: new Map<number, CalleeRegisters>(),
+    modified: new Map<number, CalleeRegisters>(),
+  };
+  const calleeSet = (
+    start: number,
+    kind: "touched" | "modified",
+  ): CalleeRegisters => {
+    const cache = calleeCaches[kind];
+    const cached = cache.get(start);
     if (cached) {
       return cached;
     }
-    const touched = new Set<string>();
+    const found = new Set<string>();
     let unknown = false;
     // Recursion sees the registers found so far, which is the fixed point.
-    calleeCache.set(start, touched);
+    cache.set(start, { registers: found, unknown: false });
     for (const index of reachable([start])) {
       const node = nodeAt(index);
       if (node.escape) {
-        calleeCache.set(start, "all");
+        cache.set(start, "all");
         return "all";
       }
       for (const step of stepsFor(index)) {
         if (step === "unknown") {
           unknown = true;
-        } else {
-          for (const register of step.keys()) {
-            touched.add(register);
+          continue;
+        }
+        for (const [register, effect] of step) {
+          // A save keeps the caller's value, and what happens to the
+          // register before a restore puts it back is not seen by the caller.
+          if (
+            saves.covers(index, register) ||
+            saves.restoresOf(index, register) !== undefined
+          ) {
+            continue;
+          }
+          if (kind === "touched" || effect.modifies) {
+            found.add(register);
           }
         }
       }
@@ -869,36 +892,37 @@ function registerLiveness(
           node.call.name === undefined
             ? undefined
             : calleeContract(node.call.name);
-        if (contract) {
-          for (const register of contract.keys()) {
-            touched.add(register);
-          }
-        } else {
+        if (!contract) {
           unknown = true;
+          continue;
+        }
+        for (const [register, { writes }] of contract) {
+          if (
+            !saves.covers(index, register) &&
+            (kind === "touched" || writes)
+          ) {
+            found.add(register);
+          }
         }
         continue;
       }
-      const nested = calleeRegisters(node.call.line);
+      const nested = calleeSet(node.call.line, kind);
       if (nested === "all") {
-        calleeCache.set(start, "all");
+        cache.set(start, "all");
         return "all";
       }
-      if (nested === "unknown") {
-        unknown = true;
-      } else {
-        for (const register of nested) {
-          touched.add(register);
+      unknown ||= nested.unknown;
+      for (const register of nested.registers) {
+        if (!saves.covers(index, register)) {
+          found.add(register);
         }
       }
     }
-    // Registers the subroutine saves and restores are handed back unchanged.
-    for (const register of saves.preservedFrom(start)) {
-      touched.delete(register);
-    }
-    const result = unknown ? "unknown" : touched;
-    calleeCache.set(start, result);
+    const result = { registers: found, unknown };
+    cache.set(start, result);
     return result;
   };
+  const calleeRegisters = (start: number) => calleeSet(start, "touched");
 
   /** Need on entry to a line, given the need after it. */
   const transfer = (
@@ -1040,9 +1064,9 @@ function registerLiveness(
   const callTouches = (call: FlowCall, register: string): boolean => {
     if (call.line !== undefined) {
       const callee = calleeRegisters(call.line);
-      return callee !== "unknown" && callee !== "all"
-        ? callee.has(register)
-        : true;
+      return (
+        callee === "all" || callee.unknown || callee.registers.has(register)
+      );
     }
     const contract =
       call.name === undefined ? undefined : calleeContract(call.name);
@@ -1055,7 +1079,7 @@ function registerLiveness(
     scopeLines.push(index);
   }
 
-  return (register) => {
+  const availability = (register: string): RegisterLiveness => {
     const exitNeed: Need = outputs.has(register) ? ALL : NONE;
     const needIn = solve(register, scopeLines, exitNeed);
 
@@ -1119,6 +1143,98 @@ function registerLiveness(
         : {}),
       lines: free,
     };
+  };
+  return {
+    availability,
+    modifiedFrom: (line) => calleeSet(line, "modified"),
+  };
+}
+
+/**
+ * Registers found in some code, and whether code that could not be analysed
+ * may involve others.
+ */
+interface CodeRegisters {
+  registers: Set<string>;
+  unknown: boolean;
+}
+
+/** Register liveness over a scope, and what routines in the file do. */
+interface LivenessAnalysis {
+  /** A register's availability at the position, and where it is free. */
+  availability(register: string): RegisterLiveness;
+  /**
+   * Registers the code from a line may leave changed when it returns,
+   * following its calls; `all` after a jump that could go anywhere.
+   */
+  modifiedFrom(line: number): CodeRegisters | "all";
+}
+
+/** What a routine does with the general-purpose registers. */
+export interface RoutineRegisters {
+  /** Registers it reads before writing them. */
+  reads: string[];
+  /** Code it runs could not be analysed, so it may read others. */
+  mayReadOthers: boolean;
+  /** Registers it may leave changed when it returns. */
+  modifies: string[];
+  /** Code it runs could not be analysed, so it may change others. */
+  mayModifyOthers: boolean;
+}
+
+/**
+ * The registers the routine starting at a non-local label reads and changes,
+ * as its callers see them, following its flow and the subroutines it calls.
+ * Registers it stashes on the stack and restores are not changed. The stack
+ * pointer is left out: pushes and pops are taken to balance.
+ */
+export function routineRegisters(
+  ctx: Context,
+  uri: string,
+  labelLine: number,
+  calleeContract: (name: string) => RoutineContract | undefined,
+): RoutineRegisters | undefined {
+  const document = ctx.store.get(uri);
+  if (!isProcessed(document)) {
+    return;
+  }
+  const block = findBlockRange(ctx, {
+    textDocument: { uri },
+    position: lsp.Position.create(labelLine, 0),
+  });
+  if (!block || block.range.start.line !== labelLine) {
+    return;
+  }
+  // A position before the block asks what is needed on entry to it.
+  const analysis = registerLiveness(
+    ctx,
+    uri,
+    document.parsed,
+    document.blocks,
+    document.document.getText().split(/\r?\n/g),
+    block.range,
+    lsp.Position.create(labelLine - 1, 0),
+    new Set(),
+    calleeContract,
+  );
+  const registers = [...generalPurposeRegisters].filter(
+    (register) => register !== "a7",
+  );
+  const entry = registers.map(
+    (register) =>
+      [register, analysis.availability(register).availability] as const,
+  );
+  const modified = analysis.modifiedFrom(labelLine);
+  return {
+    reads: entry
+      .filter(([, availability]) => availability === "unavailable")
+      .map(([register]) => register),
+    mayReadOthers: entry.some(([, availability]) => availability === "unknown"),
+    modifies:
+      modified === "all"
+        ? []
+        : registers.filter((register) => modified.registers.has(register)),
+    mayModifyOthers: modified === "all" || modified.unknown,
   };
 }
 
@@ -1256,6 +1372,10 @@ function lineEffects(
             : 0;
         const previous = effects.get(register);
         effects.set(register, {
+          modifies:
+            !!previous?.modifies ||
+            access === "write" ||
+            access === "readwrite",
           read: Math.max(previous?.read ?? 0, read),
           // Two writes on one line are not expected; keep the narrower.
           write:
@@ -1596,19 +1716,23 @@ function addExpandedRegisters(
 }
 
 /**
- * Registers a block saves on the stack and restores: a `.l` MOVEM or MOVE of
- * a register to `-(sp)` and back from `(sp)+`. Each region from one non-local
- * label to the next is matched separately. A register is paired when the
- * region saves it exactly once and restores it at least once after that; a
- * register saved more than once, or restored without a save, is not.
+ * Registers code stashes on the stack and restores: a `.l` MOVEM or MOVE of
+ * a register to `-(sp)` and back from `(sp)+`. Each restore pairs with the
+ * nearest save of the register before it, within the region from one
+ * non-local label to the next, so a register can be stashed at several
+ * points, and a save can have several restores, as on early exits. A save
+ * nothing restores, such as an argument pushed for a call, is not paired.
  */
 export interface StackSaves {
   /** The lines restoring a register saved on a line, if it is paired. */
   restoresOf(saveLine: number, register: string): number[] | undefined;
   /** The line that saved a register a line restores, if it is paired. */
   saveOf(restoreLine: number, register: string): number | undefined;
-  /** Registers saved and restored in the region a line starts. */
-  preservedFrom(line: number): ReadonlySet<string>;
+  /**
+   * Whether a line lies after a pair's save and up to its last restore, so
+   * that what it does to the register is undone.
+   */
+  covers(line: number, register: string): boolean;
 }
 
 export function findStackSaves(
@@ -1641,33 +1765,37 @@ export function findStackSaves(
 
   const restoresBySave = new Map<string, number[]>();
   const saveByRestore = new Map<string, number>();
-  const preserved = new Map<number, Set<string>>();
-  for (const [key, saveLines] of saves) {
-    if (saveLines.length !== 1) {
-      continue;
-    }
-    const [save] = saveLines;
-    const restoreLines = (restores.get(key) ?? []).filter(
-      (line) => line > save,
-    );
-    if (!restoreLines.length) {
-      continue;
-    }
+  const spans = new Map<string, [number, number][]>();
+  for (const [key, restoreLines] of restores) {
+    const saveLines = saves.get(key) ?? [];
     const register = key.slice(key.indexOf(":") + 1);
-    restoresBySave.set(`${save}:${register}`, restoreLines);
     for (const restore of restoreLines) {
+      const save = saveLines.filter((line) => line < restore).at(-1);
+      if (save === undefined) {
+        continue;
+      }
+      const saveKey = `${save}:${register}`;
+      (
+        restoresBySave.get(saveKey) ??
+        restoresBySave.set(saveKey, []).get(saveKey)!
+      ).push(restore);
       saveByRestore.set(`${restore}:${register}`, save);
     }
-    const regionIndex = regionOf[save];
-    (
-      preserved.get(regionIndex) ??
-      preserved.set(regionIndex, new Set()).get(regionIndex)!
-    ).add(register);
+  }
+  for (const [saveKey, restoreLines] of restoresBySave) {
+    const [save, register] = saveKey.split(":");
+    (spans.get(register) ?? spans.set(register, []).get(register)!).push([
+      Number(save),
+      Math.max(...restoreLines),
+    ]);
   }
   return {
     restoresOf: (line, register) => restoresBySave.get(`${line}:${register}`),
     saveOf: (line, register) => saveByRestore.get(`${line}:${register}`),
-    preservedFrom: (line) => preserved.get(regionOf[line]) ?? new Set(),
+    covers: (line, register) =>
+      (spans.get(register) ?? []).some(
+        ([save, last]) => save < line && line <= last,
+      ),
   };
 }
 
@@ -1757,27 +1885,12 @@ function aliasedRegisters(declaration: string): string[] | undefined {
   if (!operand) {
     return;
   }
-  const text = declaration.slice(operand.loc.start, operand.loc.end).trim();
-  const registers: string[] = [];
-  for (const group of text.split("/")) {
-    const [first, last, extra] = group
-      .split("-")
-      .map((name) => canonicalGeneralPurposeRegister(name.trim()));
-    if (!first || extra !== undefined || (group.includes("-") && !last)) {
-      return;
-    }
-    if (!last) {
-      registers.push(first);
-      continue;
-    }
-    if (first[0] !== last[0] || last[1] < first[1]) {
-      return;
-    }
-    for (let n = Number(first[1]); n <= Number(last[1]); n++) {
-      registers.push(first[0] + n);
-    }
-  }
-  return registers.length ? [...new Set(registers)] : undefined;
+  const registers = parseRegisterList(
+    declaration.slice(operand.loc.start, operand.loc.end),
+  );
+  return registers?.length
+    ? registers.map((register) => canonicalGeneralPurposeRegister(register)!)
+    : undefined;
 }
 
 function listedRegisters(node: AstNode): string[] {

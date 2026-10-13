@@ -12,6 +12,7 @@ export {
 } from "./syntax.js";
 
 export { parseLine } from "./line-parser.js";
+export { parseRegisterList } from "./operand-parser.js";
 export { parseFile } from "./file-parser.js";
 export {
   parseBlocks,

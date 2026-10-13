@@ -1175,34 +1175,70 @@ function parseBitfield(text: string, loc: Location): ParserResult<OperandNode> {
   };
 }
 
+const registerListPattern =
+  /^(([ad][0-7]|sp)(-([ad][0-7]|sp))?)(\/(([ad][0-7]|sp)(-([ad][0-7]|sp))?))*$/i;
+
 /**
- * Expand a register range (e.g., "d0-d7") into individual registers
+ * The registers a data and address register list names, such as
+ * `d0-d7/a0-a6`, each once and in MOVEM mask order, or undefined if the text
+ * is not such a list. Ranges follow vasm (see `expandRegisterRange`).
+ */
+export function parseRegisterList(
+  text: string,
+): (DataRegister | AddressRegister)[] | undefined {
+  const trimmed = text.trim();
+  if (!registerListPattern.test(trimmed)) {
+    return;
+  }
+  const registers = new Set(
+    trimmed.split("/").flatMap((spec) => expandRegisterRange(spec.trim())),
+  );
+  return registerListOrder.filter((register) => registers.has(register));
+}
+
+/** Registers in MOVEM mask order: D0-D7, then A0-A7. */
+const registerListOrder = [
+  "d0",
+  "d1",
+  "d2",
+  "d3",
+  "d4",
+  "d5",
+  "d6",
+  "d7",
+  "a0",
+  "a1",
+  "a2",
+  "a3",
+  "a4",
+  "a5",
+  "a6",
+  "a7",
+] as const;
+
+/**
+ * Expand a register range into individual registers, such as `d0-d7`.
+ *
+ * As in vasm, a range runs through the registers in MOVEM mask order, D0-D7
+ * then A0-A7, so it may span both kinds: `d0-a6` is D0-D7 and A0-A6. The ends
+ * may come in either order, and `sp` is A7.
  */
 function expandRegisterRange(spec: string): (DataRegister | AddressRegister)[] {
-  const rangeMatch = /^([ad])(\d+)-([ad])(\d+)$/i.exec(spec.toLowerCase());
-  if (rangeMatch) {
-    const prefix1 = rangeMatch[1];
-    const start = parseInt(rangeMatch[2]);
-    const prefix2 = rangeMatch[3];
-    const end = parseInt(rangeMatch[4]);
-
-    // Both must be same type (d or a)
-    if (prefix1 !== prefix2) return [];
-
-    const registers: (DataRegister | AddressRegister)[] = [];
-    for (let i = start; i <= end && i <= 7; i++) {
-      registers.push((prefix1 + i) as DataRegister | AddressRegister);
-    }
-    return registers;
+  const ordinal = (name: string) =>
+    (registerListOrder as readonly string[]).indexOf(
+      name === "sp" ? "a7" : name,
+    );
+  const [first, last = first] = spec
+    .toLowerCase()
+    .split("-")
+    .map((name) => ordinal(name.trim()));
+  if (first < 0 || last < 0) {
+    return [];
   }
-
-  // Not a range, just return single register if valid
-  const lower = spec.toLowerCase();
-  if (isDataRegister(lower) || isAddressRegister(lower)) {
-    return [lower as DataRegister | AddressRegister];
-  }
-
-  return [];
+  return registerListOrder.slice(
+    Math.min(first, last),
+    Math.max(first, last) + 1,
+  );
 }
 
 /**
@@ -1499,18 +1535,11 @@ export function parseOperand(
     };
   }
 
-  // Register list: d0-d7/a0-a6 or d0/d1/a0 (used in movem, etc.)
-  const registerListMatch =
-    /^([ad][0-7](-[ad][0-7])?)(\/([ad][0-7](-[ad][0-7])?))*$/i.exec(text);
-  if (registerListMatch) {
+  // Register list: d0-d7/a0-a6, d0-a6 or d0/d1/a0 (used in movem, etc.)
+  const registers = parseRegisterList(text);
+  if (registers) {
     // Split by / to get individual register specs
     const raw = text.split("/").map((r) => r.trim().toLowerCase());
-
-    // Expand all ranges into individual registers
-    const registers: (DataRegister | AddressRegister)[] = [];
-    for (const spec of raw) {
-      registers.push(...expandRegisterRange(spec));
-    }
 
     return {
       value: {

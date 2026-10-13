@@ -205,6 +205,94 @@ Draw:
       );
     });
 
+    describe("routine register summaries", () => {
+      const source = `Caller:
+\tbsr\tHelper
+\tmoveq\t#0,d3
+\trts
+Helper:
+\tmovem.l\td2/a2,-(sp)
+\tmove.w\t(a0)+,d2
+\tadd.w\td2,d0
+\tmoveq\t#1,d1
+\tmovem.l\t(sp)+,d2/a2
+\trts
+Vector:
+\tmove.l\td4,d5
+\tjsr\t(a6)
+\trts`;
+      const summaryAt = async (line: number, character: number) => {
+        const textDocument = await createDoc("example.s", source);
+        const hover = await provider.onHover({
+          textDocument,
+          position: { line, character },
+        });
+        return (hover?.contents as string[] | undefined)?.at(-1);
+      };
+
+      it("lists what a routine reads and modifies", async () => {
+        expect(await summaryAt(4, 2)).toBe("Reads D0/A0 · Modifies D0–D1/A0");
+      });
+
+      it("shows the summary where the routine is called", async () => {
+        expect(await summaryAt(1, 6)).toBe("Reads D0/A0 · Modifies D0–D1/A0");
+      });
+
+      it("includes what the routines it calls do", async () => {
+        expect(await summaryAt(0, 2)).toBe(
+          "Reads D0/A0 · Modifies D0–D1/D3/A0",
+        );
+      });
+
+      const summaryOf = async (text: string) => {
+        const textDocument = await createDoc("example.s", text);
+        const hover = await provider.onHover({
+          textDocument,
+          position: { line: 0, character: 2 },
+        });
+        return (hover?.contents as string[]).at(-1);
+      };
+
+      it("does not count changes a stack restore undoes", async () => {
+        // A range across data and address registers, as vasm reads it.
+        expect(
+          await summaryOf(`Everything:
+\tmovem.l\td0-a6,-(sp)
+\tmoveq\t#0,d0
+\tmove.l\td0,a3
+\tmovem.l\t(sp)+,d0-a6
+\tmoveq\t#1,d1
+\trts`),
+        ).toBe("Modifies D1");
+      });
+
+      it.each([
+        ["", "Reads D0/D2 · Modifies D0"],
+        ["\tmoveq\t#5,d2\n", "Reads D0/D2 · Modifies D0/D2"],
+      ])(
+        "pairs each restore with its own save when a register is stashed twice (%j)",
+        async (after, expected) => {
+          expect(
+            await summaryOf(`Twice:
+\tmovem.l\td2,-(sp)
+\tmoveq\t#0,d2
+\tmovem.l\t(sp)+,d2
+\tadd.l\td2,d0
+\tmove.l\td2,-(sp)
+\tmoveq\t#1,d2
+\tmove.l\t(sp)+,d2
+${after}\trts`),
+          ).toBe(expected);
+        },
+      );
+
+      it("notes code it could not analyse", async () => {
+        expect(await summaryAt(11, 2)).toBe(
+          "Reads D4/A6 and possibly others · Modifies D5 and possibly others",
+        );
+      });
+    });
+
     it("describes the registers in a list that have descriptions", async () => {
       const textDocument = await createDoc(
         "example.s",

@@ -184,6 +184,47 @@ export function parseRoutineHeader(
   return entries;
 }
 
+export interface RoutineHeader {
+  /** Zero-based line of the routine's label. */
+  line: number;
+  name: string;
+  registers: Map<string, RegisterHeaderEntry>;
+}
+
+/**
+ * Header of the routine around a position: the comment lines directly above
+ * its non-local label. Undefined when the routine has no label.
+ */
+export function routineHeaderAt(
+  ctx: Context,
+  uri: string,
+  position: lsp.Position,
+): RoutineHeader | undefined {
+  const document = ctx.store.get(uri);
+  if (!isProcessed(document)) {
+    return;
+  }
+  const routine = findRoutineRange(ctx, { textDocument: { uri }, position });
+  if (!routine) {
+    return;
+  }
+  const { lines } = document.parsed;
+  const line = routine.range.start.line;
+  const label = lines[line]?.label;
+  if (!label || label.scope === "local") {
+    return;
+  }
+  return {
+    line,
+    name: label.label,
+    registers: parseRoutineHeader(
+      precedingCommentLines(lines, line).map(
+        (index) => lines[index].comment!.content,
+      ),
+    ),
+  };
+}
+
 /**
  * Meaning of a general-purpose register at a position, from comments and
  * assignments earlier in its routine.
@@ -211,16 +252,9 @@ export function describeRegister(
   const { lines } = document.parsed;
   const lineTexts = document.document.getText().split(/\r?\n/g);
   const startLine = routine.range.start.line;
-  const label = lines[startLine]?.label;
-  const routineName =
-    label && label.scope !== "local" ? label.label : undefined;
-  const header = routineName
-    ? parseRoutineHeader(
-        precedingCommentLines(lines, startLine).map(
-          (index) => lines[index].comment!.content,
-        ),
-      ).get(target)
-    : undefined;
+  const routineHeader = routineHeaderAt(ctx, uri, position);
+  const routineName = routineHeader?.name;
+  const header = routineHeader?.registers.get(target);
 
   const accessesByLine = new Map<number, Map<string, Set<RegisterAccess>>>();
   const usage = analyzeRegisterUsage(ctx, {

@@ -76,6 +76,7 @@ describe("RegisterProvider", () => {
           {
             name: "d0",
             firstUse: { line: 0, character: 6 },
+            lastUse: { line: 0, character: 6 },
             references: [
               {
                 range: range(0, 6, 0, 8),
@@ -91,6 +92,7 @@ describe("RegisterProvider", () => {
           {
             name: "d1",
             firstUse: { line: 0, character: 9 },
+            lastUse: { line: 0, character: 9 },
             references: [
               {
                 range: range(0, 9, 0, 11),
@@ -106,6 +108,7 @@ describe("RegisterProvider", () => {
           {
             name: "a7",
             firstUse: { line: 1, character: 7 },
+            lastUse: { line: 1, character: 7 },
             references: [
               {
                 range: range(1, 7, 1, 9),
@@ -121,6 +124,7 @@ describe("RegisterProvider", () => {
           {
             name: "d2",
             firstUse: { line: 1, character: 11 },
+            lastUse: { line: 1, character: 11 },
             references: [
               {
                 range: range(1, 11, 1, 13),
@@ -135,6 +139,28 @@ describe("RegisterProvider", () => {
           },
         ],
       });
+    });
+
+    it("reports the first and last use within the range", async () => {
+      const textDocument = await createDoc(
+        "use-range.s",
+        ` moveq #0,d0
+ move.l d1,d2
+ add.l d0,d1
+`,
+      );
+
+      const result = provider.onRegisterUsage({
+        textDocument,
+        range: range(0, 0, 3, 0),
+      });
+
+      expect(result?.registers.find(({ name }) => name === "d0")).toMatchObject(
+        {
+          firstUse: { line: 0, character: 10 },
+          lastUse: { line: 2, character: 7 },
+        },
+      );
     });
 
     it("expands register lists while preserving their source range", async () => {
@@ -225,6 +251,34 @@ describe("RegisterProvider", () => {
       expect(byName.get("d1")?.availability).toBe("available");
       expect(byName.get("d2")?.availability).toBe("unavailable");
       expect(byName.get("d3")?.availability).toBe("unavailable");
+    });
+
+    it("marks documented outputs and never reports them available", async () => {
+      const textDocument = await createDoc(
+        "outputs.s",
+        `; Outputs: d1 = total
+Start:
+ move.w d0,d1
+ move.w d2,d3
+ rts
+`,
+      );
+
+      const result = provider.onRegisterUsage({
+        textDocument,
+        range: range(1, 0, 4, 4),
+        position: lsp.Position.create(2, 5),
+      });
+      const byName = new Map(
+        result?.registers.map((usage) => [usage.name, usage]),
+      );
+
+      expect(byName.get("d0")).toMatchObject({ availability: "available" });
+      expect(byName.get("d0")?.output).toBeUndefined();
+      expect(byName.get("d1")).toMatchObject({
+        output: true,
+        availability: "unavailable",
+      });
     });
 
     it("ignores register accesses skipped by an unconditional branch", async () => {

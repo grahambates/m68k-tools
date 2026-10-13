@@ -27,6 +27,7 @@ import {
   QuickPickItemKind,
   Range,
   type TextEditor,
+  TextEditorRevealType,
   commands,
   window,
   workspace,
@@ -186,6 +187,34 @@ export function activate(context: ExtensionContext): void {
     }
   };
   context.subscriptions.push(usageReadHighlight, usageWriteHighlight);
+  const revealUse = (register: string, end: "first" | "last") => {
+    const snapshot = remappingContext;
+    const usage = previewUsage?.registers.find(({ name }) => name === register);
+    const position = end === "last" ? usage?.lastUse : usage?.firstUse;
+    const editor = window.activeTextEditor;
+    if (!snapshot?.isCurrent() || !position || !editor) {
+      return;
+    }
+    const target = new Range(
+      position.line,
+      position.character,
+      position.line,
+      position.character,
+    );
+    // Moving the cursor re-scopes the panel to the routine around it, which
+    // keeps the scope only when it already came from the cursor.
+    if (editor.selection.isEmpty) {
+      void window.showTextDocument(editor.document, {
+        viewColumn: editor.viewColumn,
+        selection: target,
+      });
+    } else {
+      editor.revealRange(
+        target,
+        TextEditorRevealType.InCenterIfOutsideViewport,
+      );
+    }
+  };
   const clearPreview = () => {
     previewGeneration++;
     for (const editor of window.visibleTextEditors) {
@@ -429,6 +458,7 @@ export function activate(context: ExtensionContext): void {
     },
     clearPreview,
     highlightUsage,
+    revealUse,
   );
 
   const listRegistersInSelection = async () => {
@@ -705,7 +735,11 @@ function registerItem(
           : "access unknown";
   return {
     label: register.toUpperCase(),
-    description: usage.input ? `${access}, input` : access,
+    description: [
+      access,
+      ...(usage.input ? ["input"] : []),
+      ...(usage.output ? ["output"] : []),
+    ].join(", "),
   };
 }
 

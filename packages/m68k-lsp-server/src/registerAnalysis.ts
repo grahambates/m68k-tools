@@ -658,6 +658,13 @@ function summariseUsage(
           : first,
       references[0].range.start,
     ),
+    lastUse: references.reduce(
+      (last, reference) =>
+        comparePositions(reference.range.start, last) > 0
+          ? reference.range.start
+          : last,
+      references[0].range.start,
+    ),
     read: references.some(({ access }) => includesRead(access)),
     written: references.some(({ access }) => includesWrite(access)),
     input:

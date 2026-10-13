@@ -38,6 +38,7 @@ vi.mock(
   () => ({
     DecorationRangeBehavior: { ClosedClosed: 1 },
     OverviewRulerLane: { Center: 2 },
+    TextEditorRevealType: { InCenterIfOutsideViewport: 2 },
     Range: class {},
     ThemeColor: class {
       constructor(readonly id: string) {}

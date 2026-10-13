@@ -49,7 +49,24 @@ it.each([undefined, { d0: "#e06c75" }])(
     )![1];
     const model = {
       scope: "test",
-      registers: [{ name: "d0", read: true, written: false }],
+      registers: [
+        {
+          name: "d0",
+          read: true,
+          written: false,
+          output: true,
+          firstUse: { line: 11, character: 9 },
+          lastUse: { line: 29, character: 9 },
+        },
+        {
+          name: "d1",
+          read: false,
+          written: true,
+          availability: "available",
+          firstUse: { line: 12, character: 9 },
+          lastUse: { line: 12, character: 12 },
+        },
+      ],
       colors,
     };
     const postMessage = vi.fn();
@@ -67,7 +84,28 @@ it.each([undefined, { d0: "#e06c75" }])(
       },
     });
     const rows = elements.get("rows")!.children;
-    expect(rows).toHaveLength(1);
+    expect(rows).toHaveLength(2);
+    expect(rows[0].children[1].textContent).toBe("read, output");
+    expect(rows[0].children[1].className).toBe("access");
+    expect(rows[1].children[1].textContent).toBe("write");
+    expect(rows[1].children[1].className).toBe("access available");
+    const useRange = rows[0].children[2];
+    expect(useRange.textContent).toBe("L12–30");
+    const [first, , last] = useRange.children;
+    first.listeners.click();
+    expect(postMessage).toHaveBeenLastCalledWith({
+      type: "reveal",
+      register: "d0",
+      end: "first",
+    });
+    last.listeners.click();
+    expect(postMessage).toHaveBeenLastCalledWith({
+      type: "reveal",
+      register: "d0",
+      end: "last",
+    });
+    // Uses on one line need no range.
+    expect(rows[1].children[2].textContent).toBe("L13");
     const name = rows[0].children[0];
     for (const event of ["mouseenter", "focus"]) {
       (event === "mouseenter" ? rows[0] : name).listeners[event]();
@@ -85,7 +123,7 @@ it.each([undefined, { d0: "#e06c75" }])(
     expect(name.listeners.mouseleave).toBeUndefined();
     expect(rows[0].children[0].textContent).toBe("D0");
     expect(rows[0].children[0].style.color).toBe(colors?.d0);
-    expect(rows[0].children[2].style.color).toBe(colors?.d0);
+    expect(rows[0].children[3].style.color).toBe(colors?.d0);
     expect(elements.get("empty")!.hidden).toBe(true);
   },
 );
@@ -224,7 +262,7 @@ it("displays validation warnings without disabling Apply and ignores stale resul
   };
   runInNewContext(
     script +
-      '\nrender({ scope: "test", registers: [{ name: "d0" }] }); mappings = { d0: "a0" }; validate();',
+      '\nrender({ scope: "test", registers: [{ name: "d0", firstUse: { line: 0, character: 0 }, lastUse: { line: 0, character: 0 } }] }); mappings = { d0: "a0" }; validate();',
     context,
   );
   receive({
@@ -278,15 +316,17 @@ it("does not publish validation results from an obsolete mapping", async () => {
   });
 });
 
-it("routes usage highlights and clears them on refresh and disposal", async () => {
+it("routes usage highlights and reveals, clearing highlights on refresh and disposal", async () => {
   let receive!: (message: unknown) => Promise<void>;
   const highlight = vi.fn();
+  const reveal = vi.fn();
   const view = new RegisterRemappingView(
     vi.fn(),
     vi.fn(),
     undefined,
     undefined,
     highlight,
+    reveal,
   );
   view.resolveWebviewView({
     visible: true,
@@ -304,6 +344,10 @@ it("routes usage highlights and clears them on refresh and disposal", async () =
   expect(highlight).toHaveBeenLastCalledWith("d0");
   await receive({ type: "highlight" });
   expect(highlight).toHaveBeenLastCalledWith(undefined);
+  await receive({ type: "reveal", register: "d3" });
+  expect(reveal).toHaveBeenLastCalledWith("d3", "first");
+  await receive({ type: "reveal", register: "d3", end: "last" });
+  expect(reveal).toHaveBeenLastCalledWith("d3", "last");
   await receive({ type: "highlight", register: "a1" });
   await view.refresh();
   expect(highlight).toHaveBeenLastCalledWith();

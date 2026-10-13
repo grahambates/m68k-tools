@@ -69,6 +69,12 @@ The remapping view previews warnings for newly invalid register operand forms al
 
 If macro analysis is incomplete or includes references that cannot safely be edited, the preview still validates explicit instructions and indicates the unchecked references. The existing restrictions on applying an incomplete edit plan remain in effect.
 
+Registers that are free to reuse after the cursor, because nothing reachable from it touches them, have their access summary shown in green. Hover over it for the full status.
+
+Registers the routine's header comment lists under `Outputs:` are labelled `output` in the panel. They are never reported as available, because their value at the cursor is what the routine returns unless something later overwrites it.
+
+Each row in the remapping panel shows the lines where the register is first and last used in scope, such as `L12–30`, or just `L12` when both are on one line. Click either number to move the cursor there. When the scope comes from a selection, the editor scrolls to the line and keeps the selection, so the scope does not change.
+
 Hover over a register row in the remapping panel to highlight its usage lines in the current scope. Lines that may write the register use the stronger write-occurrence highlight; lines that only read it use the normal occurrence highlight. Both are also marked in the overview ruler. Highlights clear when the pointer leaves. Keyboard focus also shows the preview, clearing on blur. Usage highlights are separate from mapping previews and clear on Reset or a scope change.
 
 Pending register remappings are previewed in the source with inline destination annotations. Amber highlights indicate destination conflicts or validation issues; hover for details. The preview does not edit the source and clears on Reset, successful Apply, or an editor-scope change.

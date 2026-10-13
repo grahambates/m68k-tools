@@ -41,6 +41,10 @@ export class RegisterRemappingView implements WebviewViewProvider, Disposable {
     ) => Promise<string[]> = () => Promise.resolve([]),
     private readonly clearPreview: () => void = () => {},
     private readonly highlightUsage: (register?: string) => void = () => {},
+    private readonly revealUse: (
+      register: string,
+      end: "first" | "last",
+    ) => void = () => {},
   ) {}
 
   resolveWebviewView(view: WebviewView): void {
@@ -56,8 +60,16 @@ export class RegisterRemappingView implements WebviewViewProvider, Disposable {
         mappings?: Record<string, string>;
         requestId?: number;
         register?: string;
+        end?: string;
       }) => {
-        if (message.type === "highlight") {
+        if (message.type === "reveal") {
+          if (typeof message.register === "string") {
+            this.revealUse(
+              message.register,
+              message.end === "last" ? "last" : "first",
+            );
+          }
+        } else if (message.type === "highlight") {
           this.highlightUsage(
             typeof message.register === "string" ? message.register : undefined,
           );
@@ -196,7 +208,8 @@ function webviewHtml(webview: Webview): string {
     .remap-label { font-weight: bold; }
     .row {
       display: grid;
-      grid-template-columns: 2rem 1fr 5rem;
+      grid-template-columns: 2rem 1fr auto 5rem;
+      column-gap: 4px;
       align-items: center;
       min-height: 34px;
       border-bottom: 1px solid color-mix(in srgb, var(--vscode-widget-border) 55%, transparent);
@@ -205,6 +218,11 @@ function webviewHtml(webview: Webview): string {
     .register:focus-visible { outline: none; }
     .register { cursor: default; background: transparent; border: none; padding: 2px 4px; text-align: left; color: inherit; font-family: var(--vscode-editor-font-family); font-weight: 600; }
     .access { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .access.available { color: var(--vscode-charts-green, var(--vscode-testing-iconPassed)); }
+    .use-range { white-space: nowrap; font-family: var(--vscode-editor-font-family); color: var(--vscode-descriptionForeground); }
+    .use { height: auto; padding: 0 2px; border: none; background: transparent; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); }
+    .use:hover { color: var(--vscode-textLink-activeForeground); text-decoration: underline; }
+    .use:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
     select, button {
       height: 24px;
       border: 1px solid var(--vscode-dropdown-border);
@@ -289,7 +307,7 @@ function webviewHtml(webview: Webview): string {
       const access = usage.read && usage.written ? 'read/write' : usage.read ? 'read' : usage.written ? 'write' : 'unknown';
       const parts = [access];
       if (usage.input) parts.push('input');
-      if (usage.availability === 'available') parts.push('available');
+      if (usage.output) parts.push('output');
       if (usage.availability === 'unknown') parts.push('availability unknown');
       return parts.join(', ');
     }
@@ -363,8 +381,28 @@ function webviewHtml(webview: Webview): string {
         const color = model.colors?.[usage.name];
         if (color) name.style.color = color;
         const access = document.createElement('div');
-        access.className = 'access';
+        const available = usage.availability === 'available';
+        access.className = available ? 'access available' : 'access';
         access.textContent = accessLabel(usage);
+        access.title = available ? access.textContent + ', available after the cursor' : access.textContent;
+        const useRange = document.createElement('span');
+        useRange.className = 'use-range';
+        const useLink = (end, position, prefix) => {
+          const link = document.createElement('button');
+          const line = position.line + 1;
+          link.className = 'use';
+          link.textContent = prefix + line;
+          link.title = 'Go to ' + end + ' use of ' + register.toUpperCase() + ' on line ' + line;
+          link.setAttribute('aria-label', link.title);
+          link.addEventListener('click', () => vscode.postMessage({ type: 'reveal', register, end }));
+          return link;
+        };
+        useRange.append(useLink('first', usage.firstUse, 'L'));
+        if (usage.lastUse && usage.lastUse.line !== usage.firstUse.line) {
+          const dash = document.createElement('span');
+          dash.textContent = '–';
+          useRange.append(dash, useLink('last', usage.lastUse, ''));
+        }
         const select = document.createElement('select');
         const selectedDestination = mappings[register] || register;
         select.setAttribute('aria-label', 'Map ' + register.toUpperCase());
@@ -382,7 +420,7 @@ function webviewHtml(webview: Webview): string {
           validate();
         });
         if (color) select.style.color = color;
-        row.append(name, access, select);
+        row.append(name, access, useRange, select);
         rows.append(row);
       }
       validate();

@@ -22,9 +22,13 @@ export interface RegisterUsage {
   name: string;
   references: RegisterUsageReference[];
   firstUse: Position;
+  /** Start of the register's last reference in the range. */
+  lastUse: Position;
   read: boolean;
   written: boolean;
   input?: boolean;
+  /** The routine's header comment documents the register as an output. */
+  output?: boolean;
   availability?: RegisterAvailability;
 }
 

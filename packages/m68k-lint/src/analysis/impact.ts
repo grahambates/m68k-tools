@@ -372,8 +372,14 @@ export function measureDiagnosticImpact(
   const span = diagnostic.span ?? computeSourceSpan(diagnostic, file);
   if (!span) return diagnostic;
 
-  const original = linesOf(source)
-    .slice(span.startLine - 1, span.endLine)
+  // A suggestion rewriting several runs is measured over all of them.
+  const edits = diagnostic.suggestion?.edits ?? [];
+  const original = [span, ...edits.map((edit) => edit.span)]
+    .map(({ startLine, endLine }) =>
+      linesOf(source)
+        .slice(startLine - 1, endLine)
+        .join("\n"),
+    )
     .join("\n");
   // A rule that matched a shift by a register only fires once the count is
   // proven, and records it. Without it the original measures as a range and
@@ -387,7 +393,12 @@ export function measureDiagnosticImpact(
     branchTiming,
   );
   const after = measureSnippet(
-    collapseConstantExpressions(replacement, evaluate),
+    collapseConstantExpressions(
+      [replacement, ...edits.map((edit) => edit.replacement)]
+        .filter((text) => text !== "")
+        .join("\n"),
+      evaluate,
+    ),
     shiftCount,
     branchTiming,
   );

@@ -1,4 +1,5 @@
-import { annotateReplacement, type FixAnnotation } from "./fix.js";
+import { editsFor, overlaps, type FixAnnotation } from "./fix.js";
+import type { SourceSpan } from "./span.js";
 import type { Diagnostic } from "./diagnostic.js";
 
 /**
@@ -133,35 +134,43 @@ export async function runInteractive(
   const lines = source.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
   const applied: Diagnostic[] = [];
   const suppressed: Diagnostic[] = [];
-  let lowestTouched = Number.POSITIVE_INFINITY;
+  // Each decision is taken whole, from the bottom up: a fix with every run it
+  // rewrites, or none of it if any run overlaps a decision already taken.
+  const taken: SourceSpan[] = [];
+  const changes: { startLine: number; endLine: number; lines: string[] }[] = [];
 
   for (const { diagnostic, decision } of decisions
     .slice()
     .sort(
       (a, b) => b.diagnostic.span!.startLine - a.diagnostic.span!.startLine,
     )) {
-    const { startLine, endLine } = diagnostic.span!;
-    if (endLine >= lowestTouched) continue;
-
+    const { startLine } = diagnostic.span!;
     if (decision === "apply") {
       if (diagnostic.suggestion?.replacement === undefined) continue;
-      const replacement = annotateReplacement(lines, diagnostic, annotate);
-      lines.splice(
-        startLine - 1,
-        endLine - startLine + 1,
-        ...(replacement === "" ? [] : replacement.split("\n")),
-      );
+      const edits = editsFor(lines, diagnostic, annotate);
+      if (edits.some((edit) => taken.some((span) => overlaps(edit, span))))
+        continue;
+      taken.push(...edits);
+      changes.push(...edits);
       applied.push(diagnostic);
     } else {
-      lines.splice(
-        startLine - 1,
-        0,
-        suppressionFor(diagnostic, indentOf(lines[startLine - 1])),
-      );
+      if (taken.some((span) => overlaps(diagnostic.span!, span))) continue;
+      taken.push(diagnostic.span!);
+      // Inserted before the line, replacing nothing.
+      changes.push({
+        startLine,
+        endLine: startLine - 1,
+        lines: [suppressionFor(diagnostic, indentOf(lines[startLine - 1]))],
+      });
       suppressed.push(diagnostic);
     }
-    lowestTouched = startLine;
   }
+  for (const change of changes.sort((a, b) => b.startLine - a.startLine))
+    lines.splice(
+      change.startLine - 1,
+      change.endLine - change.startLine + 1,
+      ...change.lines,
+    );
 
   return {
     output: lines.join("\n"),

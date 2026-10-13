@@ -235,6 +235,35 @@ describe("code actions", () => {
     ]);
   });
 
+  it("offers one quick fix that edits a save and its matching restore", async () => {
+    const client = withClient();
+    await client.initialize(fixture("basic"));
+    const { uri } = await client.open(fixture("basic/register-save.s"));
+    const actions = await client.codeActions(uri, 1);
+
+    const fix = actions.find((action) => action.title.startsWith("Save only"));
+    assert.ok(
+      fix,
+      `no quick fix in ${JSON.stringify(actions.map((a) => a.title))}`,
+    );
+    assert.deepEqual(editsOf(fix, uri), [
+      {
+        range: {
+          start: { line: 1, character: 0 },
+          end: { line: 2, character: 0 },
+        },
+        newText: "\tmove.l\td0,-(sp)\n",
+      },
+      {
+        range: {
+          start: { line: 3, character: 0 },
+          end: { line: 4, character: 0 },
+        },
+        newText: "\tmove.l\t(sp)+,d0\n",
+      },
+    ]);
+  });
+
   it("writes suppressions the linter understands, at the line's indent", async () => {
     const client = withClient();
     await client.initialize(fixture("basic"));

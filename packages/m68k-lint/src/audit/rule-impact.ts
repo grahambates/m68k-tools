@@ -92,6 +92,16 @@ export const ruleImpactAuditCases: readonly RuleImpactAuditCase[] = [
   },
   { ruleId: "optimization/single-register-movem", source: "movem.l d0,-(sp)" },
   {
+    ruleId: "optimization/unneeded-register-save",
+    caseId: "trim",
+    source: "f:\nmovem.l d0-d3,-(sp)\nmoveq #1,d0\nmovem.l (sp)+,d0-d3\nrts",
+  },
+  {
+    ruleId: "optimization/unneeded-register-save",
+    caseId: "remove",
+    source: "f:\nmovem.l d2/d3,-(sp)\nnop\nmovem.l (sp)+,d2/d3\nrts",
+  },
+  {
     ruleId: "optimization/bset-low-word-mask",
     source: "bset.l #8,d0\nmoveq #0,d7",
   },
@@ -500,11 +510,6 @@ export const ruleImpactAuditCases: readonly RuleImpactAuditCase[] = [
   {
     ruleId: "optimization/negative-signed-multiply",
     exempt: "68020+ long MUL form; 68kcounter is 68000-only",
-  },
-  {
-    ruleId: "optimization/unneeded-register-save",
-    exempt:
-      "manual-only suggestion with no replacement: it trims a register list across a whole routine, so there is no before/after instruction pair to measure",
   },
 ];
 

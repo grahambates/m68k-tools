@@ -3,6 +3,7 @@ import type {
   Diagnostic,
   OptimizationAssessment,
 } from "./diagnostic.js";
+import type { SourceSpan } from "./span.js";
 
 /**
  * Applying suggestions to source.
@@ -55,9 +56,26 @@ export interface FixOptions {
   annotate?: FixAnnotation;
 }
 
+/** A run of lines a fix replaced, numbered as in the source it was applied to. */
+export interface AppliedEdit {
+  startLine: number;
+  endLine: number;
+  /** The lines put in their place; none where the run was removed. */
+  lines: string[];
+}
+
 export interface FixResult {
   output: string;
-  applied: { ruleId: string; startLine: number; endLine: number }[];
+  /**
+   * The suggestions applied, by the span each one reports on, with every run
+   * of lines it rewrote: one for most, several for a suggestion with `edits`.
+   */
+  applied: {
+    ruleId: string;
+    startLine: number;
+    endLine: number;
+    edits: AppliedEdit[];
+  }[];
   /** Suggestions that were eligible but overlapped one already applied this pass. */
   deferred: number;
   passes: number;
@@ -104,15 +122,66 @@ export function annotateReplacement(
   diagnostic: Diagnostic,
   mode: FixAnnotation = "obfuscated",
 ): string {
-  const replacement = diagnostic.suggestion!.replacement!;
-  if (
-    mode !== "all" &&
-    !(mode === "obfuscated" && diagnostic.suggestion?.obfuscated)
-  )
+  return annotateEdit(
+    lines,
+    diagnostic.span!,
+    diagnostic.suggestion!.replacement!,
+    !!diagnostic.suggestion?.obfuscated,
+    mode,
+  );
+}
+
+function annotateEdit(
+  lines: readonly string[],
+  { startLine, endLine }: SourceSpan,
+  replacement: string,
+  obfuscated: boolean,
+  mode: FixAnnotation,
+): string {
+  if (mode !== "all" && !(mode === "obfuscated" && obfuscated))
     return replacement;
-  const { startLine, endLine } = diagnostic.span!;
   const original = lines.slice(startLine - 1, endLine);
   return annotated(original, replacement, indentOf(original[0] ?? ""));
+}
+
+/**
+ * The lines a suggestion puts in place of each run it rewrites, annotated as
+ * asked. An empty replacement removes the lines outright rather than leaving
+ * a blank one behind.
+ */
+export function editsFor(
+  lines: readonly string[],
+  diagnostic: Diagnostic,
+  annotate: FixAnnotation,
+): AppliedEdit[] {
+  return suggestionEdits(diagnostic).map(({ span, replacement }) => {
+    const text = annotateEdit(
+      lines,
+      span,
+      replacement,
+      !!diagnostic.suggestion?.obfuscated,
+      annotate,
+    );
+    return { ...span, lines: text === "" ? [] : text.split("\n") };
+  });
+}
+
+/** Whether two runs of lines share any line. */
+export function overlaps(a: SourceSpan, b: SourceSpan): boolean {
+  return a.startLine <= b.endLine && b.startLine <= a.endLine;
+}
+
+/** Every run of lines a suggestion rewrites, its own span first. */
+export function suggestionEdits(
+  diagnostic: Diagnostic,
+): { span: SourceSpan; replacement: string }[] {
+  return [
+    {
+      span: diagnostic.span!,
+      replacement: diagnostic.suggestion!.replacement!,
+    },
+    ...(diagnostic.suggestion?.edits ?? []),
+  ];
 }
 
 const DEFAULT_ASSESSMENTS: readonly OptimizationAssessment[] = ["improvement"];
@@ -141,7 +210,8 @@ function eligible(
  * Applied from the bottom up so that the line numbers of the ones still to come
  * stay valid. Where two suggestions cover the same lines only the lower is
  * taken: the other is not discarded, it is simply left for the next round,
- * where it will be recomputed against the text that now exists.
+ * where it will be recomputed against the text that now exists. A suggestion
+ * with further `edits` is taken only if none of its runs overlaps another.
  */
 export function applyOnce(
   source: string,
@@ -155,26 +225,51 @@ export function applyOnce(
     .filter((diagnostic) => eligible(diagnostic, accept, assessments))
     .sort((a, b) => b.span!.startLine - a.span!.startLine);
 
-  const applied: FixResult["applied"] = [];
+  // A suggestion is taken whole: every run it rewrites, or none of them if
+  // any overlaps one already taken this round.
+  const taken: SourceSpan[] = [];
+  const chosen: Diagnostic[] = [];
   let deferred = 0;
-  let lowestTouched = Number.POSITIVE_INFINITY;
-
   for (const diagnostic of candidates) {
-    const { startLine, endLine } = diagnostic.span!;
-    if (endLine >= lowestTouched) {
+    const spans = suggestionEdits(diagnostic).map(({ span }) => span);
+    if (spans.some((span) => taken.some((other) => overlaps(span, other)))) {
       deferred++;
       continue;
     }
-    const replacement = annotateReplacement(lines, diagnostic, annotate);
-    // An empty replacement removes the lines outright rather than leaving a
-    // blank one behind.
-    const inserted = replacement === "" ? [] : replacement.split("\n");
-    lines.splice(startLine - 1, endLine - startLine + 1, ...inserted);
-    applied.push({ ruleId: diagnostic.ruleId, startLine, endLine });
-    lowestTouched = startLine;
+    taken.push(...spans);
+    chosen.push(diagnostic);
   }
 
-  return { output: lines.join("\n"), applied: applied.reverse(), deferred };
+  const original = [...lines];
+  const edits = chosen.flatMap((diagnostic) =>
+    editsFor(original, diagnostic, annotate).map((edit) => ({
+      diagnostic,
+      edit,
+    })),
+  );
+  // From the bottom up, so the line numbers of the edits still to come stay
+  // valid.
+  for (const { edit } of [...edits].sort(
+    (a, b) => b.edit.startLine - a.edit.startLine,
+  )) {
+    lines.splice(
+      edit.startLine - 1,
+      edit.endLine - edit.startLine + 1,
+      ...edit.lines,
+    );
+  }
+
+  const applied: FixResult["applied"] = chosen
+    .map((diagnostic) => ({
+      ruleId: diagnostic.ruleId,
+      startLine: diagnostic.span!.startLine,
+      endLine: diagnostic.span!.endLine,
+      edits: edits
+        .filter((one) => one.diagnostic === diagnostic)
+        .map(({ edit }) => edit),
+    }))
+    .sort((a, b) => a.startLine - b.startLine);
+  return { output: lines.join("\n"), applied, deferred };
 }
 
 /**

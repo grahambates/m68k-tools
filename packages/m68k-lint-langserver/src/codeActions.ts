@@ -40,21 +40,22 @@ export function acceptedApplicabilities(conditional: boolean): Applicability[] {
 }
 
 /**
- * The replacement text for one diagnostic's span.
+ * The text edits applying one diagnostic's suggestion: one for most, several
+ * for a suggestion that also rewrites other lines, such as a trimmed register
+ * save and its restores.
  *
  * Routed through `applyOnce` rather than splicing `suggestion.replacement`
  * directly so that eligibility and the annotate rewrite stay defined in one
  * place — the library's — and cannot drift from what `m68k-lint --fix` does.
- * Only the changed run is extracted, so the edit stays local and the client
- * keeps cursors and folds outside it.
+ * Only the changed runs are extracted, so the edits stay local and the client
+ * keeps cursors and folds outside them.
  */
 export function singleFixEdit(
   source: string,
   diagnostic: Diagnostic,
   accept: readonly Applicability[],
   annotate: FixAnnotation,
-): { span: SourceSpan; newText: string } | undefined {
-  const before = source.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+): { span: SourceSpan; newText: string }[] | undefined {
   const result = applyOnce(
     source,
     [diagnostic],
@@ -64,19 +65,24 @@ export function singleFixEdit(
   );
   const [applied] = result.applied;
   if (!applied) return undefined;
+  return applied.edits.map(({ startLine, endLine, lines }) => ({
+    span: { startLine, endLine },
+    // Removals leave no lines; the trailing newline goes with them.
+    newText: lines.length ? lines.join("\n") + "\n" : "",
+  }));
+}
 
-  const after = result.output.split("\n");
-  const replacedCount = applied.endLine - applied.startLine + 1;
-  const insertedCount = after.length - before.length + replacedCount;
-  const lines = after.slice(
-    applied.startLine - 1,
-    applied.startLine - 1 + insertedCount,
-  );
-  // Removals leave no lines; the trailing newline goes with them.
-  const newText = insertedCount === 0 ? "" : lines.join("\n") + "\n";
+function edits(
+  document: TextDocument,
+  fixes: { span: SourceSpan; newText: string }[],
+): CodeAction["edit"] {
   return {
-    span: { startLine: applied.startLine, endLine: applied.endLine },
-    newText,
+    changes: {
+      [document.uri]: fixes.map(
+        ({ span, newText }) =>
+          ({ range: spanRange(span, document), newText }) satisfies TextEdit,
+      ),
+    },
   };
 }
 
@@ -183,7 +189,7 @@ export function codeActionsFor(
             isPreferred:
               !diagnostic.alternatives?.length &&
               choice.suggestion.applicability === "safe",
-            edit: edit(document, spanRange(fix.span, document), fix.newText),
+            edit: edits(document, fix),
           });
         }
       }

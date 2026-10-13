@@ -1,5 +1,6 @@
 import { parseFile } from "m68k-parser";
 import { applyFixes, applyOnce } from "../core/fix.js";
+import type { Diagnostic } from "../core/diagnostic.js";
 import { lintSource } from "../core/lint.js";
 
 /**
@@ -272,5 +273,66 @@ describe("rule-specific annotations", () => {
     const output = applyOnce(source, lint(source), ["safe"], "all").output;
     expect(output).toContain("; move.w\t#100,d0");
     expect(parseFile(output).errors).toHaveLength(0);
+  });
+});
+
+describe("suggestions that rewrite several runs", () => {
+  const source = ["a", "b", "c", "d", "e"].map((x) => `\t${x}`).join("\n");
+  const finding = (
+    ruleId: string,
+    line: number,
+    replacement: string,
+    edits: { line: number; replacement: string }[] = [],
+  ): Diagnostic => ({
+    ruleId,
+    category: "optimization",
+    severity: "suggestion",
+    confidence: "high",
+    message: ruleId,
+    loc: { start: 1, end: 2, line },
+    span: { startLine: line, endLine: line },
+    suggestion: {
+      description: ruleId,
+      applicability: "safe",
+      replacement,
+      edits: edits.map(({ line: at, replacement: text }) => ({
+        span: { startLine: at, endLine: at },
+        replacement: text,
+      })),
+    },
+  });
+
+  test("applies every run together and reports each", () => {
+    const result = applyOnce(
+      source,
+      [finding("multi", 2, "\tB", [{ line: 4, replacement: "" }])],
+      ["safe"],
+    );
+    expect(result.output).toBe(["\ta", "\tB", "\tc", "\te"].join("\n"));
+    expect(result.applied).toEqual([
+      {
+        ruleId: "multi",
+        startLine: 2,
+        endLine: 2,
+        edits: [
+          { startLine: 2, endLine: 2, lines: ["\tB"] },
+          { startLine: 4, endLine: 4, lines: [] },
+        ],
+      },
+    ]);
+  });
+
+  test("defers the whole suggestion when any run overlaps another fix", () => {
+    const result = applyOnce(
+      source,
+      [
+        finding("multi", 2, "\tB", [{ line: 4, replacement: "\tD" }]),
+        finding("single", 4, "\tdd"),
+      ],
+      ["safe"],
+    );
+    // The lower one is taken; none of the other is, not even its line 2.
+    expect(result.output).toBe(["\ta", "\tb", "\tc", "\tdd", "\te"].join("\n"));
+    expect(result.deferred).toBe(1);
   });
 });

@@ -255,3 +255,30 @@ test("interactive fixes honour all annotation modes", async () => {
     expect(result.output.includes("; was:")).toBe(mode !== "none");
   }
 });
+
+test("applying a fix that edits several lines applies all of them", async () => {
+  const source = [
+    "f:",
+    "\tmovem.l\td0-d3,-(sp)",
+    "\tmoveq\t#1,d0",
+    "\tmovem.l\t(sp)+,d0-d3",
+    "\trts",
+  ].join("\n");
+  const diagnostics = lintSource(source, { processors: ["mc68000"] });
+  const { output } = await runInteractive(source, diagnostics, (diagnostic) =>
+    Promise.resolve(
+      diagnostic.ruleId === "optimization/unneeded-register-save"
+        ? "apply"
+        : "skip",
+    ),
+  );
+  expect(output).toBe(
+    [
+      "f:",
+      "\tmove.l\td0,-(sp)",
+      "\tmoveq\t#1,d0",
+      "\tmove.l\t(sp)+,d0",
+      "\trts",
+    ].join("\n"),
+  );
+});

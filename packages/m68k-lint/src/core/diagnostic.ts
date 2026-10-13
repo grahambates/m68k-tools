@@ -52,11 +52,23 @@ export interface OptimizationImpact {
   assessment?: OptimizationAssessment;
 }
 
+/** Lines a suggestion rewrites besides its own span. */
+export interface SuggestionEdit {
+  span: SourceSpan;
+  replacement: string;
+}
+
 export interface Suggestion {
   /** Inherited from the rule; requests annotation in the default obfuscated mode. */
   obfuscated?: boolean;
   description: string;
   replacement?: string;
+  /**
+   * Further runs of lines the suggestion rewrites, such as the restores that
+   * match a trimmed register save. They are applied together with the
+   * suggestion's own span or not at all, and only alongside a replacement.
+   */
+  edits?: SuggestionEdit[];
   applicability: Applicability;
   /** Optional measured/derived impact. Kept separate from rule validity so unsupported CPUs can simply omit it. */
   impact?: OptimizationImpact;

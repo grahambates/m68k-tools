@@ -27,7 +27,7 @@ import {
 } from "../analysis/registers.js";
 import type { LintConfig } from "./config.js";
 import type { FileFacts } from "./facts.js";
-import type { Diagnostic } from "./diagnostic.js";
+import type { Diagnostic, SuggestionEdit } from "./diagnostic.js";
 import { isMacroInvocation } from "../util/ast.js";
 import { computeSourceSpan, type SourceSpan } from "./span.js";
 import { isBlockBoundary } from "../analysis/blocks.js";
@@ -428,7 +428,11 @@ export class DefaultRuleContext implements RuleContext {
         .some((line) => line.inlineCondition !== undefined)
     )
       return undefined;
-    const suggestion = this.placeSuggestion(diagnostic, span);
+    const suggestion = this.placeEdits(
+      diagnostic,
+      span,
+      this.placeSuggestion(diagnostic, span),
+    );
     const replacement =
       suggestion?.replacement ?? diagnostic.suggestion?.replacement;
     const lost =
@@ -544,6 +548,49 @@ export class DefaultRuleContext implements RuleContext {
    * finding becomes a manual one. Done here rather than in each rule so that no
    * rule can forget.
    */
+  /**
+   * Place a suggestion's further edits as its own replacement is placed. If
+   * any of them cannot be, or two overlap, the rewrite is not one that can be
+   * made faithfully, and the finding becomes a manual one.
+   */
+  private placeEdits(
+    diagnostic: Diagnostic,
+    span: SourceSpan | undefined,
+    suggestion: Diagnostic["suggestion"],
+  ): Diagnostic["suggestion"] {
+    const edits = diagnostic.suggestion?.edits;
+    if (!edits?.length || !suggestion || suggestion.replacement === undefined)
+      return suggestion;
+    const manual = {
+      ...suggestion,
+      replacement: undefined,
+      edits: undefined,
+      applicability: "manual" as const,
+    };
+    const spans = [span!, ...edits.map((edit) => edit.span)].sort(
+      (a, b) => a.startLine - b.startLine,
+    );
+    if (spans.some((one, i) => i > 0 && one.startLine <= spans[i - 1].endLine))
+      return manual;
+    const placed: SuggestionEdit[] = [];
+    for (const edit of edits) {
+      const one = this.placeSuggestion(
+        {
+          ...diagnostic,
+          suggestion: {
+            ...suggestion,
+            replacement: edit.replacement,
+            edits: undefined,
+          },
+        },
+        edit.span,
+      );
+      if (one?.replacement === undefined) return manual;
+      placed.push({ span: edit.span, replacement: one.replacement });
+    }
+    return { ...suggestion, edits: placed };
+  }
+
   private placeSuggestion(
     diagnostic: Diagnostic,
     span: SourceSpan | undefined,

@@ -274,6 +274,20 @@ export function formatDiagnostic(
             .split("\n")
             .map((text) => highlightAsm(text, color)),
         );
+      // Lines it rewrites elsewhere, such as the restores matching a save.
+      for (const extra of suggestion.edits ?? [])
+        lines.push(
+          paint(
+            color,
+            90,
+            `line ${extra.span.startLine}:${extra.replacement ? "" : " removed"}`,
+          ),
+          ...(extra.replacement
+            ? extra.replacement
+                .split("\n")
+                .map((text) => highlightAsm(text, color))
+            : []),
+        );
       if (!sharedImpact && summaries[index]) lines.push(summaries[index]);
     }
     if (choice.notes?.length)

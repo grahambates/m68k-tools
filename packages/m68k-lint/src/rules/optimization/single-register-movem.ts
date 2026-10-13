@@ -1,4 +1,5 @@
 import type { OperandNode } from "m68k-parser";
+import type { RuleContext } from "../../core/context.js";
 import type { Rule } from "../../core/rule.js";
 import { instructionSize, isInstruction, operand } from "../../util/ast.js";
 import { changedFlagsApplicability, sourceOperand } from "./helpers.js";
@@ -11,6 +12,41 @@ function singleRegister(op: OperandNode | undefined): string | undefined {
   if (op.type === "register-list" && op.registers.length === 1)
     return op.registers[0];
   return undefined;
+}
+
+/**
+ * Whether MOVE is worth using for a single-register MOVEM on the targets.
+ * Verified with 68kcounter: a real win through 68040 and (byte-only) on
+ * 68060; 68020 could not be verified (68kcounter has no timing entry for
+ * this MOVEM form on that target) and stays excluded pending that.
+ */
+export function moveBeatsSingleRegisterMovem(ctx: RuleContext): boolean {
+  return targetsOnly(ctx.config, [
+    "mc68000",
+    "mc68010",
+    "mc68030",
+    "mc68040",
+    "mc68060",
+  ]);
+}
+
+/**
+ * How safe it is to write a single-register MOVEM on a line as MOVE. MOVEM
+ * preserves CCR. MOVE to Dn or memory writes NZVC; MOVE to An is MOVEA-like
+ * and preserves it.
+ */
+export function singleRegisterMoveSafety(
+  ctx: RuleContext,
+  index: number,
+  register: string,
+  registerIsDest: boolean,
+) {
+  const preservesFlags =
+    registerIsDest &&
+    (register.toLowerCase().startsWith("a") || register.toLowerCase() === "sp");
+  return preservesFlags
+    ? { applicability: "safe" as const, confidence: "certain" as const }
+    : changedFlagsApplicability(ctx, index, ["N", "Z", "V", "C"]);
 }
 
 function replacementMnemonic(): string {
@@ -30,19 +66,7 @@ export const singleRegisterMovem: Rule = {
   },
   checkLine(ctx, line, index) {
     if (!isInstruction(line, "movem")) return;
-    // Verified with 68kcounter: a real win through 68040 and (byte-only) on
-    // 68060; 68020 could not be verified (68kcounter has no timing entry for
-    // this MOVEM form on that target) and stays excluded pending that.
-    if (
-      !targetsOnly(ctx.config, [
-        "mc68000",
-        "mc68010",
-        "mc68030",
-        "mc68040",
-        "mc68060",
-      ])
-    )
-      return;
+    if (!moveBeatsSingleRegisterMovem(ctx)) return;
     const size = instructionSize(line) ?? "l";
     const left = operand(line, 0);
     const right = operand(line, 1);
@@ -64,14 +88,12 @@ export const singleRegisterMovem: Rule = {
     if (!sourceText || !destText) return;
     const replacement = `${replacementMnemonic()}.${size} ${sourceText},${destText}`;
 
-    // MOVEM preserves CCR. MOVE to Dn/memory writes NZVC; MOVE to An is MOVEA-like and preserves CCR.
-    const replacementPreservesFlags =
-      registerIsDest &&
-      (register.toLowerCase().startsWith("a") ||
-        register.toLowerCase() === "sp");
-    const safety = replacementPreservesFlags
-      ? { applicability: "safe" as const, confidence: "certain" as const }
-      : changedFlagsApplicability(ctx, index, ["N", "Z", "V", "C"]);
+    const safety = singleRegisterMoveSafety(
+      ctx,
+      index,
+      register,
+      registerIsDest,
+    );
 
     ctx.report({
       ruleId: this.meta.id,

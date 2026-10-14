@@ -46,8 +46,7 @@ export function remappingHighlights(
 
 /**
  * Groups reference lines for whole-line usage highlights. A line counts as a
- * write when any reference on it may write the register, matching the strong
- * highlight VS Code uses for write occurrences; other lines are reads.
+ * write when any reference on it may write the register; other lines are reads.
  */
 export function usageHighlightLines(references: RegisterUsageReference[]): {
   read: number[];

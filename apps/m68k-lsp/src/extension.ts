@@ -146,39 +146,47 @@ export function activate(context: ExtensionContext): void {
     borderColor: new ThemeColor("editorWarning.foreground"),
     rangeBehavior: DecorationRangeBehavior.ClosedClosed,
   });
-  const usageReadHighlight = window.createTextEditorDecorationType({
-    isWholeLine: true,
-    backgroundColor: new ThemeColor("editor.wordHighlightBackground"),
-    overviewRulerColor: new ThemeColor(
-      "editorOverviewRuler.wordHighlightForeground",
-    ),
-    overviewRulerLane: OverviewRulerLane.Center,
-    rangeBehavior: DecorationRangeBehavior.ClosedClosed,
-  });
-  const usageWriteHighlight = window.createTextEditorDecorationType({
-    isWholeLine: true,
-    backgroundColor: new ThemeColor("editor.wordHighlightStrongBackground"),
-    overviewRulerColor: new ThemeColor(
-      "editorOverviewRuler.wordHighlightStrongForeground",
-    ),
-    overviewRulerLane: OverviewRulerLane.Center,
-    rangeBehavior: DecorationRangeBehavior.ClosedClosed,
-  });
-  // Lines where the register is free, marked at the edge so they do not
-  // compete with the read and write backgrounds.
-  const freeHighlight = (color: string) =>
+  // Usage lines are told apart by a mark at the edge, as two background
+  // strengths are hard to read; read and write lines share one background.
+  // Free lines never touch the register, so they never share a line with a
+  // read or write.
+  const edgeHighlight = (
+    color: string,
+    lane: OverviewRulerLane,
+    background?: string,
+  ) =>
     window.createTextEditorDecorationType({
       isWholeLine: true,
       borderWidth: "0 0 0 2px",
       borderStyle: "solid",
       borderColor: new ThemeColor(color),
+      ...(background ? { backgroundColor: new ThemeColor(background) } : {}),
       overviewRulerColor: new ThemeColor(color),
-      overviewRulerLane: OverviewRulerLane.Left,
+      overviewRulerLane: lane,
       rangeBehavior: DecorationRangeBehavior.ClosedClosed,
     });
-  const usageFreeHighlight = freeHighlight("charts.green");
-  const usageTemporarilyFreeHighlight = freeHighlight("charts.orange");
-  const usageUnknownHighlight = freeHighlight("descriptionForeground");
+  const usageReadHighlight = edgeHighlight(
+    "charts.blue",
+    OverviewRulerLane.Center,
+    "editor.wordHighlightBackground",
+  );
+  const usageWriteHighlight = edgeHighlight(
+    "charts.purple",
+    OverviewRulerLane.Center,
+    "editor.wordHighlightBackground",
+  );
+  const usageFreeHighlight = edgeHighlight(
+    "charts.green",
+    OverviewRulerLane.Left,
+  );
+  const usageTemporarilyFreeHighlight = edgeHighlight(
+    "charts.orange",
+    OverviewRulerLane.Left,
+  );
+  const usageUnknownHighlight = edgeHighlight(
+    "descriptionForeground",
+    OverviewRulerLane.Left,
+  );
   const highlightUsage = (register?: string) => {
     const snapshot = remappingContext;
     const usage =
@@ -187,7 +195,7 @@ export function activate(context: ExtensionContext): void {
         : undefined;
     const references = usage?.references ?? [];
     const free = availabilityHighlightRanges(usage);
-    // Multiple operands on one line must not stack translucent backgrounds.
+    // A line with several operands gets one mark, a write taking precedence.
     const lines = usageHighlightLines(references);
     const toRanges = (lines: number[]) =>
       lines.map((line) => new Range(line, 0, line, 0));

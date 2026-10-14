@@ -1134,6 +1134,101 @@ Odd:
         });
       });
 
+      it("settles a loop around a recursive call", async () => {
+        // The need after the inner call rises as the loop settles, which must
+        // not make the call need less.
+        const result = await availability(
+          `Start:
+ nop
+ bsr Rec
+ rts
+Rec:
+ tst.l d0
+.loop:
+ tst.w d1
+ beq.s .call
+ rts
+.call:
+ bsr Rec
+ bra.s .loop`,
+          1,
+        );
+        expect(result).toMatchObject({ d0: "unavailable", d1: "unavailable" });
+      });
+
+      it("settles a chain of routines that all call back into the first", async () => {
+        // Each routine calls the next and the first, so every summary depends
+        // on every other: worked out separately, that takes exponential time.
+        const count = 24;
+        const routines = Array.from(
+          { length: count },
+          (_, index) => `Routine${index}:
+ tst.w d${index % 7}
+ beq.s .skip
+ bsr Routine${(index + 1) % count}
+.skip:
+ bsr Routine0
+ moveq #0,d7
+ rts`,
+        );
+        const result = await availability(
+          `Start:
+ nop
+ bsr Routine0
+ rts
+${routines.join("\n")}`,
+          1,
+        );
+        expect(result).toMatchObject({
+          d0: "unavailable",
+          d6: "unavailable",
+          // Every path writes it before anything reads it.
+          d7: "available",
+        });
+      });
+
+      it("stops following calls too costly to summarise", async () => {
+        // Every routine runs on into one long shared tail, so summarising
+        // them all is more work than the analysis allows.
+        const count = 200;
+        const routines = Array.from(
+          { length: count },
+          (_, index) => `Routine${index}:
+ tst.w d${index % 7}
+ beq.s .skip
+ bsr Routine${(index + 1) % count}
+.skip:
+ bsr Routine0
+ bra Tail`,
+        );
+        const result = await availability(
+          `Start:
+ nop
+ bsr Routine0
+ rts
+${routines.join("\n")}
+Tail:
+${" nop\n".repeat(3000)} moveq #0,d7
+ rts`,
+          1,
+        );
+        const exact = {
+          d0: "unavailable",
+          d1: "unavailable",
+          d2: "unavailable",
+          d3: "unavailable",
+          d4: "unavailable",
+          d5: "unavailable",
+          d6: "unavailable",
+          d7: "available",
+        };
+        // Past the limit, a register is left unknown rather than guessed.
+        for (const [register, expected] of Object.entries(exact)) {
+          expect([expected, "unknown"]).toContain(result[register]);
+        }
+        expect(Object.values(result)).toContain("unknown");
+      });
+
       it("takes a routine in another file at its header's word", async () => {
         const library = await createDoc(
           "library.i",

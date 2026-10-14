@@ -145,7 +145,11 @@ export function analyzeRegisterUsage(
   const aliases = createAliasResolver(ctx, params.textDocument.uri);
   const saves = findStackSaves(document.parsed, document.blocks, aliases);
   let incomplete = false;
-  for (const { node, line } of walkFile(document.parsed)) {
+  const { lines } = document.parsed;
+  const firstLine = Math.max(params.range.start.line, 0);
+  const lastLine = Math.min(params.range.end.line, lines.length - 1);
+  for (let index = firstLine; index <= lastLine; index++) {
+    const line = lines[index];
     if (
       definesRegisters(line) ||
       (line.mnemonic?.type === "macro" &&
@@ -153,19 +157,21 @@ export function analyzeRegisterUsage(
     ) {
       continue;
     }
-    for (const found of registersAt(node, aliases)) {
-      const range = locationAsRange(found.node.loc);
-      if (!rangesOverlap(params.range, range)) {
-        continue;
-      }
-      const reference: RegisterUsageReference = {
-        range,
-        spelling: document.document.getText(range),
-        kind: found.kind,
-        access: registerAccess(found.node, line),
-      };
-      for (const register of found.registers) {
-        addReference(usages, register, reference);
+    for (const node of walkLine(line)) {
+      for (const found of registersAt(node, aliases)) {
+        const range = locationAsRange(found.node.loc);
+        if (!rangesOverlap(params.range, range)) {
+          continue;
+        }
+        const reference: RegisterUsageReference = {
+          range,
+          spelling: document.document.getText(range),
+          kind: found.kind,
+          access: registerAccess(found.node, line),
+        };
+        for (const register of found.registers) {
+          addReference(usages, register, reference);
+        }
       }
     }
   }
@@ -174,7 +180,8 @@ export function analyzeRegisterUsage(
   const macroDefinitionLines = collectMacroDefinitionLines(
     document.blocks.blocks,
   );
-  for (const [index, line] of document.parsed.lines.entries()) {
+  for (let index = firstLine; index <= lastLine; index++) {
+    const line = lines[index];
     if (line.mnemonic?.type !== "macro" || macroDefinitionLines.has(index)) {
       continue;
     }
@@ -846,6 +853,7 @@ function registerLiveness(
     touched: new Map<number, CalleeRegisters>(),
     modified: new Map<number, CalleeRegisters>(),
   };
+  let calleeWork = 0;
   const calleeSet = (
     start: number,
     kind: "touched" | "modified",
@@ -866,9 +874,21 @@ function registerLiveness(
         }
       }
     };
+    const order = reachable([start]);
+    calleeWork += order.length;
+    // Past the limit, a subroutine is not followed: it may do anything.
+    if (calleeWork > SUMMARY_WORK_LIMIT) {
+      const result = {
+        registers: found,
+        uncertain: new Set(generalPurposeRegisters),
+        unknown: true,
+      };
+      cache.set(start, result);
+      return result;
+    }
     // Recursion sees the registers found so far, which is the fixed point.
     cache.set(start, { registers: found, uncertain, unknown: false });
-    for (const index of reachable([start])) {
+    for (const index of order) {
       const node = nodeAt(index);
       // A jump that could go anywhere is code that could not be analysed.
       if (node.escape) {
@@ -986,6 +1006,12 @@ function registerLiveness(
     const order = reachable(roots);
     for (let changed = true; changed;) {
       changed = false;
+      if (work) {
+        summaryWork += order.length;
+        if (summaryWork > SUMMARY_WORK_LIMIT) {
+          throw summaryWorkExceeded;
+        }
+      }
       for (const index of order) {
         const need = transfer(
           index,
@@ -1016,49 +1042,122 @@ function registerLiveness(
   /**
    * Need before a call, given the need once it returns. A subroutine in this
    * file is analysed through its own flow, its returns needing what the
-   * caller needs afterwards, recursion included. One defined elsewhere is taken at its header's word: inputs are read, outputs
-   * and trashed registers overwritten, and other registers kept. A call with
-   * neither may do anything.
+   * caller needs afterwards, recursion included. One defined elsewhere is
+   * taken at its header's word: inputs are read, outputs and trashed
+   * registers overwritten, and other registers kept. A call with neither may
+   * do anything.
+   *
+   * Following subroutines is limited (see `SUMMARY_WORK_LIMIT`): once that
+   * work runs out, a subroutine not yet summarised is taken at its header's
+   * word, as if it were defined elsewhere.
    */
-  const summaries = new Map<string, Need>();
-  // Summaries being worked out, outermost first, with their current
-  // approximations. A recursive call sees the approximation, starting from
-  // needing nothing, and its caller is recomputed until that settles. Results
-  // that relied on an unsettled approximation are not kept.
-  const stack: string[] = [];
-  const approximations = new Map<string, Need>();
-  const provisional = new Set<string>();
+  // A summary for each subroutine, register and need after the call, and the
+  // needs after the call each subroutine and register has one for.
+  type Summary = { line: number; register: string; after: Need; need: Need };
+  const summaryKey = ({ line, register, after }: Omit<Summary, "need">) =>
+    `${line}:${register}:${after.bits}:${after.unknown}`;
+  const summaries = new Map<string, Summary>();
+  const summarised = new Map<string, Summary[]>();
+  // Summaries being worked out together, whose needs are approximations
+  // that start from needing nothing, and which summaries read each one. A summary
+  // is recomputed whenever one it read rises, until none changes, so each is
+  // worked out a bounded number of times however the calls recurse.
+  let work:
+    | {
+        readers: Map<Summary, Set<Summary>>;
+        pending: Set<Summary>;
+        current: Summary;
+        created: Summary[];
+      }
+    | undefined;
+  let summaryWork = 0;
+  let followCalls = true;
+  // The need before a call is at least what any summary of the subroutine
+  // for a lesser need after it says, so approximations rise with the need
+  // after a call as the summaries they stand for do. Without that, a solve
+  // could see a call need less as the need after it rose, and never settle.
+  const approximation = (summary: Summary, reader: Summary): Need => {
+    let need = NONE;
+    for (const other of summarised.get(
+      `${summary.line}:${summary.register}`,
+    )!) {
+      if (needIncludes(summary.after, other.after)) {
+        need = joinNeed(need, other.need);
+        const readers =
+          work!.readers.get(other) ??
+          work!.readers.set(other, new Set()).get(other)!;
+        readers.add(reader);
+      }
+    }
+    return need;
+  };
   const throughCall = (call: FlowCall, register: string, after: Need): Need => {
-    if (call.line !== undefined) {
-      const key = `${call.line}:${register}:${after.bits}:${after.unknown}`;
-      const settled = summaries.get(key);
-      if (settled) {
-        return settled;
-      }
-      const recursive = stack.indexOf(key);
-      if (recursive >= 0) {
-        for (const caller of stack.slice(recursive + 1)) {
-          provisional.add(caller);
+    const { line } = call;
+    let summary =
+      line === undefined
+        ? undefined
+        : summaries.get(summaryKey({ line, register, after }));
+    if (summary && !work) {
+      return summary.need;
+    }
+    if (line !== undefined && (summary || followCalls)) {
+      if (!summary) {
+        summary = { line, register, after, need: NONE };
+        summaries.set(summaryKey(summary), summary);
+        const group = `${line}:${register}`;
+        (summarised.get(group) ?? summarised.set(group, []).get(group)!).push(
+          summary,
+        );
+        if (work) {
+          work.pending.add(summary);
+          work.created.push(summary);
         }
-        return approximations.get(key)!;
       }
-      stack.push(key);
-      let need = NONE;
-      approximations.set(key, need);
-      for (;;) {
-        const next = solve(register, [call.line], after).get(call.line) ?? NONE;
-        approximations.set(key, next);
-        if (sameNeed(next, need)) {
-          break;
+      if (work) {
+        return approximation(summary, work.current);
+      }
+      const batch = (work = {
+        readers: new Map(),
+        pending: new Set([summary]),
+        current: summary,
+        created: [summary],
+      });
+      try {
+        while (batch.pending.size) {
+          const current = batch.pending.values().next().value!;
+          batch.pending.delete(current);
+          batch.current = current;
+          const need =
+            solve(current.register, [current.line], current.after).get(
+              current.line,
+            ) ?? NONE;
+          if (!sameNeed(need, current.need)) {
+            current.need = need;
+            for (const reader of batch.readers.get(current) ?? []) {
+              batch.pending.add(reader);
+            }
+          }
         }
-        need = next;
+      } catch (error) {
+        if (error !== summaryWorkExceeded) {
+          throw error;
+        }
+        // Approximations that never settled may need too little to keep.
+        for (const unsettled of batch.created) {
+          summaries.delete(summaryKey(unsettled));
+          const group = summarised.get(
+            `${unsettled.line}:${unsettled.register}`,
+          )!;
+          group.splice(group.indexOf(unsettled), 1);
+        }
+        followCalls = false;
+        summary = undefined;
+      } finally {
+        work = undefined;
       }
-      stack.pop();
-      approximations.delete(key);
-      if (!provisional.delete(key)) {
-        summaries.set(key, need);
+      if (summary) {
+        return summary.need;
       }
-      return need;
     }
     const contract =
       call.name === undefined ? undefined : calleeContract(call.name);
@@ -1250,6 +1349,18 @@ export function routineRegisters(
 }
 
 /**
+ * Lines one analysis works through following subroutines, before it stops
+ * following them: once for what each needs, over every pass of every
+ * summary, and again for which registers each touches. A tangle of recursive
+ * routines in a large program can reach tens of thousands of lines, each
+ * summarised for several registers and needs, which would hold up the server
+ * for many seconds; past this, a few hundredths of a second of each, the
+ * routines left are taken at their headers' word, or may do anything.
+ */
+const SUMMARY_WORK_LIMIT = 100_000;
+const summaryWorkExceeded = new Error("Subroutine summary work limit reached");
+
+/**
  * How much of a register's value is needed: the number of low-order bits
  * later code reads, and whether code that could not be analysed might read
  * it.
@@ -1265,6 +1376,10 @@ function joinNeed(a: Need, b: Need): Need {
 }
 function sameNeed(a: Need, b: Need): boolean {
   return a.bits === b.bits && a.unknown === b.unknown;
+}
+/** Whether a need includes all of another. */
+function needIncludes(a: Need, b: Need): boolean {
+  return a.bits >= b.bits && (a.unknown || !b.unknown);
 }
 
 /**
@@ -1793,9 +1908,12 @@ export function findStackSaves(
       saveByRestore.set(`${restore}:${register}`, save);
     }
   }
+  // A pair lies within one region, so a line can only lie within the pairs of
+  // its own.
   for (const [saveKey, restoreLines] of restoresBySave) {
     const [save, register] = saveKey.split(":");
-    (spans.get(register) ?? spans.set(register, []).get(register)!).push([
+    const key = `${regionOf[Number(save)]}:${register}`;
+    (spans.get(key) ?? spans.set(key, []).get(key)!).push([
       Number(save),
       Math.max(...restoreLines),
     ]);
@@ -1804,7 +1922,7 @@ export function findStackSaves(
     restoresOf: (line, register) => restoresBySave.get(`${line}:${register}`),
     saveOf: (line, register) => saveByRestore.get(`${line}:${register}`),
     covers: (line, register) =>
-      (spans.get(register) ?? []).some(
+      (spans.get(`${regionOf[line]}:${register}`) ?? []).some(
         ([save, last]) => save < line && line <= last,
       ),
   };

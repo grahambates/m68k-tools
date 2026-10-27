@@ -1,7 +1,7 @@
 import type { Rule } from "../../core/rule.js";
 import {
   flagsReadByCondition,
-  getFlagSemantics,
+  isKnownFlagPreservingInstruction,
   type Flag,
 } from "../../semantics/flags.js";
 import { semanticMnemonic } from "../../semantics/mnemonics.js";
@@ -41,13 +41,10 @@ export const conditionAfterPreservedCcr: Rule = {
     // the other conditionals that fall through were not.
     if (flagsReadByCondition(previousName).size > 0) return;
 
-    const previousSemantics = getFlagSemantics(previous.line);
-    if (previousSemantics.controlFlow !== "fallthrough") return;
-    if (
-      previousSemantics.writes.size !== 0 ||
-      previousSemantics.undefined.size !== 0
-    )
-      return;
+    // Only an instruction known to leave CCR alone. One that merely writes no
+    // flags in the semantics table may be missing from it, and claiming it
+    // "does not update CCR" would be wrong (DIVS before BVS, for instance).
+    if (!isKnownFlagPreservingInstruction(previous.line)) return;
 
     // suspicious/stale-condition-code owns cases where the condition reaches
     // entry/unknown state. This rule is the complementary suspicious case:

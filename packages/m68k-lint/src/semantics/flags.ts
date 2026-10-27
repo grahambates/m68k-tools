@@ -322,7 +322,11 @@ function unconditionalFlagSemantics(line: ParsedLine): FlagSemantics {
       controlFlow: "fallthrough",
     };
   }
-  if (["mulu", "muls"].includes(mnemonic)) {
+  // DIVU/DIVS (M68000PRM 4-93, 4-97; DIVSL/DIVUL are the 68020+ long forms):
+  // V reports overflow and C is always cleared. N and Z follow the quotient,
+  // or are undefined on overflow, but a branch after a divide is still reading
+  // that instruction's flags, not an earlier one's. X is not affected.
+  if (["mulu", "muls", "divu", "divs", "divul", "divsl"].includes(mnemonic)) {
     return {
       reads: none(),
       writes: NZVC,
@@ -371,6 +375,40 @@ function unconditionalFlagSemantics(line: ParsedLine): FlagSemantics {
     undefined: none(),
     controlFlow: "fallthrough",
   };
+}
+
+/**
+ * Instructions that fall through without touching CCR (addressing-register
+ * forms are checked separately). Anything else may simply be missing from the
+ * table above, which leaves its flags unknown rather than proven unchanged.
+ */
+const CCR_PRESERVING = new Set([
+  "pea",
+  "exg",
+  "link",
+  "unlk",
+  "nop",
+  "movem",
+  "movep",
+]);
+
+/**
+ * Whether an instruction is known to fall through with CCR untouched, as
+ * opposed to writing no flags only because the table does not describe it.
+ */
+export function isKnownFlagPreservingInstruction(line: ParsedLine): boolean {
+  if (isMacroInvocation(line) || line.inlineCondition !== undefined)
+    return false;
+  const mnemonic = instructionName(line);
+  if (!mnemonic) return false;
+  if (!isAddressRegisterWriteWithoutCCR(line) && !CCR_PRESERVING.has(mnemonic))
+    return false;
+  const semantics = getFlagSemantics(line);
+  return (
+    semantics.controlFlow === "fallthrough" &&
+    semantics.writes.size === 0 &&
+    semantics.undefined.size === 0
+  );
 }
 
 export function isFlagPreservingInstruction(line: ParsedLine): boolean {

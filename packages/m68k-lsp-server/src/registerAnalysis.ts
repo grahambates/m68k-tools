@@ -780,10 +780,18 @@ function expansionFlow(
  *
  * At the cursor, flow starts from wherever the cursor line's own instruction
  * goes, so a loop's closing branch leads back into the loop. A path ends at a
- * return, which reads the outputs the block's header documents. Calls are
- * followed through the
- * subroutine (see `throughCall`). After a branch whose target cannot be
- * resolved, any register may be needed, so none is known to be free.
+ * return, which reads the outputs the block's header documents. After a
+ * branch whose target cannot be resolved, any register may be needed, so none
+ * is known to be free.
+ *
+ * Calls to subroutines in the file are followed through the subroutine, its
+ * returns needing what the caller needs afterwards, recursion included. One
+ * defined elsewhere is taken at its header's word: inputs are read, outputs
+ * and trashed registers overwritten, and other registers kept. A call with
+ * neither may do anything. All registers are worked out together, as masks
+ * (see `NeedTable`), in one pass over the scope and every subroutine it
+ * calls. If that is more work than `FLOW_WORK_LIMIT` allows, calls are not
+ * followed, and every subroutine is taken at its header's word.
  */
 function registerLiveness(
   ctx: Context,
@@ -800,381 +808,33 @@ function registerLiveness(
   const macroDefinitionLines = collectMacroDefinitionLines(blocks.blocks);
   const aliases = createAliasResolver(ctx, uri);
   const saves = findStackSaves(file, blocks, aliases);
-
-  const stepsCache = new Map<number, LineSteps>();
-  const stepsFor = (index: number): LineSteps => {
-    let steps = stepsCache.get(index);
-    if (!steps) {
-      steps = lineSteps(
-        ctx,
-        uri,
-        lines[index],
-        lineTexts[index] ?? "",
-        macroDefinitionLines.has(index),
-        enclosingBlocks(blocks, index).some(
-          (block) => block.kind === "conditional",
-        ),
-        aliases,
-      );
-      stepsCache.set(index, steps);
-    }
-    return steps;
-  };
-
   const nodeAt = createFlowGraph(file, blocks, ctx, uri, lineTexts);
 
-  /** Lines reachable from some roots, last first for backward passes. */
-  const reachableCache = new Map<string, number[]>();
-  const reachable = (roots: number[]): number[] => {
-    const key = roots.join(",");
-    const cached = reachableCache.get(key);
-    if (cached) {
-      return cached;
-    }
-    const seen = new Set<number>();
-    const pending = [...roots];
-    while (pending.length) {
-      const index = pending.pop()!;
-      if (index >= lines.length || seen.has(index)) {
-        continue;
-      }
-      seen.add(index);
-      pending.push(...nodeAt(index).next);
-    }
-    const order = [...seen].sort((a, b) => b - a);
-    reachableCache.set(key, order);
-    return order;
-  };
-
-  // Registers a subroutine may touch, or only those it may change, following
-  // its own flow and calls. Changes a stack restore undoes do not count.
-  type CalleeRegisters = CodeRegisters;
-  const calleeCaches = {
-    touched: new Map<number, CalleeRegisters>(),
-    modified: new Map<number, CalleeRegisters>(),
-  };
-  let calleeWork = 0;
-  const calleeSet = (
-    start: number,
-    kind: "touched" | "modified",
-  ): CalleeRegisters => {
-    const cache = calleeCaches[kind];
-    const cached = cache.get(start);
-    if (cached) {
-      return cached;
-    }
-    const found = new Set<string>();
-    // Code that could not be analysed may do anything to a register, except
-    // one a stack save around it will put back.
-    const uncertain = new Set<string>();
-    const unknownAt = (index: number, registers: Iterable<string>) => {
-      for (const register of registers) {
-        if (!saves.covers(index, register)) {
-          uncertain.add(register);
-        }
-      }
-    };
-    const order = reachable([start]);
-    calleeWork += order.length;
-    // Past the limit, a subroutine is not followed: it may do anything.
-    if (calleeWork > SUMMARY_WORK_LIMIT) {
-      const result = {
-        registers: found,
-        uncertain: new Set(generalPurposeRegisters),
-        unknown: true,
-      };
-      cache.set(start, result);
-      return result;
-    }
-    // Recursion sees the registers found so far, which is the fixed point.
-    cache.set(start, { registers: found, uncertain, unknown: false });
-    for (const index of order) {
-      const node = nodeAt(index);
-      // A jump that could go anywhere is code that could not be analysed.
-      if (node.escape) {
-        unknownAt(index, generalPurposeRegisters);
-      }
-      for (const step of stepsFor(index)) {
-        if (step === "unknown") {
-          unknownAt(index, generalPurposeRegisters);
-          continue;
-        }
-        for (const [register, effect] of step) {
-          // A save keeps the caller's value, and what happens to the
-          // register before a restore puts it back is not seen by the caller.
-          if (
-            saves.covers(index, register) ||
-            saves.restoresOf(index, register) !== undefined
-          ) {
-            continue;
-          }
-          if (kind === "touched" || effect.modifies) {
-            found.add(register);
-          }
-        }
-      }
-      if (!node.call) {
-        continue;
-      }
-      if (node.call.line === undefined) {
-        const contract =
-          node.call.name === undefined
-            ? undefined
-            : calleeContract(node.call.name);
-        if (!contract) {
-          unknownAt(index, generalPurposeRegisters);
-          continue;
-        }
-        for (const [register, { writes }] of contract) {
-          if (
-            !saves.covers(index, register) &&
-            (kind === "touched" || writes)
-          ) {
-            found.add(register);
-          }
-        }
-        continue;
-      }
-      const nested = calleeSet(node.call.line, kind);
-      unknownAt(index, nested.uncertain);
-      for (const register of nested.registers) {
-        if (!saves.covers(index, register)) {
-          found.add(register);
-        }
-      }
-    }
-    const result = { registers: found, uncertain, unknown: uncertain.size > 0 };
-    cache.set(start, result);
-    return result;
-  };
-  const calleeRegisters = (start: number) => calleeSet(start, "touched");
-
-  /** Need on entry to a line, given the need after it. */
-  const transfer = (
-    index: number,
-    register: string,
-    after: Need,
-    needOutAt: (index: number) => Need,
-  ): Need => {
-    const node = nodeAt(index);
-    // Where a jump that could go anywhere leads, any register may be needed;
-    // that is not known to be so. Its own operands are read as usual.
-    if (node.escape) {
-      after = { bits: 0, unknown: true };
-    }
-    // A saved register's value is kept on the stack, not read: whatever is
-    // needed once it is restored is needed before it is saved.
-    const restores = saves.restoresOf(index, register);
-    // The call runs after the line's operands are evaluated.
-    let need = node.call ? throughCall(node.call, register, after) : after;
-    const steps = stepsFor(index);
-    for (let step = steps.length - 1; step >= 0; step--) {
-      const effects = steps[step];
-      if (effects === "unknown") {
-        need = { ...need, unknown: true };
-        continue;
-      }
-      const effect = effects.get(register);
-      if (!effect) {
-        continue;
-      }
-      // A write leaves the earlier value unneeded once it replaces every bit
-      // still to be read; otherwise the bits it keeps carry the old value.
-      if (effect.write && need.bits <= effect.write) {
-        need = NONE;
-      }
-      if (effect.read && !restores) {
-        need = { ...need, bits: Math.max(need.bits, effect.read) };
-      }
-    }
-    for (const restore of restores ?? []) {
-      need = joinNeed(need, needOutAt(restore));
-    }
-    return need;
-  };
-
-  /**
-   * Need on entry to each line reachable from some roots, given the need
-   * wherever the flow leaves: backward liveness, iterated to a fixed point.
-   */
-  const solve = (
-    register: string,
-    roots: number[],
-    exitNeed: Need,
-  ): Map<number, Need> => {
-    const needIn = new Map<number, Need>();
-    const order = reachable(roots);
-    for (let changed = true; changed;) {
-      changed = false;
-      if (work) {
-        summaryWork += order.length;
-        if (summaryWork > SUMMARY_WORK_LIMIT) {
-          throw summaryWorkExceeded;
-        }
-      }
-      for (const index of order) {
-        const need = transfer(
-          index,
-          register,
-          needOut(index, needIn, exitNeed),
-          (line) => needOut(line, needIn, exitNeed),
-        );
-        if (!sameNeed(need, needIn.get(index) ?? NONE)) {
-          needIn.set(index, need);
-          changed = true;
-        }
-      }
-    }
-    return needIn;
-  };
-  const needOut = (
-    index: number,
-    needIn: Map<number, Need>,
-    exitNeed: Need,
-  ): Need => {
-    const node = nodeAt(index);
-    return node.next.reduce(
-      (need, next) => joinNeed(need, needIn.get(next) ?? NONE),
-      node.exit ? exitNeed : NONE,
+  const stepsFor = (index: number): LineSteps =>
+    lineSteps(
+      ctx,
+      uri,
+      lines[index],
+      lineTexts[index] ?? "",
+      macroDefinitionLines.has(index),
+      enclosingBlocks(blocks, index).some(
+        (block) => block.kind === "conditional",
+      ),
+      aliases,
     );
-  };
 
-  /**
-   * Need before a call, given the need once it returns. A subroutine in this
-   * file is analysed through its own flow, its returns needing what the
-   * caller needs afterwards, recursion included. One defined elsewhere is
-   * taken at its header's word: inputs are read, outputs and trashed
-   * registers overwritten, and other registers kept. A call with neither may
-   * do anything.
-   *
-   * Following subroutines is limited (see `SUMMARY_WORK_LIMIT`): once that
-   * work runs out, a subroutine not yet summarised is taken at its header's
-   * word, as if it were defined elsewhere.
-   */
-  // A summary for each subroutine, register and need after the call, and the
-  // needs after the call each subroutine and register has one for.
-  type Summary = { line: number; register: string; after: Need; need: Need };
-  const summaryKey = ({ line, register, after }: Omit<Summary, "need">) =>
-    `${line}:${register}:${after.bits}:${after.unknown}`;
-  const summaries = new Map<string, Summary>();
-  const summarised = new Map<string, Summary[]>();
-  // Summaries being worked out together, whose needs are approximations
-  // that start from needing nothing, and which summaries read each one. A summary
-  // is recomputed whenever one it read rises, until none changes, so each is
-  // worked out a bounded number of times however the calls recurse.
-  let work:
-    | {
-        readers: Map<Summary, Set<Summary>>;
-        pending: Set<Summary>;
-        current: Summary;
-        created: Summary[];
-      }
-    | undefined;
-  let summaryWork = 0;
-  let followCalls = true;
-  // The need before a call is at least what any summary of the subroutine
-  // for a lesser need after it says, so approximations rise with the need
-  // after a call as the summaries they stand for do. Without that, a solve
-  // could see a call need less as the need after it rose, and never settle.
-  const approximation = (summary: Summary, reader: Summary): Need => {
-    let need = NONE;
-    for (const other of summarised.get(
-      `${summary.line}:${summary.register}`,
-    )!) {
-      if (needIncludes(summary.after, other.after)) {
-        need = joinNeed(need, other.need);
-        const readers =
-          work!.readers.get(other) ??
-          work!.readers.set(other, new Set()).get(other)!;
-        readers.add(reader);
-      }
+  const contracts = new Map<string, CallMasks>();
+  const contractMasks = (name: string | undefined): CallMasks => {
+    if (name === undefined) {
+      return UNKNOWN_CALL;
     }
-    return need;
-  };
-  const throughCall = (call: FlowCall, register: string, after: Need): Need => {
-    const { line } = call;
-    let summary =
-      line === undefined
-        ? undefined
-        : summaries.get(summaryKey({ line, register, after }));
-    if (summary && !work) {
-      return summary.need;
+    let masks = contracts.get(name);
+    if (!masks) {
+      const contract = calleeContract(name);
+      masks = contract ? contractCallMasks(contract) : UNKNOWN_CALL;
+      contracts.set(name, masks);
     }
-    if (line !== undefined && (summary || followCalls)) {
-      if (!summary) {
-        summary = { line, register, after, need: NONE };
-        summaries.set(summaryKey(summary), summary);
-        const group = `${line}:${register}`;
-        (summarised.get(group) ?? summarised.set(group, []).get(group)!).push(
-          summary,
-        );
-        if (work) {
-          work.pending.add(summary);
-          work.created.push(summary);
-        }
-      }
-      if (work) {
-        return approximation(summary, work.current);
-      }
-      const batch = (work = {
-        readers: new Map(),
-        pending: new Set([summary]),
-        current: summary,
-        created: [summary],
-      });
-      try {
-        while (batch.pending.size) {
-          const current = batch.pending.values().next().value!;
-          batch.pending.delete(current);
-          batch.current = current;
-          const need =
-            solve(current.register, [current.line], current.after).get(
-              current.line,
-            ) ?? NONE;
-          if (!sameNeed(need, current.need)) {
-            current.need = need;
-            for (const reader of batch.readers.get(current) ?? []) {
-              batch.pending.add(reader);
-            }
-          }
-        }
-      } catch (error) {
-        if (error !== summaryWorkExceeded) {
-          throw error;
-        }
-        // Approximations that never settled may need too little to keep.
-        for (const unsettled of batch.created) {
-          summaries.delete(summaryKey(unsettled));
-          const group = summarised.get(
-            `${unsettled.line}:${unsettled.register}`,
-          )!;
-          group.splice(group.indexOf(unsettled), 1);
-        }
-        followCalls = false;
-        summary = undefined;
-      } finally {
-        work = undefined;
-      }
-      if (summary) {
-        return summary.need;
-      }
-    }
-    const contract =
-      call.name === undefined ? undefined : calleeContract(call.name);
-    if (!contract) {
-      return joinNeed(after, { bits: 0, unknown: true });
-    }
-    const entry = contract.get(register);
-    return entry?.reads ? ALL : entry?.writes ? NONE : after;
-  };
-  const callTouches = (call: FlowCall, register: string): boolean => {
-    if (call.line !== undefined) {
-      const callee = calleeRegisters(call.line);
-      return callee.registers.has(register) || callee.uncertain.has(register);
-    }
-    const contract =
-      call.name === undefined ? undefined : calleeContract(call.name);
-    return contract ? contract.has(register) : true;
+    return masks;
   };
 
   const endLine = Math.min(scope.end.line, lines.length - 1);
@@ -1183,32 +843,317 @@ function registerLiveness(
     scopeLines.push(index);
   }
 
-  const availability = (register: string): RegisterLiveness => {
-    const exitNeed: Need = outputs.has(register) ? ALL : NONE;
-    const needIn = solve(register, scopeLines, exitNeed);
+  const flow =
+    analyseFlow(true) ??
+    // Without following calls, the flow is only the scope's own, and the
+    // work is bounded by it.
+    analyseFlow(false)!;
 
-    /** Whether a line does anything to the register, or might. */
-    const touches = (index: number): boolean => {
-      const node = nodeAt(index);
-      return (
-        node.escape ||
-        (node.call !== undefined && callTouches(node.call, register)) ||
-        stepsFor(index).some((step) => step === "unknown" || step.has(register))
-      );
-    };
-    const touchedIn = new Map<number, boolean>();
-    const touchedOut = (index: number) =>
-      nodeAt(index).next.some((next) => touchedIn.get(next));
-    for (let changed = true; changed;) {
-      changed = false;
-      for (const index of reachable(scopeLines)) {
-        const touched = touches(index) || touchedOut(index);
-        if (touched !== (touchedIn.get(index) ?? false)) {
-          touchedIn.set(index, touched);
-          changed = true;
-        }
+  /**
+   * The flow from the scope, and from every subroutine it calls when calls
+   * are followed: what each line does, and the needs and registers touched
+   * from each, settled. Undefined if settling needs more than the limit.
+   */
+  function analyseFlow(followCalls: boolean): FlowAnalysis | undefined {
+    const slots = new Int32Array(lines.length).fill(-1);
+    const region: LineCode[] = [];
+    const pending = [...scopeLines];
+    while (pending.length) {
+      const index = pending.pop()!;
+      if (index >= lines.length || slots[index] >= 0) {
+        continue;
+      }
+      slots[index] = region.length;
+      const code = compileLine(index, followCalls);
+      region.push(code);
+      pending.push(...code.next);
+      if (code.callee !== undefined) {
+        pending.push(code.callee);
       }
     }
+
+    // What to recompute when a line's entry changes: the lines that flow
+    // into it, the calls to it, and saves whose restores flow into it.
+    const dependents: number[][] = region.map(() => []);
+    region.forEach((code, slot) => {
+      for (const next of code.next) {
+        dependents[slots[next]].push(slot);
+      }
+      if (code.callee !== undefined) {
+        dependents[slots[code.callee]].push(slot);
+      }
+      for (let item = 1; item < code.restores.length; item += 2) {
+        for (const next of nodeAt(code.restores[item]).next) {
+          if (slots[next] >= 0) {
+            dependents[slots[next]].push(slot);
+          }
+        }
+      }
+    });
+    // Later lines first, as needs flow backwards.
+    const order = region
+      .map((_, slot) => slot)
+      .sort((a, b) => region[b].line - region[a].line);
+    const settle = (update: (slot: number) => boolean, limit = Infinity) => {
+      const queue = [...order];
+      const queued = new Uint8Array(region.length).fill(1);
+      for (let head = 0; head < queue.length; head++) {
+        if (head >= limit) {
+          return false;
+        }
+        const slot = queue[head];
+        queued[slot] = 0;
+        if (update(slot)) {
+          for (const dependent of dependents[slot]) {
+            if (!queued[dependent]) {
+              queued[dependent] = 1;
+              queue.push(dependent);
+            }
+          }
+        }
+      }
+      return true;
+    };
+
+    const needs = new Int32Array(region.length * NEED_TABLE_SIZE);
+    const after = new Int32Array(NEED_TABLE_SIZE);
+    const restored = new Int32Array(NEED_TABLE_SIZE);
+    const updated = new Int32Array(NEED_TABLE_SIZE);
+    const needsOut = (next: number[], exit: boolean, into: Int32Array) => {
+      if (exit) {
+        into.set(EXIT_NEEDS);
+      } else {
+        into.fill(0);
+      }
+      for (const line of next) {
+        const base = slots[line] * NEED_TABLE_SIZE;
+        if (base < 0) {
+          continue;
+        }
+        for (let item = 0; item < NEED_TABLE_SIZE; item++) {
+          into[item] |= needs[base + item];
+        }
+      }
+    };
+    const updateNeeds = (slot: number): boolean => {
+      const code = region[slot];
+      if (code.escape) {
+        // Where a jump that could go anywhere leads, any register may be
+        // needed; that is not known to be so. Its own operands are read as
+        // usual.
+        after.set(ESCAPE_NEEDS);
+      } else {
+        needsOut(code.next, code.exit, after);
+      }
+      // The call runs after the line's operands are evaluated.
+      if (code.callee !== undefined) {
+        applyNeeds(needs, slots[code.callee] * NEED_TABLE_SIZE, after);
+      } else if (code.call) {
+        callNeeds(code.call, after);
+      }
+      stepNeeds(code.steps, after);
+      // A saved register's value is kept on the stack, not read: whatever is
+      // needed once it is restored is needed before it is saved.
+      for (let item = 0; item < code.restores.length; item += 2) {
+        const bit = code.restores[item];
+        const restore = nodeAt(code.restores[item + 1]);
+        needsOut(restore.next, restore.exit, restored);
+        for (let index = 0; index < NEED_TABLE_SIZE; index++) {
+          after[index] |= restored[index] & bit;
+        }
+      }
+      // Needs only rise, which keeps the fixed point the least one.
+      const base = slot * NEED_TABLE_SIZE;
+      let changed = false;
+      for (let item = 0; item < NEED_TABLE_SIZE; item++) {
+        updated[item] = after[item] | needs[base + item];
+        changed ||= updated[item] !== needs[base + item];
+      }
+      needs.set(updated, base);
+      return changed;
+    };
+    if (!settle(updateNeeds, FLOW_WORK_LIMIT)) {
+      return;
+    }
+
+    // Registers the code from each line may touch or change as a caller sees
+    // it, and those code that could not be analysed may change. Changes a
+    // stack restore undoes do not count.
+    const visible = new Int32Array(region.length * 3);
+    settle((slot) => {
+      const code = region[slot];
+      let touched = code.touchedVisibly;
+      let modified = code.modifiedVisibly;
+      let uncertain = code.uncertain;
+      const kept = ALL_REGISTERS & ~code.covered;
+      if (code.callee !== undefined) {
+        const callee = slots[code.callee] * 3;
+        touched |= visible[callee] & kept;
+        modified |= visible[callee + 1] & kept;
+        uncertain |= visible[callee + 2] & kept;
+      }
+      for (const next of code.next) {
+        touched |= visible[slots[next] * 3];
+        modified |= visible[slots[next] * 3 + 1];
+        uncertain |= visible[slots[next] * 3 + 2];
+      }
+      const base = slot * 3;
+      if (
+        touched === visible[base] &&
+        modified === visible[base + 1] &&
+        uncertain === visible[base + 2]
+      ) {
+        return false;
+      }
+      visible.set([touched, modified, uncertain], base);
+      return true;
+    });
+
+    // Registers a line does anything to, or might, and those anything from
+    // it on along its own flow does.
+    const touches = region.map((code) =>
+      code.callee === undefined
+        ? code.touches
+        : code.touches |
+          visible[slots[code.callee] * 3] |
+          visible[slots[code.callee] * 3 + 2],
+    );
+    const touchedIn = new Int32Array(region.length);
+    settle((slot) => {
+      let touched = touches[slot];
+      for (const next of region[slot].next) {
+        touched |= touchedIn[slots[next]];
+      }
+      if (touched === touchedIn[slot]) {
+        return false;
+      }
+      touchedIn[slot] = touched;
+      return true;
+    });
+
+    return { slots, needs, needsOut, visible, touches, touchedIn };
+  }
+
+  /** What a line does, as the flow analysis uses it (see `LineCode`). */
+  function compileLine(index: number, followCalls: boolean): LineCode {
+    const node = nodeAt(index);
+    const covered = registerMask(saves.coveredAt(index));
+    const saved = saves.restoresAt(index);
+    const restoring = registerMask(saved?.keys() ?? []);
+    const restores: number[] = [];
+    for (const [register, restoreLines] of saved ?? []) {
+      for (const restore of restoreLines) {
+        restores.push(registerBit(register), restore);
+      }
+    }
+    const kept = ALL_REGISTERS & ~covered;
+    const code: LineCode = {
+      line: index,
+      next: node.next,
+      exit: node.exit,
+      escape: node.escape,
+      steps: [],
+      restores,
+      covered,
+      touches: node.escape ? ALL_REGISTERS : 0,
+      touchedVisibly: 0,
+      modifiedVisibly: 0,
+      // A jump that could go anywhere is code that could not be analysed,
+      // which may do anything to a register, except one a stack save around
+      // it will put back.
+      uncertain: node.escape ? kept : 0,
+    };
+    for (const step of stepsFor(index)) {
+      if (step === "unknown") {
+        code.steps.push(0, 0, 0, 0, 0, 0, 1);
+        code.touches = ALL_REGISTERS;
+        code.uncertain |= kept;
+        continue;
+      }
+      let write8 = 0;
+      let write16 = 0;
+      let write32 = 0;
+      let read8 = 0;
+      let read16 = 0;
+      let read32 = 0;
+      for (const [register, effect] of step) {
+        const bit = registerBit(register);
+        code.touches |= bit;
+        if (effect.write === 8) {
+          write8 |= bit;
+        } else if (effect.write === 16) {
+          write16 |= bit;
+        } else if (effect.write === 32) {
+          write32 |= bit;
+        }
+        if (effect.read && !(restoring & bit)) {
+          read8 |= bit;
+          read16 |= effect.read >= 16 ? bit : 0;
+          read32 |= effect.read >= 32 ? bit : 0;
+        }
+        // A save keeps the caller's value, and what happens to the register
+        // before a restore puts it back is not seen by the caller.
+        if (!(covered & bit) && !(restoring & bit)) {
+          code.touchedVisibly |= bit;
+          code.modifiedVisibly |= effect.modifies ? bit : 0;
+        }
+      }
+      code.steps.push(write8, write16, write32, read8, read16, read32, 0);
+    }
+    if (node.call) {
+      if (node.call.line !== undefined && followCalls) {
+        code.callee = node.call.line;
+      } else {
+        const call = contractMasks(node.call.name);
+        code.call = call;
+        code.touches |= call.named;
+        code.touchedVisibly |= call.named & kept;
+        code.modifiedVisibly |= call.writes & kept;
+        code.uncertain |= call.unknown ? kept : 0;
+      }
+    }
+    return code;
+  }
+
+  const registerNeed = (
+    table: ArrayLike<number>,
+    base: number,
+    register: string,
+  ): Need => {
+    const bit = registerBit(register);
+    // The need where the flow leaves: outputs are read on return.
+    const offset = base + (outputs.has(register) ? ALL_NEED_CODE : 0) * 4;
+    return {
+      bits:
+        table[offset + 2] & bit
+          ? 32
+          : table[offset + 1] & bit
+            ? 16
+            : table[offset] & bit
+              ? 8
+              : 0,
+      unknown: !!(table[offset + 3] & bit),
+    };
+  };
+  const needIn = (line: number, register: string): Need => {
+    const slot = flow.slots[line];
+    return slot < 0
+      ? NONE
+      : registerNeed(flow.needs, slot * NEED_TABLE_SIZE, register);
+  };
+  const out = new Int32Array(NEED_TABLE_SIZE);
+  const needOut = (line: number, register: string): Need => {
+    const node = nodeAt(line);
+    flow.needsOut(node.next, node.exit, out);
+    return registerNeed(out, 0, register);
+  };
+  const touchedIn = (line: number, bit: number) =>
+    flow.slots[line] >= 0 && !!(flow.touchedIn[flow.slots[line]] & bit);
+  const touchedOut = (line: number, bit: number) =>
+    nodeAt(line).next.some((next) => touchedIn(next, bit));
+
+  const availability = (register: string): RegisterLiveness => {
+    const bit = registerBit(register);
     const status = (need: Need) =>
       need.bits ? "unavailable" : need.unknown ? "unknown" : "available";
 
@@ -1216,12 +1161,12 @@ function registerLiveness(
     // where that depends on code that could not be analysed.
     const free: AvailabilityLines = [];
     for (const index of scopeLines) {
-      const need = status(needIn.get(index) ?? NONE);
-      if (need !== "unavailable" && !touches(index)) {
+      const need = status(needIn(index, register));
+      if (need !== "unavailable" && !(flow.touches[flow.slots[index]] & bit)) {
         free.push({
           line: index,
           availability: need,
-          untilOverwritten: need === "available" && touchedOut(index),
+          untilOverwritten: need === "available" && touchedOut(index, bit),
         });
       }
     }
@@ -1233,11 +1178,11 @@ function registerLiveness(
       need = NONE;
       touched = false;
     } else if (position.line < scope.start.line) {
-      need = needIn.get(scope.start.line) ?? NONE;
-      touched = touchedIn.get(scope.start.line) ?? false;
+      need = needIn(scope.start.line, register);
+      touched = touchedIn(scope.start.line, bit);
     } else {
-      need = needOut(position.line, needIn, exitNeed);
-      touched = touchedOut(position.line);
+      need = needOut(position.line, register);
+      touched = touchedOut(position.line, bit);
     }
     const availability = status(need);
     return {
@@ -1250,9 +1195,247 @@ function registerLiveness(
   };
   return {
     availability,
-    modifiedFrom: (line) => calleeSet(line, "modified"),
+    modifiedFrom: (line) => {
+      const slot = flow.slots[line];
+      const modified = slot < 0 ? 0 : flow.visible[slot * 3 + 1];
+      const uncertain = slot < 0 ? 0 : flow.visible[slot * 3 + 2];
+      return {
+        registers: new Set(maskRegisters(modified)),
+        uncertain: new Set(maskRegisters(uncertain)),
+        unknown: uncertain !== 0,
+      };
+    },
   };
 }
+
+/**
+ * Registers as a mask, a bit for each general-purpose register in the order
+ * D0–D7, A0–A7.
+ */
+const registerBits = new Map(
+  [...generalPurposeRegisters].map((register, index) => [register, 1 << index]),
+);
+const ALL_REGISTERS = 0xffff;
+
+function registerBit(register: string): number {
+  return registerBits.get(register) ?? 0;
+}
+
+function registerMask(registers: Iterable<string>): number {
+  let mask = 0;
+  for (const register of registers) {
+    mask |= registerBit(register);
+  }
+  return mask;
+}
+
+function maskRegisters(mask: number): string[] {
+  return [...generalPurposeRegisters].filter(
+    (register) => mask & registerBit(register),
+  );
+}
+
+/**
+ * The needs of every register on entry to a line (see `Need`), for each need
+ * every register might have where the flow leaves: a return, or the end of
+ * the file. Because each register's need on entry depends only on its own
+ * need on leaving, the entry for a subroutine's first line is its summary,
+ * whatever each register is needed for after the call.
+ *
+ * There is an entry for each need, by its code: twice its byte, word or long
+ * word level (0 for none, 1 to 3), plus 1 if code that could not be analysed
+ * may read it. Each entry is four register masks: registers needing at least
+ * the low byte, at least the word, all 32 bits, and those code that could not
+ * be analysed may read.
+ */
+type NeedTable = Int32Array;
+const NEED_CODES = 8;
+const NEED_TABLE_SIZE = NEED_CODES * 4;
+/** The code of `ALL`, needing all 32 bits. */
+const ALL_NEED_CODE = 6;
+
+/** Each register needing what its entry stands for where the flow leaves. */
+const EXIT_NEEDS: NeedTable = new Int32Array(NEED_TABLE_SIZE).map((_, item) => {
+  const code = item >> 2;
+  const level = code >> 1;
+  switch (item & 3) {
+    case 0:
+      return level >= 1 ? ALL_REGISTERS : 0;
+    case 1:
+      return level >= 2 ? ALL_REGISTERS : 0;
+    case 2:
+      return level >= 3 ? ALL_REGISTERS : 0;
+    default:
+      return code & 1 ? ALL_REGISTERS : 0;
+  }
+});
+/** Any register may be needed, which is not known to be so. */
+const ESCAPE_NEEDS: NeedTable = new Int32Array(NEED_TABLE_SIZE).map(
+  (_, item) => ((item & 3) === 3 ? ALL_REGISTERS : 0),
+);
+
+/**
+ * The needs before a call to a subroutine whose needs on entry are in a
+ * table, given the needs once it returns: each register's need on entry for
+ * its own need after the call.
+ */
+function applyNeeds(table: NeedTable, base: number, after: NeedTable) {
+  for (let entry = 0; entry < NEED_TABLE_SIZE; entry += 4) {
+    const byte = after[entry];
+    const word = after[entry + 1];
+    const long = after[entry + 2];
+    const unknown = after[entry + 3];
+    let result0 = 0;
+    let result1 = 0;
+    let result2 = 0;
+    let result3 = 0;
+    const levels = [ALL_REGISTERS & ~byte, byte & ~word, word & ~long, long];
+    for (let level = 0; level < 4; level++) {
+      for (let flag = 0; flag < 2; flag++) {
+        const registers =
+          levels[level] & (flag ? unknown : ALL_REGISTERS & ~unknown);
+        if (registers) {
+          const source = base + (level * 2 + flag) * 4;
+          result0 |= table[source] & registers;
+          result1 |= table[source + 1] & registers;
+          result2 |= table[source + 2] & registers;
+          result3 |= table[source + 3] & registers;
+        }
+      }
+    }
+    after[entry] = result0;
+    after[entry + 1] = result1;
+    after[entry + 2] = result2;
+    after[entry + 3] = result3;
+  }
+}
+
+/** The needs before a call taken at its header's word, given those after. */
+function callNeeds(call: CallMasks, after: NeedTable) {
+  // Inputs are read whole, outputs and trashed registers overwritten, and
+  // others kept.
+  const kept = ALL_REGISTERS & ~call.reads & ~call.writes;
+  for (let entry = 0; entry < NEED_TABLE_SIZE; entry += 4) {
+    if (call.unknown) {
+      after[entry + 3] = ALL_REGISTERS;
+      continue;
+    }
+    after[entry] = (after[entry] & kept) | call.reads;
+    after[entry + 1] = (after[entry + 1] & kept) | call.reads;
+    after[entry + 2] = (after[entry + 2] & kept) | call.reads;
+    after[entry + 3] &= kept;
+  }
+}
+
+/**
+ * The needs before a line's steps, given those after them. Each step is
+ * seven numbers: the registers it writes a byte, word and long word of, those
+ * it reads at least a byte, word and long word of, and 1 for code that could
+ * not be analysed, which may read any register.
+ */
+function stepNeeds(steps: number[], after: NeedTable) {
+  for (let step = steps.length - 7; step >= 0; step -= 7) {
+    for (let entry = 0; entry < NEED_TABLE_SIZE; entry += 4) {
+      if (steps[step + 6]) {
+        after[entry + 3] = ALL_REGISTERS;
+        continue;
+      }
+      // A write leaves the earlier value unneeded once it replaces every
+      // bit still to be read; otherwise the bits it keeps carry the old
+      // value.
+      const freed =
+        steps[step + 2] |
+        (steps[step + 1] & ~after[entry + 2]) |
+        (steps[step] & ~after[entry + 1]);
+      after[entry] = (after[entry] & ~freed) | steps[step + 3];
+      after[entry + 1] = (after[entry + 1] & ~freed) | steps[step + 4];
+      after[entry + 2] = (after[entry + 2] & ~freed) | steps[step + 5];
+      after[entry + 3] &= ~freed;
+    }
+  }
+}
+
+/** A call to a subroutine that is not followed, as register masks. */
+interface CallMasks {
+  /** Registers its header says it reads. */
+  reads: number;
+  /** Registers its header says it overwrites. */
+  writes: number;
+  /** Registers its header mentions. */
+  named: number;
+  /** It has no header to go by, so it may do anything. */
+  unknown: boolean;
+}
+const UNKNOWN_CALL: CallMasks = {
+  reads: 0,
+  writes: 0,
+  named: ALL_REGISTERS,
+  unknown: true,
+};
+
+function contractCallMasks(contract: RoutineContract): CallMasks {
+  const masks: CallMasks = { reads: 0, writes: 0, named: 0, unknown: false };
+  for (const [register, { reads, writes }] of contract) {
+    const bit = registerBit(register);
+    masks.named |= bit;
+    masks.reads |= reads ? bit : 0;
+    masks.writes |= writes ? bit : 0;
+  }
+  return masks;
+}
+
+/** What a line does, for the flow analysis, as register masks. */
+interface LineCode {
+  line: number;
+  next: number[];
+  exit: boolean;
+  escape: boolean;
+  /** The subroutine it calls, followed through its own flow. */
+  callee?: number;
+  /** A call it makes that is not followed. */
+  call?: CallMasks;
+  /** Its steps in execution order (see `stepNeeds`). */
+  steps: number[];
+  /** Pairs of a register it saves and a line restoring it. */
+  restores: number[];
+  /** Registers a stack save around it puts back. */
+  covered: number;
+  /** Registers it does anything to, or might, not counting its callee. */
+  touches: number;
+  /** Registers it touches, and changes, as a caller sees them. */
+  touchedVisibly: number;
+  modifiedVisibly: number;
+  /** Registers code here that could not be analysed may change. */
+  uncertain: number;
+}
+
+/** The settled flow of a scope (see `registerLiveness`). */
+interface FlowAnalysis {
+  /** Each line's place in the tables below, or -1 where flow never goes. */
+  slots: Int32Array;
+  /** The needs on entry to each line. */
+  needs: NeedTable;
+  /** The needs after a line with some successors, into a table. */
+  needsOut(next: number[], exit: boolean, into: NeedTable): void;
+  /**
+   * Registers the code from each line may touch, may change, and may change
+   * through code that could not be analysed, as a caller sees them.
+   */
+  visible: Int32Array;
+  /** Registers each line does anything to, or might, its callee included. */
+  touches: number[];
+  /** Registers anything from each line on, along its own flow, touches. */
+  touchedIn: Int32Array;
+}
+
+/**
+ * Lines the flow analysis may work through, counting each time a line's
+ * needs are worked out again, before it gives up following calls. Following
+ * every call in a large program, where many routines call each other, can
+ * reach tens of thousands of lines; past this, a few tenths of a second,
+ * calls are taken at their headers' word instead.
+ */
+const FLOW_WORK_LIMIT = 1_000_000;
 
 /**
  * Registers found in some code, and whether code that could not be analysed
@@ -1349,18 +1532,6 @@ export function routineRegisters(
 }
 
 /**
- * Lines one analysis works through following subroutines, before it stops
- * following them: once for what each needs, over every pass of every
- * summary, and again for which registers each touches. A tangle of recursive
- * routines in a large program can reach tens of thousands of lines, each
- * summarised for several registers and needs, which would hold up the server
- * for many seconds; past this, a few hundredths of a second of each, the
- * routines left are taken at their headers' word, or may do anything.
- */
-const SUMMARY_WORK_LIMIT = 100_000;
-const summaryWorkExceeded = new Error("Subroutine summary work limit reached");
-
-/**
  * How much of a register's value is needed: the number of low-order bits
  * later code reads, and whether code that could not be analysed might read
  * it.
@@ -1370,17 +1541,6 @@ interface Need {
   unknown: boolean;
 }
 const NONE: Need = { bits: 0, unknown: false };
-const ALL: Need = { bits: 32, unknown: false };
-function joinNeed(a: Need, b: Need): Need {
-  return { bits: Math.max(a.bits, b.bits), unknown: a.unknown || b.unknown };
-}
-function sameNeed(a: Need, b: Need): boolean {
-  return a.bits === b.bits && a.unknown === b.unknown;
-}
-/** Whether a need includes all of another. */
-function needIncludes(a: Need, b: Need): boolean {
-  return a.bits >= b.bits && (a.unknown || !b.unknown);
-}
 
 /**
  * What a routine's header says it does with registers, for calls to routines
@@ -1859,6 +2019,10 @@ export interface StackSaves {
    * that what it does to the register is undone.
    */
   covers(line: number, register: string): boolean;
+  /** The registers a line saves that are paired, with the lines restoring each. */
+  restoresAt(saveLine: number): ReadonlyMap<string, number[]> | undefined;
+  /** The registers whose pairs `covers` a line. */
+  coveredAt(line: number): string[];
 }
 
 export function findStackSaves(
@@ -1889,9 +2053,11 @@ export function findStackSaves(
     }
   }
 
-  const restoresBySave = new Map<string, number[]>();
-  const saveByRestore = new Map<string, number>();
-  const spans = new Map<string, [number, number][]>();
+  const restoresBySave = new Map<number, Map<string, number[]>>();
+  const saveByRestore = new Map<number, Map<string, number>>();
+  // A pair lies within one region, so a line can only lie within the pairs of
+  // its own.
+  const spans = new Map<number, Map<string, [number, number][]>>();
   for (const [key, restoreLines] of restores) {
     const saveLines = saves.get(key) ?? [];
     const register = key.slice(key.indexOf(":") + 1);
@@ -1900,30 +2066,41 @@ export function findStackSaves(
       if (save === undefined) {
         continue;
       }
-      const saveKey = `${save}:${register}`;
+      const byRegister =
+        restoresBySave.get(save) ??
+        restoresBySave.set(save, new Map()).get(save)!;
       (
-        restoresBySave.get(saveKey) ??
-        restoresBySave.set(saveKey, []).get(saveKey)!
+        byRegister.get(register) ?? byRegister.set(register, []).get(register)!
       ).push(restore);
-      saveByRestore.set(`${restore}:${register}`, save);
+      (
+        saveByRestore.get(restore) ??
+        saveByRestore.set(restore, new Map()).get(restore)!
+      ).set(register, save);
     }
   }
-  // A pair lies within one region, so a line can only lie within the pairs of
-  // its own.
-  for (const [saveKey, restoreLines] of restoresBySave) {
-    const [save, register] = saveKey.split(":");
-    const key = `${regionOf[Number(save)]}:${register}`;
-    (spans.get(key) ?? spans.set(key, []).get(key)!).push([
-      Number(save),
-      Math.max(...restoreLines),
-    ]);
+  for (const [save, byRegister] of restoresBySave) {
+    const region = regionOf[save];
+    const regionSpans =
+      spans.get(region) ?? spans.set(region, new Map()).get(region)!;
+    for (const [register, restoreLines] of byRegister) {
+      (
+        regionSpans.get(register) ??
+        regionSpans.set(register, []).get(register)!
+      ).push([save, Math.max(...restoreLines)]);
+    }
   }
+  const covers = (line: number, register: string) =>
+    (spans.get(regionOf[line])?.get(register) ?? []).some(
+      ([save, last]) => save < line && line <= last,
+    );
   return {
-    restoresOf: (line, register) => restoresBySave.get(`${line}:${register}`),
-    saveOf: (line, register) => saveByRestore.get(`${line}:${register}`),
-    covers: (line, register) =>
-      (spans.get(`${regionOf[line]}:${register}`) ?? []).some(
-        ([save, last]) => save < line && line <= last,
+    restoresOf: (line, register) => restoresBySave.get(line)?.get(register),
+    saveOf: (line, register) => saveByRestore.get(line)?.get(register),
+    covers,
+    restoresAt: (line) => restoresBySave.get(line),
+    coveredAt: (line) =>
+      [...(spans.get(regionOf[line])?.keys() ?? [])].filter((register) =>
+        covers(line, register),
       ),
   };
 }

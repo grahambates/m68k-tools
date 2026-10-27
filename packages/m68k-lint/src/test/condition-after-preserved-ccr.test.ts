@@ -58,7 +58,43 @@ describe("one test may have several consumers", () => {
   });
 });
 
+describe("the instruction in between sets the condition itself", () => {
+  // DIVS sets V on overflow, so BVS tests the divide, not the shift.
+  test.each(["divs.w", "divu.w"])("%s before BVS", (div) => {
+    expect(
+      fires([
+        "\tasl.l\t#8,d0",
+        `\t${div}\td1,d0`,
+        "\tbvs.s\t.overflow",
+        "\trts",
+        ".overflow:",
+        "\trts",
+      ]),
+    ).toBe(false);
+  });
+
+  // An instruction the flag table does not describe is not known to preserve
+  // CCR, so the rule cannot claim the condition survives it.
+  test("an instruction missing from the flag table", () => {
+    expect(
+      fires(["\ttst.l\td0", "\tchk.w\td1,d0", "\tbne.s\t.a", ".a:", "\trts"]),
+    ).toBe(false);
+  });
+});
+
 describe("a condition surviving unrelated code is still reported", () => {
+  test("a branch after MOVEM", () => {
+    expect(
+      fires([
+        "\ttst.l\td0",
+        "\tmovem.l\t(sp)+,d2-d3",
+        "\tbeq.s\t.a",
+        ".a:",
+        "\trts",
+      ]),
+    ).toBe(true);
+  });
+
   test("a branch after a flag-preserving move", () => {
     expect(
       fires(["\ttst.l\td0", "\tmove.l\ta0,a1", "\tbeq.s\t.a", ".a:", "\trts"]),

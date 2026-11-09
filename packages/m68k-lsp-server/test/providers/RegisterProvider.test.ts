@@ -4,6 +4,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import { type Context } from "../../src/context";
 import DocumentProcessor from "../../src/DocumentProcessor";
 import RegisterProvider from "../../src/providers/RegisterProvider";
+import { setFlowWorkLimit } from "../../src/registerAnalysis";
 import { createTestContext, range } from "../helpers";
 
 describe("RegisterProvider", () => {
@@ -1188,8 +1189,12 @@ ${routines.join("\n")}`,
       });
 
       it("stops following calls too costly to summarise", async () => {
-        // Every routine runs on into one long shared tail, so summarising
-        // them all is more work than the analysis allows.
+        // Every routine runs on into one long shared tail, so following
+        // them all is more work than the analysis allows. The limit is lowered
+        // so the program need not be large enough to reach the real one; the
+        // scope's own flow, the fallback, is still longer than it.
+        const restoreLimit = setFlowWorkLimit(1000);
+        onTestFinished(restoreLimit);
         const count = 200;
         const routines = Array.from(
           { length: count },

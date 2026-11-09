@@ -972,7 +972,9 @@ function registerLiveness(
       needs.set(updated, base);
       return changed;
     };
-    if (!settle(updateNeeds, FLOW_WORK_LIMIT)) {
+    // Only following calls is limited: the fallback, the scope's own flow, has
+    // to finish, as there is nothing further to fall back to.
+    if (!settle(updateNeeds, followCalls ? flowWorkLimit : Infinity)) {
       return;
     }
 
@@ -1436,6 +1438,19 @@ interface FlowAnalysis {
  * calls are taken at their headers' word instead.
  */
 const FLOW_WORK_LIMIT = 1_000_000;
+let flowWorkLimit = FLOW_WORK_LIMIT;
+
+/**
+ * Overrides `FLOW_WORK_LIMIT`, so tests can go past it without a program large
+ * enough to take that long. Returns a function restoring the previous limit.
+ */
+export function setFlowWorkLimit(limit: number): () => void {
+  const previous = flowWorkLimit;
+  flowWorkLimit = limit;
+  return () => {
+    flowWorkLimit = previous;
+  };
+}
 
 /**
  * Registers found in some code, and whether code that could not be analysed

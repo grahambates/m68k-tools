@@ -1,5 +1,12 @@
 # m68k-lsp
 
+## 0.15.1
+
+### Patch Changes
+
+- 00b1111: Register availability and routine register summaries no longer hang the server on large programs whose routines call each other recursively. Subroutine summaries are now worked out together to a fixed point, rather than recomputed for every recursive path, and the work spent following subroutines is limited. Past the limit, a subroutine not yet summarised is taken at its header's word, or makes the answer unknown, rather than holding up the server. Register usage now looks only at the lines in its range, and stack-save lookups no longer scan the whole file.
+- 1e8cf5b: Hovering a register in the remapping panel highlights all of its usage lines with the normal occurrence background, and tells reads from writes with a bar at the left edge, purple for lines that may write it and blue for reads, in place of the two background strengths that were hard to tell apart. This matches the bars that mark the register's free runs.
+
 ## 0.15.0
 
 ### Minor Changes

@@ -1,3 +1,4 @@
+import type { ExpressionNode } from "m68k-parser";
 import type { Rule } from "../../core/rule.js";
 import {
   immediateOperand,
@@ -6,17 +7,48 @@ import {
   operand,
 } from "../../util/ast.js";
 import { isAdjacentLocation, locationOf } from "./adjacent-location.js";
-import { sourceOperand } from "./helpers.js";
+import {
+  embeddedValueText,
+  isAuthoredExpression,
+  sourceOperand,
+} from "./helpers.js";
 import { hex } from "../../util/format.js";
 
+type Ctx = Parameters<NonNullable<Rule["checkLine"]>>[0];
+
+interface Immediate {
+  value: number;
+  expression: ExpressionNode;
+}
+
 function immediate(
-  ctx: Parameters<NonNullable<Rule["checkLine"]>>[0],
+  ctx: Ctx,
   line: Parameters<NonNullable<Rule["checkLine"]>>[1],
-): number | undefined {
+): Immediate | undefined {
   const op = immediateOperand(line, 0);
   if (!op) return undefined;
   const result = ctx.evaluate(op.value);
-  return result.known ? result.value : undefined;
+  return result.known
+    ? { value: result.value, expression: op.value }
+    : undefined;
+}
+
+/**
+ * One half of the combined immediate, as written, ready to be OR-ed in.
+ *
+ * Masked only when its value does not fit the half, as a negative `-1` would
+ * otherwise set every bit of the other half too.
+ */
+function halfText(
+  ctx: Ctx,
+  half: Immediate,
+  mask: number,
+  hexWidth: number,
+): string {
+  const text = embeddedValueText(ctx, half.expression, half.value);
+  return half.value >= 0 && half.value <= mask
+    ? text
+    : `(${text}&${hex(mask, hexWidth, { uppercase: false })})`;
 }
 
 function hasInterveningLabel(
@@ -78,9 +110,30 @@ function movePair(
       // ends up at the lower address. So the combined value's high half is
       // whichever operand actually landed at the lower address.
       const [hi, lo] = a.kind === "predec" ? [y, x] : [x, y];
-      const combined = ((hi & mask) * 2 ** shift + (lo & mask)) >>> 0;
+      const combined =
+        ((hi.value & mask) * 2 ** shift + (lo.value & mask)) >>> 0;
       const hexWidth = toSize === "w" ? 4 : 8;
-      const literal = hex(combined, hexWidth, { uppercase: false });
+      // Built from the two values as written when either is a name or an
+      // expression, so `move.w #C2P_G*4` pairs keep tracking the constant
+      // rather than freezing into a packed number. A half that is a bare zero
+      // adds nothing and is left out.
+      const symbolic =
+        isAuthoredExpression(hi.expression) ||
+        isAuthoredExpression(lo.expression);
+      const keep = (half: Immediate) =>
+        half.value !== 0 || isAuthoredExpression(half.expression);
+      const halfWidth = hexWidth / 2;
+      const parts = [
+        ...(keep(hi)
+          ? [`(${halfText(ctx, hi, mask, halfWidth)}<<${shift})`]
+          : []),
+        ...(keep(lo) ? [halfText(ctx, lo, mask, halfWidth)] : []),
+      ];
+      const literal = symbolic
+        ? parts.length === 1 && parts[0].startsWith("(")
+          ? parts[0].slice(1, -1)
+          : parts.join("|")
+        : hex(combined, hexWidth, { uppercase: false });
 
       ctx.report({
         ruleId: id,

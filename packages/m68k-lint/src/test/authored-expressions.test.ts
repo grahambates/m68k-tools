@@ -95,3 +95,52 @@ describe("combine-address-adjustments", () => {
     expect(fold("\tlea 4(a0),a0\n\tlea 8(a0),a0")).toBe("\tlea 12(a0),a0");
   });
 });
+
+describe("combine-adjacent-move-words", () => {
+  const id = "optimization/combine-adjacent-move-words";
+  test("keeps written values as a shifted OR", () => {
+    expect(
+      replacementOf(
+        id,
+        "C2P_G equ 19\n\tmove.w #C2P_G*4,$64(a6)\n\tmove.w #C2P_G*4,$66(a6)",
+      ),
+    ).toBe("\tmove.l #((C2P_G*4)<<16)|(C2P_G*4),$64(a6)");
+  });
+  test("masks a half that does not fit", () => {
+    expect(
+      replacementOf(id, "N equ 1\n\tmove.w #N,(a0)\n\tmove.w #-N,2(a0)"),
+    ).toBe("\tmove.l #(N<<16)|((-N)&$ffff),(a0)");
+  });
+  test("leaves out a bare zero half", () => {
+    expect(
+      replacementOf(id, "N equ 1\n\tmove.w #0,(a0)\n\tmove.w #N,2(a0)"),
+    ).toBe("\tmove.l #N,(a0)");
+    expect(
+      replacementOf(id, "N equ 1\n\tmove.w #N,(a0)\n\tmove.w #0,2(a0)"),
+    ).toBe("\tmove.l #N<<16,(a0)");
+  });
+  test("predecrement swaps the halves", () => {
+    expect(
+      replacementOf(
+        id,
+        "A equ 1\nB equ 2\n\tmove.w #A,-(a0)\n\tmove.w #B,-(a0)",
+      ),
+    ).toBe("\tmove.l #(B<<16)|A,-(a0)");
+  });
+  test("bare numbers still pack", () => {
+    expect(
+      replacementOf(id, "\tmove.w #$1234,(a0)\n\tmove.w #$5678,2(a0)"),
+    ).toBe("\tmove.l #$12345678,(a0)");
+  });
+});
+
+describe("combine-adjacent-move-bytes", () => {
+  test("keeps written values as a shifted OR", () => {
+    expect(
+      replacementOf(
+        "optimization/combine-adjacent-move-bytes",
+        "A equ 1\nB equ 2\n\tmove.b #A,(a0)\n\tmove.b #B,1(a0)",
+      ),
+    ).toBe("\tmove.w #(A<<8)|B,(a0)");
+  });
+});

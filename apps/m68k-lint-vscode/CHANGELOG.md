@@ -1,5 +1,12 @@
 # m68k-lint-vscode
 
+## 0.7.2
+
+### Patch Changes
+
+- a90b81e: Combining adjacent immediate `move.b`/`move.w` stores keeps named or computed values as a shifted OR, such as `#((C2P_G*4)<<16)|(C2P_G*4)`, rather than packing them into a literal.
+- 31f1d1a: `move-immediate-via-scratch` can use a data register that is next written with a word or byte operation and only read at that size, rather than requiring the whole register to be dead.
+
 ## 0.7.1
 
 ### Patch Changes

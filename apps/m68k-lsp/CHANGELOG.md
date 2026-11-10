@@ -1,5 +1,11 @@
 # m68k-lsp
 
+## 0.15.2
+
+### Patch Changes
+
+- 0003a72: Register usage no longer fails on a scope whose own flow is too large to analyse once following calls has been given up.
+
 ## 0.15.1
 
 ### Patch Changes

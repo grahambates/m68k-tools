@@ -1,6 +1,9 @@
 import type { OperandNode } from "m68k-parser";
 import type { Rule } from "../../core/rule.js";
-import { registersReadByOperand } from "../../semantics/registers.js";
+import {
+  DATA_REGISTERS,
+  registersReadByOperand,
+} from "../../semantics/registers.js";
 import {
   immediateOperand,
   instructionSize,
@@ -50,10 +53,17 @@ export const moveImmediateViaScratch: Rule = {
     if (!targetsOnly(ctx.config, ["mc68000", "mc68010", "mc68020", "mc68030"]))
       return;
 
+    // Free when none of its bits are read before being overwritten. Asking
+    // per bit rather than per register lets a register that is next written
+    // with a word move, and only read as a word, qualify: the upper half MOVEQ
+    // leaves behind is never seen. Whole-register liveness keeps that upper
+    // half alive through the partial write.
     const addressRegisters = registersReadByOperand(dest);
-    const scratch = ctx.registers
-      .deadDataRegistersAfter(index)
-      .find((r) => !addressRegisters.has(r));
+    const scratch = DATA_REGISTERS.find(
+      (r) =>
+        !addressRegisters.has(r) &&
+        ctx.registers.registerBitsUseAfter(index, r, 0xffffffff) === "unused",
+    );
     if (!scratch) return;
     const destText = sourceOperand(ctx, line, 1);
     if (!destText) return;

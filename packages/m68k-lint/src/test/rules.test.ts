@@ -1060,6 +1060,36 @@ describe("register analysis", () => {
     expect(diagnostic?.suggestion?.replacement).toContain("moveq #42,d0");
     expect(diagnostic?.suggestion?.applicability).toBe("safe");
   });
+
+  test("uses a register next written and read only as a word", () => {
+    // The upper half MOVEQ leaves in d0 survives the MOVE.W but is never read.
+    const source = [
+      "move.l #-1,(a0)",
+      "move.w (a1),d0",
+      "move.w d0,(a2)",
+      "moveq #0,d0",
+      "rts",
+    ].join("\n");
+    const diagnostic = lint(source).find(
+      (d) => d.ruleId === "optimization/move-immediate-via-scratch",
+    );
+    expect(diagnostic?.suggestion?.replacement).toContain("moveq #-1,d0");
+  });
+
+  test("does not use a register whose upper half is read after a word write", () => {
+    const source = [
+      "move.l #-1,(a0)",
+      "move.w (a1),d0",
+      "move.l d0,(a2)",
+      "moveq #0,d0",
+      "rts",
+    ].join("\n");
+    expect(
+      lint(source).find(
+        (d) => d.ruleId === "optimization/move-immediate-via-scratch",
+      ),
+    ).toBeUndefined();
+  });
 });
 
 describe("v0.11 register-driven rules", () => {

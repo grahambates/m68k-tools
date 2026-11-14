@@ -76,9 +76,19 @@ class CaseFormatter implements Formatter {
     };
 
     for (const [index, parsedLine] of parsed.lines.entries()) {
-      const { mnemonic, qualifier } = parsedLine;
+      // The statement whose operands these are: an `iif` line's own operands
+      // belong to the statement it makes conditional.
+      const statement = parsedLine.inlineStatement ?? parsedLine;
 
-      if (mnemonic) {
+      // An `iif` line's statement has a mnemonic of its own, cased like any
+      // other.
+      for (const { mnemonic, qualifier } of [
+        parsedLine,
+        parsedLine.inlineStatement ?? {},
+      ]) {
+        if (!mnemonic) {
+          continue;
+        }
         let mnemonicCase: Case | undefined;
         if (mnemonic.type === "instruction") {
           mnemonicCase = typeCases.instruction;
@@ -111,8 +121,8 @@ class CaseFormatter implements Formatter {
           apply(node.loc, typeCases.hex, index);
         } else if (
           node.type === "symbol" &&
-          mnemonic?.type === "directive" &&
-          mnemonic.directive.toLowerCase() === "section" &&
+          statement.mnemonic?.type === "directive" &&
+          statement.mnemonic.directive.toLowerCase() === "section" &&
           parsedLine.operands?.length === 1 &&
           (sectionTypeNames as readonly string[]).includes(
             ((node as { name?: string }).name ?? "").toLowerCase(),

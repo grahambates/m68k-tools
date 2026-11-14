@@ -76,4 +76,23 @@ describe("CaseFormatter", () => {
     const result = await doFormat(` fmove FP0,FP1`, { register: "lower" });
     expect(result).toBe(" fmove fp0,fp1");
   });
+
+  // Issue #27: the statement an `iif` makes conditional is cased like a line
+  // of its own.
+  it("cases the statement of an iif line", async () => {
+    const result = await doFormat(
+      ` IIF DEBUG MOVE.L D0,$FF(A0)\n IIF CHIP SECTION BSS\n IIF X MyMacro.W a`,
+      {
+        control: "lower",
+        instruction: "lower",
+        directive: "lower",
+        register: "lower",
+        hex: "lower",
+        sectionType: "lower",
+      },
+    );
+    expect(result).toBe(
+      ` iif DEBUG move.l d0,$ff(a0)\n iif CHIP section bss\n iif X MyMacro.W a`,
+    );
+  });
 });

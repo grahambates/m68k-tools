@@ -1,5 +1,15 @@
 # m68k-parser
 
+## 2.4.0
+
+### Minor Changes
+
+- a680b39: Add `labelKind`, which classifies what a line's label defines: a `position` in the program, an `offset` (`rs`, `so`, `fo`), an `equate` (`equ`, `=`, `set`, `equr`, `reg` and similar) or a `macro` name.
+
+### Patch Changes
+
+- a680b39: Labels defined with `so` or `fo` no longer start a new local-label scope, matching `rs` and vasm. Previously a `.local` label after `FIELD so.w 1` was tied to `FIELD` rather than the routine containing it, which could misreport unused or unresolved local labels in the linter and break go-to-definition in the language server. The outline now also lists `so` and `fo` labels as offsets.
+
 ## 2.3.0
 
 ### Minor Changes

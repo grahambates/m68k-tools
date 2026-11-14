@@ -1,5 +1,20 @@
 # m68k-formatter
 
+## 0.4.0
+
+### Minor Changes
+
+- a680b39: Add `equateColon` and `macroColon` formatter options (`"on"`, `"off"` or `"any"`) for colons after names defined with `equ`, `=`, `set`, `equr`, `reg` and similar, and after macro names. `labelColon` no longer applies to these, which restores its behaviour from before the formatter moved onto the m68k-parser AST, when it had started adding colons to every symbol definition. It still applies to `rs`, `so` and `fo` offsets, which are written like `ds`.
+
+  Both new options default to `"off"`, including the VS Code extension's `m68k.format.equateColon` and `m68k.format.macroColon` settings, so colons on equates and macro names are removed unless configured otherwise. This also cleans up colons the previous version added in error.
+
+### Patch Changes
+
+- 1e989d9: Formatting an `iif` line no longer deletes its condition and statement: `foo iif bar equ 42` was being rewritten as `foo iif 42`. The whole `<condition> <statement>` now sits in the operand column, and the statement's mnemonic and size are cased like any other line's.
+- Updated dependencies [a680b39]
+- Updated dependencies [a680b39]
+  - m68k-parser@2.4.0
+
 ## 0.3.0
 
 ### Minor Changes

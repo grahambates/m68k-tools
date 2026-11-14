@@ -6,6 +6,7 @@ import CaseFormatter, { type CaseOptions } from "./formatters/CaseFormatter";
 import EndOfLineFormatter from "./formatters/EndOfLineFormatter";
 import LabelColonFormatter, {
   type LabelColonOptions,
+  type SymbolColonOptions,
 } from "./formatters/LabelColonFormatter";
 import OperandSpaceFormatter, {
   type OperandSpaceOptions,
@@ -21,6 +22,8 @@ export interface FormatterOptions {
   endOfLine?: "lf" | "cr" | "crlf";
   finalNewLine?: boolean;
   labelColon?: LabelColonOptions;
+  equateColon?: SymbolColonOptions;
+  macroColon?: SymbolColonOptions;
   quotes?: QuotesOptions;
   trimWhitespace?: boolean;
   operandSpace?: OperandSpaceOptions;
@@ -52,8 +55,14 @@ class DocumentFormatter {
     if (options.case) {
       this.formatters.push(new CaseFormatter(options.case));
     }
-    if (options.labelColon) {
-      this.formatters.push(new LabelColonFormatter(options.labelColon));
+    if (options.labelColon || options.equateColon || options.macroColon) {
+      this.formatters.push(
+        new LabelColonFormatter({
+          label: options.labelColon,
+          equate: options.equateColon,
+          macro: options.macroColon,
+        }),
+      );
     }
     if (options.quotes) {
       this.formatters.push(new QuotesFormatter(options.quotes));

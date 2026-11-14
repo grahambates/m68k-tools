@@ -12,6 +12,10 @@ export type {
   FormatContext,
 } from "./formatter/DocumentFormatter";
 export type { AlignOptions } from "./formatter/formatters/AlignFormatter";
+export type {
+  LabelColonOptions,
+  SymbolColonOptions,
+} from "./formatter/formatters/LabelColonFormatter";
 export type { Range, TextEdit } from "vscode-languageserver-types";
 export { loadConfig, loadConfigs, findConfig, findConfigs } from "./config";
 

@@ -3,6 +3,7 @@ import {
   analyzeLocalLabelScopes,
   bareLocalName,
   isLocalLabelName,
+  labelKind,
   symbolKey,
 } from "../labels.js";
 
@@ -19,6 +20,45 @@ describe("local label names", () => {
   it("lose the dot and nothing else", () => {
     expect(bareLocalName(".loop")).toBe("loop");
     expect(bareLocalName("loop$")).toBe("loop$");
+  });
+});
+
+describe("labelKind", () => {
+  const kinds = (source: string) =>
+    parseFile(source).lines.map((line) => labelKind(line));
+
+  it("is position for labels that mark a place in the program", () => {
+    expect(
+      kinds("foo:\nbar nop\n.baz dc.w 1\nqux ds.b 4\nsec section x"),
+    ).toEqual(["position", "position", "position", "position", "position"]);
+  });
+
+  it("is offset for structure and frame offsets", () => {
+    expect(kinds("A rs.w 1\nB SO.L 1\nC fo.b 2")).toEqual([
+      "offset",
+      "offset",
+      "offset",
+    ]);
+  });
+
+  it("is equate for names given a value", () => {
+    expect(
+      kinds(
+        "A = 1\nB EQU 2\nC set 3\nD equr d0\nE reg d0-d2\nF fequ.s 1.5\nG freg fp0",
+      ),
+    ).toEqual(Array(7).fill("equate"));
+  });
+
+  it("is macro for a macro name", () => {
+    expect(kinds("M macro\n endm")[0]).toBe("macro");
+  });
+
+  it("is undefined for a line without a label", () => {
+    expect(kinds(" nop\n; comment\n")).toEqual([
+      undefined,
+      undefined,
+      undefined,
+    ]);
   });
 });
 
@@ -54,6 +94,16 @@ describe("analyzeLocalLabelScopes", () => {
     const s = scopes("a:\nCOUNT equ 4\n.x: nop\n");
     expect(s.scopeOf(2)).toBe("a");
   });
+
+  // Checked against vasm: a branch from `a` to `.x` resolves across each of
+  // these, whereas a `dc.w` label in the same place starts a new routine.
+  it.each(["rs.w 1", "so.w 1", "fo.w 1"])(
+    "is not moved by a structure offset label (%s)",
+    (directive) => {
+      const s = scopes(`a:\nFIELD ${directive}\n.x: nop\n`);
+      expect(s.scopeOf(2)).toBe("a");
+    },
+  );
 
   it("is not moved by a label inside a macro body", () => {
     const s = scopes("a:\nM: macro\ninner: nop\nendm\n.x: nop\n");

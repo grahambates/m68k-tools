@@ -33,6 +33,8 @@ function scriptedPrompt(answers: string[]): Prompt {
 const base: InitAnswers = {
   case: "lower",
   labelColon: "on",
+  equateColon: "off",
+  macroColon: "off",
   quotes: "double",
   operandSpace: "off",
   indentStyle: "space",
@@ -52,6 +54,8 @@ describe("m68k-format --init", () => {
       renderInitConfig({
         case: "upper",
         labelColon: "off",
+        equateColon: "on",
+        macroColon: "any",
         quotes: "single",
         operandSpace: "on",
         indentStyle: "tab",
@@ -64,6 +68,8 @@ describe("m68k-format --init", () => {
     expect(config).toEqual({
       case: "upper",
       labelColon: "off",
+      equateColon: "on",
+      macroColon: "any",
       quotes: "single",
       operandSpace: "on",
       align: { indentStyle: "tab" },
@@ -77,6 +83,8 @@ describe("m68k-format --init", () => {
     const prompt = scriptedPrompt([
       "upper",
       "off",
+      "on",
+      "any",
       "single",
       "on",
       "tab",
@@ -88,6 +96,8 @@ describe("m68k-format --init", () => {
     expect(answers).toEqual({
       case: "upper",
       labelColon: "off",
+      equateColon: "on",
+      macroColon: "any",
       quotes: "single",
       operandSpace: "on",
       indentStyle: "tab",
@@ -99,14 +109,14 @@ describe("m68k-format --init", () => {
 
   test("uses the library defaults when every answer is left blank", async () => {
     const answers = await collectInitAnswers(
-      scriptedPrompt(["", "", "", "", "", "", "", ""]),
+      scriptedPrompt(["", "", "", "", "", "", "", "", "", ""]),
     );
     expect(answers).toEqual(base);
   });
 
   test("summarises what the config turns on", () => {
     expect(describeInitConfig({ ...base, case: "upper" })).toBe(
-      "case upper, labelColon on, quotes double, operandSpace off, indentStyle space, endOfLine lf",
+      "case upper, labelColon on, equateColon off, macroColon off, quotes double, operandSpace off, indentStyle space, endOfLine lf",
     );
   });
 

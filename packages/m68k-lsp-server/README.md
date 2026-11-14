@@ -340,6 +340,46 @@ or individually for global and local labels:
 
 Default: `"on"`
 
+This applies to labels marking a position and to structure and frame offsets
+(`rs`, `so`, `fo`). Names given a value and macro names have their own options.
+
+#### Equate colon
+
+Determines whether names given a value with `equ`, `=`, `set`, `fequ`, `fset`,
+`equr`, `equrl`, `fequr`, `fequrl`, `reg` or `freg` should have a colon suffix,
+e.g. `MyConst: equ 1`.
+
+```json
+{
+  "format": {
+    "equateColon": "off"
+  }
+}
+```
+
+| Option | Behaviour     |
+| ------ | ------------- |
+| `on`   | Add colon     |
+| `off`  | Remove colon  |
+| `any`  | Do not change |
+
+Default: `"off"`
+
+#### Macro colon
+
+Determines whether macro names should have a colon suffix, e.g.
+`MyMacro: macro`. Takes the same options as equate colon.
+
+```json
+{
+  "format": {
+    "macroColon": "off"
+  }
+}
+```
+
+Default: `"off"`
+
 #### Operand space
 
 Include space between operands e.g. ` move d0, d1`. VASM needs `-spaces` or `-phxass` option to support this.

@@ -2,6 +2,8 @@ import type { FormatterOptions } from "./formatter/DocumentFormatter";
 export const defaultOptions: FormatterOptions = {
   case: "lower",
   labelColon: "on",
+  equateColon: "off",
+  macroColon: "off",
   quotes: "double",
   operandSpace: "off",
   align: {

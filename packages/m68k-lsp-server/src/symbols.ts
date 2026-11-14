@@ -94,6 +94,8 @@ const labelDefinitions: Record<Directive, DefinitionType> = {
   "=": DefinitionType.Constant,
   set: DefinitionType.Variable,
   rs: DefinitionType.Offset,
+  so: DefinitionType.Offset,
+  fo: DefinitionType.Offset,
   equr: DefinitionType.Register,
   fequr: DefinitionType.Register,
   equrl: DefinitionType.RegisterList,

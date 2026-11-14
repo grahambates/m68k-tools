@@ -64,9 +64,10 @@ export {
   analyzeLocalLabelScopes,
   bareLocalName,
   isLocalLabelName,
+  labelKind,
   symbolKey,
 } from "./labels.js";
-export type { LocalLabelScopes } from "./labels.js";
+export type { LabelKind, LocalLabelScopes } from "./labels.js";
 
 export { addressingMode } from "./addressing-mode.js";
 export type { AddressingModeName } from "./addressing-mode.js";

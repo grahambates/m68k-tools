@@ -1,5 +1,5 @@
 import { parseBlocks } from "./block-parser.js";
-import type { Block, ParsedFile } from "./types.js";
+import type { Block, ParsedFile, ParsedLine } from "./types.js";
 
 /**
  * Whether a label name is local: `.loop` or `loop$`.
@@ -34,12 +34,22 @@ export function bareLocalName(name: string): string {
 }
 
 /**
- * Directives that give their label a value rather than a place in the program.
+ * What a name in the label column defines.
  *
- * `Name equ 4` defines a symbol, not a position, so it does not begin a new
- * routine for the local labels that follow it.
+ * - `position`: a place in the program, such as `loop: dbf d0,loop` or
+ *   `table: dc.w 1`.
+ * - `offset`: a structure or frame offset (`rs`, `so`, `fo`). Written like a
+ *   `ds` line, but the assembler gives the name a value from a running counter
+ *   and places nothing.
+ * - `equate`: a value given directly (`equ`, `=`, `set`, `equr`, `reg` and
+ *   their floating-point and register-list forms).
+ * - `macro`: the name of a macro (`Name macro`).
  */
-const SYMBOL_DEFINING = new Set([
+export type LabelKind = "position" | "offset" | "equate" | "macro";
+
+const OFFSET_DIRECTIVES = new Set(["rs", "so", "fo"]);
+
+const EQUATE_DIRECTIVES = new Set([
   "equ",
   "=",
   "set",
@@ -51,8 +61,23 @@ const SYMBOL_DEFINING = new Set([
   "fequrl",
   "reg",
   "freg",
-  "rs",
 ]);
+
+/**
+ * What the line's label defines, or undefined for a line with no label.
+ *
+ * Only a `position` label begins a new routine for the local labels after it;
+ * checked against vasm for `equ`, `rs`, `so` and `fo`.
+ */
+export function labelKind(line: ParsedLine): LabelKind | undefined {
+  if (!line.label) return undefined;
+  if (line.mnemonic?.type !== "directive") return "position";
+  const directive = line.mnemonic.directive.toLowerCase();
+  if (directive === "macro") return "macro";
+  if (OFFSET_DIRECTIVES.has(directive)) return "offset";
+  if (EQUATE_DIRECTIVES.has(directive)) return "equate";
+  return "position";
+}
 
 export interface LocalLabelScopes {
   /**
@@ -109,14 +134,10 @@ export function analyzeLocalLabelScopes(
   let currentName: string | undefined;
   file.lines.forEach((line, index) => {
     const label = line.label;
-    const directive =
-      line.mnemonic?.type === "directive"
-        ? line.mnemonic.directive.toLowerCase()
-        : undefined;
     if (
       !skipped[index] &&
       label?.scope === "global" &&
-      !(directive && SYMBOL_DEFINING.has(directive))
+      labelKind(line) === "position"
     ) {
       currentKey = normalize(label.label);
       currentName = label.label;

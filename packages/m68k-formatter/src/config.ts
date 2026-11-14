@@ -106,6 +106,8 @@ const valid = object({
     )(value),
   labelColon: (value) =>
     colon(value) || object({ global: colon, local: colon })(value),
+  equateColon: choice("on", "off", "any"),
+  macroColon: choice("on", "off", "any"),
   quotes: choice("double", "single", "any"),
   operandSpace: choice("on", "off", "any"),
   trimWhitespace: boolean,

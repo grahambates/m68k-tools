@@ -347,6 +347,26 @@
           "default": "any",
           "markdownDescription": "Include colon suffix for local labels (e.g. `.MyLabel`)"
         },
+        "m68k.format.equateColon": {
+          "type": "string",
+          "enum": [
+            "on",
+            "off",
+            "any"
+          ],
+          "default": "off",
+          "markdownDescription": "Include colon suffix for names given a value with `equ`, `=`, `set`, `equr`, `reg` and similar (e.g. `MyConst: equ 1`)"
+        },
+        "m68k.format.macroColon": {
+          "type": "string",
+          "enum": [
+            "on",
+            "off",
+            "any"
+          ],
+          "default": "off",
+          "markdownDescription": "Include colon suffix for macro names (e.g. `MyMacro: macro`)"
+        },
         "m68k.format.operandSpace": {
           "type": "string",
           "enum": [

@@ -3,10 +3,7 @@
     "title": "ABCD",
     "summary": "Add Decimal with Extend",
     "operation": "[destination]₁₀ ← [source]₁₀ + [destination]₁₀ + [X]",
-    "syntax": [
-      "abcd[.b] Dy,Dx",
-      "abcd[.b] -(Ay),-(Ax)"
-    ],
+    "syntax": ["abcd[.b] Dy,Dx", "abcd[.b] -(Ay),-(Ax)"],
     "description": "Add the source operand to the destination operand along with the extend bit, and store the result in the destination location. The addition is performed using `BCD` arithmetic. The only legal addressing modes are data register direct and memory to memory with address register indirect using pre-decrementing.",
     "ccr": {
       "x": "*",
@@ -31,9 +28,7 @@
     "title": "ADD",
     "summary": "Add",
     "operation": "[destination] ← [source] + [destination]",
-    "syntax": [
-      "add[.(bwl)] <source>,<destination>"
-    ],
+    "syntax": ["add[.(bwl)] <source>,<destination>"],
     "description": "Add the source operand to the destination operand and store the result in the destination location.",
     "src": {
       "dn": true,
@@ -86,9 +81,7 @@
     "title": "ADDA",
     "summary": "Add Address",
     "operation": "[destination] ← [source] + [destination]",
-    "syntax": [
-      "adda[.(wl)] <source>,An"
-    ],
+    "syntax": ["adda[.(wl)] <source>,An"],
     "description": "Add the source operand to the destination address register and store the result in the destination address register. The source is sign-extended before it is added to the destination. For example, if we execute `ADDA.W D3,A4` where A4 = 00000100₁₆ and D3.W = 8002₁₆, the contents of D3 are sign-extended to FFFF8002₁₆ and added to 00000100₁₆ to give FFFF8102₁₆, which is stored in A4.\n",
     "src": {
       "dn": true,
@@ -127,9 +120,7 @@
     "title": "ADDI",
     "summary": "Add Immediate",
     "operation": "[destination] ← \\<literal\\> + [destination]",
-    "syntax": [
-      "addi[.(bwl)] #<data>,<destination>"
-    ],
+    "syntax": ["addi[.(bwl)] #<data>,<destination>"],
     "description": "Add immediate data to the destination operand. Store the result in the destination operand. `ADDI` can be used to add a literal directly to a memory location. For example, `ADDI.W #$1234,$2000` has the effect [M(2000₁₆)]←[M(2000₁₆)]+1234₁₆.",
     "dest": {
       "dn": true,
@@ -168,9 +159,7 @@
     "title": "ADDQ",
     "summary": "Add Quick",
     "operation": "[destination] ← \\<literal\\> + [destination]",
-    "syntax": [
-      "addq[.(bwl)] #<data>,<destination>"
-    ],
+    "syntax": ["addq[.(bwl)] #<data>,<destination>"],
     "description": "Add the immediate data to the contents of the destination operand. The immediate data must be in the range 1 to 8. Word and longword operations on address registers do not affect condition codes. Note that a word operation on an address register affects all bits of the register.",
     "dest": {
       "dn": true,
@@ -209,10 +198,7 @@
     "title": "ADDX",
     "summary": "Add with Extend",
     "operation": "[destination] ← [source] + [destination] + [X]",
-    "syntax": [
-      "addx[.(bwl)] Dy,Dx",
-      "addx[.(bwl)] -(Ay),-(Ax)"
-    ],
+    "syntax": ["addx[.(bwl)] Dy,Dx", "addx[.(bwl)] -(Ay),-(Ax)"],
     "description": "Add the source operand to the destination operand along with the extend bit, and store the result in the destination location. The only legal addressing modes are data register direct and memory to memory with address register indirect using pre-decrementing.",
     "ccr": {
       "x": "*",
@@ -237,9 +223,7 @@
     "title": "AND",
     "summary": "Logical AND",
     "operation": "[destination] ← [source] . [destination]",
-    "syntax": [
-      "and[.(bwl)] <source>,<destination>"
-    ],
+    "syntax": ["and[.(bwl)] <source>,<destination>"],
     "description": "`AND` the source operand to the destination operand and store the result in the destination location.",
     "src": {
       "dn": true,
@@ -335,9 +319,7 @@
     "title": "ASL",
     "summary": "Arithmetic Shift Left",
     "operation": "[destination] ← [destination] shifted by \\<count\\>",
-    "syntax": [
-      "asl[.(bwl)] [<count>,]<destination>"
-    ],
+    "syntax": ["asl[.(bwl)] [<count>,]<destination>"],
     "description": "Arithmetically shift the bits of the operand left. The shift count may be specified in one of three ways. The count may be a literal, the contents of a data register, or the value 1. An immediate (i.e., literal) count permits a shift of 1 to 8 places. If the count is in a register, the value is modulo 64 (i.e., 0 to 63). If no count is specified, one shift is made (i.e., `ASL <destination>` shifts the contents of the *word* at the effective address one place left).\n\nThe effect of an arithmetic shift left is to shift a zero into the least-significant bit position and to shift the most-significant bit out into both the X- and the C-bits of the *CCR*. The overflow bit of the *CCR* is set if a sign change occurs during shifting (i.e., if the most-significant bit changes value during shifting).\n\n```ascii\n┌───┐     ┌──────────────┐\n│ C │◄──┬─┤ Operand ◄─── │◄─── 0\n└───┘   │ └──────────────┘\n┌───┐   │\n│ X │◄──┘\n└───┘\n```",
     "src": {
       "dn": true,
@@ -390,9 +372,7 @@
     "title": "ASR",
     "summary": "Arithmetic Shift Right",
     "operation": "[destination] ← [destination] shifted by \\<count\\>",
-    "syntax": [
-      "asr[.(bwl)] [<count>,]<destination>"
-    ],
+    "syntax": ["asr[.(bwl)] [<count>,]<destination>"],
     "description": "Arithmetically shift the bits of the operand in the specified direction (i.e., left or right). The shift count may be specified in one of three ways. The count may be a literal, the contents of a data register, or the value 1. An immediate (i.e., literal) count permits a shift of 1 to 8 places. If the count is in a register, the value is modulo 64 (i.e., 0 to 63). If no count is specified, one shift is made (i.e., `ASR <destination>` shifts the contents of the *word* at the effective address one place right).\n\nThe effect of an arithmetic shift right is to shift the least-significant bit into both the X- and C-bits of the CCR. The most-significant bit (i.e., the sign bit) is *replicated* to preserve the sign of the number.\n\n```ascii\n   ┌───┬──────────────┐     ┌───┐\n┌─►│MSB│ Operand ───► ├─┬──►│ C │\n│  └─┬─┴──────────────┘ │   └───┘\n└────┘                  │   ┌───┐\n                        └──►│ X │\n                            └───┘\n```",
     "src": {
       "dn": true,
@@ -445,9 +425,7 @@
     "title": "Bcc",
     "summary": "Branch Conditionally: Carry Clear",
     "operation": "If C̅ THEN [PC] ← [PC] + d",
-    "syntax": [
-      "bcc <label>"
-    ],
+    "syntax": ["bcc <label>"],
     "description": "If the the carry bit is clear, program execution continues at location [PC] + displacement, d. The displacement is a two's complement value. The value in the PC corresponds to the current location plus two. The range of the branch is -126 to +128 bytes with an 8-bit offset, and -32K to +32K bytes with a 16-bit offset. A short branch to the next instruction is impossible, since the branch code 0 indicates a long branch with a 16-bit offset. The assembly language form `BCC *+8` means branch to the point eight bytes from the current PC if the carry bit is clear.",
     "ccr": {
       "x": "-",
@@ -472,9 +450,7 @@
     "title": "Bcs",
     "summary": "Branch Conditionally: Carry Set",
     "operation": "If C THEN [PC] ← [PC] + d",
-    "syntax": [
-      "bcs <label>"
-    ],
+    "syntax": ["bcs <label>"],
     "description": "If the the carry bit is set, program execution continues at location [PC] + displacement, d. The displacement is a two's complement value. The value in the PC corresponds to the current location plus two. The range of the branch is -126 to +128 bytes with an 8-bit offset, and -32K to +32K bytes with a 16-bit offset. A short branch to the next instruction is impossible, since the branch code 0 indicates a long branch with a 16-bit offset. The assembly language form `BCS *+8` means branch to the point eight bytes from the current PC if the carry bit is set.",
     "ccr": {
       "x": "-",
@@ -499,9 +475,7 @@
     "title": "Beq",
     "summary": "Branch Conditionally: Equal",
     "operation": "If Z THEN [PC] ← [PC] + d",
-    "syntax": [
-      "beq <label>"
-    ],
+    "syntax": ["beq <label>"],
     "description": "If the the zero bit is set, program execution continues at location [PC] + displacement, d. The displacement is a two's complement value. The value in the PC corresponds to the current location plus two. The range of the branch is -126 to +128 bytes with an 8-bit offset, and -32K to +32K bytes with a 16-bit offset. A short branch to the next instruction is impossible, since the branch code 0 indicates a long branch with a 16-bit offset.",
     "ccr": {
       "x": "-",
@@ -526,9 +500,7 @@
     "title": "Bge",
     "summary": "Branch Conditionally: Greater or Equal",
     "operation": "If N.V + N̅.V THEN [PC] ← [PC] + d",
-    "syntax": [
-      "bge <label>"
-    ],
+    "syntax": ["bge <label>"],
     "description": "If greater than or equal, program execution continues at location [PC] + displacement, d. The displacement is a two's complement value. The value in the PC corresponds to the current location plus two. The range of the branch is -126 to +128 bytes with an 8-bit offset, and -32K to +32K bytes with a 16-bit offset.",
     "ccr": {
       "x": "-",
@@ -553,9 +525,7 @@
     "title": "Bgt",
     "summary": "Branch Conditionally: Greater Than",
     "operation": "If N.V.Z̅ + N̅.V̅.Z THEN [PC] ← [PC] + d",
-    "syntax": [
-      "bgt <label>"
-    ],
+    "syntax": ["bgt <label>"],
     "description": "If greater than, program execution continues at location [PC] + displacement, d. The displacement is a two's complement value. The value in the PC corresponds to the current location plus two. The range of the branch is -126 to +128 bytes with an 8-bit offset, and -32K to +32K bytes with a 16-bit offset.",
     "ccr": {
       "x": "-",
@@ -580,9 +550,7 @@
     "title": "Bhi",
     "summary": "Branch Conditionally: High",
     "operation": "If C̅.Z THEN [PC] ← [PC] + d",
-    "syntax": [
-      "bhi <label>"
-    ],
+    "syntax": ["bhi <label>"],
     "description": "If higher than, program execution continues at location [PC] + displacement, d. The displacement is a two's complement value. The value in the PC corresponds to the current location plus two. The range of the branch is -126 to +128 bytes with an 8-bit offset, and -32K to +32K bytes with a 16-bit offset.",
     "ccr": {
       "x": "-",
@@ -607,9 +575,7 @@
     "title": "Ble",
     "summary": "Branch Conditionally: Less or Equal",
     "operation": "If Z + N.V̅ + N̅.V THEN [PC] ← [PC] + d",
-    "syntax": [
-      "ble <label>"
-    ],
+    "syntax": ["ble <label>"],
     "description": "If less than or equal, program execution continues at location [PC] + displacement, d. The displacement is a two's complement value. The value in the PC corresponds to the current location plus two. The range of the branch is -126 to +128 bytes with an 8-bit offset, and -32K to +32K bytes with a 16-bit offset.",
     "ccr": {
       "x": "-",
@@ -634,9 +600,7 @@
     "title": "Bls",
     "summary": "Branch Conditionally: Low or Same",
     "operation": "If C+Z THEN [PC] ← [PC] + d",
-    "syntax": [
-      "bls <label>"
-    ],
+    "syntax": ["bls <label>"],
     "description": "If lower than or same, program execution continues at location [PC] + displacement, d. The displacement is a two's complement value. The value in the PC corresponds to the current location plus two. The range of the branch is -126 to +128 bytes with an 8-bit offset, and -32K to +32K bytes with a 16-bit offset.",
     "ccr": {
       "x": "-",
@@ -661,9 +625,7 @@
     "title": "Blt",
     "summary": "Branch Conditionally: Less Than",
     "operation": "If N.V̅ + N̅.V THEN [PC] ← [PC] + d",
-    "syntax": [
-      "blt <label>"
-    ],
+    "syntax": ["blt <label>"],
     "description": "If less than, program execution continues at location [PC] + displacement, d. The displacement is a two's complement value. The value in the PC corresponds to the current location plus two. The range of the branch is -126 to +128 bytes with an 8-bit offset, and -32K to +32K bytes with a 16-bit offset.",
     "ccr": {
       "x": "-",
@@ -688,9 +650,7 @@
     "title": "Bmi",
     "summary": "Branch Conditionally: Minus",
     "operation": "If N THEN [PC] ← [PC] + d",
-    "syntax": [
-      "bmi <label>"
-    ],
+    "syntax": ["bmi <label>"],
     "description": "If the negative bit is set, program execution continues at location [PC] + displacement, d. The displacement is a two's complement value. The value in the PC corresponds to the current location plus two. The range of the branch is -126 to +128 bytes with an 8-bit offset, and -32K to +32K bytes with a 16-bit offset.",
     "ccr": {
       "x": "-",
@@ -715,9 +675,7 @@
     "title": "Bne",
     "summary": "Branch Conditionally: Not Equal",
     "operation": "If Z̅ THEN [PC] ← [PC] + d",
-    "syntax": [
-      "beq <label>"
-    ],
+    "syntax": ["beq <label>"],
     "description": "If the the zero bit is clear, program execution continues at location [PC] + displacement, d. The displacement is a two's complement value. The value in the PC corresponds to the current location plus two. The range of the branch is -126 to +128 bytes with an 8-bit offset, and -32K to +32K bytes with a 16-bit offset. A short branch to the next instruction is impossible, since the branch code 0 indicates a long branch with a 16-bit offset.",
     "ccr": {
       "x": "-",
@@ -742,9 +700,7 @@
     "title": "Bpl",
     "summary": "Branch Conditionally: Plus",
     "operation": "If N̅ THEN [PC] ← [PC] + d",
-    "syntax": [
-      "bpl <label>"
-    ],
+    "syntax": ["bpl <label>"],
     "description": "If the negative bit is clear, program execution continues at location [PC] + displacement, d. The displacement is a two's complement value. The value in the PC corresponds to the current location plus two. The range of the branch is -126 to +128 bytes with an 8-bit offset, and -32K to +32K bytes with a 16-bit offset.",
     "ccr": {
       "x": "-",
@@ -769,9 +725,7 @@
     "title": "Bvc",
     "summary": "Branch Conditionally: Overflow Clear",
     "operation": "If V̅ THEN [PC] ← [PC] + d",
-    "syntax": [
-      "bvc <label>"
-    ],
+    "syntax": ["bvc <label>"],
     "description": "If the overflow bit is clear, program execution continues at location [PC] + displacement, d. The displacement is a two's complement value. The value in the PC corresponds to the current location plus two. The range of the branch is -126 to +128 bytes with an 8-bit offset, and -32K to +32K bytes with a 16-bit offset.",
     "ccr": {
       "x": "-",
@@ -796,9 +750,7 @@
     "title": "Bvs",
     "summary": "Branch Conditionally: Overflow Set",
     "operation": "If V THEN [PC] ← [PC] + d",
-    "syntax": [
-      "bvs <label>"
-    ],
+    "syntax": ["bvs <label>"],
     "description": "If the overflow bit is set, program execution continues at location [PC] + displacement, d. The displacement is a two's complement value. The value in the PC corresponds to the current location plus two. The range of the branch is -126 to +128 bytes with an 8-bit offset, and -32K to +32K bytes with a 16-bit offset.",
     "ccr": {
       "x": "-",
@@ -823,9 +775,7 @@
     "title": "BCHG",
     "summary": "Test Bit and Change",
     "operation": "[Z] ← ¬(\\<bit_number\\> OF [destination])<br/>\n\\<bit_number\\> OF [destination] ← ¬(\\<bit_number\\> OF [destination])",
-    "syntax": [
-      "bchg[.(bl)] <bit_number>,<destination>"
-    ],
+    "syntax": ["bchg[.(bl)] <bit_number>,<destination>"],
     "description": "A bit in the destination operand is tested and the state of the specified bit is reflected in the condition of the Z-bit in the CCR. After the test operation, the state of the specified bit is changed in the destination. If a data register is the destination, then the bit numbering is modulo 32, allowing bit manipulation of all bits in a data register. If a memory location is the destination, a byte is read from that location, the bit operation performed using the bit number modulo 8, and the byte written back to the location. Note that bit zero refers to the least-significant bit. The bit number for this operation may be specified either *statically* by an immediate value or *dynamically* by the contents of a data register.",
     "src": {
       "dn": true,
@@ -878,9 +828,7 @@
     "title": "BCLR",
     "summary": "Test Bit and Clear",
     "operation": "[Z] ← ¬(\\<bit_number\\> OF [destination])<br/>\n\\<bit_number\\> OF [destination] ← 0",
-    "syntax": [
-      "bclr[.(bl)] <bit_number>,<destination>"
-    ],
+    "syntax": ["bclr[.(bl)] <bit_number>,<destination>"],
     "description": "A bit in the destination operand is tested and the state of the specified bit is reflected in the condition of the Z-bit in the condition code. After the test, the state of the specified bit is cleared in the destination. If a data register is the destination, the bit numbering is modulo 32, allowing bit manipulation of all bits in a data register. If a memory location is the destination, a byte is read from that location, the bit operation performed using the bit number modulo 8, and the byte written back to the location. Bit zero refers to the least-significant bit. The bit number for this operation may be specified either by an immediate value or dynamically by the contents of a data register.",
     "src": {
       "dn": true,
@@ -933,9 +881,7 @@
     "title": "BFCHG",
     "summary": "Test Bit Field and Change",
     "operation": "TEST ( < bit field > of Destination) → < bit field > of Destination",
-    "syntax": [
-      "bfchg <ea>"
-    ],
+    "syntax": ["bfchg <ea>"],
     "description": "Sets the condition codes according to the value in a bit field at the specified effective address, then complements the field.\n\nA field offset and a field width select the field. The field offset specifies the starting bit of the field. The field width determines the number of bits in the field.",
     "src": {
       "dn": true,
@@ -1132,10 +1078,7 @@
     "title": "BRA",
     "summary": "Branch",
     "operation": "[PC] ← [PC] + d",
-    "syntax": [
-      "bra[.(bw)] <label>",
-      "bra[.(bw)] <literal>"
-    ],
+    "syntax": ["bra[.(bw)] <label>", "bra[.(bw)] <literal>"],
     "description": "Program execution continues at location [PC] + d. The displacement, d, is a two's complement value (8 bits for a short branch and 16 bits for a long branch). The value in the PC corresponds to the current location plus two. Note that a short branch to the next instruction is impossible, since the branch code 0 is used to indicate a long branch with a 16-bit offset.",
     "ccr": {
       "x": "-",
@@ -1160,9 +1103,7 @@
     "title": "BSET",
     "summary": "Test Bit and Set",
     "operation": "[Z] ← ¬(\\<bit_number\\> OF [destination])<br/>\n\\<bit_number\\> OF [destination] ← 1",
-    "syntax": [
-      "bset[.(bl)] <bit_number>,<destination>"
-    ],
+    "syntax": ["bset[.(bl)] <bit_number>,<destination>"],
     "description": "A bit in the destination operand is tested and the state of the specified bit is reflected in the condition of the Z-bit of the condition code. After the test, the specified bit is set in the destination. If a data register is the destination then the bit numbering is modulo 32, allowing bit manipulation of all bits in a data register. If a memory location is the destination, a byte is read from that location, the bit operation performed using bit number modulo 8, and the byte written back to the location. Bit zero refers to the least-significant bit. The bit number for this operation may be specified either by an immediate value or dynamically by the contents of a data register.",
     "src": {
       "dn": true,
@@ -1215,9 +1156,7 @@
     "title": "BSR",
     "summary": "Branch to Subroutine",
     "operation": "[SP] ← [SP] - 4; [M([SP])] ← [PC]; [PC] ← [PC] + d\n",
-    "syntax": [
-      "bsr[.(bw)] <label>"
-    ],
+    "syntax": ["bsr[.(bw)] <label>"],
     "description": "The longword address of the instruction immediately following the `BSR` instruction is pushed onto the system stack pointed at by A7. Program execution then continues at location [PC] + displacement. The displacement is an 8-bit two's complement value for a short branch, or a 16-bit two's complement value for a long branch. The value in the PC corresponds to the current location plus two. Note that a short branch to the next instruction is impossible, since the branch code 0 is used to indicate a long branch with a 16-bit offset.",
     "ccr": {
       "x": "-",
@@ -1242,9 +1181,7 @@
     "title": "BTST",
     "summary": "Test Bit",
     "operation": "[Z] ← ¬(\\<bit_number\\> OF [destination])",
-    "syntax": [
-      "btst[.(bl)] <bit_number>,<destination>"
-    ],
+    "syntax": ["btst[.(bl)] <bit_number>,<destination>"],
     "description": "A bit in the destination operand is tested and the state of the specified bit is reflected in the condition of the Z-bit in the CCR. The destination is not modified by a `BTST` instruction. If a data register is the destination, then the bit numbering is modulo 32, allowing bit manipulation of all bits in a data register. If a memory location is the destination, a byte is read from that location, the bit operation performed. Bit 0 refers to the least-significant bit. The bit number for this operation may be specified either statically by an immediate value or dynamically by the contents of a data register.",
     "src": {
       "dn": true,
@@ -1345,9 +1282,7 @@
     "title": "CHK",
     "summary": "Check Register Against Bound",
     "operation": "IF [Dn] < 0 OR [Dn] > [\\<ea\\>] THEN TRAP",
-    "syntax": [
-      "chk[.w] <source>,Dn"
-    ],
+    "syntax": ["chk[.w] <source>,Dn"],
     "description": "The contents of the low-order word in the data register specified in the instruction are examined and compared with the upper bound at the effective address. The upper bound is a two's complement integer. If the data register value is less than zero or greater than the upper bound contained in the operand word, then the processor initiates exception processing.",
     "src": {
       "dn": true,
@@ -1418,9 +1353,7 @@
     "title": "CLR",
     "summary": "Clear",
     "operation": "[destination] ← 0",
-    "syntax": [
-      "clr[.(bwl)] <destination>"
-    ],
+    "syntax": ["clr[.(bwl)] <destination>"],
     "description": "The destination is cleared - loaded with all zeros. The `CLR` instruction can't be used to clear an address register. You can use `SUBA.L A0,A0` to clear A0. Note that a side effect of `CLR`'s implementation is a *read* from the specified effective address before the clear (i.e., write) operation is executed. Under certain circumstances this might cause a problem (e.g., with write-only memory).",
     "src": {
       "dn": true,
@@ -1459,9 +1392,7 @@
     "title": "CMP",
     "summary": "Compare",
     "operation": "[destination] - [source]",
-    "syntax": [
-      "cmp[.(bwl)] <source>,Dn"
-    ],
+    "syntax": ["cmp[.(bwl)] <source>,Dn"],
     "description": "Subtract the source operand from the destination operand and set the condition codes accordingly. The destination must be a data register. The destination is not modified by this instruction.",
     "src": {
       "dn": true,
@@ -1500,9 +1431,7 @@
     "title": "CMPA",
     "summary": "Compare Address",
     "operation": "[destination] - [source]",
-    "syntax": [
-      "cmpa[.(wl)] <source>,An"
-    ],
+    "syntax": ["cmpa[.(wl)] <source>,An"],
     "description": "Subtract the source operand from the destination address register and set the condition codes accordingly. The address register is not modified. The size of the operation may be specified as word or longword. Word length operands are sign-extended to 32 bits before the comparison is carried out.",
     "src": {
       "dn": true,
@@ -1541,9 +1470,7 @@
     "title": "CMPI",
     "summary": "Compare Immediate",
     "operation": "[destination] - \\<immediate_data\\>",
-    "syntax": [
-      "cmpi[.(bwl)] #<data>,<destination>"
-    ],
+    "syntax": ["cmpi[.(bwl)] #<data>,<destination>"],
     "description": "Subtract the immediate data from the destination operand and set the condition codes accordingly - the destination is not modified. `CMPI` permits the comparison of a literal with memory.",
     "dest": {
       "dn": true,
@@ -1582,9 +1509,7 @@
     "title": "CMPM",
     "summary": "Compare Memory to Memory",
     "operation": "[destination] - [source]",
-    "syntax": [
-      "cmpm[.(bwl)] (Ay)+,(Ax)+"
-    ],
+    "syntax": ["cmpm[.(bwl)] (Ay)+,(Ax)+"],
     "description": "Subtract the source operand from the destination operand and set the condition codes accordingly. The destination is not modified by this instruction. The only permitted addressing mode is address register indirect with post-incrementing for both source and destination operands.",
     "ccr": {
       "x": "-",
@@ -2745,9 +2670,7 @@
     "title": "DBcc",
     "summary": "Test Condition, Decrement and Branch: Carry Clear",
     "operation": "IF(condition false)<br/>\n&nbsp;&nbsp;THEN [Dn] ← [Dn] - 1 {decrement loop counter}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;IF [Dn] = -1<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;THEN [PC] ← [PC] + 2 {fall through to next instruction}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ELSE [PC] ← [PC] + d {take branch}<br/>\n&nbsp;&nbsp;ELSE [PC] ← [PC] + 2 {fall through to next instruction}<br/>",
-    "syntax": [
-      "dbcc Dn,<label>"
-    ],
+    "syntax": ["dbcc Dn,<label>"],
     "description": "The `DBcc` instruction provides an automatic looping facility and replaces the usual decrement counter, test, and branch instructions. Three parameters are required by the `DBcc` instruction: a branch condition (specified by 'cc'), a data register that serves as the loop down-counter, and a label that indicates the start of the loop. The `DBcc` first tests the condition 'cc', and if 'cc' is true the loop is terminated and the branch back to \\<label\\> not taken. The 14 branch conditions supported by Bcc are also supported by `DBcc`, as well as `DBF` and `DBT` (F = false, and T = true). Note that many assemblers permit the mnemonic `DBF` to be expressed as `DBRA` (i.e., decrement and branch back).\n\nIt is important to appreciate that the condition tested by the `DBcc` instruction works in the *opposite* sense to a `Bcc`, conditional branch, instruction. For example, `BCC` means branch on carry clear, whereas `DBcc` means continue (i.e., exit the loop) on carry clear. That is, the `DBcc` condition is a loop terminator. If the termination condition is not true, the low-order 16 bits of the specified data register are decremented. If the result is -1, the loop is not taken and the next instruction is executed. If the result is not -1, a branch is made to 'label'. Note that the label represents a 16-bit signed value, permitting a branch range of -32K to +32K bytes. Since the value in Dn decremented is 16 bits, the loop may be executed up to 64K times.\n\nWe can use the instruction `DBEQ`, decrement and branch on zero, to mechanize the high-level language construct `REPEAT`...`UNTIL`.\n\n```\nLOOP ...            REPEAT\n     ...\n     ...              [D0] := [D0] - 1\n     ...\n     DBEQ D0,REPEAT UNTIL [D0] = - 1 OR [Z] = 1\n```",
     "ccr": {
       "x": "-",
@@ -2772,9 +2695,7 @@
     "title": "DBcs",
     "summary": "Test Condition, Decrement and Branch: Carry Set",
     "operation": "IF(condition false)<br/>\n&nbsp;&nbsp;THEN [Dn] ← [Dn] - 1 {decrement loop counter}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;IF [Dn] = -1<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;THEN [PC] ← [PC] + 2 {fall through to next instruction}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ELSE [PC] ← [PC] + d {take branch}<br/>\n&nbsp;&nbsp;ELSE [PC] ← [PC] + 2 {fall through to next instruction}<br/>",
-    "syntax": [
-      "dbcc Dn,<label>"
-    ],
+    "syntax": ["dbcc Dn,<label>"],
     "description": "The `DBcc` instruction provides an automatic looping facility and replaces the usual decrement counter, test, and branch instructions. Three parameters are required by the `DBcc` instruction: a branch condition (specified by 'cc'), a data register that serves as the loop down-counter, and a label that indicates the start of the loop. The `DBcc` first tests the condition 'cc', and if 'cc' is true the loop is terminated and the branch back to \\<label\\> not taken. The 14 branch conditions supported by Bcc are also supported by `DBcc`, as well as `DBF` and `DBT` (F = false, and T = true). Note that many assemblers permit the mnemonic `DBF` to be expressed as `DBRA` (i.e., decrement and branch back).\n\nIt is important to appreciate that the condition tested by the `DBcc` instruction works in the *opposite* sense to a `Bcc`, conditional branch, instruction. For example, `BCC` means branch on carry clear, whereas `DBcc` means continue (i.e., exit the loop) on carry clear. That is, the `DBcc` condition is a loop terminator. If the termination condition is not true, the low-order 16 bits of the specified data register are decremented. If the result is -1, the loop is not taken and the next instruction is executed. If the result is not -1, a branch is made to 'label'. Note that the label represents a 16-bit signed value, permitting a branch range of -32K to +32K bytes. Since the value in Dn decremented is 16 bits, the loop may be executed up to 64K times.\n\nWe can use the instruction `DBEQ`, decrement and branch on zero, to mechanize the high-level language construct `REPEAT`...`UNTIL`.\n\n```\nLOOP ...            REPEAT\n     ...\n     ...              [D0] := [D0] - 1\n     ...\n     DBEQ D0,REPEAT UNTIL [D0] = - 1 OR [Z] = 1\n```",
     "ccr": {
       "x": "-",
@@ -2799,9 +2720,7 @@
     "title": "DBeq",
     "summary": "Test Condition, Decrement and Branch: Equal",
     "operation": "IF(condition false)<br/>\n&nbsp;&nbsp;THEN [Dn] ← [Dn] - 1 {decrement loop counter}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;IF [Dn] = -1<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;THEN [PC] ← [PC] + 2 {fall through to next instruction}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ELSE [PC] ← [PC] + d {take branch}<br/>\n&nbsp;&nbsp;ELSE [PC] ← [PC] + 2 {fall through to next instruction}<br/>",
-    "syntax": [
-      "dbcc Dn,<label>"
-    ],
+    "syntax": ["dbcc Dn,<label>"],
     "description": "The `DBcc` instruction provides an automatic looping facility and replaces the usual decrement counter, test, and branch instructions. Three parameters are required by the `DBcc` instruction: a branch condition (specified by 'cc'), a data register that serves as the loop down-counter, and a label that indicates the start of the loop. The `DBcc` first tests the condition 'cc', and if 'cc' is true the loop is terminated and the branch back to \\<label\\> not taken. The 14 branch conditions supported by Bcc are also supported by `DBcc`, as well as `DBF` and `DBT` (F = false, and T = true). Note that many assemblers permit the mnemonic `DBF` to be expressed as `DBRA` (i.e., decrement and branch back).\n\nIt is important to appreciate that the condition tested by the `DBcc` instruction works in the *opposite* sense to a `Bcc`, conditional branch, instruction. For example, `BCC` means branch on carry clear, whereas `DBcc` means continue (i.e., exit the loop) on carry clear. That is, the `DBcc` condition is a loop terminator. If the termination condition is not true, the low-order 16 bits of the specified data register are decremented. If the result is -1, the loop is not taken and the next instruction is executed. If the result is not -1, a branch is made to 'label'. Note that the label represents a 16-bit signed value, permitting a branch range of -32K to +32K bytes. Since the value in Dn decremented is 16 bits, the loop may be executed up to 64K times.\n\nWe can use the instruction `DBEQ`, decrement and branch on zero, to mechanize the high-level language construct `REPEAT`...`UNTIL`.\n\n```\nLOOP ...            REPEAT\n     ...\n     ...              [D0] := [D0] - 1\n     ...\n     DBEQ D0,REPEAT UNTIL [D0] = - 1 OR [Z] = 1\n```",
     "ccr": {
       "x": "-",
@@ -2826,9 +2745,7 @@
     "title": "DBf",
     "summary": "Test Condition, Decrement and Branch: False",
     "operation": "IF(condition false)<br/>\n&nbsp;&nbsp;THEN [Dn] ← [Dn] - 1 {decrement loop counter}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;IF [Dn] = -1<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;THEN [PC] ← [PC] + 2 {fall through to next instruction}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ELSE [PC] ← [PC] + d {take branch}<br/>\n&nbsp;&nbsp;ELSE [PC] ← [PC] + 2 {fall through to next instruction}<br/>",
-    "syntax": [
-      "dbcc Dn,<label>"
-    ],
+    "syntax": ["dbcc Dn,<label>"],
     "description": "The `DBcc` instruction provides an automatic looping facility and replaces the usual decrement counter, test, and branch instructions. Three parameters are required by the `DBcc` instruction: a branch condition (specified by 'cc'), a data register that serves as the loop down-counter, and a label that indicates the start of the loop. The `DBcc` first tests the condition 'cc', and if 'cc' is true the loop is terminated and the branch back to \\<label\\> not taken. The 14 branch conditions supported by Bcc are also supported by `DBcc`, as well as `DBF` and `DBT` (F = false, and T = true). Note that many assemblers permit the mnemonic `DBF` to be expressed as `DBRA` (i.e., decrement and branch back).\n\nIt is important to appreciate that the condition tested by the `DBcc` instruction works in the *opposite* sense to a `Bcc`, conditional branch, instruction. For example, `BCC` means branch on carry clear, whereas `DBcc` means continue (i.e., exit the loop) on carry clear. That is, the `DBcc` condition is a loop terminator. If the termination condition is not true, the low-order 16 bits of the specified data register are decremented. If the result is -1, the loop is not taken and the next instruction is executed. If the result is not -1, a branch is made to 'label'. Note that the label represents a 16-bit signed value, permitting a branch range of -32K to +32K bytes. Since the value in Dn decremented is 16 bits, the loop may be executed up to 64K times.\n\nWe can use the instruction `DBEQ`, decrement and branch on zero, to mechanize the high-level language construct `REPEAT`...`UNTIL`.\n\n```\nLOOP ...            REPEAT\n     ...\n     ...              [D0] := [D0] - 1\n     ...\n     DBEQ D0,REPEAT UNTIL [D0] = - 1 OR [Z] = 1\n```",
     "ccr": {
       "x": "-",
@@ -2853,9 +2770,7 @@
     "title": "DBge",
     "summary": "Test Condition, Decrement and Branch: Greater or Equal",
     "operation": "IF(condition false)<br/>\n&nbsp;&nbsp;THEN [Dn] ← [Dn] - 1 {decrement loop counter}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;IF [Dn] = -1<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;THEN [PC] ← [PC] + 2 {fall through to next instruction}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ELSE [PC] ← [PC] + d {take branch}<br/>\n&nbsp;&nbsp;ELSE [PC] ← [PC] + 2 {fall through to next instruction}<br/>",
-    "syntax": [
-      "dbcc Dn,<label>"
-    ],
+    "syntax": ["dbcc Dn,<label>"],
     "description": "The `DBcc` instruction provides an automatic looping facility and replaces the usual decrement counter, test, and branch instructions. Three parameters are required by the `DBcc` instruction: a branch condition (specified by 'cc'), a data register that serves as the loop down-counter, and a label that indicates the start of the loop. The `DBcc` first tests the condition 'cc', and if 'cc' is true the loop is terminated and the branch back to \\<label\\> not taken. The 14 branch conditions supported by Bcc are also supported by `DBcc`, as well as `DBF` and `DBT` (F = false, and T = true). Note that many assemblers permit the mnemonic `DBF` to be expressed as `DBRA` (i.e., decrement and branch back).\n\nIt is important to appreciate that the condition tested by the `DBcc` instruction works in the *opposite* sense to a `Bcc`, conditional branch, instruction. For example, `BCC` means branch on carry clear, whereas `DBcc` means continue (i.e., exit the loop) on carry clear. That is, the `DBcc` condition is a loop terminator. If the termination condition is not true, the low-order 16 bits of the specified data register are decremented. If the result is -1, the loop is not taken and the next instruction is executed. If the result is not -1, a branch is made to 'label'. Note that the label represents a 16-bit signed value, permitting a branch range of -32K to +32K bytes. Since the value in Dn decremented is 16 bits, the loop may be executed up to 64K times.\n\nWe can use the instruction `DBEQ`, decrement and branch on zero, to mechanize the high-level language construct `REPEAT`...`UNTIL`.\n\n```\nLOOP ...            REPEAT\n     ...\n     ...              [D0] := [D0] - 1\n     ...\n     DBEQ D0,REPEAT UNTIL [D0] = - 1 OR [Z] = 1\n```",
     "ccr": {
       "x": "-",
@@ -2880,9 +2795,7 @@
     "title": "DBgt",
     "summary": "Test Condition, Decrement and Branch: Greater Than",
     "operation": "IF(condition false)<br/>\n&nbsp;&nbsp;THEN [Dn] ← [Dn] - 1 {decrement loop counter}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;IF [Dn] = -1<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;THEN [PC] ← [PC] + 2 {fall through to next instruction}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ELSE [PC] ← [PC] + d {take branch}<br/>\n&nbsp;&nbsp;ELSE [PC] ← [PC] + 2 {fall through to next instruction}<br/>",
-    "syntax": [
-      "dbcc Dn,<label>"
-    ],
+    "syntax": ["dbcc Dn,<label>"],
     "description": "The `DBcc` instruction provides an automatic looping facility and replaces the usual decrement counter, test, and branch instructions. Three parameters are required by the `DBcc` instruction: a branch condition (specified by 'cc'), a data register that serves as the loop down-counter, and a label that indicates the start of the loop. The `DBcc` first tests the condition 'cc', and if 'cc' is true the loop is terminated and the branch back to \\<label\\> not taken. The 14 branch conditions supported by Bcc are also supported by `DBcc`, as well as `DBF` and `DBT` (F = false, and T = true). Note that many assemblers permit the mnemonic `DBF` to be expressed as `DBRA` (i.e., decrement and branch back).\n\nIt is important to appreciate that the condition tested by the `DBcc` instruction works in the *opposite* sense to a `Bcc`, conditional branch, instruction. For example, `BCC` means branch on carry clear, whereas `DBcc` means continue (i.e., exit the loop) on carry clear. That is, the `DBcc` condition is a loop terminator. If the termination condition is not true, the low-order 16 bits of the specified data register are decremented. If the result is -1, the loop is not taken and the next instruction is executed. If the result is not -1, a branch is made to 'label'. Note that the label represents a 16-bit signed value, permitting a branch range of -32K to +32K bytes. Since the value in Dn decremented is 16 bits, the loop may be executed up to 64K times.\n\nWe can use the instruction `DBEQ`, decrement and branch on zero, to mechanize the high-level language construct `REPEAT`...`UNTIL`.\n\n```\nLOOP ...            REPEAT\n     ...\n     ...              [D0] := [D0] - 1\n     ...\n     DBEQ D0,REPEAT UNTIL [D0] = - 1 OR [Z] = 1\n```",
     "ccr": {
       "x": "-",
@@ -2907,9 +2820,7 @@
     "title": "DBhi",
     "summary": "Test Condition, Decrement and Branch: High",
     "operation": "IF(condition false)<br/>\n&nbsp;&nbsp;THEN [Dn] ← [Dn] - 1 {decrement loop counter}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;IF [Dn] = -1<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;THEN [PC] ← [PC] + 2 {fall through to next instruction}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ELSE [PC] ← [PC] + d {take branch}<br/>\n&nbsp;&nbsp;ELSE [PC] ← [PC] + 2 {fall through to next instruction}<br/>",
-    "syntax": [
-      "dbcc Dn,<label>"
-    ],
+    "syntax": ["dbcc Dn,<label>"],
     "description": "The `DBcc` instruction provides an automatic looping facility and replaces the usual decrement counter, test, and branch instructions. Three parameters are required by the `DBcc` instruction: a branch condition (specified by 'cc'), a data register that serves as the loop down-counter, and a label that indicates the start of the loop. The `DBcc` first tests the condition 'cc', and if 'cc' is true the loop is terminated and the branch back to \\<label\\> not taken. The 14 branch conditions supported by Bcc are also supported by `DBcc`, as well as `DBF` and `DBT` (F = false, and T = true). Note that many assemblers permit the mnemonic `DBF` to be expressed as `DBRA` (i.e., decrement and branch back).\n\nIt is important to appreciate that the condition tested by the `DBcc` instruction works in the *opposite* sense to a `Bcc`, conditional branch, instruction. For example, `BCC` means branch on carry clear, whereas `DBcc` means continue (i.e., exit the loop) on carry clear. That is, the `DBcc` condition is a loop terminator. If the termination condition is not true, the low-order 16 bits of the specified data register are decremented. If the result is -1, the loop is not taken and the next instruction is executed. If the result is not -1, a branch is made to 'label'. Note that the label represents a 16-bit signed value, permitting a branch range of -32K to +32K bytes. Since the value in Dn decremented is 16 bits, the loop may be executed up to 64K times.\n\nWe can use the instruction `DBEQ`, decrement and branch on zero, to mechanize the high-level language construct `REPEAT`...`UNTIL`.\n\n```\nLOOP ...            REPEAT\n     ...\n     ...              [D0] := [D0] - 1\n     ...\n     DBEQ D0,REPEAT UNTIL [D0] = - 1 OR [Z] = 1\n```",
     "ccr": {
       "x": "-",
@@ -2934,9 +2845,7 @@
     "title": "DBle",
     "summary": "Test Condition, Decrement and Branch: Less or Equal",
     "operation": "IF(condition false)<br/>\n&nbsp;&nbsp;THEN [Dn] ← [Dn] - 1 {decrement loop counter}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;IF [Dn] = -1<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;THEN [PC] ← [PC] + 2 {fall through to next instruction}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ELSE [PC] ← [PC] + d {take branch}<br/>\n&nbsp;&nbsp;ELSE [PC] ← [PC] + 2 {fall through to next instruction}<br/>",
-    "syntax": [
-      "dbcc Dn,<label>"
-    ],
+    "syntax": ["dbcc Dn,<label>"],
     "description": "The `DBcc` instruction provides an automatic looping facility and replaces the usual decrement counter, test, and branch instructions. Three parameters are required by the `DBcc` instruction: a branch condition (specified by 'cc'), a data register that serves as the loop down-counter, and a label that indicates the start of the loop. The `DBcc` first tests the condition 'cc', and if 'cc' is true the loop is terminated and the branch back to \\<label\\> not taken. The 14 branch conditions supported by Bcc are also supported by `DBcc`, as well as `DBF` and `DBT` (F = false, and T = true). Note that many assemblers permit the mnemonic `DBF` to be expressed as `DBRA` (i.e., decrement and branch back).\n\nIt is important to appreciate that the condition tested by the `DBcc` instruction works in the *opposite* sense to a `Bcc`, conditional branch, instruction. For example, `BCC` means branch on carry clear, whereas `DBcc` means continue (i.e., exit the loop) on carry clear. That is, the `DBcc` condition is a loop terminator. If the termination condition is not true, the low-order 16 bits of the specified data register are decremented. If the result is -1, the loop is not taken and the next instruction is executed. If the result is not -1, a branch is made to 'label'. Note that the label represents a 16-bit signed value, permitting a branch range of -32K to +32K bytes. Since the value in Dn decremented is 16 bits, the loop may be executed up to 64K times.\n\nWe can use the instruction `DBEQ`, decrement and branch on zero, to mechanize the high-level language construct `REPEAT`...`UNTIL`.\n\n```\nLOOP ...            REPEAT\n     ...\n     ...              [D0] := [D0] - 1\n     ...\n     DBEQ D0,REPEAT UNTIL [D0] = - 1 OR [Z] = 1\n```",
     "ccr": {
       "x": "-",
@@ -2961,9 +2870,7 @@
     "title": "DBls",
     "summary": "Test Condition, Decrement and Branch: Low or Same",
     "operation": "IF(condition false)<br/>\n&nbsp;&nbsp;THEN [Dn] ← [Dn] - 1 {decrement loop counter}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;IF [Dn] = -1<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;THEN [PC] ← [PC] + 2 {fall through to next instruction}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ELSE [PC] ← [PC] + d {take branch}<br/>\n&nbsp;&nbsp;ELSE [PC] ← [PC] + 2 {fall through to next instruction}<br/>",
-    "syntax": [
-      "dbcc Dn,<label>"
-    ],
+    "syntax": ["dbcc Dn,<label>"],
     "description": "The `DBcc` instruction provides an automatic looping facility and replaces the usual decrement counter, test, and branch instructions. Three parameters are required by the `DBcc` instruction: a branch condition (specified by 'cc'), a data register that serves as the loop down-counter, and a label that indicates the start of the loop. The `DBcc` first tests the condition 'cc', and if 'cc' is true the loop is terminated and the branch back to \\<label\\> not taken. The 14 branch conditions supported by Bcc are also supported by `DBcc`, as well as `DBF` and `DBT` (F = false, and T = true). Note that many assemblers permit the mnemonic `DBF` to be expressed as `DBRA` (i.e., decrement and branch back).\n\nIt is important to appreciate that the condition tested by the `DBcc` instruction works in the *opposite* sense to a `Bcc`, conditional branch, instruction. For example, `BCC` means branch on carry clear, whereas `DBcc` means continue (i.e., exit the loop) on carry clear. That is, the `DBcc` condition is a loop terminator. If the termination condition is not true, the low-order 16 bits of the specified data register are decremented. If the result is -1, the loop is not taken and the next instruction is executed. If the result is not -1, a branch is made to 'label'. Note that the label represents a 16-bit signed value, permitting a branch range of -32K to +32K bytes. Since the value in Dn decremented is 16 bits, the loop may be executed up to 64K times.\n\nWe can use the instruction `DBEQ`, decrement and branch on zero, to mechanize the high-level language construct `REPEAT`...`UNTIL`.\n\n```\nLOOP ...            REPEAT\n     ...\n     ...              [D0] := [D0] - 1\n     ...\n     DBEQ D0,REPEAT UNTIL [D0] = - 1 OR [Z] = 1\n```",
     "ccr": {
       "x": "-",
@@ -2988,9 +2895,7 @@
     "title": "DBlt",
     "summary": "Test Condition, Decrement and Branch: Less Than",
     "operation": "IF(condition false)<br/>\n&nbsp;&nbsp;THEN [Dn] ← [Dn] - 1 {decrement loop counter}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;IF [Dn] = -1<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;THEN [PC] ← [PC] + 2 {fall through to next instruction}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ELSE [PC] ← [PC] + d {take branch}<br/>\n&nbsp;&nbsp;ELSE [PC] ← [PC] + 2 {fall through to next instruction}<br/>",
-    "syntax": [
-      "dbcc Dn,<label>"
-    ],
+    "syntax": ["dbcc Dn,<label>"],
     "description": "The `DBcc` instruction provides an automatic looping facility and replaces the usual decrement counter, test, and branch instructions. Three parameters are required by the `DBcc` instruction: a branch condition (specified by 'cc'), a data register that serves as the loop down-counter, and a label that indicates the start of the loop. The `DBcc` first tests the condition 'cc', and if 'cc' is true the loop is terminated and the branch back to \\<label\\> not taken. The 14 branch conditions supported by Bcc are also supported by `DBcc`, as well as `DBF` and `DBT` (F = false, and T = true). Note that many assemblers permit the mnemonic `DBF` to be expressed as `DBRA` (i.e., decrement and branch back).\n\nIt is important to appreciate that the condition tested by the `DBcc` instruction works in the *opposite* sense to a `Bcc`, conditional branch, instruction. For example, `BCC` means branch on carry clear, whereas `DBcc` means continue (i.e., exit the loop) on carry clear. That is, the `DBcc` condition is a loop terminator. If the termination condition is not true, the low-order 16 bits of the specified data register are decremented. If the result is -1, the loop is not taken and the next instruction is executed. If the result is not -1, a branch is made to 'label'. Note that the label represents a 16-bit signed value, permitting a branch range of -32K to +32K bytes. Since the value in Dn decremented is 16 bits, the loop may be executed up to 64K times.\n\nWe can use the instruction `DBEQ`, decrement and branch on zero, to mechanize the high-level language construct `REPEAT`...`UNTIL`.\n\n```\nLOOP ...            REPEAT\n     ...\n     ...              [D0] := [D0] - 1\n     ...\n     DBEQ D0,REPEAT UNTIL [D0] = - 1 OR [Z] = 1\n```",
     "ccr": {
       "x": "-",
@@ -3015,9 +2920,7 @@
     "title": "DBmi",
     "summary": "Test Condition, Decrement and Branch: Minus",
     "operation": "IF(condition false)<br/>\n&nbsp;&nbsp;THEN [Dn] ← [Dn] - 1 {decrement loop counter}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;IF [Dn] = -1<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;THEN [PC] ← [PC] + 2 {fall through to next instruction}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ELSE [PC] ← [PC] + d {take branch}<br/>\n&nbsp;&nbsp;ELSE [PC] ← [PC] + 2 {fall through to next instruction}<br/>",
-    "syntax": [
-      "dbcc Dn,<label>"
-    ],
+    "syntax": ["dbcc Dn,<label>"],
     "description": "The `DBcc` instruction provides an automatic looping facility and replaces the usual decrement counter, test, and branch instructions. Three parameters are required by the `DBcc` instruction: a branch condition (specified by 'cc'), a data register that serves as the loop down-counter, and a label that indicates the start of the loop. The `DBcc` first tests the condition 'cc', and if 'cc' is true the loop is terminated and the branch back to \\<label\\> not taken. The 14 branch conditions supported by Bcc are also supported by `DBcc`, as well as `DBF` and `DBT` (F = false, and T = true). Note that many assemblers permit the mnemonic `DBF` to be expressed as `DBRA` (i.e., decrement and branch back).\n\nIt is important to appreciate that the condition tested by the `DBcc` instruction works in the *opposite* sense to a `Bcc`, conditional branch, instruction. For example, `BCC` means branch on carry clear, whereas `DBcc` means continue (i.e., exit the loop) on carry clear. That is, the `DBcc` condition is a loop terminator. If the termination condition is not true, the low-order 16 bits of the specified data register are decremented. If the result is -1, the loop is not taken and the next instruction is executed. If the result is not -1, a branch is made to 'label'. Note that the label represents a 16-bit signed value, permitting a branch range of -32K to +32K bytes. Since the value in Dn decremented is 16 bits, the loop may be executed up to 64K times.\n\nWe can use the instruction `DBEQ`, decrement and branch on zero, to mechanize the high-level language construct `REPEAT`...`UNTIL`.\n\n```\nLOOP ...            REPEAT\n     ...\n     ...              [D0] := [D0] - 1\n     ...\n     DBEQ D0,REPEAT UNTIL [D0] = - 1 OR [Z] = 1\n```",
     "ccr": {
       "x": "-",
@@ -3042,9 +2945,7 @@
     "title": "DBne",
     "summary": "Test Condition, Decrement and Branch: Not Equal",
     "operation": "IF(condition false)<br/>\n&nbsp;&nbsp;THEN [Dn] ← [Dn] - 1 {decrement loop counter}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;IF [Dn] = -1<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;THEN [PC] ← [PC] + 2 {fall through to next instruction}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ELSE [PC] ← [PC] + d {take branch}<br/>\n&nbsp;&nbsp;ELSE [PC] ← [PC] + 2 {fall through to next instruction}<br/>",
-    "syntax": [
-      "dbcc Dn,<label>"
-    ],
+    "syntax": ["dbcc Dn,<label>"],
     "description": "The `DBcc` instruction provides an automatic looping facility and replaces the usual decrement counter, test, and branch instructions. Three parameters are required by the `DBcc` instruction: a branch condition (specified by 'cc'), a data register that serves as the loop down-counter, and a label that indicates the start of the loop. The `DBcc` first tests the condition 'cc', and if 'cc' is true the loop is terminated and the branch back to \\<label\\> not taken. The 14 branch conditions supported by Bcc are also supported by `DBcc`, as well as `DBF` and `DBT` (F = false, and T = true). Note that many assemblers permit the mnemonic `DBF` to be expressed as `DBRA` (i.e., decrement and branch back).\n\nIt is important to appreciate that the condition tested by the `DBcc` instruction works in the *opposite* sense to a `Bcc`, conditional branch, instruction. For example, `BCC` means branch on carry clear, whereas `DBcc` means continue (i.e., exit the loop) on carry clear. That is, the `DBcc` condition is a loop terminator. If the termination condition is not true, the low-order 16 bits of the specified data register are decremented. If the result is -1, the loop is not taken and the next instruction is executed. If the result is not -1, a branch is made to 'label'. Note that the label represents a 16-bit signed value, permitting a branch range of -32K to +32K bytes. Since the value in Dn decremented is 16 bits, the loop may be executed up to 64K times.\n\nWe can use the instruction `DBEQ`, decrement and branch on zero, to mechanize the high-level language construct `REPEAT`...`UNTIL`.\n\n```\nLOOP ...            REPEAT\n     ...\n     ...              [D0] := [D0] - 1\n     ...\n     DBEQ D0,REPEAT UNTIL [D0] = - 1 OR [Z] = 1\n```",
     "ccr": {
       "x": "-",
@@ -3069,9 +2970,7 @@
     "title": "DBpl",
     "summary": "Test Condition, Decrement and Branch: Plus",
     "operation": "IF(condition false)<br/>\n&nbsp;&nbsp;THEN [Dn] ← [Dn] - 1 {decrement loop counter}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;IF [Dn] = -1<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;THEN [PC] ← [PC] + 2 {fall through to next instruction}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ELSE [PC] ← [PC] + d {take branch}<br/>\n&nbsp;&nbsp;ELSE [PC] ← [PC] + 2 {fall through to next instruction}<br/>",
-    "syntax": [
-      "dbcc Dn,<label>"
-    ],
+    "syntax": ["dbcc Dn,<label>"],
     "description": "The `DBcc` instruction provides an automatic looping facility and replaces the usual decrement counter, test, and branch instructions. Three parameters are required by the `DBcc` instruction: a branch condition (specified by 'cc'), a data register that serves as the loop down-counter, and a label that indicates the start of the loop. The `DBcc` first tests the condition 'cc', and if 'cc' is true the loop is terminated and the branch back to \\<label\\> not taken. The 14 branch conditions supported by Bcc are also supported by `DBcc`, as well as `DBF` and `DBT` (F = false, and T = true). Note that many assemblers permit the mnemonic `DBF` to be expressed as `DBRA` (i.e., decrement and branch back).\n\nIt is important to appreciate that the condition tested by the `DBcc` instruction works in the *opposite* sense to a `Bcc`, conditional branch, instruction. For example, `BCC` means branch on carry clear, whereas `DBcc` means continue (i.e., exit the loop) on carry clear. That is, the `DBcc` condition is a loop terminator. If the termination condition is not true, the low-order 16 bits of the specified data register are decremented. If the result is -1, the loop is not taken and the next instruction is executed. If the result is not -1, a branch is made to 'label'. Note that the label represents a 16-bit signed value, permitting a branch range of -32K to +32K bytes. Since the value in Dn decremented is 16 bits, the loop may be executed up to 64K times.\n\nWe can use the instruction `DBEQ`, decrement and branch on zero, to mechanize the high-level language construct `REPEAT`...`UNTIL`.\n\n```\nLOOP ...            REPEAT\n     ...\n     ...              [D0] := [D0] - 1\n     ...\n     DBEQ D0,REPEAT UNTIL [D0] = - 1 OR [Z] = 1\n```",
     "ccr": {
       "x": "-",
@@ -3096,9 +2995,7 @@
     "title": "DBt",
     "summary": "Test Condition, Decrement and Branch: True",
     "operation": "IF(condition false)<br/>\n&nbsp;&nbsp;THEN [Dn] ← [Dn] - 1 {decrement loop counter}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;IF [Dn] = -1<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;THEN [PC] ← [PC] + 2 {fall through to next instruction}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ELSE [PC] ← [PC] + d {take branch}<br/>\n&nbsp;&nbsp;ELSE [PC] ← [PC] + 2 {fall through to next instruction}<br/>",
-    "syntax": [
-      "dbcc Dn,<label>"
-    ],
+    "syntax": ["dbcc Dn,<label>"],
     "description": "The `DBcc` instruction provides an automatic looping facility and replaces the usual decrement counter, test, and branch instructions. Three parameters are required by the `DBcc` instruction: a branch condition (specified by 'cc'), a data register that serves as the loop down-counter, and a label that indicates the start of the loop. The `DBcc` first tests the condition 'cc', and if 'cc' is true the loop is terminated and the branch back to \\<label\\> not taken. The 14 branch conditions supported by Bcc are also supported by `DBcc`, as well as `DBF` and `DBT` (F = false, and T = true). Note that many assemblers permit the mnemonic `DBF` to be expressed as `DBRA` (i.e., decrement and branch back).\n\nIt is important to appreciate that the condition tested by the `DBcc` instruction works in the *opposite* sense to a `Bcc`, conditional branch, instruction. For example, `BCC` means branch on carry clear, whereas `DBcc` means continue (i.e., exit the loop) on carry clear. That is, the `DBcc` condition is a loop terminator. If the termination condition is not true, the low-order 16 bits of the specified data register are decremented. If the result is -1, the loop is not taken and the next instruction is executed. If the result is not -1, a branch is made to 'label'. Note that the label represents a 16-bit signed value, permitting a branch range of -32K to +32K bytes. Since the value in Dn decremented is 16 bits, the loop may be executed up to 64K times.\n\nWe can use the instruction `DBEQ`, decrement and branch on zero, to mechanize the high-level language construct `REPEAT`...`UNTIL`.\n\n```\nLOOP ...            REPEAT\n     ...\n     ...              [D0] := [D0] - 1\n     ...\n     DBEQ D0,REPEAT UNTIL [D0] = - 1 OR [Z] = 1\n```",
     "ccr": {
       "x": "-",
@@ -3123,9 +3020,7 @@
     "title": "DBvc",
     "summary": "Test Condition, Decrement and Branch: Overflow Clear",
     "operation": "IF(condition false)<br/>\n&nbsp;&nbsp;THEN [Dn] ← [Dn] - 1 {decrement loop counter}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;IF [Dn] = -1<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;THEN [PC] ← [PC] + 2 {fall through to next instruction}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ELSE [PC] ← [PC] + d {take branch}<br/>\n&nbsp;&nbsp;ELSE [PC] ← [PC] + 2 {fall through to next instruction}<br/>",
-    "syntax": [
-      "dbcc Dn,<label>"
-    ],
+    "syntax": ["dbcc Dn,<label>"],
     "description": "The `DBcc` instruction provides an automatic looping facility and replaces the usual decrement counter, test, and branch instructions. Three parameters are required by the `DBcc` instruction: a branch condition (specified by 'cc'), a data register that serves as the loop down-counter, and a label that indicates the start of the loop. The `DBcc` first tests the condition 'cc', and if 'cc' is true the loop is terminated and the branch back to \\<label\\> not taken. The 14 branch conditions supported by Bcc are also supported by `DBcc`, as well as `DBF` and `DBT` (F = false, and T = true). Note that many assemblers permit the mnemonic `DBF` to be expressed as `DBRA` (i.e., decrement and branch back).\n\nIt is important to appreciate that the condition tested by the `DBcc` instruction works in the *opposite* sense to a `Bcc`, conditional branch, instruction. For example, `BCC` means branch on carry clear, whereas `DBcc` means continue (i.e., exit the loop) on carry clear. That is, the `DBcc` condition is a loop terminator. If the termination condition is not true, the low-order 16 bits of the specified data register are decremented. If the result is -1, the loop is not taken and the next instruction is executed. If the result is not -1, a branch is made to 'label'. Note that the label represents a 16-bit signed value, permitting a branch range of -32K to +32K bytes. Since the value in Dn decremented is 16 bits, the loop may be executed up to 64K times.\n\nWe can use the instruction `DBEQ`, decrement and branch on zero, to mechanize the high-level language construct `REPEAT`...`UNTIL`.\n\n```\nLOOP ...            REPEAT\n     ...\n     ...              [D0] := [D0] - 1\n     ...\n     DBEQ D0,REPEAT UNTIL [D0] = - 1 OR [Z] = 1\n```",
     "ccr": {
       "x": "-",
@@ -3150,9 +3045,7 @@
     "title": "DBvs",
     "summary": "Test Condition, Decrement and Branch: Overflow Set",
     "operation": "IF(condition false)<br/>\n&nbsp;&nbsp;THEN [Dn] ← [Dn] - 1 {decrement loop counter}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;IF [Dn] = -1<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;THEN [PC] ← [PC] + 2 {fall through to next instruction}<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ELSE [PC] ← [PC] + d {take branch}<br/>\n&nbsp;&nbsp;ELSE [PC] ← [PC] + 2 {fall through to next instruction}<br/>",
-    "syntax": [
-      "dbcc Dn,<label>"
-    ],
+    "syntax": ["dbcc Dn,<label>"],
     "description": "The `DBcc` instruction provides an automatic looping facility and replaces the usual decrement counter, test, and branch instructions. Three parameters are required by the `DBcc` instruction: a branch condition (specified by 'cc'), a data register that serves as the loop down-counter, and a label that indicates the start of the loop. The `DBcc` first tests the condition 'cc', and if 'cc' is true the loop is terminated and the branch back to \\<label\\> not taken. The 14 branch conditions supported by Bcc are also supported by `DBcc`, as well as `DBF` and `DBT` (F = false, and T = true). Note that many assemblers permit the mnemonic `DBF` to be expressed as `DBRA` (i.e., decrement and branch back).\n\nIt is important to appreciate that the condition tested by the `DBcc` instruction works in the *opposite* sense to a `Bcc`, conditional branch, instruction. For example, `BCC` means branch on carry clear, whereas `DBcc` means continue (i.e., exit the loop) on carry clear. That is, the `DBcc` condition is a loop terminator. If the termination condition is not true, the low-order 16 bits of the specified data register are decremented. If the result is -1, the loop is not taken and the next instruction is executed. If the result is not -1, a branch is made to 'label'. Note that the label represents a 16-bit signed value, permitting a branch range of -32K to +32K bytes. Since the value in Dn decremented is 16 bits, the loop may be executed up to 64K times.\n\nWe can use the instruction `DBEQ`, decrement and branch on zero, to mechanize the high-level language construct `REPEAT`...`UNTIL`.\n\n```\nLOOP ...            REPEAT\n     ...\n     ...              [D0] := [D0] - 1\n     ...\n     DBEQ D0,REPEAT UNTIL [D0] = - 1 OR [Z] = 1\n```",
     "ccr": {
       "x": "-",
@@ -3177,9 +3070,7 @@
     "title": "DIVS",
     "summary": "Signed Divide Long",
     "operation": "[destination] ← [destination]/[source]",
-    "syntax": [
-      "divs <source>,Dn"
-    ],
+    "syntax": ["divs <source>,Dn"],
     "description": "Divide the destination operand by the source operand and store the result in the destination. The destination is a longword and the source is a 16-bit value. The result (i.e., destination register) is a 32-bit value arranged so that the quotient is the lower-order word and the remainder is the upper-order word. `DIVS` performs division on two's complement values. An attempt to divide by zero causes an exception. The sign of the remainder is always the same as the sign of the dividend (unless the remainder is zero).\n\nAttempting to divide a number by zero results in a divide-by-zero exception. If overflow is detected during division, the operands are unaffected. Overflow is checked for at the start of the operation and occurs if the quotient is larger than a 16-bit signed integer. If the upper word of the dividend is greater than or equal to the divisor, the V-bit is set and the instruction terminated.",
     "src": {
       "dn": true,
@@ -3234,9 +3125,7 @@
     "title": "DIVU",
     "summary": "Unsigned Divide",
     "operation": "[destination] ← [destination]/[source]",
-    "syntax": [
-      "divu <source>,Dn"
-    ],
+    "syntax": ["divu <source>,Dn"],
     "description": "Divide the destination operand by the source operand and store the result in the destination. The destination is a longword and the source is a 16-bit value. The result (i.e., destination register) is a 32-bit value arranged so that the quotient is the lower-order word and the remainder is the upper-order word. `DIVU` performs division on unsigned values. An attempt to divide by zero causes an exception.\n\nAttempting to divide a number by zero results in a divide-by-zero exception. If overflow is detected during division, the operands are unaffected. Overflow is checked for at the start of the operation and occurs if the quotient is larger than a 16-bit signed integer. If the upper word of the dividend is greater than or equal to the divisor, the V-bit is set and the instruction terminated.",
     "src": {
       "dn": true,
@@ -3291,9 +3180,7 @@
     "title": "EOR",
     "summary": "Logical Exclusive-OR",
     "operation": "[destination] ← [source] ⊕ [destination]",
-    "syntax": [
-      "eor[.(bwl)] Dn,<destination>"
-    ],
+    "syntax": ["eor[.(bwl)] Dn,<destination>"],
     "description": "EOR (exclusive or) the source operand with the destination operand and store the result in the destination location Note that the source operand must be a data register and that the operation `EOR <source>,Dn` is not permitted.",
     "dest": {
       "dn": true,
@@ -3375,9 +3262,7 @@
     "title": "EXG",
     "summary": "Exchange Registers",
     "operation": "[Rx] ← [Ry]; [Ry] ← [Rx]",
-    "syntax": [
-      "exg[.l] Rx,Ry"
-    ],
+    "syntax": ["exg[.l] Rx,Ry"],
     "description": "Exchange the contents of two registers. The size of the instruction is a longword because the entire 32-bit contents of two registers are exchanged. The instruction permits the exchange of address registers, data registers, and address and data registers.",
     "ccr": {
       "x": "-",
@@ -3402,9 +3287,7 @@
     "title": "EXT",
     "summary": "Sign Extend",
     "operation": "[destination] ← sign-extended[destination]",
-    "syntax": [
-      "ext[.(wl)] Dn"
-    ],
+    "syntax": ["ext[.(wl)] Dn"],
     "description": "Extend the least-significant byte in a data register to a word, or extend the least-significant word in a data register to a longword. If the operation is word sized, bit 7 of the designated data register is copied to bits (8:15). If the operation is longword sized, bit 15 is copied to bits (16:31).",
     "ccr": {
       "x": "-",
@@ -5413,9 +5296,7 @@
     "title": "ILLEGAL",
     "summary": "Take Illegal Instruction Trap",
     "operation": "[SSP] ← [SSP] - 4; [M([SSP])] ← [PC];<br/>\n[SSP] ← [SSP] - 2; [M([SSP])] ← [SR];<br/>\n[PC] ← Illegal instruction vector",
-    "syntax": [
-      "illegal"
-    ],
+    "syntax": ["illegal"],
     "description": "The bit pattern of the illegal instruction, 4AFC₁₆ causes the illegal instruction trap to be taken. As in all exceptions, the contents of the program counter and the processor status word are pushed onto the supervisor stack at the start of exception processing.\n",
     "ccr": {
       "x": "-",
@@ -5440,9 +5321,7 @@
     "title": "JMP",
     "summary": "Jump",
     "operation": "[PC] ← destination",
-    "syntax": [
-      "jmp <destination>"
-    ],
+    "syntax": ["jmp <destination>"],
     "description": "Program execution continues at the effective address specified by the instruction.",
     "src": {
       "dn": false,
@@ -5481,9 +5360,7 @@
     "title": "JSR",
     "summary": "Jump to Subroutine",
     "operation": "[SP] ← [SP] - 4; [M([SP])] ← [PC]<br/>\n[PC] ← destination",
-    "syntax": [
-      "jsr <destination>"
-    ],
+    "syntax": ["jsr <destination>"],
     "description": "`JSR` pushes the longword address of the instruction immediately following the `JSR` onto the system stack. Program execution then continues at the address specified in the instruction.",
     "src": {
       "dn": false,
@@ -5522,9 +5399,7 @@
     "title": "LEA",
     "summary": "Load Effective Address",
     "operation": "[An] ← \\<ea\\>",
-    "syntax": [
-      "lea[.l] <source>,An"
-    ],
+    "syntax": ["lea[.l] <source>,An"],
     "description": "The effective address is computed and loaded into the specified address register. For example, `LEA (-6,A0,D0.W),A1` calculates the sum of address register A0 plus data register D0.W sign-extended to 32 bits minus 6, and deposits the result in address register A1. The difference between the `LEA` and `PEA` instructions is that `LEA` calculates an effective address and puts it in an address register, while `PEA` calculates an effective address in the same way but pushes it on the stack.",
     "src": {
       "dn": false,
@@ -5563,9 +5438,7 @@
     "title": "LINK",
     "summary": "Link and Allocate",
     "operation": "[SP] ← [SP] - 4; [M([SP])] ← [An];<br/>\n[An] ← [SP]; [SP] ← [SP] + d",
-    "syntax": [
-      "link[.w] An,#<displacement>"
-    ],
+    "syntax": ["link[.w] An,#<displacement>"],
     "description": "The contents of the specified address register are first pushed onto the stack. Then, the address register is loaded with the updated stack pointer. Finally, the 16-bit sign-extended displacement is added to the stack pointer. The contents of the address register occupy two words on the stack. A *negative displacement* must be used to allocate stack area to a procedure. At the end of a `LINK` instruction, the old value of address register An has been pushed on the stack and the new An is pointing at the base of the stack frame. The stack pointer itself has been moved up by d bytes and is pointing at the top of the stack frame. Address register An is called the *frame pointer* because it is used to reference data on the stack frame. By convention, programmers often use A6 as a frame pointer.",
     "ccr": {
       "x": "-",
@@ -5606,9 +5479,7 @@
     "title": "LSL",
     "summary": "Logical Shift Left",
     "operation": "[destination] ← [destination] shifted by \\<count\\>",
-    "syntax": [
-      "lsl[.(bwl)] [<count>,]<destination>"
-    ],
+    "syntax": ["lsl[.(bwl)] [<count>,]<destination>"],
     "description": "Logically shift the bits of the operand left. A zero is shifted into the input position and the bit shifted out is copied into both the C- and the X-bit of the CCR. The shift count may be specified in one of three ways. The count may be a literal, the contents of a data register, or the value 1. An immediate count permits a shift of 1 to 8 places. If the count is in a register, the value is modulo 64 - from 0 to 63. If no count is specified, one shift is made (e.g., `LSL <destination>` shifts the *word* at the effective address one position left).\n\n```ascii\n┌───┐     ┌──────────────┐\n│ C │◄──┬─┤ Operand ◄─── │◄─── 0\n└───┘   │ └──────────────┘\n┌───┐   │\n│ X │◄──┘\n└───┘\n```",
     "src": {
       "dn": true,
@@ -5661,9 +5532,7 @@
     "title": "LSR",
     "summary": "Logical Shift Right",
     "operation": "[destination] ← [destination] shifted by \\<count\\>",
-    "syntax": [
-      "lsr[.(bwl)] [<count>,]<destination>"
-    ],
+    "syntax": ["lsr[.(bwl)] [<count>,]<destination>"],
     "description": "Logically shift the bits of the operand right. A zero is shifted into the input position and the bit shifted out is copied into both the C- and the X-bit of the CCR. The shift count may be specified in one of three ways. The count may be a literal, the contents of a data register, or the value 1. An immediate count permits a shift of 1 to 8 places. If the count is in a register, the value is modulo 64 - from 0 to 63. If no count is specified, one shift is made (e.g., `LSR <destination>` shifts the *word* at the effective address one position right).\n\n```ascii\n       ┌──────────────┐     ┌───┐\n 0 ───►│ Operand ───► ├─┬──►│ C │\n       └──────────────┘ │   └───┘\n                        │   ┌───┐\n                        └──►│ X │\n                            └───┘\n```",
     "src": {
       "dn": true,
@@ -5776,9 +5645,7 @@
     "title": "MOVEA",
     "summary": "Move Address",
     "operation": "[An] ← [source]",
-    "syntax": [
-      "movea[.(wl)] <source>,An"
-    ],
+    "syntax": ["movea[.(wl)] <source>,An"],
     "description": "Move the contents of the source to the destination location. The destination is an address register. The source must be a word or longword. If it is a word, it is sign-extended to a longword. The condition codes are not affected.",
     "src": {
       "dn": true,
@@ -5905,10 +5772,7 @@
     "title": "MOVEP",
     "summary": "Move Peripheral",
     "operation": "[destination] ← [source]",
-    "syntax": [
-      "movep[.(wl)] Dx,(d,Ay)",
-      "movep[.(wl)] (d,Ay),Dx"
-    ],
+    "syntax": ["movep[.(wl)] Dx,(d,Ay)", "movep[.(wl)] (d,Ay),Dx"],
     "description": "The `MOVEP` operation moves data between a data register and a byte-oriented memory mapped peripheral. The data is moved between the specified data register and *alternate bytes* within the peripheral's address space, starting at the location specified and incrementing by two. This instruction is designed to be used in conjunction with 8-bit peripherals connected to the 68000's 16-bit data bus. The high-order byte of the data register is transferred first and the low-order byte transferred last. The memory address is specified by the address register indirect mode with a 16-bit offset. If the address is even, all transfers are to or from the high-order half of the data bus. If the address is odd, all the transfers are made to the low-order half of the data bus.",
     "ccr": {
       "x": "-",
@@ -5933,9 +5797,7 @@
     "title": "MOVEQ",
     "summary": "Move Quick",
     "operation": "[destination] ← \\<literal\\>",
-    "syntax": [
-      "moveq[.l] #<data>,Dn"
-    ],
+    "syntax": ["moveq[.l] #<data>,Dn"],
     "description": "Move the specified literal to a data register. The literal data is an eight-bit field within the `MOVEQ` op-code and specifies a signed value in the range -128 to +127. When the source operand is transferred, it is sign-extended to 32 bits. Consequently, although only 8 bits are moved, the `MOVEQ` instruction is a *longword* operation.",
     "ccr": {
       "x": "-",
@@ -5976,9 +5838,7 @@
     "title": "MULS",
     "summary": "Signed Multiply",
     "operation": "[destination] ← [destination] * [source]",
-    "syntax": [
-      "muls[.w] <source>,Dn"
-    ],
+    "syntax": ["muls[.w] <source>,Dn"],
     "description": "Multiply the 16-bit destination operand by the 16-bit source\noperand and store the result in the destination. Both the source and destination are 16-bit word values and the destination result is a 32-bit longword. The product is therefore a correct product and is not truncated. `MULS` performs multiplication with two's complement values.",
     "src": {
       "dn": true,
@@ -6017,9 +5877,7 @@
     "title": "MULU",
     "summary": "Unsigned Multiply",
     "operation": "[destination] ← [destination] * [source]",
-    "syntax": [
-      "mulu[.w] <source>,Dn"
-    ],
+    "syntax": ["mulu[.w] <source>,Dn"],
     "description": "Multiply the 16-bit destination operand by the 16-bit source\noperand and store the result in the destination. Both the source and destination are 16-bit word values and the destination result is a 32-bit longword. The product is therefore a correct product and is not truncated. `MULU` performs multiplication with unsigned values.",
     "src": {
       "dn": true,
@@ -6058,9 +5916,7 @@
     "title": "NBCD",
     "summary": "Negate Decimal with Extend",
     "operation": "[destination]₁₀ ← 0 − [destination]₁₀ - [X]",
-    "syntax": [
-      "nbcd[.b] <destination>"
-    ],
+    "syntax": ["nbcd[.b] <destination>"],
     "description": "The operand addressed as the destination and the extend bit in the CCR are subtracted from zero. The subtraction is performed using binary coded decimal (BCD) arithmetic. This instruction calculates the ten's complement of the destination if the X-bit is clear, and the nine's complement if X = 1. This is a byte-only operation. Negating a BCD number (with X = 0) has the effect of subtracting it from 100₁₀.",
     "dest": {
       "dn": true,
@@ -6099,9 +5955,7 @@
     "title": "NEG",
     "summary": "Negate",
     "operation": "[destination] ← 0 - [destination]",
-    "syntax": [
-      "neg[.(bwl)] <destination>"
-    ],
+    "syntax": ["neg[.(bwl)] <destination>"],
     "description": "Subtract the destination operand from 0 and store the result in the destination location. The difference between `NOT` and `NEG` instructions is that NOT performs a bit-by-bit logical complementation, while a `NEG` performs a two's complement arithmetic subtraction. All bits of the condition code register are modified by a `NEG` operation. For example, if D3.B = 11100111₂, the logical operation `NEG.B D3` results in D3 = 00011001₂ (XNZVC=10001) and `NOT.B D3`= 00011000₂ (XNZVC=-0000).",
     "dest": {
       "dn": true,
@@ -6140,9 +5994,7 @@
     "title": "NEGX",
     "summary": "Negate with Extend",
     "operation": "[destination] ← 0 - [destination] - [X]",
-    "syntax": [
-      "negx <destination>"
-    ],
+    "syntax": ["negx <destination>"],
     "description": "The operand addressed as the destination and the extend bit are subtracted from zero. `NEGX` is the same as `NEG` except that the X-bit is also subtracted from zero.",
     "dest": {
       "dn": true,
@@ -6181,9 +6033,7 @@
     "title": "NOP",
     "summary": "No Operation",
     "operation": "None",
-    "syntax": [
-      "nop"
-    ],
+    "syntax": ["nop"],
     "description": "The no operation instruction, `NOP` performs no *computation*. Execution continues with the instruction following the `NOP` instruction. The processor's state is not modified by a `NOP`.",
     "ccr": {
       "x": "-",
@@ -6208,9 +6058,7 @@
     "title": "NOT",
     "summary": "Logical Complement",
     "operation": "[destination] ← [destination]",
-    "syntax": [
-      "not[.(bwl)] <destination>"
-    ],
+    "syntax": ["not[.(bwl)] <destination>"],
     "description": "Calculate the logical complement of the destination and store the result in the destination. The difference between `NOT` and `NEG` is that `NOT` performs a bit-by-bit logical complementation, while a `NEG` performs a two's complement arithmetic subtraction. Moreover, `NEG` updates all bits of the CCR, while `NOT` clears the V- and C-bits, updates the N- and Z-bits, and doesn't affect the X-bit.",
     "src": {
       "dn": true,
@@ -6249,10 +6097,7 @@
     "title": "OR",
     "summary": "Logical Inclusive-OR",
     "operation": "[destination] ← [source] + [destination]",
-    "syntax": [
-      "or[.(bwl)] <source>,Dn",
-      "or[.(bwl)] Dn,<destination>"
-    ],
+    "syntax": ["or[.(bwl)] <source>,Dn", "or[.(bwl)] Dn,<destination>"],
     "description": "OR the source operand to the destination operand, and store the result in the destination location.",
     "src": {
       "dn": true,
@@ -6876,9 +6721,7 @@
     "title": "PEA",
     "summary": "Push Effective Address",
     "operation": "[SP] ← [SP] - 4; [M([SP])] ← \\<ea\\>",
-    "syntax": [
-      "pea[.l] <destination>"
-    ],
+    "syntax": ["pea[.l] <destination>"],
     "description": "The longword effective address specified by the instruction is computed and pushed onto the stack. The difference between `PEA` and `LEA` is that `LEA` calculates an effective address and puts it in an address register, while `PEA` calculates an effective address in the same way but pushes it on the stack.",
     "src": {
       "dn": false,
@@ -7605,9 +7448,7 @@
     "title": "RESET",
     "summary": "Reset External Devices",
     "operation": "IF [S] = 1 THEN<br/>\n&nbsp;&nbsp;Assert RESET* line<br/>\n&nbsp;ELSE TRAP",
-    "syntax": [
-      "reset"
-    ],
+    "syntax": ["reset"],
     "description": "The reset line is asserted, causing all external devices connected to the 68000's RESET* output to be reset. The `RESET` instruction is privileged and has no effect on the operation of the 68000 itself. This instruction is used to perform a programmed reset of all peripherals connected to the 68000's RESET* pin.",
     "ccr": {
       "x": "-",
@@ -7632,9 +7473,7 @@
     "title": "ROL",
     "summary": "Rotate Left",
     "operation": "[destination] ← [destination] rotated by \\<count\\>",
-    "syntax": [
-      "rol[.(bwl)] [<count>,]<destination>"
-    ],
+    "syntax": ["rol[.(bwl)] [<count>,]<destination>"],
     "description": "Rotate the bits of the operand left. The extend bit, X, is not included in the operation. A rotate operation is circular in the sense that the bit shifted out at one end is shifted into the other end. That is, no bit is lost or destroyed by a rotate operation. The bit shifted out is also copied into the C-bit of the CCR, but not into the X-bit. The shift count may be specified in one of three ways: the count may be a literal, the contents of a data register, or the value 1. An immediate count permits a shift of 1 to 8 places. If the count is in a register, the value is modulo 64, allowing a range of 0 to 63. If no count is specified, the *word* at the effective address is rotated by one place (e.g., `ROL <destination>`).\n\n```ascii\n        ┌─────────────────────┐\n┌───┐   │  ┌──────────────┐   │\n│ C │◄──┴──┤ Operand ◄─── │◄──┘\n└───┘      └──────────────┘\n```",
     "src": {
       "dn": true,
@@ -7687,9 +7526,7 @@
     "title": "ROR",
     "summary": "Rotate Right",
     "operation": "[destination] ← [destination] rotated by \\<count\\>",
-    "syntax": [
-      "ror[.(bwl)] [<count>,]<destination>"
-    ],
+    "syntax": ["ror[.(bwl)] [<count>,]<destination>"],
     "description": "Rotate the bits of the operand right. The extend bit, X, is not included in the operation. A rotate operation is circular in the sense that the bit shifted out at one end is shifted into the other end. That is, no bit is lost or destroyed by a rotate operation. The bit shifted out is also copied into the C-bit of the CCR, but not into the X-bit. The shift count may be specified in one of three ways: the count may be a literal, the contents of a data register, or the value 1. An immediate count permits a shift of 1 to 8 places. If the count is in a register, the value is modulo 64, allowing a range of 0 to 63. If no count is specified, the *word* at the effective address is rotated by one place (e.g., `ROR <destination>`).\n\n```ascii\n┌─────────────────────┐\n│   ┌──────────────┐  │   ┌───┐\n└──►│ Operand ───► ├──┴──►│ C │\n    └──────────────┘      └───┘\n```",
     "src": {
       "dn": true,
@@ -7742,9 +7579,7 @@
     "title": "ROXL",
     "summary": "Rotate with Extend Left",
     "operation": "[destination] ← [destination] rotated by \\<count\\>",
-    "syntax": [
-      "roxl[.(bwl)] [<count>,]<destination>"
-    ],
+    "syntax": ["roxl[.(bwl)] [<count>,]<destination>"],
     "description": "Rotate the bits of the operand left. The extend bit of the CCR is included in the rotation. A rotate operation is circular in the sense that the bit shifted out at one end is shifted into the other end. That is, no bit is lost or destroyed by a rotate operation. Since the X-bit is included in the rotate, the rotation is performed over 9 bits (`.B`), 17 bits (`.W`), or 33 bits (`.L`). The bit shifted out is also copied into the C-bit of the CCR as well as the X-bit. The shift count may be specified in one of three ways: the count may be a literal, the contents of a data register or the value 1. An immediate count permits a shift of 1 to 8 places. If the count is in a register, the value is modulo 64 and the range is from 0 to 63. If no count is specified, the word at the specified effective address is rotated by one place (i.e., `ROXL <destination>`).\n\n```ascii\n        ┌────────────────────────┐\n┌───┐   │  ┌──────────────┐    ┌─┴─┐\n│ C │◄──┴──┤ Operand ◄─── │◄───┤ X │\n└───┘      └──────────────┘    └───┘\n```",
     "src": {
       "dn": true,
@@ -7797,9 +7632,7 @@
     "title": "ROXR",
     "summary": "Rotate with Extend Right",
     "operation": "[destination] ← [destination] rotated by \\<count\\>",
-    "syntax": [
-      "roxr[.(bwl)] [<count>,]<destination>"
-    ],
+    "syntax": ["roxr[.(bwl)] [<count>,]<destination>"],
     "description": "Rotate the bits of the operand right. The extend bit of the CCR is included in the rotation. A rotate operation is circular in the sense that the bit shifted out at one end is shifted into the other end. That is, no bit is lost or destroyed by a rotate operation. Since the X-bit is included in the rotate, the rotation is performed over 9 bits (`.B`), 17 bits (`.W`), or 33 bits (`.L`). The bit shifted out is also copied into the C-bit of the CCR as well as the X-bit. The shift count may be specified in one of three ways: the count may be a literal, the contents of a data register or the value 1. An immediate count permits a shift of 1 to 8 places. If the count is in a register, the value is modulo 64 and the range is from 0 to 63. If no count is specified, the word at the specified effective address is rotated by one place (i.e., `ROXR <destination>`).\n\n```ascii\n  ┌────────────────────────┐\n┌─┴─┐    ┌──────────────┐  │   ┌───┐\n│ X │───►│ Operand ───► ├──┴──►│ C │\n└───┘    └──────────────┘      └───┘\n```",
     "src": {
       "dn": true,
@@ -7868,9 +7701,7 @@
     "title": "RTE",
     "summary": "Return from Exception",
     "operation": "IF [S] = 1 THEN<br/>\n&nbsp;&nbsp;[SR] ← [M([SP])]; [SP] ← [SP] + 2<br/>\n&nbsp;&nbsp;[PC] ← [M([SP])]; [SP] ← [SP] + 4<br/>\n&nbsp;ELSE TRAP\n",
-    "syntax": [
-      "rte"
-    ],
+    "syntax": ["rte"],
     "description": "The status register and program counter are pulled from the stack. The previous values of the SR and PC are lost. The `RTE` is used to terminate an exception handler. Note that the behavior of the `RTE` instruction depends on the nature of both the exception and processor type. The 68010 and later models push more information on the stack following an exception than the 68000. The processor determines how much to remove from the stack.",
     "ccr": {
       "x": "*",
@@ -7911,9 +7742,7 @@
     "title": "RTR",
     "summary": "Return and Restore",
     "operation": "[CCR] ← [M([SP])]; [SP] ← [SP] + 2<br/>\n[PC] ← [M([SP])]; [SP] ← [SP] + 4",
-    "syntax": [
-      "rtr"
-    ],
+    "syntax": ["rtr"],
     "description": "The condition code and program counter are pulled from the stack. The previous condition code and program counter are lost. The supervisor portion of the status register is not affected.",
     "ccr": {
       "x": "*",
@@ -7938,9 +7767,7 @@
     "title": "RTS",
     "summary": "Return from Subroutine",
     "operation": "[PC] ← [M([SP])]; [SP] ← [SP] + 4",
-    "syntax": [
-      "rts"
-    ],
+    "syntax": ["rts"],
     "description": "The program counter is pulled from the stack and the previous value of the PC is lost. `RTS` is used to terminate a subroutine.",
     "ccr": {
       "x": "-",
@@ -7965,10 +7792,7 @@
     "title": "SBCD",
     "summary": "Subtract Decimal with Extend",
     "operation": "[destination]₁₀ ← [destination]₁₀ - [source]₁₀ - [X]",
-    "syntax": [
-      "sbcd[.b] Dy,Dx",
-      "sbcd[.b] -(Ay),-(Ax)"
-    ],
+    "syntax": ["sbcd[.b] Dy,Dx", "sbcd[.b] -(Ay),-(Ax)"],
     "description": "Subtract the source operand from the destination operand together with the X-bit, and store the result in the destination. Subtraction is performed using BCD arithmetic. The only legal addressing modes are data register direct and memory to memory with address register indirect using auto-decrementing.",
     "ccr": {
       "x": "*",
@@ -7993,9 +7817,7 @@
     "title": "Scc",
     "summary": "Set Conditionally: Carry Clear",
     "operation": "IF C̅ THEN [destination] ← 11111111₂<br/>\n&nbsp;&nbsp;ELSE [destination] ← 00000000₂",
-    "syntax": [
-      "scc[.b] <destination>"
-    ],
+    "syntax": ["scc[.b] <destination>"],
     "description": "If the carry bit is clear, the bits at the effective address are all set to one (i.e., $FF). Otherwise, the bits at the effective address are set to zeros (i.e., $00).",
     "dest": {
       "dn": true,
@@ -8034,9 +7856,7 @@
     "title": "Scs",
     "summary": "Set Conditionally: Carry Set",
     "operation": "IF C THEN [destination] ← 11111111₂<br/>\n&nbsp;&nbsp;ELSE [destination] ← 00000000₂",
-    "syntax": [
-      "scs[.b] <destination>"
-    ],
+    "syntax": ["scs[.b] <destination>"],
     "description": "If the carry bit is set, the bits at the effective address are all set to one (i.e., $FF). Otherwise, the bits at the effective address are set to zeros (i.e., $00).",
     "dest": {
       "dn": true,
@@ -8075,9 +7895,7 @@
     "title": "Seq",
     "summary": "Set Conditionally: Equal",
     "operation": "IF Z THEN [destination] ← 11111111₂<br/>\n&nbsp;&nbsp;ELSE [destination] ← 00000000₂",
-    "syntax": [
-      "seq[.b] <destination>"
-    ],
+    "syntax": ["seq[.b] <destination>"],
     "description": "If the zero bit is set, the bits at the effective address are all set to one (i.e., $FF). Otherwise, the bits at the effective address are set to zeros (i.e., $00).",
     "dest": {
       "dn": true,
@@ -8116,9 +7934,7 @@
     "title": "Sf",
     "summary": "Set Conditionally: False",
     "operation": "[destination] ← 00000000₂",
-    "syntax": [
-      "sf[.b] <destination>"
-    ],
+    "syntax": ["sf[.b] <destination>"],
     "description": "The bits at the effective address are set to zeros (i.e., $00).",
     "dest": {
       "dn": true,
@@ -8157,9 +7973,7 @@
     "title": "Sge",
     "summary": "Set Conditionally: Greater or Equal",
     "operation": "IF N.V + N̅.V̅ THEN [destination] ← 11111111₂<br/>\n&nbsp;&nbsp;ELSE [destination] ← 00000000₂",
-    "syntax": [
-      "sge[.b] <destination>"
-    ],
+    "syntax": ["sge[.b] <destination>"],
     "description": "If greater or equal, the bits at the effective address are all set to one (i.e., $FF). Otherwise, the bits at the effective address are set to zeros (i.e., $00).",
     "dest": {
       "dn": true,
@@ -8198,9 +8012,7 @@
     "title": "Sgt",
     "summary": "Set Conditionally: Greater Than",
     "operation": "IF N.V.Z̅ + N̅.V̅.Z̅ THEN [destination] ← 11111111₂<br/>\n&nbsp;&nbsp;ELSE [destination] ← 00000000₂",
-    "syntax": [
-      "sgt[.b] <destination>"
-    ],
+    "syntax": ["sgt[.b] <destination>"],
     "description": "If greater than, the bits at the effective address are all set to one (i.e., $FF). Otherwise, the bits at the effective address are set to zeros (i.e., $00).",
     "dest": {
       "dn": true,
@@ -8239,9 +8051,7 @@
     "title": "Shi",
     "summary": "Set Conditionally: High",
     "operation": "IF C̅.Z̅ THEN [destination] ← 11111111₂<br/>\n&nbsp;&nbsp;ELSE [destination] ← 00000000₂",
-    "syntax": [
-      "shi[.b] <destination>"
-    ],
+    "syntax": ["shi[.b] <destination>"],
     "description": "If higher than, the bits at the effective address are all set to one (i.e., $FF). Otherwise, the bits at the effective address are set to zeros (i.e., $00).",
     "dest": {
       "dn": true,
@@ -8280,9 +8090,7 @@
     "title": "Sle",
     "summary": "Set Conditionally: Less or Equal",
     "operation": "IF Z + N.V̅ + N̅.V THEN [destination] ← 11111111₂<br/>\n&nbsp;&nbsp;ELSE [destination] ← 00000000₂",
-    "syntax": [
-      "sle[.b] <destination>"
-    ],
+    "syntax": ["sle[.b] <destination>"],
     "description": "If less than or equal, the bits at the effective address are all set to one (i.e., $FF). Otherwise, the bits at the effective address are set to zeros (i.e., $00).",
     "dest": {
       "dn": true,
@@ -8321,9 +8129,7 @@
     "title": "Sls",
     "summary": "Set Conditionally: Low or Same",
     "operation": "IF Z + N.V̅ + N̅.V THEN [destination] ← 11111111₂<br/>\n&nbsp;&nbsp;ELSE [destination] ← 00000000₂",
-    "syntax": [
-      "sls[.b] <destination>"
-    ],
+    "syntax": ["sls[.b] <destination>"],
     "description": "If lower or same, the bits at the effective address are all set to one (i.e., $FF). Otherwise, the bits at the effective address are set to zeros (i.e., $00).",
     "dest": {
       "dn": true,
@@ -8362,9 +8168,7 @@
     "title": "Slt",
     "summary": "Set Conditionally: Less Than",
     "operation": "IF N.V̅ + N̅.V THEN [destination] ← 11111111₂<br/>\n&nbsp;&nbsp;ELSE [destination] ← 00000000₂",
-    "syntax": [
-      "slt[.b] <destination>"
-    ],
+    "syntax": ["slt[.b] <destination>"],
     "description": "If less than, the bits at the effective address are all set to one (i.e., $FF). Otherwise, the bits at the effective address are set to zeros (i.e., $00).",
     "dest": {
       "dn": true,
@@ -8403,9 +8207,7 @@
     "title": "Smi",
     "summary": "Set Conditionally: Minus",
     "operation": "IF N THEN [destination] ← 11111111₂<br/>\n&nbsp;&nbsp;ELSE [destination] ← 00000000₂",
-    "syntax": [
-      "smi[.b] <destination>"
-    ],
+    "syntax": ["smi[.b] <destination>"],
     "description": "If negative, the bits at the effective address are all set to one (i.e., $FF). Otherwise, the bits at the effective address are set to zeros (i.e., $00).",
     "dest": {
       "dn": true,
@@ -8444,9 +8246,7 @@
     "title": "Sne",
     "summary": "Set Conditionally: Not Equal",
     "operation": "IF Z̅ THEN [destination] ← 11111111₂<br/>\n&nbsp;&nbsp;ELSE [destination] ← 00000000₂",
-    "syntax": [
-      "sne[.b] <destination>"
-    ],
+    "syntax": ["sne[.b] <destination>"],
     "description": "If the zero bit is clear, the bits at the effective address are all set to one (i.e., $FF). Otherwise, the bits at the effective address are set to zeros (i.e., $00).",
     "dest": {
       "dn": true,
@@ -8485,9 +8285,7 @@
     "title": "Spl",
     "summary": "Set Conditionally: Plus",
     "operation": "IF N̅ THEN [destination] ← 11111111₂<br/>\n&nbsp;&nbsp;ELSE [destination] ← 00000000₂",
-    "syntax": [
-      "spl[.b] <destination>"
-    ],
+    "syntax": ["spl[.b] <destination>"],
     "description": "If positive, the bits at the effective address are all set to one (i.e., $FF). Otherwise, the bits at the effective address are set to zeros (i.e., $00).",
     "dest": {
       "dn": true,
@@ -8526,9 +8324,7 @@
     "title": "St",
     "summary": "Set Conditionally: True",
     "operation": "[destination] ← 11111111₂<br/>",
-    "syntax": [
-      "st[.b] <destination>"
-    ],
+    "syntax": ["st[.b] <destination>"],
     "description": "The bits at the effective address are all set to one (i.e., $FF).",
     "dest": {
       "dn": true,
@@ -8567,9 +8363,7 @@
     "title": "Svc",
     "summary": "Set Conditionally: Overflow Clear",
     "operation": "IF O̅ THEN [destination] ← 11111111₂<br/>\n&nbsp;&nbsp;ELSE [destination] ← 00000000₂",
-    "syntax": [
-      "svc[.b] <destination>"
-    ],
+    "syntax": ["svc[.b] <destination>"],
     "description": "If overflow bit is clear, the bits at the effective address are all set to one (i.e., $FF). Otherwise, the bits at the effective address are set to zeros (i.e., $00).",
     "dest": {
       "dn": true,
@@ -8608,9 +8402,7 @@
     "title": "Svs",
     "summary": "Set Conditionally: Overflow Set",
     "operation": "IF O THEN [destination] ← 11111111₂<br/>\n&nbsp;&nbsp;ELSE [destination] ← 00000000₂",
-    "syntax": [
-      "svs[.b] <destination>"
-    ],
+    "syntax": ["svs[.b] <destination>"],
     "description": "If overflow bit is set, the bits at the effective address are all set to one (i.e., $FF). Otherwise, the bits at the effective address are set to zeros (i.e., $00).",
     "dest": {
       "dn": true,
@@ -8649,9 +8441,7 @@
     "title": "STOP",
     "summary": "Stop",
     "operation": "IF [S] = 1 THEN<br/>\n&nbsp;&nbsp;&nbsp;&nbsp;[SR] ← \\<data\\><br/>\n&nbsp;&nbsp;&nbsp;&nbsp;STOP<br/>\n&nbsp;&nbsp;ELSE TRAP",
-    "syntax": [
-      "stop #<data>"
-    ],
+    "syntax": ["stop #<data>"],
     "description": "The immediate operand is copied into the entire status register (i.e., both status byte and *CCR* are modified), and the program counter advanced to point to the next instruction to be executed. The processor then suspends all further processing and halts. That is, the privileged `STOP` instruction stops the 68000.\n\nThe execution of instructions resumes when a trace, an interrupt, or a reset exception occurs. A trace exception will occur if the trace bit is set when the `STOP` instruction is encountered. If an interrupt request arrives whose priority is higher than the current processor priority, an interrupt exception occurs, otherwise the interrupt request has no effect. If the bit of the immediate data corresponding to the S-bit is clear (i.e., user mode selected), execution of the `STOP` instruction will cause a privilege violation. An external reset will always initiate reset exception processing.",
     "ccr": {
       "x": "*",
@@ -8676,10 +8466,7 @@
     "title": "SUB",
     "summary": "Subtract",
     "operation": "[destination] ← [destination] - [source]",
-    "syntax": [
-      "sub[.(bwl)] <source>,Dn",
-      "sub[.(bwl)] Dn,<destination>"
-    ],
+    "syntax": ["sub[.(bwl)] <source>,Dn", "sub[.(bwl)] Dn,<destination>"],
     "description": "Subtract the source operand from the destination operand and store the result in the destination location.",
     "src": {
       "dn": true,
@@ -8732,9 +8519,7 @@
     "title": "SUBA",
     "summary": "Subtract Address",
     "operation": "[destination] ← [destination] - [source]",
-    "syntax": [
-      "suba[.(wl)] <source>,An"
-    ],
+    "syntax": ["suba[.(wl)] <source>,An"],
     "description": "Subtract the source operand from the destination operand and store the result in the destination address register. Word operations are sign-extended to 32 bits prior to subtraction.",
     "src": {
       "dn": true,
@@ -8773,9 +8558,7 @@
     "title": "SUBI",
     "summary": "Subtract Immediate",
     "operation": "[destination] ← [destination] - \\<literal\\>",
-    "syntax": [
-      "subi[.(bwl)] #<data>,<destination>"
-    ],
+    "syntax": ["subi[.(bwl)] #<data>,<destination>"],
     "description": "Subtract the immediate data from the destination operand. Store the result in the destination operand.",
     "dest": {
       "dn": true,
@@ -8814,9 +8597,7 @@
     "title": "SUBQ",
     "summary": "Subtract Quick",
     "operation": "[destination] ← [destination] - \\<literal\\>",
-    "syntax": [
-      "subq[.(bwl)] #<data>,<destination>"
-    ],
+    "syntax": ["subq[.(bwl)] #<data>,<destination>"],
     "description": "Subtract the immediate data from the destination operand. The immediate data must be in the range 1 to 8. Word and longword operations on address registers do not affect condition codes. A word operation on an address register affects the entire 32-bit address.",
     "dest": {
       "dn": true,
@@ -8855,10 +8636,7 @@
     "title": "SUBX",
     "summary": "Subtract with Extend",
     "operation": "[destination] ← [destination] - [source] - [X]",
-    "syntax": [
-      "subx[.(bwl)] Dx,Dy",
-      "subx[.(bwl)] -(Ax),-(Ay)"
-    ],
+    "syntax": ["subx[.(bwl)] Dx,Dy", "subx[.(bwl)] -(Ax),-(Ay)"],
     "description": "Subtract the source operand from the destination operand along with the extend bit, and store the result in the destination location. The only legal addressing modes are data register direct and memory to memory with address register indirect using auto-decrementing.",
     "ccr": {
       "x": "*",
@@ -8883,9 +8661,7 @@
     "title": "SWAP",
     "summary": "Swap Register Words",
     "operation": "[Register(16:31)] ← [Register(0:15)];<br/>\n[Register(0:15)] ← [Register(16:31]",
-    "syntax": [
-      "swap[.w] Dn"
-    ],
+    "syntax": ["swap[.w] Dn"],
     "description": "Exchange the upper and lower 16-bit words of a data register.",
     "ccr": {
       "x": "-",
@@ -8910,9 +8686,7 @@
     "title": "TAS",
     "summary": "Test Operand and Set",
     "operation": "[CCR] ← tested([operand]); [destination(7)] ← 1",
-    "syntax": [
-      "tas[.b] <destination>"
-    ],
+    "syntax": ["tas[.b] <destination>"],
     "description": "Test and set the byte operand addressed by the effective address field. The N- and Z-bits of the *CCR* are updated accordingly. The high-order bit of the operand (i.e., bit 7) is set. This operation is *indivisible* and uses a read-modify-write cycle. Its principal application is in multiprocessor systems.",
     "src": {
       "dn": true,
@@ -9015,9 +8789,7 @@
     "title": "TRAP",
     "summary": "Trap",
     "operation": "S ← 1;<br/>\n[SSP] ← [SSP] - 4;[M([SSP])] ← [PC];<br/>\n[SSP] ← [SSP] - 2;[M([SSP])] ← [SR];<br/>\n[PC] ← vector",
-    "syntax": [
-      "trap #<vector>"
-    ],
+    "syntax": ["trap #<vector>"],
     "description": "This instruction forces the processor to initiate exception processing. The vector number used by the `TRAP` instruction is in the range 0 to 15 and therefore, supports 16 traps (i.e., `TRAP #0` to `TRAP #15`).",
     "ccr": {
       "x": "-",
@@ -9298,9 +9070,7 @@
     "title": "TRAPV",
     "summary": "Trap on Overflow",
     "operation": "IF V = 1 THEN:<br/>\n&nbsp;&nbsp;[SSP] ← [SSP] - 4; [M([SSP])] ← [PC];<br/>\n&nbsp;&nbsp;[SSP] ← [SSP] - 2; [M([SSP])] ← [SR];<br/>\n&nbsp;&nbsp;[PC] ← [M($01C)]<br/>\n&nbsp;&nbsp;ELSE no action",
-    "syntax": [
-      "trapv"
-    ],
+    "syntax": ["trapv"],
     "description": "If the V-bit in the *CCR* is set, then initiate exception processing.\nThe exception vector is located at address 01C₁₆. This instruction\nis used in arithmetic operations to call the operating system if\noverflow occurs.",
     "ccr": {
       "x": "-",
@@ -9325,9 +9095,7 @@
     "title": "TST",
     "summary": "Test Operand",
     "operation": "[CCR] ← tested([operand])<br/>\n***i.e.,*** [operand] - 0; update CCR",
-    "syntax": [
-      "tst[.(bwl)] <destination>"
-    ],
+    "syntax": ["tst[.(bwl)] <destination>"],
     "description": "The operand is compared with zero. No result is saved, but the contents of the *CCR* are set according to the result. The effect of `TST <destination>` is the same as `CMPI #0,<destination>` except that the `CMPI` instruction also sets/clears the V- and C-bits of the *CCR*.\n",
     "src": {
       "dn": true,
@@ -9366,9 +9134,7 @@
     "title": "UNLK",
     "summary": "Unlink",
     "operation": "[SP] ← [An]; [An] ← [M([SP])]; [SP] ← [SP] + 4",
-    "syntax": [
-      "unlk An"
-    ],
+    "syntax": ["unlk An"],
     "description": "The stack pointer is loaded from the specified address register and the old contents of the stack pointer are lost (this has the effect of collapsing the stack frame). The address register is then loaded with the longword pulled off the stack.",
     "ccr": {
       "x": "-",

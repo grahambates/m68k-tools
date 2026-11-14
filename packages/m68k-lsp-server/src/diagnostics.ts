@@ -11,7 +11,8 @@ import { tmpdir } from "os";
 import { basename, dirname, join, relative } from "path";
 import { minimatch } from "minimatch";
 
-import { assemblerArgs, vasmRunDirectory } from "./config";
+import { type Config, assemblerArgs, vasmRunDirectory } from "./config";
+import { configFor } from "./documentConfigs";
 import { type InferredDirectory } from "@m68k-lsp/assembly-options";
 import { existsSync } from "fs";
 import {
@@ -52,8 +53,7 @@ export default class DiagnosticProcessor {
    * Diagnostic messages provided by vasm assembling the current source file
    */
   async vasmDiagnostics(uri: string): Promise<Diagnostic[]> {
-    const conf = this.ctx.config;
-    if (!conf.vasm.provideDiagnostics) {
+    if (!configFor(this.ctx, uri).vasm.provideDiagnostics) {
       return [];
     }
 
@@ -64,6 +64,8 @@ export default class DiagnosticProcessor {
     if (!assembleUri) {
       return [];
     }
+    // How to assemble it is the assembled file's to say.
+    const conf = configFor(this.ctx, assembleUri);
 
     // Full path of the file to assemble, and of the file being reported on
     const srcPath = URI.parse(assembleUri).fsPath;
@@ -75,11 +77,13 @@ export default class DiagnosticProcessor {
       try {
         binPath = await which(conf.vasm.binPath);
       } catch (_) {
-        this.ctx.logger.warn("Can't find vasm binary, using wasm");
+        this.ctx.logger.warn(
+          `Can't find vasm binary "${conf.vasm.binPath}", using wasm`,
+        );
       }
     }
 
-    const { cwd, fileArg } = this.runContext(srcPath);
+    const { cwd, fileArg } = this.runContext(srcPath, conf);
 
     const withRest = (extra: readonly string[]) => [
       // Custom args, and those that follow from the options in the main config
@@ -111,6 +115,7 @@ export default class DiagnosticProcessor {
     for (const found of inferDirectories(
       predicted.map((include) => include.name),
       this.ctx,
+      assembleUri,
     ))
       if (!extra.includes(`-I${found.dir}`)) extra.push(`-I${found.dir}`);
     let output = await this.runVasm(binPath, withRest(extra), options);
@@ -128,9 +133,11 @@ export default class DiagnosticProcessor {
     ) {
       const missing = /could not open <([^>]+)> for input/.exec(output)?.[1];
       if (!missing) break;
-      const [inferred] = inferDirectories([missing], this.ctx).filter(
-        (candidate) => !extra.includes(`-I${candidate.dir}`),
-      );
+      const [inferred] = inferDirectories(
+        [missing],
+        this.ctx,
+        assembleUri,
+      ).filter((candidate) => !extra.includes(`-I${candidate.dir}`));
       if (!inferred) break;
 
       const message = parseVasmMessages(output).find((m) => m.code === 13);
@@ -159,9 +166,12 @@ export default class DiagnosticProcessor {
    * messages can be matched back to it; one outside it cannot be, so falls back
    * to its own directory.
    */
-  private runContext(srcPath: string): { cwd: string; fileArg: string } {
+  private runContext(
+    srcPath: string,
+    conf: Config,
+  ): { cwd: string; fileArg: string } {
     const cwd = vasmRunDirectory(
-      this.ctx.config,
+      conf,
       this.ctx.workspaceFolders.map((f) => URI.parse(f.uri).fsPath),
       srcPath,
     );
@@ -178,7 +188,8 @@ export default class DiagnosticProcessor {
    * needs no run of vasm and shows with vasm turned off.
    */
   includeDiagnostics(uri: string): Promise<Diagnostic[]> {
-    if (this.ctx.config.inferIncludePaths === false) return Promise.resolve([]);
+    if (configFor(this.ctx, uri).inferIncludePaths === false)
+      return Promise.resolve([]);
     return includeNotes(uri, this.assemblyTarget(uri) ?? uri, this.ctx);
   }
 
@@ -239,7 +250,7 @@ export default class DiagnosticProcessor {
       this.ctx.workspaceFolders.find((ws) => uri.startsWith(ws?.uri)) ??
       this.ctx.workspaceFolders[0];
     const wsRelative = relative(URI.parse(workspace?.uri)?.fsPath, path);
-    return this.ctx.config.vasm.exclude.some((pattern) =>
+    return configFor(this.ctx, uri).vasm.exclude.some((pattern) =>
       minimatch(wsRelative, pattern, { matchBase: true }),
     );
   }
@@ -247,7 +258,12 @@ export default class DiagnosticProcessor {
   /**
    * Diagnostic messages generated from the parsed syntax tree
    */
-  parserDiagnostics(parsed: ParsedFile, blocks: BlockStructure): Diagnostic[] {
+  parserDiagnostics(
+    uri: string,
+    parsed: ParsedFile,
+    blocks: BlockStructure,
+  ): Diagnostic[] {
+    const conf = configFor(this.ctx, uri);
     // Block errors sit alongside the line errors: an unterminated macro or a
     // stray `endc` is only visible once nesting has been worked out.
     const diagnostics = [...parsed.errors, ...blocks.errors].map(
@@ -261,17 +277,14 @@ export default class DiagnosticProcessor {
     );
 
     // No need for this if vasm is configured
-    if (!this.ctx.config.vasm.provideDiagnostics) {
+    if (!conf.vasm.provideDiagnostics) {
       for (const line of parsed.lines) {
         const { mnemonic } = line;
         if (mnemonic?.type !== "instruction") {
           continue;
         }
         const doc = instructionDocs[mnemonic.instruction.toLowerCase()];
-        if (
-          doc &&
-          !this.ctx.config.processors.some((proc) => doc.procs[proc])
-        ) {
+        if (doc && !conf.processors.some((proc) => doc.procs[proc])) {
           diagnostics.push({
             range: locationAsRange(mnemonic.loc),
             message: "Unsupported on selected processor(s)",

@@ -5,6 +5,7 @@ import { type Definition, type Symbols } from "../symbols";
 
 import { type Provider } from ".";
 import { type Context } from "../context";
+import { configFileNames } from "@m68k-lsp/assembly-options";
 import DocumentProcessor, { isProcessed } from "../DocumentProcessor";
 import { getAsmFilesInDir, isAsmExt, isDir } from "../files";
 import { isIndexExcluded } from "../workspace";
@@ -76,6 +77,9 @@ export default class FileOperationsProvider implements Provider {
   async onDidChangeWatchedFiles({
     changes,
   }: lsp.DidChangeWatchedFilesParams): Promise<void> {
+    if (changes.some(({ uri }) => isConfigFile(uri))) {
+      this.ctx.documentConfigs.clear();
+    }
     const processor = new DocumentProcessor(this.ctx);
     // Editors may report several events for one save; process the final state.
     const latest = new Map(changes.map((change) => [change.uri, change.type]));
@@ -225,4 +229,10 @@ function relocateSymbols(symbols: Symbols, uri: string): void {
   for (const literal of [...symbols.includes, ...symbols.incDirs]) {
     literal.location.uri = uri;
   }
+}
+
+/** Whether a file is a config file some document may go by. */
+function isConfigFile(uri: string): boolean {
+  const name = uri.slice(uri.lastIndexOf("/") + 1).toLowerCase();
+  return (configFileNames as readonly string[]).includes(name);
 }

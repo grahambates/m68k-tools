@@ -4,13 +4,13 @@ import * as lsp from "vscode-languageserver";
 import DocumentProcessor from "./DocumentProcessor";
 import registerProviders from "./providers";
 import { createContext } from "./context";
-import { indexWorkspace } from "./workspace";
+import { indexWorkspace, workspaceFoldersFrom } from "./workspace";
 
 const connection = createConnection(lsp.ProposedFeatures.all);
 
 connection.onInitialize(async (params) => {
   const ctx = await createContext(
-    params.workspaceFolders ?? [],
+    workspaceFoldersFrom(params),
     connection.console,
     connection,
     params.initializationOptions,
@@ -28,7 +28,11 @@ connection.onInitialize(async (params) => {
     ) {
       void connection.client
         .register(lsp.DidChangeWatchedFilesNotification.type, {
-          watchers: [{ globPattern: "**/*.{s,S,i,I,asm,ASM}" }],
+          watchers: [
+            { globPattern: "**/*.{s,S,i,I,asm,ASM}" },
+            // Any directory's config may be the one a document goes by.
+            { globPattern: "**/{.m68krc,.m68krc.json}" },
+          ],
         })
         .catch((error) =>
           connection.console.error(

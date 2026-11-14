@@ -2,6 +2,7 @@ import { evaluateConstant, type ParsedLine, type ValueNode } from "m68k-parser";
 import * as lsp from "vscode-languageserver";
 import { type Provider } from ".";
 import { type Context } from "../context";
+import { configFor } from "../documentConfigs";
 import { isProcessed } from "../DocumentProcessor";
 import { locationAsRange } from "m68k-parser";
 
@@ -31,7 +32,7 @@ export default class InlayHintProvider implements Provider {
     textDocument,
     range,
   }: lsp.InlayHintParams): Promise<lsp.InlayHint[] | null> {
-    if (!this.ctx.config.inlayHints.enabled) {
+    if (!configFor(this.ctx, textDocument.uri).inlayHints.enabled) {
       return [];
     }
 

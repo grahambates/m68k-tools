@@ -19,6 +19,7 @@ import type {
 import * as lsp from "vscode-languageserver";
 import { type Provider } from ".";
 import { type Context } from "../context";
+import { configFor } from "../documentConfigs";
 import { isProcessed } from "../DocumentProcessor";
 import {
   analyzeRegisterUsage,
@@ -200,7 +201,7 @@ export default class RegisterProvider implements Provider {
     const warnings = registerRemapWarnings(
       document.document,
       plannedEdits,
-      this.ctx.config.processors,
+      configFor(this.ctx, document.uri).processors,
     );
     for (const [source, destination] of mappings) {
       const register = byName.get(source);

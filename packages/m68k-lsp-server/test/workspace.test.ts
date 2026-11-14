@@ -8,7 +8,7 @@ import { URI } from "vscode-uri";
 
 import { createContext } from "../src/context";
 import DocumentProcessor from "../src/DocumentProcessor";
-import { indexWorkspace } from "../src/workspace";
+import { indexWorkspace, workspaceFoldersFrom } from "../src/workspace";
 import RegisterProvider from "../src/providers/RegisterProvider";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import {
@@ -260,5 +260,40 @@ describe("indexWorkspace", () => {
 
       expect(getEntryPointsFor(main, ctx)).toEqual([main]);
     });
+  });
+});
+
+describe("workspaceFoldersFrom", () => {
+  const folder = { uri: "file:///work/game", name: "game" };
+
+  it("uses the workspace folders the client sends", () => {
+    expect(
+      workspaceFoldersFrom({
+        workspaceFolders: [folder],
+        rootUri: "file:///elsewhere",
+      }),
+    ).toEqual([folder]);
+  });
+
+  it.each([null, undefined, []])(
+    "falls back to the root URI when the folders are %j",
+    (workspaceFolders) => {
+      expect(
+        workspaceFoldersFrom({
+          workspaceFolders,
+          rootUri: "file:///work/game",
+        }),
+      ).toEqual([folder]);
+    },
+  );
+
+  it("falls back to the root path when there is no root URI", () => {
+    expect(
+      workspaceFoldersFrom({ rootUri: null, rootPath: "/work/game" }),
+    ).toEqual([folder]);
+  });
+
+  it("is empty when the client gives no root at all", () => {
+    expect(workspaceFoldersFrom({ rootUri: null })).toEqual([]);
   });
 });

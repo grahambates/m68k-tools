@@ -1,3 +1,5 @@
+import type * as lsp from "vscode-languageserver";
+import { basename } from "path";
 import { URI } from "vscode-uri";
 import { defaultExclude, isExcluded } from "@m68k-lsp/workspace-files";
 
@@ -6,6 +8,32 @@ import { getAsmFilesInDir } from "./files";
 import { type Context } from "./context";
 
 export { defaultExclude };
+
+/**
+ * The workspace folders to work in, from the client's initialize request.
+ *
+ * Not every client sends `workspaceFolders`; the protocol still allows giving
+ * only the older single root. Without this the server would have no workspace
+ * at all with such a client: no project config, no index of the project's
+ * files.
+ */
+export function workspaceFoldersFrom(
+  params: Pick<
+    lsp.InitializeParams,
+    "workspaceFolders" | "rootUri" | "rootPath"
+  >,
+): lsp.WorkspaceFolder[] {
+  if (params.workspaceFolders?.length) {
+    return params.workspaceFolders;
+  }
+  const uri =
+    params.rootUri ??
+    (params.rootPath ? URI.file(params.rootPath).toString() : undefined);
+  if (!uri) {
+    return [];
+  }
+  return [{ uri, name: basename(URI.parse(uri).fsPath) }];
+}
 
 /**
  * Whether a workspace path should be skipped while indexing.

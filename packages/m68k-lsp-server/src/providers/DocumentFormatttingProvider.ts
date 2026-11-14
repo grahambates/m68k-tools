@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import type * as lsp from "vscode-languageserver";
 import { type Provider } from ".";
 import { type Context } from "../context";
+import { configFor } from "../documentConfigs";
 import {
   DocumentFormatter,
   findConfigs,
@@ -76,7 +77,7 @@ export default class DocumentFormattingProvider implements Provider {
       ? await findConfigs(dirname(fileURLToPath(uri)))
       : [];
     const config = mergeOptions(
-      this.ctx.config.format,
+      configFor(this.ctx, uri).format,
       await loadConfigs(paths),
     );
 

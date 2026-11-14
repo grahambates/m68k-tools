@@ -6,6 +6,7 @@ import {
   type Config,
   defaultConfig,
   mergeConfig,
+  readConfigFile,
   symbolsCaseSensitive,
 } from "../config";
 import { reprocessAll } from "../DocumentProcessor";
@@ -14,8 +15,7 @@ import {
   optionConflicts,
 } from "@m68k-lsp/assembly-options";
 import { type Context } from "../context";
-import { readFileSync, watch } from "fs";
-import { dirname, resolve } from "path";
+import { watch } from "fs";
 
 export default class ConfiguratonProvider implements Provider {
   protected clientConfig: Config;
@@ -31,6 +31,9 @@ export default class ConfiguratonProvider implements Provider {
     this.ctx.config = workspaceConfig
       ? mergeConfig(workspaceConfig, this.clientConfig)
       : this.clientConfig;
+    // Each document's config file is laid over the client's settings too, and
+    // any of them may be the one that changed.
+    this.ctx.documentConfigs.reset(this.clientConfig);
 
     const { caseSensitive, escapeSequences, vasm } = this.ctx.config;
     for (const conflict of optionConflicts(
@@ -56,25 +59,18 @@ export default class ConfiguratonProvider implements Provider {
       if (!found) continue;
       this.ctx.logger.info("Found workspace config " + found);
       try {
-        const config: Partial<Config> = JSON.parse(
-          readFileSync(found).toString(),
-        );
-        // Relative paths mean relative to the file, as they do to the linter,
-        // wherever the file is found and wherever vasm is run from.
-        if (typeof config.sourceRoot === "string")
-          config.sourceRoot = resolve(dirname(found), config.sourceRoot);
-        if (Array.isArray(config.includePaths))
-          config.includePaths = config.includePaths.map((path) =>
-            resolve(dirname(found), path),
-          );
-        return config;
+        return readConfigFile(found);
       } catch (err) {
         if (err instanceof Error) {
           this.ctx.logger.error("Error loading config: " + err.message);
         }
       }
     }
-    this.ctx.logger.info("No workspace config found");
+    this.ctx.logger.info(
+      this.ctx.workspaceFolders.length
+        ? "No workspace config found"
+        : "No workspace config found: the client gave no workspace folder or root",
+    );
     return null;
   }
 

@@ -86,7 +86,11 @@ m68k-lsp-server --stdio
 
 ## Configuration
 
-The LSP client can configured using the following settings, either as initialization options, or as a `.m68krc.json` file in your workspace folder or a directory above it, for project specific overrides.
+The LSP client can configured using the following settings, either as initialization options, or as a `.m68krc.json` file for project specific overrides.
+
+Each source file goes by the nearest `.m68krc.json` (or `.m68krc`) in its own directory or a directory above it, so a workspace can hold several projects with their own config. Only the nearest file is read; files further up are not merged with it. A file with no config of its own uses the one found from the workspace folder, if any.
+
+A few settings must agree across every file, because symbols are shared between files through includes: `caseSensitive` (and `-nocase` in `vasm.args`, as it affects symbols) and `exclude`. These are taken from the config found from the workspace folder, not from each file's own. vasm is still run with each file's own arguments.
 
 `.m68krc.json` is also read by the linter and its language server for the options they share: `processors`, `includePaths` and `caseSensitive`. A relative include path is taken from the directory of that file. Other keys are ignored by them.
 

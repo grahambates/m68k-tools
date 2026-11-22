@@ -76,8 +76,8 @@
     "@specy/s68k": "^1.4.0",
     "@types/node": "22.18.0",
     "typescript": "5.9.3",
-    "vitest": "5.0.0",
-    "@vitest/coverage-v8": "5.0.0",
+    "vitest": "5.1.1",
+    "@vitest/coverage-v8": "5.1.1",
     "tsdown": "0.23.0",
     "@m68k-lsp/assembly-options": "workspace:^",
     "@m68k-lsp/workspace-files": "workspace:^"

@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "m68k-parser": "workspace:^",
-    "glob": "^13.0.6",
+    "glob": "^14.0.6",
     "vscode-languageserver-types": "^3.17.5",
     "vscode-languageserver-textdocument": "^1.0.12"
   },
@@ -38,7 +38,7 @@
     "typescript": "5.9.3",
     "@types/node": "22.18.0",
     "tsdown": "0.23.0",
-    "vitest": "5.0.0"
+    "vitest": "5.1.1"
   },
   "module": "out/index.mjs",
   "exports": {

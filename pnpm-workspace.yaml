@@ -2,6 +2,11 @@ packages:
   - packages/*
   - apps/*
 
+overrides:
+  # These dependency ranges still require majors affected by the advisories.
+  "minimatch@10": "^11.0.9"
+  "mocha>glob@13": "^14.0.6"
+
 allowBuilds:
   esbuild: true
   "@parcel/watcher": false

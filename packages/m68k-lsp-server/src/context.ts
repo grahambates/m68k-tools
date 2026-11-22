@@ -2,6 +2,7 @@ import type * as lsp from "vscode-languageserver";
 
 import { type ProcessedDocumentStore } from "./DocumentProcessor";
 import { type Config, mergeConfig, defaultConfig } from "./config";
+import { DocumentConfigs } from "./documentConfigs";
 
 export interface Context {
   store: ProcessedDocumentStore;
@@ -10,7 +11,14 @@ export interface Context {
   workspaceFolders: lsp.WorkspaceFolder[];
   logger: lsp.Logger;
   connection: lsp.Connection;
+  /**
+   * The workspace's config: the client's settings, under the config file found
+   * from the first workspace folder. For settings that must agree across every
+   * file; how a document is assembled comes from `configFor`.
+   */
   config: Config;
+  /** Each document's own config file, found from its directory. */
+  documentConfigs: DocumentConfigs;
 }
 
 export async function createContext(
@@ -19,12 +27,14 @@ export async function createContext(
   connection: lsp.Connection,
   config: Partial<Config>,
 ): Promise<Context> {
+  const merged = mergeConfig(config, defaultConfig);
   return {
     store: new Map(),
     documentUpdates: new Map(),
     workspaceFolders,
     logger,
     connection,
-    config: mergeConfig(config, defaultConfig),
+    config: merged,
+    documentConfigs: new DocumentConfigs(logger, merged),
   };
 }

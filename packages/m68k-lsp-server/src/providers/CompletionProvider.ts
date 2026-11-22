@@ -32,6 +32,7 @@ import {
   processPath,
 } from "../symbols";
 import { type Context } from "../context";
+import { configFor } from "../documentConfigs";
 import { componentAtIndex, ComponentType, parseLine } from "../parse";
 import { parseSignature } from "../signature";
 import { formatMnemonicDoc } from "../formatting";
@@ -248,7 +249,9 @@ export default class CompletionProvider implements Provider {
   ): Promise<lsp.CompletionItem[]> {
     const instructions = Object.values(instructionDocs)
       .filter((doc) =>
-        this.ctx.config.processors.some((proc) => doc.procs[proc]),
+        configFor(this.ctx, processed.uri).processors.some(
+          (proc) => doc.procs[proc],
+        ),
       )
       .map((doc) => {
         const item: lsp.CompletionItem = {

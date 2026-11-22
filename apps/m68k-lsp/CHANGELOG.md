@@ -1,5 +1,20 @@
 # m68k-lsp
 
+## 0.16.0
+
+### Minor Changes
+
+- a680b39: Add `equateColon` and `macroColon` formatter options (`"on"`, `"off"` or `"any"`) for colons after names defined with `equ`, `=`, `set`, `equr`, `reg` and similar, and after macro names. `labelColon` no longer applies to these, which restores its behaviour from before the formatter moved onto the m68k-parser AST, when it had started adding colons to every symbol definition. It still applies to `rs`, `so` and `fo` offsets, which are written like `ds`.
+
+  Both new options default to `"off"`, including the VS Code extension's `m68k.format.equateColon` and `m68k.format.macroColon` settings, so colons on equates and macro names are removed unless configured otherwise. This also cleans up colons the previous version added in error.
+
+- 0b749db: Each source file now goes by the nearest `.m68krc.json` (or `.m68krc`) found from its own directory, as the linter does, so a project's config is read when it sits below the workspace folder the editor opened, and a workspace can hold several projects with their own config. Previously only a config at or above the workspace folder was read, and vasm fell back to its default binary and options for everything else. `caseSensitive` and `exclude` still come from the workspace folder's config, since symbols are shared between files.
+
+### Patch Changes
+
+- 1e989d9: Formatting an `iif` line no longer deletes its condition and statement: `foo iif bar equ 42` was being rewritten as `foo iif 42`. The whole `<condition> <statement>` now sits in the operand column, and the statement's mnemonic and size are cased like any other line's.
+- a680b39: Labels defined with `so` or `fo` no longer start a new local-label scope, matching `rs` and vasm. Previously a `.local` label after `FIELD so.w 1` was tied to `FIELD` rather than the routine containing it, which could misreport unused or unresolved local labels in the linter and break go-to-definition in the language server. The outline now also lists `so` and `fo` labels as offsets.
+
 ## 0.15.2
 
 ### Patch Changes

@@ -7,6 +7,7 @@ import { dirname } from "path";
 import { isAssemblySource, walkFiles } from "@m68k-lsp/workspace-files";
 
 import { type Context } from "./context";
+import { configFor } from "./documentConfigs";
 import { assemblerArgs, sourceRootOf, vasmRunDirectory } from "./config";
 import {
   includeArguments,
@@ -38,7 +39,8 @@ export async function readDocumentFromUri(
   return TextDocument.create(uri, "vasmmot", 0, content);
 }
 
-type ResolveContext = Pick<Context, "workspaceFolders" | "store" | "config">;
+type ResolveContext = Pick<Context, "workspaceFolders" | "store" | "config"> &
+  Partial<Pick<Context, "documentConfigs">>;
 
 /**
  * Where an include named in a document is looked for.
@@ -66,7 +68,7 @@ function includeSearch(documentUri: string, ctx: ResolveContext) {
 
   const searches = mains.map((main) => vasmSearchFor(main, ctx, incDirs));
   const docDir = dirname(URI.parse(documentUri).fsPath);
-  const sourceRoot = sourceRootOf(ctx.config, workspaceRoots);
+  const sourceRoot = sourceRootOf(configFor(ctx, documentUri), workspaceRoots);
   const fallback = [
     docDir,
     ...(sourceRoot ? [sourceRoot] : []),
@@ -95,10 +97,12 @@ export function vasmSearchFor(
   ctx: ResolveContext,
   incDirs: readonly string[] = [],
 ): VasmSearch {
+  // The main source's config says how it is assembled, includes and all.
+  const config = configFor(ctx, URI.file(mainPath).toString());
   return {
-    cwd: vasmRunDirectory(ctx.config, workspacePaths(ctx), mainPath),
+    cwd: vasmRunDirectory(config, workspacePaths(ctx), mainPath),
     mainDir: dirname(mainPath),
-    includePaths: includeArguments(assemblerArgs(ctx.config)),
+    includePaths: includeArguments(assemblerArgs(config)),
     incDirs,
   };
 }

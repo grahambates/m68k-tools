@@ -470,10 +470,7 @@ function getMnemonicRange({
 
 function getOperandsRange({ operands }: ParsedLine): ElementRange | undefined {
   if (operands) {
-    return {
-      start: operands[0].start,
-      end: operands[operands.length - 1].end,
-    };
+    return { start: operands.start, end: operands.end };
   }
 }
 

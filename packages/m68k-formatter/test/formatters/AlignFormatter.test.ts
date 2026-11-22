@@ -541,4 +541,39 @@ Curabitur aliquet non velit sit amet condimentum.
     });
     expect(result).toBe('          FOO       <1,"foo">,d2');
   });
+
+  // Issue #27: an `iif` line's condition and statement are not operands, and
+  // were dropped when the line was laid out again.
+  it.each([
+    ["foo IIF bar equ 42", "foo     IIF     bar equ 42"],
+    [
+      ' IIF SomeSymbol INCLUDE "test.s"',
+      '        IIF     SomeSymbol INCLUDE "test.s"',
+    ],
+    [
+      " iif DEBUG move.l d0,d1 ; dbg",
+      "        iif     DEBUG move.l d0,d1              ; dbg",
+    ],
+    [
+      " iif DEBUG nop ; c",
+      "        iif     DEBUG nop                       ; c",
+    ],
+    [
+      ' iif (a=1)&(b<2) dc.b "x y",0',
+      '        iif     (a=1)&(b<2) dc.b "x y",0',
+    ],
+  ])("keeps the whole of %j", async (src, expected) => {
+    const result = await doFormat(src, {
+      mnemonic: 8,
+      operands: 16,
+      comment: 48,
+    });
+    expect(result).toBe(expected);
+  });
+
+  it("keeps a half-typed iif condition", async () => {
+    // The parser finds no condition until a statement follows it.
+    const result = await doFormat(" iif DEBUG", { mnemonic: 8, operands: 16 });
+    expect(result).toBe("        iif     DEBUG");
+  });
 });

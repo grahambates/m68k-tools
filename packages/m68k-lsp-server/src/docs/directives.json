@@ -2,49 +2,37 @@
   "align": {
     "title": "ALIGN",
     "summary": "Align bytes",
-    "syntax": [
-      "align <bitcount>"
-    ],
+    "syntax": ["align <bitcount>"],
     "description": "Insert as much zero bytes as required to reach an address where `<bitcount>` low order bits are zero.\nFor example `align 2` would make an alignment to the next 32-bit boundary."
   },
   "basereg": {
     "title": "BASEREG",
     "summary": "Start base-relative addressing",
-    "syntax": [
-      "basereg <expression>,<An>"
-    ],
+    "syntax": ["basereg <expression>,<An>"],
     "description": "Starts a block of base-relative addressing through register An (remember that A7 is not allowed as a base register). The programmer has to make sure that `<expression>` is placed into An first, while the assembler automatically subtracts `<expression>`, which is usually a program label with an optional offset, from each displacement in a `(d,An)` addressing mode. basereg has priority over the near directive. Its effect can be suspended with the `endb` directive. It is allowed to use several base registers in parallel."
   },
   "blk": {
     "title": "BLK",
     "summary": "Data constant block",
-    "syntax": [
-      "blk.(bdlqswx) <exp>[,<fill>]"
-    ],
+    "syntax": ["blk.(bdlqswx) <exp>[,<fill>]"],
     "description": "Equivalent to `dcb.(bdlqswx) <exp>,<fill>`."
   },
   "bss": {
     "title": "BSS",
     "summary": "BSS section",
-    "syntax": [
-      "bss"
-    ],
+    "syntax": ["bss"],
     "description": "Equivalent to `section bss,bss`."
   },
   "bss_c": {
     "title": "BSS_C",
     "summary": "BSS section in chip RAM",
-    "syntax": [
-      "bss_c"
-    ],
+    "syntax": ["bss_c"],
     "description": "Equivalent to `section bss_c,bss,chip`."
   },
   "bss_f": {
     "title": "BSS_F",
     "summary": "BSS section in fast RAM",
-    "syntax": [
-      "bss_f"
-    ],
+    "syntax": ["bss_f"],
     "description": "Equivalent to `section bss_f,bss,fast`."
   },
   "cargs": {
@@ -58,898 +46,673 @@
   "clrfo": {
     "title": "CLRFO",
     "summary": "Clear frame offset",
-    "syntax": [
-      "clrfo"
-    ],
+    "syntax": ["clrfo"],
     "description": "Reset stack-frame offset counter to zero."
   },
   "clrso": {
     "title": "CLRSO",
     "summary": "Clear structure offset",
-    "syntax": [
-      "clrso"
-    ],
+    "syntax": ["clrso"],
     "description": "Reset structure offset counter to zero.\nSee `so` directive."
   },
   "cnop": {
     "title": "CNOP",
     "summary": "Align PC arbitrarily",
-    "syntax": [
-      "cnop <offset>,<alignment>"
-    ],
+    "syntax": ["cnop <offset>,<alignment>"],
     "description": "Insert as much zero bytes as required to reach an address which can be divided by `<alignment>`.\nThen add `<offset>` zero bytes. May fill the padding-bytes with no-operation instructions for certain cpus."
   },
   "code": {
     "title": "CODE",
     "summary": "Code section",
-    "syntax": [
-      "code"
-    ],
+    "syntax": ["code"],
     "description": "Equivalent to `section code,code`."
   },
   "code_c": {
     "title": "CODE_C",
     "summary": "Code section in chip RAM",
-    "syntax": [
-      "code_c"
-    ],
+    "syntax": ["code_c"],
     "description": "Equivalent to `section code_c,code,chip`."
   },
   "code_f": {
     "title": "CODE_F",
     "summary": "Code section in fast RAM",
-    "syntax": [
-      "code_f"
-    ],
+    "syntax": ["code_f"],
     "description": "Equivalent to `section code_f,code,fast`."
   },
   "comm": {
     "title": "COMM",
     "summary": "Create a common symbol",
-    "syntax": [
-      "comm <symbol>,<size>"
-    ],
+    "syntax": ["comm <symbol>,<size>"],
     "description": "Create a common symbol with the given size.\nThe alignment is always 32 bits."
   },
   "comment": {
     "title": "COMMENT",
     "summary": "Send linker comment",
-    "syntax": [
-      "comment"
-    ],
+    "syntax": ["comment"],
     "description": "Everything in the operand field is ignored and seen as a comment.\nThere is only one exception, when the operand contains `HEAD=`. Then the following expression is passed to the TOS output module via the symbol `TOSFLAGS`, to define the Atari specific TOS flags."
   },
   "cpu32": {
     "title": "CPU32",
     "summary": "Generate code for the CPU32 CPU",
-    "syntax": [
-      "cpu32"
-    ],
+    "syntax": ["cpu32"],
     "description": "Generate code for the CPU32 CPU."
   },
   "cseg": {
     "title": "CSEG",
     "summary": "Code section",
-    "syntax": [
-      "cseg"
-    ],
+    "syntax": ["cseg"],
     "description": "Equivalent to `section code,code`."
   },
   "data": {
     "title": "DATA",
     "summary": "Data section",
-    "syntax": [
-      "data"
-    ],
+    "syntax": ["data"],
     "description": "Equivalent to `section data,data`."
   },
   "data_c": {
     "title": "DATA_C",
     "summary": "Data section in chip RAM",
-    "syntax": [
-      "data_c"
-    ],
+    "syntax": ["data_c"],
     "description": "Equivalent to `section data_c,data,chip`."
   },
   "data_f": {
     "title": "DATA_F",
     "summary": "Data section in fast RAM",
-    "syntax": [
-      "data_f"
-    ],
+    "syntax": ["data_f"],
     "description": "Equivalent to `section data_f,data,fast`."
   },
   "db": {
     "title": "DB",
     "summary": "Define byte constant",
-    "syntax": [
-      "db <exp1>[,<exp2>,\"<string1>\",’<string2>’...]"
-    ],
+    "syntax": ["db <exp1>[,<exp2>,\"<string1>\",’<string2>’...]"],
     "description": "Equivalent to `dc.b` for ArgAsm, BAsm, HX68, Macro68, ProAsm, etc. compatibility.\nDoes not exist in PhxAss or Devpac-compatiblity mode."
   },
   "dc": {
     "title": "DC",
     "summary": "Define constant",
-    "syntax": [
-      "dc[.(bdlqswx)] <exp1>[,<exp2>,\"<string1>\",’<string2>’...]"
-    ],
+    "syntax": ["dc[.(bdlqswx)] <exp1>[,<exp2>,\"<string1>\",’<string2>’...]"],
     "description": "Assign the integer or string constant operands into successive bytes/words of memory in the current section.\nAny combination of integer and character string constant operands is permitted."
   },
   "dcb": {
     "title": "DCB",
     "summary": "Define constant block",
-    "syntax": [
-      "dcb[.(bdlqswx)] <exp>[,<fill>]"
-    ],
+    "syntax": ["dcb[.(bdlqswx)] <exp>[,<fill>]"],
     "description": "Insert `<exp>` zero or `<fill>` bytes/words into the current section."
   },
   "dl": {
     "title": "DL",
     "summary": "Define longword constant",
-    "syntax": [
-      "dl <exp1>[,<exp2>...]"
-    ],
+    "syntax": ["dl <exp1>[,<exp2>...]"],
     "description": "Equivalent to `dc.l` for ArgAsm, BAsm, HX68, Macro68, ProAsm, etc. compatibility.\nDoes not exist in PhxAss or Devpac-compatiblity mode."
   },
   "dr": {
     "title": "DR",
     "summary": "Define relative",
-    "syntax": [
-      "dr[.(bwlbx)] <exp1>[,<exp2>...]"
-    ],
+    "syntax": ["dr[.(bwlbx)] <exp1>[,<exp2>...]"],
     "description": "Calculates `<expN> - <current_pc_value>` and stores it into successive bytes/words of memory in the current section."
   },
   "ds": {
     "title": "DS",
     "summary": "Define space",
-    "syntax": [
-      "ds[.(bdlqswx)] <exp>"
-    ],
+    "syntax": ["ds[.(bdlqswx)] <exp>"],
     "description": "Equivalent to `dcb[.(bdlqswx)] <exp>,0`."
   },
   "dw": {
     "title": "DW",
     "summary": "Define word constant",
-    "syntax": [
-      "dw <exp1>[,<exp2>...]"
-    ],
+    "syntax": ["dw <exp1>[,<exp2>...]"],
     "description": "Equivalent to `dc.w` for ArgAsm, BAsm, HX68, Macro68, ProAsm, etc. compatibility.\nDoes not exist in PhxAss or Devpac-compatiblity mode."
   },
   "dx": {
     "title": "DX",
     "summary": "Define constant block BSS",
-    "syntax": [
-      "dx[.(bdlqswx)] <exp>"
-    ],
+    "syntax": ["dx[.(bdlqswx)] <exp>"],
     "description": "Tries to allocate space in the DataBss portion of a code or data section.\nOtherwise equivalent to `dcb.(bdlqswx) <exp>,0`."
   },
   "echo": {
     "title": "ECHO",
     "summary": "Print string",
-    "syntax": [
-      "echo <string>"
-    ],
+    "syntax": ["echo <string>"],
     "description": "Prints `<string>` to stdout."
   },
   "einline": {
     "title": "EINLINE",
     "summary": "End local labels",
-    "syntax": [
-      "einline"
-    ],
+    "syntax": ["einline"],
     "description": "End a block of isolated local labels, started by inline."
   },
   "else": {
     "title": "ELSE",
     "summary": "Switch assembly state",
-    "syntax": [
-      "else"
-    ],
+    "syntax": ["else"],
     "description": "Assemble the following lines if the previous if condition was false."
   },
   "elseif": {
     "title": "ELSEIF",
     "summary": "Switch assembly state",
-    "syntax": [
-      "elseif"
-    ],
+    "syntax": ["elseif"],
     "description": "Assemble the following lines if the previous if condition was false."
   },
   "end": {
     "title": "END",
     "summary": "Terminate source code",
-    "syntax": [
-      "end"
-    ],
+    "syntax": ["end"],
     "description": "Assembly will terminate behind this line."
   },
   "endb": {
     "title": "ENDB",
     "summary": "End base-relative addressing",
-    "syntax": [
-      "endb <An>"
-    ],
+    "syntax": ["endb <An>"],
     "description": "Ends a basereg block and suspends its effect onto the specified base register `An`.\nIt may be reused with a different base expression thereafter (refer to basereg)."
   },
   "endc": {
     "title": "ENDC",
     "summary": "End conditional",
-    "syntax": [
-      "endc"
-    ],
+    "syntax": ["endc"],
     "description": "Ends a section of conditional assembly."
   },
   "endif": {
     "title": "ENDIF",
     "summary": "End conditional",
-    "syntax": [
-      "endif"
-    ],
+    "syntax": ["endif"],
     "description": "Ends a section of conditional assembly."
   },
   "endm": {
     "title": "ENDM",
     "summary": "End macro definition",
-    "syntax": [
-      "endm"
-    ],
+    "syntax": ["endm"],
     "description": "Ends a macro definition."
   },
   "endr": {
     "title": "ENDR",
     "summary": "End repeat block",
-    "syntax": [
-      "endr"
-    ],
+    "syntax": ["endr"],
     "description": "Ends a repetition block."
   },
   "equ": {
     "title": "EQU",
     "summary": "Define label value",
-    "syntax": [
-      "<symbol> EQU <expression>"
-    ],
+    "syntax": ["<symbol> EQU <expression>"],
     "description": "Define a new program symbol with the name `<symbol>` and assign to it the value of `<expression>`.\nDefining `<symbol>` twice will cause an error."
   },
   "equr": {
     "title": "EQUR",
     "summary": "Define register equate",
-    "syntax": [
-      "<symbol> EQUR <Rn>"
-    ],
+    "syntax": ["<symbol> EQUR <Rn>"],
     "description": "Define a new symbol named `<symbol>` and assign the data or address register `Rn`, which can be used from now on in operands. When 68080 code generation is enabled, also `Bn` base address registers are allowed to be assigned. Note that a register symbol must be defined before it can be used!"
   },
   "erem": {
     "title": "EREM",
     "summary": "End comment block",
-    "syntax": [
-      "erem"
-    ],
+    "syntax": ["erem"],
     "description": "Ends an outcommented block. Assembly will continue."
   },
   "even": {
     "title": "EVEN",
     "summary": "Ensure PC even",
-    "syntax": [
-      "even"
-    ],
+    "syntax": ["even"],
     "description": "Aligns to an even address.\nEquivalent to `cnop 0,2`."
   },
   "fail": {
     "title": "FAIL",
     "summary": "Force assembly error",
-    "syntax": [
-      "fail <message>"
-    ],
+    "syntax": ["fail <message>"],
     "description": "Show an error message including the `<message>` string.\nDo not generate an ouput file."
   },
   "far": {
     "title": "FAR",
     "summary": "Disables small data mode",
-    "syntax": [
-      "far"
-    ],
+    "syntax": ["far"],
     "description": "Disables small data (base-relative) mode. All data references will be absolute."
   },
   "fequ": {
     "title": "FEQU",
     "summary": "Define floating point constant",
-    "syntax": [
-      "<symbol> FEQU[.(sdxp)] <expression>"
-    ],
+    "syntax": ["<symbol> FEQU[.(sdxp)] <expression>"],
     "description": "Define a new program symbol with the name `<symbol>` and assign to it the floating point value of `<expression>`.\nDefining `<symbol>` twice will cause an error. The extension is for Devpac-compatibility, but will be ignored."
   },
   "fo": {
     "title": "FO",
     "summary": "Frame offset",
-    "syntax": [
-      "<label> FO.<size> <expression>"
-    ],
+    "syntax": ["<label> FO.<size> <expression>"],
     "description": "Assigns the current value of the stack-frame offset counter to `<label>`.\nAfterwards the counter is decremented by the instruction’s `<size>` multiplied by `<expression>`. Any valid M68k size extension is allowed for `<size>`: b, w, l, q, s, d, x, p. The offset counter can also be referenced directly under the name `__FO`."
   },
   "fopt": {
     "title": "FOPT",
     "summary": "Floating point options",
-    "syntax": [
-      "fopt option<,option>"
-    ],
+    "syntax": ["fopt option<,option>"],
     "description": "This directive allows you to set the floating point co-processor identifier and the rounding and precision of the assembler's internal floating point calculations.\n\nThis directive allows you to set the floating point co-processor identifier and the rounding and precision of the assembler's internal floating point calculations. The valid options are:\n\n- `ID=<id>` This sets the co-processor identifier. By default, this is 1 as used on the Amiga® 3000 and as recommended by Motorola. However for systems with more than one FPU you will need to set this.\n- `ROUND=<type>` This is used to set the rounding method used by internal floating point operations. `<type>` should be one of: N round to the nearest\n  - `Z` round towards zero\n  - `P` round towards + infinity\n  - `M` round towards - infinity\n  These correspond to the RND portion of the FPCR mode control byte. The default value is `N`.\n\n- `PREC=<type>`\n  This is used to set the precision used by internal floating point operations. `<type>` should be one of:\n  - `X` extended precision S single precision\n  - `D` double precision\n  These correspond to the PREC portion of the FPCR mode control byte. The default value is `X`."
   },
   "fpu": {
     "title": "FPU",
     "summary": "Enables FPU code generation",
-    "syntax": [
-      "fpu <cpID>"
-    ],
+    "syntax": ["fpu <cpID>"],
     "description": "Enables 68881/68882 FPU code generation. The `<cpID>` is inserted into the FPU instructions to select the correct coprocessor. Note that `<cpID>` is always 1 for the on-chip FPUs in the 68040 and 68060. A `<cpID>` of zero will disable FPU code generation."
   },
   "idnt": {
     "title": "IDNT",
     "summary": "Set hunk unit name",
-    "syntax": [
-      "idnt <name>"
-    ],
+    "syntax": ["idnt <name>"],
     "description": "Sets the file or module name in the generated object file to `<name>`, when the selected output module supports it.\nBy default, the input filename passed on the command line is used."
   },
   "if": {
     "title": "IF",
     "summary": "If non-zero",
-    "syntax": [
-      "if <expression>"
-    ],
+    "syntax": ["if <expression>"],
     "description": "Conditionally assemble the following lines if `<expression>` is non-zero."
   },
   "if1": {
     "title": "IF1",
     "summary": "If pass 1",
-    "syntax": [
-      "if1"
-    ],
+    "syntax": ["if1"],
     "description": "Just for compatibility.\nNot really supported, as vasm parses a source text only once.\nAlways true."
   },
   "if2": {
     "title": "IF2",
     "summary": "If pass 2",
-    "syntax": [
-      "if2"
-    ],
+    "syntax": ["if2"],
     "description": "Just for compatibility.\nNot really supported, as vasm parses a source text only once.\nAlways false."
   },
   "ifb": {
     "title": "IFB",
     "summary": "If blank",
-    "syntax": [
-      "ifb <operand>"
-    ],
+    "syntax": ["ifb <operand>"],
     "description": "Conditionally assemble the following lines when `<operand>` is completely blank, except an optional comment."
   },
   "ifc": {
     "title": "IFC",
     "summary": "If strings same",
-    "syntax": [
-      "ifc <string1>,<string2>"
-    ],
+    "syntax": ["ifc <string1>,<string2>"],
     "description": "Conditionally assemble the following lines if `<string1>` matches `<string2>`."
   },
   "ifd": {
     "title": "IFD",
     "summary": "If defined",
-    "syntax": [
-      "ifd <symbol>"
-    ],
+    "syntax": ["ifd <symbol>"],
     "description": "Conditionally assemble the following lines if `<symbol>` is defined."
   },
   "ifeq": {
     "title": "IFEQ",
     "summary": "If zero",
-    "syntax": [
-      "ifeq <expression>"
-    ],
+    "syntax": ["ifeq <expression>"],
     "description": "Conditionally assemble the following lines if `<expression>` is zero."
   },
   "ifge": {
     "title": "IFGE",
     "summary": "If greater than or equal to",
-    "syntax": [
-      "ifge <expression>"
-    ],
+    "syntax": ["ifge <expression>"],
     "description": "Conditionally assemble the following lines if `<expression>` is greater than zero or equal."
   },
   "ifgt": {
     "title": "IFGT",
     "summary": "If greater than",
-    "syntax": [
-      "ifgt <expression>"
-    ],
+    "syntax": ["ifgt <expression>"],
     "description": "Conditionally assemble the following lines if `<expression>` is greater than zero."
   },
   "ifle": {
     "title": "IFLE",
     "summary": "If less than or equal to",
-    "syntax": [
-      "ifle <expression>"
-    ],
+    "syntax": ["ifle <expression>"],
     "description": "Conditionally assemble the following lines if `<expression>` is less than zero or equal."
   },
   "iflt": {
     "title": "IFLT",
     "summary": "If less than",
-    "syntax": [
-      "iflt <expression>"
-    ],
+    "syntax": ["iflt <expression>"],
     "description": "Conditionally assemble the following lines if `<expression>` is less than zero."
   },
   "ifmacrod": {
     "title": "IFMACROD",
     "summary": "If macro defined",
-    "syntax": [
-      "ifmacrod <macro>"
-    ],
+    "syntax": ["ifmacrod <macro>"],
     "description": "Conditionally assemble the following line if `<macro>` is defined."
   },
   "ifmacrond": {
     "title": "IFMACROND",
     "summary": "If macro not defined",
-    "syntax": [
-      "ifmacrond <macro>"
-    ],
+    "syntax": ["ifmacrond <macro>"],
     "description": "Conditionally assemble the following line if `<macro>` is undefined."
   },
   "ifnb": {
     "title": "IFNB",
     "summary": "If not blank",
-    "syntax": [
-      "ifnb <operand>"
-    ],
+    "syntax": ["ifnb <operand>"],
     "description": "Conditionally assemble the following lines when `<operand>` is non-blank."
   },
   "ifnc": {
     "title": "IFNC",
     "summary": "If strings different",
-    "syntax": [
-      "ifnc <string1>,<string2>"
-    ],
+    "syntax": ["ifnc <string1>,<string2>"],
     "description": "Conditionally assemble the following lines if `<string1>` does not match `<string2>`."
   },
   "ifnd": {
     "title": "IFND",
     "summary": "If not defined",
-    "syntax": [
-      "ifnd <symbol>"
-    ],
+    "syntax": ["ifnd <symbol>"],
     "description": "Conditionally assemble the following lines if `<symbol>` is undefined."
   },
   "ifne": {
     "title": "IFNE",
     "summary": "If non-zero",
-    "syntax": [
-      "ifne <expression>"
-    ],
+    "syntax": ["ifne <expression>"],
     "description": "Conditionally assemble the following lines if `<expression>` is non-zero."
   },
   "ifp1": {
     "title": "IFP1",
     "summary": "If pass 1",
-    "syntax": [
-      "ifp1"
-    ],
+    "syntax": ["ifp1"],
     "description": "Just for compatibility. Equivalent to if1."
   },
   "iif": {
     "title": "IIF",
     "summary": "Immediate IF",
-    "syntax": [
-      "iif <expression> <statement>"
-    ],
+    "syntax": ["iif <expression> <statement>"],
     "description": "Conditionally assemble the `<statement>` following `<expression>`.\n`IIF` stands for Immediate IF. If the value of `<expression>` is non-zero then `<statement>` is assembled. No `ENDC` should be used in conjunction with this directive. The `<statement>` can not include a label, but a label may precede the `IIF` directive. For example: `foo IIF bar equ 42` The foo label will be assigned with 42 if bar evaluates to true, otherwise foo will be assigned with the current program counter. The case when assigning a value in the `IIF <statement>` using the equal (`=`) operator and the option `-spaces` is used can’t work as the equal operator will be evaluated as part of the expression. I.e. `foo IIF 1+1 = 42` will work, but `foo IIF 1 + 1 = 42` when the option `-spaces` is specified won’t work as `= 42` will be evaluated as part of the expression."
   },
   "incbin": {
     "title": "INCBIN",
     "summary": "Read binary file from disk",
-    "syntax": [
-      "incbin <file>[,<offset>[,<length>]]"
-    ],
+    "syntax": ["incbin <file>[,<offset>[,<length>]]"],
     "description": "Inserts the binary contents of `<file>` into the object code at this position.\nWhen `<offset>` is specified, then the given number of bytes will be skipped at the beginning of the file. The optional `<length>` argument specifies the maximum number of bytes to be read from that file. The file will be searched first in the current directory, then in all paths defined by `-I` or `incdir` in the order of occurrence."
   },
   "incdir": {
     "title": "INCDIR",
     "summary": "Include directory",
-    "syntax": [
-      "incdir <path>"
-    ],
+    "syntax": ["incdir <path>"],
     "description": "Add another path to search for include files to the list of known paths.\nPaths defined with `-I` on the command line are searched first."
   },
   "include": {
     "title": "INCLUDE",
     "summary": "Read source file from disk",
-    "syntax": [
-      "include <file>"
-    ],
+    "syntax": ["include <file>"],
     "description": "Include source text of `<file>` at this position.\nThe include file will be searched first in the current directory, then in all paths defined by `-I` or `incdir` in the order of occurrence."
   },
   "inline": {
     "title": "INLINE",
     "summary": "Start local labels",
-    "syntax": [
-      "inline"
-    ],
+    "syntax": ["inline"],
     "description": "Local labels in the following block are isolated from previous local labels and those after `einline`."
   },
   "list": {
     "title": "LIST",
     "summary": "Enable listing",
-    "syntax": [
-      "list"
-    ],
+    "syntax": ["list"],
     "description": "The following lines will appear in the listing file, if it was requested."
   },
   "llen": {
     "title": "LLEN",
     "summary": "Set line length",
-    "syntax": [
-      "llen <len>"
-    ],
+    "syntax": ["llen <len>"],
     "description": "Set the line length in a listing file to a maximum of `<len>` characters.\nCurrently without any effect."
   },
   "machine": {
     "title": "machine",
     "summary": "Set CPU type",
-    "syntax": [
-      "machine <cpu_type>"
-    ],
+    "syntax": ["machine <cpu_type>"],
     "description": "Makes the assembler generate code for `<cpu_type>`, which can be the following: 68000, 68010, 68020, 68030, 68040, 68060, 68851, 68881, 68882, cpu32. And various ColdFire CPUs, starting with 5...."
   },
   "macro": {
     "title": "MACRO",
     "summary": "Define macro",
-    "syntax": [
-      "macro <name>",
-      "<name> MACRO"
-    ],
+    "syntax": ["macro <name>", "<name> MACRO"],
     "description": "Defines a macro which can be referenced by `<name>`.\nThe `<name>` may also appear at the left side of the macro directive, starting at the first column. Then the operand field is ignored. The macro definition is closed by an endm directive. When calling a macro you may pass up to 9 arguments, separated by comma. Those arguments are referenced within the macro context as `\\1` to `\\9`. Parameter `\\0` is set to the macro’s first qualifier (mnemonic extension), when given. In Devpac- and PhxAss-compatibility mode, or with option `-allmp`, up to 35 arguments are accepted, where argument 10-35 can be referenced by `\\a` to `\\z`.\n\n|Parameter|Description|\n|:--------|:----------|\n|`\\@`|Insert a unique id, useful for defining labels. Every macro call gets its own unique id.|\n|`\\@!`|Push the current unique id onto a global id stack, then insert it.|\n|`\\@?`|Push the current unique id below the top element of the global id stack, then insert it.|\n|`\\@@`|Pull the top element from the global id stack and insert it. The macro’s current unique id is not affected by this operation.|\n|`\\#`|Insert the number of arguments that have been passed to this macro. Equivalent to the contents of `NARG`.|\n|`\\?n`|Insert the length of the nth macro argument.|\n|`\\.`|Insert the argument which is selected by the current value of the CARG symbol (first argument, when `CARG` is 1).|\n|`\\+`|Works like `\\.`, but increments the value of `CARG` after that.|\n|`\\-`|Works like `\\.`, but decrements the value of `CARG` after that.|\n|`\\<symbolname>`|Inserts the current decimal value of the absolute symbol symbolname.|\n|`\\$<symbolname>`|Inserts the current hexadecimal value of the absolute symbol symbolname, without leading `$`.|"
   },
   "mc68000": {
     "title": "MC68000",
     "summary": "Generate code for the MC68000 CPU",
-    "syntax": [
-      "mc68000"
-    ],
+    "syntax": ["mc68000"],
     "description": "Generate code for the MC68000 CPU."
   },
   "mc68010": {
     "title": "MC68010",
     "summary": "Generate code for the MC68010 CPU",
-    "syntax": [
-      "mc68010"
-    ],
+    "syntax": ["mc68010"],
     "description": "Generate code for the MC68010 CPU."
   },
   "mc68020": {
     "title": "MC68020",
     "summary": "Generate code for the MC68020 CPU",
-    "syntax": [
-      "mc68020"
-    ],
+    "syntax": ["mc68020"],
     "description": "Generate code for the MC68020 CPU."
   },
   "mc68030": {
     "title": "MC68030",
     "summary": "Generate code for the MC68030 CPU",
-    "syntax": [
-      "mc68030"
-    ],
+    "syntax": ["mc68030"],
     "description": "Generate code for the MC68030 CPU."
   },
   "mc68040": {
     "title": "MC68040",
     "summary": "Generate code for the MC68040 CPU",
-    "syntax": [
-      "mc68040"
-    ],
+    "syntax": ["mc68040"],
     "description": "Generate code for the MC68040 CPU."
   },
   "mc68060": {
     "title": "MC68060",
     "summary": "Generate code for the MC68060 CPU",
-    "syntax": [
-      "mc68060"
-    ],
+    "syntax": ["mc68060"],
     "description": "Generate code for the MC68060 CPU."
   },
   "mexit": {
     "title": "MEXIT",
     "summary": "Exit macro",
-    "syntax": [
-      "mexit"
-    ],
+    "syntax": ["mexit"],
     "description": "Leave the current macro and continue with assembling the parent context.\nNote that this directive also resets the level of conditional assembly to a state before the macro was invoked; which means that it also works as a ’break’ command on all new if directives."
   },
   "msource": {
     "title": "MSOURCE",
     "summary": "Enable debugging in macro context",
-    "syntax": [
-      "msource on/off"
-    ],
+    "syntax": ["msource on/off"],
     "description": "Enable or disable source level debugging within a macro context.\nIt can be used before one or more macro definitions. When off, the debugger will show the invoking source text line instead. Defaults to on. Also numeric expressions like `0` or `1` are allowed. Note, that this directive currently only has a meaning when using the `-linedebug` option with the hunk-format output module (`-Fhunk`)."
   },
   "near": {
     "title": "NEAR",
     "summary": "Enables small data mode",
-    "syntax": [
-      "near [<An>]"
-    ],
+    "syntax": ["near [<An>]"],
     "description": "Enables small data (base-relative) mode and sets the base register to `An`. `near` without an argument will reactivate a previously defined small data mode, which might be switched off by a far directive."
   },
   "nolist": {
     "title": "NOLIST",
     "summary": "Disable listing",
-    "syntax": [
-      "nolist"
-    ],
+    "syntax": ["nolist"],
     "description": "The following lines will not be visible in a listing file."
   },
   "nopage": {
     "title": "NOPAGE",
     "summary": "Never start a new page",
-    "syntax": [
-      "nopage"
-    ],
+    "syntax": ["nopage"],
     "description": "Never start a new page in the listing file.\nThis implementation will only prevent emitting the formfeed code."
   },
   "nref": {
     "title": "NREF",
     "summary": "Flag symbol as external",
-    "syntax": [
-      "nref <symbol>[,<symbol>...]"
-    ],
+    "syntax": ["nref <symbol>[,<symbol>...]"],
     "description": "Flag `<symbol>` as externally defined.\nSimilar to `xref`, but also indicate that references should be optimized to base-relative addressing modes, when possible. This directive is only present in PhxAss-compatibility mode."
   },
   "odd": {
     "title": "ODD",
     "summary": "Ensure PC odd",
-    "syntax": [
-      "odd"
-    ],
+    "syntax": ["odd"],
     "description": "Aligns to an odd address.\nEquivalent to `cnop 1,2`. Bugs: Note that this is not a real odd directive, as it wastes two bytes when the address is already odd."
   },
   "offset": {
     "title": "OFFSET",
     "summary": "Define offset table",
-    "syntax": [
-      "offset [<expression>]"
-    ],
+    "syntax": ["offset [<expression>]"],
     "description": "Switches to a special offset-section.\nThe contents of such a section is not included in the output. Their labels may be referenced as absolute offset symbols. Can be used to define structure offsets. The optional `<expression>` gives the start offset for this section. When missing the last offset of the previous offset- section is used, or `0`. `<expression>` must evaluate as a constant!"
   },
   "opt": {
     "title": "OPT",
     "summary": "Option control",
-    "syntax": [
-      "opt <option>[,<option>...]"
-    ],
+    "syntax": ["opt <option>[,<option>...]"],
     "description": "Sets Devpac-compatible options. When option `-phxass` is given, then it will parse PhxAss options instead (which is discouraged for new code, so there is no detailed description here). Most supported Devpac2-style options are always suffixed by a `+` or `-` to enable or disable the option:\n\nOption|Description\n:-----|:----------\n`a`|Automatically optimize absolute to PC-relative references. Default is off in Devpac-comptability mode, otherwise on.\n`c`|Case-sensitivity for all symbols, instructions and macros. Default is on.\n`d`|Include all symbols for debugging in the output file. May also generate line debugging information in some output formats. Default is off in Devpac-comptability mode, otherwise on.\n`l`|Generate a linkable object file. The default is defined by the selected output format via the assembler’s `-F` option. This option was supported by Devpac-Amiga only.\n`o`|Enable all optimizations (`o1` to `o12`), or disable all optimizations. The default is that all are disabled in Devpac-compatibility mode and enabled otherwise. When running in native vasm mode this option will also enable PC-relative (`opt a`) and the following safe vasm-specific optimizations (see below): `og`, `of`.\n`o1`|Optimize branches without an explicit size extension.\n`o2`|Standard displacement optimizations (e.g. `(0,An) -> (An)`).\n`o3`|Optimize absolute addresses to short words.\n`o4`|Optimize `move.l` to `moveq`.\n`o5`|Optimize `add #x` and `sub #x` into their quick forms.\n`o6`|No effect in vasm.\n`o7`|Convert bra.b to nop, when branching to the next instruction.\n`o8`|Optimize 68020+ base displacements to 16 bit.\n`o9`|Optimize 68020+ outer displacements to 16 bit.\n`o10`|Optimize `add`/`sub` `#x,An` to `lea`.\n`o11`|Optimize `lea (d,An),An` to `addq`/`subq`.\n`o12`|Optimize `<op>.l #x,An` to `<op>.w #x,An`.\n`ow`|Show all optimizations being peformed. Default is on in Devpac-compatibility mode, otherwise off.\n`p`|Check if code is position independant. This will cause an error on each relocation being required. Default is off.\n`s`|Include symbols in listing file. Default is on.\n`t`|Check size and type of all expressions. Default is on.\n`w`|Show assembler warnings. Default is on.\n`x`|For Amiga hunk format objects `x+` strips local symbols from the symbol table (symbols without `xdef`). For Atari TOS executables this will enable the extended (HiSoft) DRI symbol table format, which allows symbols with up to 22 characters. DRI standard only supports 8 characters.\n\nDevpac options without +/- suffix:\n\nOption|Description\n:-----|:----------\n`l<n>`|Sets the output format (Devpac Atari only). Currently without effect.\n`p=<type>[/<type>]`|Sets the CPU type to any model vasm supports (original Devpac only allowed 68000-68040, 68332, 68881, 68882 and 68851).\n\nAlso the following Devpac3-style options are supported:\n\nOption|Description\n:-----|:----------\n`autopc`|Corresponds to `a+`.\n`case`|Corresponds to `c+`.\n`chkpc`|Corresponds to `p+`.\n`debug`|Corresponds to `d+`.\n`symtab`|Corresponds to `s+`.\n`type`|Corresponds to `t+`.\n`warn`|Corresponds to `w+`.\n`xdebug`|Corresponds to `x+`.\n`noautopc`|Corresponds to `a-`.\n`nocase`|Corresponds to `c-`.\n`nochkpc`|Corresponds to `p-`.\n`nodebug`|Corresponds to `d-`.\n`nosymtab`|Corresponds to `s-`.\n`notype`|Corresponds to `t-`.\n`nowarn`|Corresponds to `w-`.\n`noxdebug`|Corresponds to `x-`.\n\nThe following options are vasm specific and should not be used when writing portable source. Using `opt o+` or `opt o-` in Devpac mode only toggles `og`, `of` and `oj`.\n\nOption|Description\n:-----|:----------\n`ob`|Convert absolute jumps to external labels into long-branches (refer to `-opt-jbra`).\n`oc`|Enable optimizations to CLR (refer to `-opt-clr`).\n`od`|Enable optimization of divisions into shifts (refer to `-opt-div`).\n`of`|Enable immediate float constant optimizations (refer to `-opt-fconst`).\n`og`|Enable generic vasm optimizations. All optimizations which cannot be controlled by another option.\n`oj`|Enable branch to jump translations (refer to `-opt-brajmp`).\n`ol`|Enable shift optimizations to ADD (refer to `-opt-lsl`).\n`om`|Enable MOVEM optimizations (refer to `-opt-movem`).\n`on`|Enable small data optimizations. References to absolute symbols in a small data section (named \"MERGED\") are optimized into a base-relative addressing mode (refer to `-sd`).\n`op`|Enable optimizations to `PEA` (refer to `-opt-pea`).\n`oq`|Optimizes `MOVE.L` into a combination of `MOVEQ` and `NEG.W` (refer to `-opt-nmoveq`).\n`os`|Optimize for speed before optimizing for size (refer to `-opt-speed`).\n`ot`|Enable optimizations to ST (refer to `-opt-st`).\n`ox`|Enable optimization of multiplications into shifts (refer to `-opt-mul`).\n`oz`|Enable optimization for size, even if the code becomes slower (refer to `-opt-size`).\n\nThe default state is ’off’ for all those vasm specific options."
   },
   "org": {
     "title": "ORG",
     "summary": "Set absolute code generation",
-    "syntax": [
-      "org <expression>"
-    ],
+    "syntax": ["org <expression>"],
     "description": "Sets the base address for the subsequent code.\nNote that it is allowed to embed such an absolute `ORG` block into a section. Return into relocatable mode with any new section directive. Although in Devpac compatibility mode the previous section will stay absolute."
   },
   "output": {
     "title": "OUTPUT",
     "summary": "Set output file name",
-    "syntax": [
-      "output <name>"
-    ],
+    "syntax": ["output <name>"],
     "description": "Sets the output file name to `<name>` when no output name was given on the command line.\nA special case for Devpac-compatibility is when `<name>` starts with a ’.’ and an output name was already given. Then the current output name gets `<name>` appended as an extension. When an extension already exists, then it is replaced."
   },
   "page": {
     "title": "PAGE",
     "summary": "Start new page",
-    "syntax": [
-      "page"
-    ],
+    "syntax": ["page"],
     "description": "Start a new page in the listing file (not implemented).\nMake sure to start a new page when the maximum page length is reached."
   },
   "plen": {
     "title": "PLEN",
     "summary": "Set page length",
-    "syntax": [
-      "plen <len>"
-    ],
+    "syntax": ["plen <len>"],
     "description": "Set the page length for a listing file to `<len>` lines.\nCurrently ignored."
   },
   "popsection": {
     "title": "POPSECTION",
     "summary": "Pop section from stack",
-    "syntax": [
-      "popsection"
-    ],
+    "syntax": ["popsection"],
     "description": "Restore the top section from the internal section-stack and activate it.\nAlso refer to pushsection."
   },
   "printt": {
     "title": "PRINTT",
     "summary": "Print string(s)",
-    "syntax": [
-      "printt <string>[,<string>...]"
-    ],
+    "syntax": ["printt <string>[,<string>...]"],
     "description": "Prints `<string>` to stdout.\nEach additional string into a new line. Quotes are optional."
   },
   "printv": {
     "title": "PRINTV",
     "summary": "Print evaluated",
-    "syntax": [
-      "printv <expression>[,<expression>...]"
-    ],
+    "syntax": ["printv <expression>[,<expression>...]"],
     "description": "Evaluate `<expression>` and print it to stdout out in hexadecimal, decimal, ASCII and binary format."
   },
   "public": {
     "title": "PUBLIC",
     "summary": "Flag symbol as external",
-    "syntax": [
-      "public <symbol>[,<symbol>...]"
-    ],
+    "syntax": ["public <symbol>[,<symbol>...]"],
     "description": "Flag `<symbol>` as an external symbol, which means that `<symbol>` is visible to all modules in the linking process.\nIt may be either defined or undefined."
   },
   "pushsection": {
     "title": "PUSHSECTION",
     "summary": "Push section to stack",
-    "syntax": [
-      "pushsection"
-    ],
+    "syntax": ["pushsection"],
     "description": "Pushes the current section onto an internal stack, where it may be restored from by the popsection directive."
   },
   "radix": {
     "title": "RADIX",
     "summary": "Set number base",
-    "syntax": [
-      "radix <base>"
-    ],
+    "syntax": ["radix <base>"],
     "description": "This directive sets the default base for number literals. radix may be one of 2, 4, 8, 10 or 16 and must be specified in decimal; expressions are not allowed.\n\nThe default is decimal (base 10). Two reasons for using this command are to enter tables in a non-decimal base and to assemble code that has been generated by a disassembler or other tool that emits non-decimal numbers without the appropriate prefix.\n\nWhen using hexadecimal base (16) numbers must still start with a decimal digit. For example,\n\n```assembly\n  radix 16\n  dc.b 0ff\n  dc.b ff\n```\n\nHere 0ff would have the valve `255` whereas `ff` would refer to the label `ff`."
   },
   "reg": {
     "title": "REG",
     "summary": "Define register list",
-    "syntax": [
-      "<symbol> reg <reglist>"
-    ],
+    "syntax": ["<symbol> reg <reglist>"],
     "description": "Defines a new symbol named `<symbol>` and assign the register list `<reglist>` to it. Registers in a list must be separated by a slash (`/`) and ranges or registers can be defined by using a hyphen (`-`). Examples for valid register lists are: `d0-d7/a0-a6`, `d3-6/a0/a1/a4-5`."
   },
   "rem": {
     "title": "REM",
     "summary": "Start comment block",
-    "syntax": [
-      "rem"
-    ],
+    "syntax": ["rem"],
     "description": "The assembler will ignore everything from encountering the rem directive until an erem directive was found."
   },
   "rept": {
     "title": "REPT",
     "summary": "Start repeat block",
-    "syntax": [
-      "rept <expression>"
-    ],
+    "syntax": ["rept <expression>"],
     "description": "Repeats the assembly of the block between `rept` and `endr` `<expression>` number of times.\n`<expression>` has to be positive. The internal symbol REPTN always holds the iteration counter of the inner repeat loop, starting with 0. `REPTN` is `-1` outside of any repeat block."
   },
   "rorg": {
     "title": "RORG",
     "summary": "Relative org",
-    "syntax": [
-      "rorg <expression>[,<fill>]"
-    ],
+    "syntax": ["rorg <expression>[,<fill>]"],
     "description": "Sets the program counter `<expression>` bytes behind the start of the current section.\nThe new program counter must not be smaller than the current one. The space will be padded by the optional `<fill>` value, or zero."
   },
   "rs": {
     "title": "RS",
     "summary": "Reserve space",
-    "syntax": [
-      "<label> RS[.(bwlqsdxp)] <expression>"
-    ],
+    "syntax": ["<label> RS[.(bwlqsdxp)] <expression>"],
     "description": "Works like the so directive, with the only difference that the offset symbol is named `__RS`."
   },
   "rsreset": {
     "title": "RSRESET",
     "summary": "Reset RS counter",
-    "syntax": [
-      "rsreset"
-    ],
+    "syntax": ["rsreset"],
     "description": "Equivalent to `clrso`, but the symbol manipulated is `__RS`."
   },
   "rsset": {
     "title": "RSSET",
     "summary": "Set RS counter",
-    "syntax": [
-      "rsset <expression>"
-    ],
+    "syntax": ["rsset <expression>"],
     "description": "Sets the structure offset counter (`__RS`) to `<expression>`.\nSee `rs` directive. `<expression>` must evaluate as a constant!"
   },
   "section": {
     "title": "SECTION",
     "summary": "Switch section",
-    "syntax": [
-      "section <name>[,<sec_type>][,<mem_type>]"
-    ],
+    "syntax": ["section <name>[,<sec_type>][,<mem_type>]"],
     "description": "Starts a new section named `<name>` or reactivates an old one.\n`<sec_type>` defines the section type and may be code, text (same as code), data or bss. If the selected output format (like \"aout\", \"tos\" or \"xfile\") does not support section names then a missing `<sec_type>` argument interprets the first argument, `<name>`, as section type instead. Otherwise a missing `<sec_type>` defaults to a code section with the given name. The optional, and Amiga-specific, `<mem_type>` defines a 32-bit memory attribute, which specifies where to load the section. `<mem_type>` is either a numerical constant or one of the keywords chip (for Chip-RAM) or fast (for Fast-RAM). Optionally it is also possible to attach the suffix `_C`, `_F` or `_P` to the `<sec_type>` argument for defining the memory type. The memory attributes are currently only used in the hunk-format output module."
   },
   "set": {
     "title": "SET",
     "summary": "Define label value temporarily",
-    "syntax": [
-      "<symbol> SET <expression>"
-    ],
+    "syntax": ["<symbol> SET <expression>"],
     "description": "Create a new symbol with the name `<symbol>` and assign the value of `<expression>`.\nIf `<symbol>` is already assigned, it will contain a new value from now on."
   },
   "setfo": {
     "title": "SETFO",
     "summary": "Set frame offset",
-    "syntax": [
-      "setfo <expression>"
-    ],
+    "syntax": ["setfo <expression>"],
     "description": "Sets the frame offset counter (`__FO`) to `<expression>`.\nSee `fo` directive. `<expression>` must evaluate as a constant!"
   },
   "setso": {
     "title": "SETSO",
     "summary": "Set structure offset",
-    "syntax": [
-      "setso <expression>"
-    ],
+    "syntax": ["setso <expression>"],
     "description": "Sets the structure offset counter (`__SO`) to `<expression>`.\nSee `so` directive. `<expression>` must evaluate as a constant!"
   },
   "so": {
     "title": "SO",
     "summary": "Structure offset",
-    "syntax": [
-      "<label> SO[.(bwlqsdxp)] <expression>"
-    ],
+    "syntax": ["<label> SO[.(bwlqsdxp)] <expression>"],
     "description": "Assigns the current value of the structure offset counter to `<label>`.\nAfterwards the counter is incremented by the instruction’s size multiplied by `<expression>`.\nThe offset counter can also be referenced directly under the name `__SO`."
   },
   "spc": {
     "title": "SPC",
     "summary": "Output blank lines",
-    "syntax": [
-      "spc <lines>"
-    ],
+    "syntax": ["spc <lines>"],
     "description": "Output `<lines>` number of blank lines in the listing file.\nCurrently without any effect."
   },
   "text": {
     "title": "TEXT",
     "summary": "Text section",
-    "syntax": [
-      "text"
-    ],
+    "syntax": ["text"],
     "description": "Equivalent to `section code,code`."
   },
   "ttl": {
     "title": "TTL",
     "summary": "Set title",
-    "syntax": [
-      "ttl <name>"
-    ],
+    "syntax": ["ttl <name>"],
     "description": "PhxAss syntax. Equivalent to `idnt <name>`.\nMotorola syntax. Equivalent to `idnt <name>`."
   },
   "weak": {
     "title": "WEAK",
     "summary": "Flag weak symbol",
-    "syntax": [
-      "weak <symbol>[,<symbol>...]"
-    ],
+    "syntax": ["weak <symbol>[,<symbol>...]"],
     "description": "Flag `<symbol>` as a weak symbol, which means that `<symbol>` is visible to all modules in the linking process, but may be replaced by any global symbol with the same name.\nWhen a weak symbol remains undefined its value defaults to 0."
   },
   "xdef": {
     "title": "XDEF",
     "summary": "Define label for export",
-    "syntax": [
-      "xdef <symbol>[,<symbol>...]"
-    ],
+    "syntax": ["xdef <symbol>[,<symbol>...]"],
     "description": "Flag `<symbol>` as a global symbol, which means that `<symbol>` is visible to all modules in the linking process.\nSee also `public`."
   },
   "xref": {
     "title": "XREF",
     "summary": "Define label for import",
-    "syntax": [
-      "xref <symbol>[,<symbol>...]"
-    ],
+    "syntax": ["xref <symbol>[,<symbol>...]"],
     "description": "Flag `<symbol>` as externally defined, which means it has to be imported from another module into the linking process.\nSee also `public`."
   }
 }

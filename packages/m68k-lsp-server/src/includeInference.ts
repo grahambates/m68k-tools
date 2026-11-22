@@ -12,9 +12,11 @@ import {
 } from "vscode-languageserver";
 import { URI } from "vscode-uri";
 import { type Context } from "./context";
+import { configFor } from "./documentConfigs";
 import { vasmSearchFor, workspacePaths } from "./files";
 
-type InferenceContext = Pick<Context, "workspaceFolders" | "store" | "config">;
+type InferenceContext = Pick<Context, "workspaceFolders" | "store" | "config"> &
+  Partial<Pick<Context, "documentConfigs">>;
 
 /** An include vasm would not find from where it looks. */
 export interface UnresolvedInclude {
@@ -80,8 +82,11 @@ export async function unresolvedIncludes(
 export function inferDirectories(
   names: readonly string[],
   ctx: InferenceContext,
+  /** The file being assembled, whose config says whether to guess at all. */
+  assembleUri: string,
 ): InferredDirectory[] {
-  if (ctx.config.inferIncludePaths === false || !names.length) return [];
+  if (configFor(ctx, assembleUri).inferIncludePaths === false || !names.length)
+    return [];
   const files = [...ctx.store.keys()]
     .filter((uri) => uri.startsWith("file:"))
     .map((uri) => URI.parse(uri).fsPath);
@@ -130,6 +135,7 @@ export async function includeNotes(
   const inferred = inferDirectories(
     all.map((include) => include.name),
     ctx,
+    assembleUri,
   );
   return mine.flatMap((include) => {
     const dir = inferred.find((d) => d.names.includes(include.name));

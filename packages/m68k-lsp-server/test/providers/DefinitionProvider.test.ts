@@ -72,6 +72,29 @@ describe("DefinitionProvider", () => {
       expect(definitions[0].range).toEqual(range(1, 0, 1, 7));
     });
 
+    // vasm keeps `.local` in the routine of `global` across these lines.
+    it.each(["rs", "so", "fo"])(
+      "finds a local label across a %s offset line",
+      async (directive) => {
+        const textDocument = await createDoc(
+          "example.s",
+          `global:
+ bra .local
+FIELD ${directive}.w 1
+.local:
+ rts`,
+        );
+
+        const definitions = await provider.onDefinition({
+          position: lsp.Position.create(1, 7),
+          textDocument,
+        });
+
+        expect(definitions).toHaveLength(1);
+        expect(definitions[0].range).toEqual(range(3, 0, 3, 7));
+      },
+    );
+
     it.each([
       ["a call", " Copy.w d0,d1", 2],
       ["an iif statement", " iif DEBUG Copy d0", 11],

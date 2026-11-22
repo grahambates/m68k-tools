@@ -118,11 +118,20 @@ their `align` fields without mutating them.
 | ---------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `case`           | `"lower"`  | `"lower"`, `"upper"`, `"any"`, or an object with `instruction`, `directive`, `control`, `register`, `sectionType`, `hex` |
 | `labelColon`     | `"on"`     | `"on"`, `"off"`, `"notInline"`, `"onlyInline"`, `"any"`, or an object with `global` and `local`                          |
+| `equateColon`    | `"off"`    | `"on"`, `"off"`, `"any"`                                                                                                 |
+| `macroColon`     | `"off"`    | `"on"`, `"off"`, `"any"`                                                                                                 |
 | `quotes`         | `"double"` | `"double"`, `"single"`, `"any"`                                                                                          |
 | `operandSpace`   | `"off"`    | `"on"`, `"off"`, `"any"`                                                                                                 |
 | `trimWhitespace` | `false`    | Remove trailing whitespace                                                                                               |
 | `finalNewLine`   | `true`     | Add/remove the final newline                                                                                             |
 | `endOfLine`      | `"lf"`     | `"lf"`, `"crlf"`, `"cr"`                                                                                                 |
+
+`labelColon` applies to labels that mark a position, and to structure and
+frame offsets (`rs`, `so`, `fo`), which are written like `ds`. Names given a
+value (`equ`, `=`, `set`, `fequ`, `fset`, `equr`, `equrl`, `fequr`, `fequrl`,
+`reg`, `freg`) follow `equateColon`, and macro names (`Name macro`) follow
+`macroColon`. `notInline` and `onlyInline` have no meaning for these, since a
+directive always follows the name. Exported labels (`Name::`) keep both colons.
 
 Alignment options are under `align`. Positions and block widths are nonnegative
 column counts. Labels remain in column zero.

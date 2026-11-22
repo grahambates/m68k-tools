@@ -1,5 +1,11 @@
 # m68k-lint-langserver
 
+## 0.7.2
+
+### Patch Changes
+
+- a680b39: Labels defined with `so` or `fo` no longer start a new local-label scope, matching `rs` and vasm. Previously a `.local` label after `FIELD so.w 1` was tied to `FIELD` rather than the routine containing it, which could misreport unused or unresolved local labels in the linter and break go-to-definition in the language server. The outline now also lists `so` and `fo` labels as offsets.
+
 ## 0.7.1
 
 ### Patch Changes

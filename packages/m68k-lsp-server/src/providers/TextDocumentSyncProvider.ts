@@ -70,6 +70,7 @@ export default class TextDocumentSyncProvider implements Provider {
         version,
         diagnostics: [
           ...this.diagnostics.parserDiagnostics(
+            uri,
             processed.parsed,
             processed.blocks,
           ),
@@ -126,6 +127,7 @@ export default class TextDocumentSyncProvider implements Provider {
         version,
         diagnostics: [
           ...this.diagnostics.parserDiagnostics(
+            uri,
             existing.parsed,
             existing.blocks,
           ),

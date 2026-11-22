@@ -165,7 +165,11 @@ error 2 in line 3 of "defs.i": unknown mnemonic <x>
 
     const diagnose = (processor: DiagnosticProcessor, src: string) => {
       const parsed = parseFile(src);
-      return processor.parserDiagnostics(parsed, parseBlocks(parsed));
+      return processor.parserDiagnostics(
+        "untitled:test.s",
+        parsed,
+        parseBlocks(parsed),
+      );
     };
 
     it("reports a syntax error with its parser code and position", async () => {

@@ -6,6 +6,7 @@ import type * as lsp from "vscode-languageserver";
 import { createContext } from "../../src/context";
 import { defaultConfig } from "../../src/config";
 import ConfigurationProvider from "../../src/providers/ConfigurationProvider";
+import { workspaceFoldersFrom } from "../../src/workspace";
 import { NullLogger } from "../helpers";
 
 describe("ConfigurationProvider", () => {
@@ -30,6 +31,25 @@ describe("ConfigurationProvider", () => {
     );
     new ConfigurationProvider(ctx);
     expect(ctx.config.processors).toEqual(["mc68020"]);
+  });
+
+  // A client may send only the older root URI, with no workspace folders.
+  it("loads the config of a client that only sends a root URI", async () => {
+    await writeFile(
+      join(dir, ".m68krc.json"),
+      JSON.stringify({ vasm: { binPath: "/opt/vasm/vasmm68k_mot" } }),
+    );
+    const ctx = await createContext(
+      workspaceFoldersFrom({
+        workspaceFolders: null,
+        rootUri: pathToFileURL(dir).toString(),
+      }),
+      new NullLogger(),
+      {} as lsp.Connection,
+      {},
+    );
+    new ConfigurationProvider(ctx);
+    expect(ctx.config.vasm.binPath).toBe("/opt/vasm/vasmm68k_mot");
   });
 
   it("finds a config above the workspace folder", async () => {

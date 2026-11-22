@@ -1,5 +1,6 @@
 import { type Processor } from "./docs";
 import { type FormatterOptions, defaultOptions } from "m68k-formatter";
+import { readFileSync } from "fs";
 import * as os from "os";
 import { dirname, isAbsolute, relative, resolve } from "path";
 import { optionsFromVasmArgs, vasmArgs } from "@m68k-lsp/assembly-options";
@@ -154,4 +155,22 @@ export function vasmRunDirectory(
   return root && fromRoot && !fromRoot.startsWith("..") && !isAbsolute(fromRoot)
     ? root
     : dirname(srcPath);
+}
+
+/**
+ * A `.m68krc.json` file's settings, with its relative paths made absolute.
+ *
+ * Relative paths mean relative to the file, as they do to the linter, wherever
+ * the file is found and wherever vasm is run from. Throws if the file cannot be
+ * read or is not JSON.
+ */
+export function readConfigFile(path: string): Partial<Config> {
+  const config = JSON.parse(readFileSync(path, "utf8")) as Partial<Config>;
+  if (typeof config.sourceRoot === "string")
+    config.sourceRoot = resolve(dirname(path), config.sourceRoot);
+  if (Array.isArray(config.includePaths))
+    config.includePaths = config.includePaths.map((include) =>
+      resolve(dirname(path), include),
+    );
+  return config;
 }

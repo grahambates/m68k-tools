@@ -101,8 +101,8 @@ describe("DocumentSymbolProvider", () => {
       expect(child.selectionRange).toEqual(range(1, 0, 1, 4));
     });
 
-    it("lists offsets", async () => {
-      const textDocument = await createDoc("example.s", `foo rs.w 1`);
+    it.each(["rs", "so", "fo"])("lists %s offsets", async (directive) => {
+      const textDocument = await createDoc("example.s", `foo ${directive}.w 1`);
 
       const symbols = await provider.onDocumentSymbol({
         textDocument,

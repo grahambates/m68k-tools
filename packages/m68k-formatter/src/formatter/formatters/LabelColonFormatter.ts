@@ -1,5 +1,5 @@
 import { type TextEdit } from "vscode-languageserver-types";
-import { locationAsRange } from "m68k-parser";
+import { type LabelKind, labelKind, locationAsRange } from "m68k-parser";
 import { type FormatContext, type Formatter } from "../DocumentFormatter";
 
 type UseColon = "on" | "off" | "notInline" | "onlyInline" | "any";
@@ -11,17 +11,32 @@ export type LabelColonOptions =
       local?: UseColon;
     };
 
+/**
+ * Colon style for a name that is not a label. Such a line always has a
+ * directive after the name, so the inline variants would mean nothing.
+ */
+export type SymbolColonOptions = "on" | "off" | "any";
+
+export interface ColonOptions {
+  /** Labels marking a position, and `rs`/`so`/`fo` offsets. */
+  label?: LabelColonOptions;
+  /** Names given a value: `equ`, `=`, `set`, `equr`, `reg` and their kin. */
+  equate?: SymbolColonOptions;
+  /** Macro names: `Name macro`. */
+  macro?: SymbolColonOptions;
+}
+
 class LabelColonFormatter implements Formatter {
-  constructor(private options: LabelColonOptions) {}
+  constructor(private options: ColonOptions) {}
 
   format({ parsed, text }: FormatContext): TextEdit[] {
     const edits: TextEdit[] = [];
-    const options = this.options;
     const lines = text.split(/\r\n?|\n/);
 
     for (const [index, parsedLine] of parsed.lines.entries()) {
       const { label } = parsedLine;
-      if (!label) {
+      const kind = labelKind(parsedLine);
+      if (!label || !kind) {
         continue;
       }
 
@@ -31,10 +46,7 @@ class LabelColonFormatter implements Formatter {
         continue;
       }
 
-      // A label node carries its own scope, so there is no need to work it out
-      // from the name here.
-      const scope = label.scope;
-      const option = typeof options === "string" ? options : options[scope];
+      const option = this.optionFor(kind, label.scope);
       if (!option || option === "any") {
         continue;
       }
@@ -73,6 +85,24 @@ class LabelColonFormatter implements Formatter {
     }
 
     return edits;
+  }
+
+  private optionFor(
+    kind: LabelKind,
+    scope: "global" | "local",
+  ): UseColon | undefined {
+    switch (kind) {
+      case "equate":
+        return this.options.equate;
+      case "macro":
+        return this.options.macro;
+      default: {
+        // An `rs` offset is written like a `ds` line, so it follows the same
+        // style as the labels around it.
+        const { label } = this.options;
+        return typeof label === "string" ? label : label?.[scope];
+      }
+    }
   }
 }
 

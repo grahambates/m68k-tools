@@ -59,6 +59,12 @@
         }
       ]
     },
+    "equateColon": {
+      "enum": ["on", "off", "any"]
+    },
+    "macroColon": {
+      "enum": ["on", "off", "any"]
+    },
     "quotes": {
       "enum": ["double", "single", "any"]
     },

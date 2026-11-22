@@ -51,7 +51,7 @@ type ResolveContext = Pick<Context, "workspaceFolders" | "store" | "config"> &
  * more forgivingly, beside the document itself and from each workspace folder,
  * which vasm would not do but finding a file it would not is harmless here.
  */
-function includeSearch(documentUri: string, ctx: ResolveContext) {
+export function includeSearch(documentUri: string, ctx: ResolveContext) {
   const workspaceRoots = workspacePaths(ctx);
   const entries = getEntryPointsFor(documentUri, ctx);
   const mains = (entries.length ? entries : [documentUri]).map(

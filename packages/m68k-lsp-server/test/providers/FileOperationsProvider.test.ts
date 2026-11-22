@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, rm, writeFile } from "fs/promises";
+import { mkdtemp, mkdir, rename, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { pathToFileURL } from "url";
@@ -11,7 +11,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import { type Context } from "../../src/context";
 import DocumentProcessor from "../../src/DocumentProcessor";
 import FileOperationsProvider from "../../src/providers/FileOperationsProvider";
-import { createTestContext, NullLogger } from "../helpers";
+import { applyEdits, createTestContext, NullLogger } from "../helpers";
 
 describe("FileOperationsProvider", () => {
   let provider: FileOperationsProvider;
@@ -37,6 +37,7 @@ describe("FileOperationsProvider", () => {
       const conn = {
         workspace: {
           onWillDeleteFiles: vi.fn(),
+          onWillRenameFiles: vi.fn(),
           onDidDeleteFiles: vi.fn(),
           onDidRenameFiles: vi.fn(),
           onDidCreateFiles: vi.fn(),
@@ -45,6 +46,7 @@ describe("FileOperationsProvider", () => {
       Object.assign(conn, { onDidChangeWatchedFiles: vi.fn() });
       const capabilities = provider.register(conn as unknown as lsp.Connection);
       expect(conn.workspace.onWillDeleteFiles).toHaveBeenCalled();
+      expect(conn.workspace.onWillRenameFiles).toHaveBeenCalled();
       expect(conn.workspace.onDidDeleteFiles).toHaveBeenCalled();
       expect(conn.workspace.onDidRenameFiles).toHaveBeenCalled();
       expect(capabilities).toHaveProperty("workspace");
@@ -213,5 +215,154 @@ describe("file rename locations", () => {
           ?.location.uri,
       ).toBe(newUri + relative);
     }
+  });
+
+  it("rewrites a literal include from an unsaved buffer and reindexes the moved include", async () => {
+    const mainUri = pathToFileURL(join(dir, "main.s")).toString();
+    const oldPath = join(dir, "defs.i");
+    const newPath = join(dir, "new defs.inc");
+    const oldUri = pathToFileURL(oldPath).toString();
+    const newUri = pathToFileURL(newPath).toString();
+    await writeFile(oldPath, "Count equ 3\n");
+    await writeFile(join(dir, "main.s"), " nop\n");
+    const original = " include 'defs.i' ; keep this\n include missing.i\n";
+    const processor = new DocumentProcessor(ctx);
+    await processor.process(TextDocument.create(mainUri, "m68k", 3, original));
+    const provider = new FileOperationsProvider(ctx);
+    const files = [{ oldUri, newUri }];
+    const edits = await provider.onWillRenameFiles({ files });
+    expect(edits?.changes?.[mainUri]).toHaveLength(1);
+    const updated = applyEdits(original, edits!.changes![mainUri]);
+    expect(updated).toBe(
+      " include 'new defs.inc' ; keep this\n include missing.i\n",
+    );
+    await processor.process(TextDocument.create(mainUri, "m68k", 4, updated));
+    await rename(oldPath, newPath);
+    await provider.onDidRenameFiles({ files });
+    expect(ctx.store.get(mainUri)?.referencedUris).toEqual([newUri]);
+    expect(ctx.store.get(newUri)?.symbols.definitions.has("Count")).toBe(true);
+    expect(ctx.store.has(oldUri)).toBe(false);
+  });
+
+  it("adds quotes when a renamed target has spaces", async () => {
+    const original = " include defs.i\n";
+    const main = join(dir, "main.s");
+    await writeFile(main, original);
+    await writeFile(join(dir, "defs.i"), "Count equ 3\n");
+    const uri = pathToFileURL(main).toString();
+    await new DocumentProcessor(ctx).index(uri);
+    const edits = await new FileOperationsProvider(ctx).onWillRenameFiles({
+      files: [
+        {
+          oldUri: pathToFileURL(join(dir, "defs.i")).toString(),
+          newUri: pathToFileURL(join(dir, "new defs.i")).toString(),
+        },
+      ],
+    });
+    expect(applyEdits(original, edits!.changes![uri])).toBe(
+      ' include "new defs.i"\n',
+    );
+  });
+
+  it("repairs includes in the moved entry point and its nested includer", async () => {
+    await mkdir(join(dir, "old", "sub"), { recursive: true });
+    await mkdir(join(dir, "new"));
+    const main = join(dir, "old", "main.s");
+    const nested = join(dir, "old", "sub", "nested.i");
+    const mainText = ' include "sub/nested.i"\n';
+    const nestedText = ' include "defs.i"\n';
+    await writeFile(main, mainText);
+    await writeFile(nested, nestedText);
+    await writeFile(join(dir, "old", "defs.i"), "Count equ 3\n");
+    const uri = pathToFileURL(main).toString();
+    const nestedUri = pathToFileURL(nested).toString();
+    const processor = new DocumentProcessor(ctx);
+    await processor.index(uri);
+    await processor.settleIncludes();
+    const edits = await new FileOperationsProvider(ctx).onWillRenameFiles({
+      files: [
+        {
+          oldUri: uri,
+          newUri: pathToFileURL(join(dir, "new", "main.s")).toString(),
+        },
+      ],
+    });
+    expect(applyEdits(mainText, edits!.changes![uri])).toBe(
+      ' include "../old/sub/nested.i"\n',
+    );
+    expect(applyEdits(nestedText, edits!.changes![nestedUri])).toBe(
+      ' include "../old/defs.i"\n',
+    );
+  });
+
+  it("preserves paths when a project and its relative config move together", async () => {
+    const project = join(dir, "old");
+    await mkdir(join(project, "source"), { recursive: true });
+    await mkdir(join(project, "headers"));
+    await writeFile(
+      join(project, ".m68krc.json"),
+      '{"sourceRoot":".","includePaths":["headers"]}',
+    );
+    await writeFile(join(project, "headers", "defs.i"), "Count equ 3\n");
+    const main = join(project, "source", "main.s");
+    await writeFile(main, ' include "defs.i"\n');
+    await new DocumentProcessor(ctx).index(pathToFileURL(main).toString());
+    const edits = await new FileOperationsProvider(ctx).onWillRenameFiles({
+      files: [
+        {
+          oldUri: pathToFileURL(project).toString(),
+          newUri: pathToFileURL(join(dir, "new")).toString(),
+        },
+      ],
+    });
+    expect(edits).toBeNull();
+  });
+
+  it("does not choose a replacement name that is shadowed earlier in vasm's search", async () => {
+    await mkdir(join(dir, "headers"));
+    await writeFile(join(dir, ".m68krc.json"), '{"includePaths":["headers"]}');
+    await writeFile(join(dir, "headers", "old.i"), "Count equ 3\n");
+    await writeFile(join(dir, "new.i"), "Other equ 5\n");
+    const main = join(dir, "main.s");
+    const original = ' include "old.i"\n';
+    await writeFile(main, original);
+    const uri = pathToFileURL(main).toString();
+    await new DocumentProcessor(ctx).index(uri);
+    const edits = await new FileOperationsProvider(ctx).onWillRenameFiles({
+      files: [
+        {
+          oldUri: pathToFileURL(join(dir, "headers", "old.i")).toString(),
+          newUri: pathToFileURL(join(dir, "headers", "new.i")).toString(),
+        },
+      ],
+    });
+    expect(applyEdits(original, edits!.changes![uri])).toBe(
+      ' include "headers/new.i"\n',
+    );
+  });
+
+  it("leaves shared include text alone when two programs resolve it differently", async () => {
+    for (const project of ["a", "b"]) {
+      await mkdir(join(dir, project));
+      await writeFile(join(dir, project, "main.s"), ' include "../shared.i"\n');
+      await writeFile(join(dir, project, "defs.i"), "Count equ 3\n");
+    }
+    await writeFile(join(dir, "shared.i"), ' include "defs.i"\n');
+    const processor = new DocumentProcessor(ctx);
+    for (const project of ["a", "b"]) {
+      await processor.index(
+        pathToFileURL(join(dir, project, "main.s")).toString(),
+      );
+    }
+    await processor.settleIncludes();
+    const edits = await new FileOperationsProvider(ctx).onWillRenameFiles({
+      files: [
+        {
+          oldUri: pathToFileURL(join(dir, "a", "defs.i")).toString(),
+          newUri: pathToFileURL(join(dir, "a", "renamed.i")).toString(),
+        },
+      ],
+    });
+    expect(edits).toBeNull();
   });
 });

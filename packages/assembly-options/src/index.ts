@@ -51,14 +51,19 @@ const FLAGS = [
 ] as const;
 
 /** The project config that applies at `start`, found by walking up, or undefined if there is none. */
-export function findAssemblyConfigSync(start: string): string | undefined {
+export function findAssemblyConfigSync(
+  start: string,
+  actualPath: (path: string) => string | undefined = (path) => path,
+): string | undefined {
   let dir = resolve(start);
   const root = parse(dir).root;
   for (;;) {
     for (const name of configFileNames) {
       const candidate = join(dir, name);
+      const actual = actualPath(candidate);
+      if (!actual) continue;
       try {
-        if (statSync(candidate).isFile()) return candidate;
+        if (statSync(actual).isFile()) return candidate;
       } catch {
         // not there
       }

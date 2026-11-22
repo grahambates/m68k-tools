@@ -7,14 +7,36 @@ import { type Provider } from ".";
 import { type Context } from "../context";
 import { configFileNames } from "@m68k-lsp/assembly-options";
 import DocumentProcessor, { isProcessed } from "../DocumentProcessor";
-import { getAsmFilesInDir, isAsmExt, isDir } from "../files";
+import {
+  getAsmFilesInDir,
+  getEntryPoints,
+  getIncluded,
+  isAsmExt,
+  isDir,
+} from "../files";
 import { isIndexExcluded } from "../workspace";
 import { TextDocument } from "vscode-languageserver-textdocument";
+import { includeRenameEdits, projectFileRenames } from "../includeRenames";
 
 export default class FileOperationsProvider implements Provider {
   constructor(protected readonly ctx: Context) {}
 
   private fileDeletesMap: Map<string, Set<string>> = new Map();
+  private versionedEdits = false;
+
+  async onWillRenameFiles({
+    files,
+  }: lsp.RenameFilesParams): Promise<lsp.WorkspaceEdit | null> {
+    const edits = await includeRenameEdits(files, this.ctx);
+    if (!edits.length) return null;
+    return this.versionedEdits
+      ? { documentChanges: edits }
+      : {
+          changes: Object.fromEntries(
+            edits.map(({ textDocument, edits }) => [textDocument.uri, edits]),
+          ),
+        };
+  }
 
   async onWillDeleteFiles({ files }: lsp.DeleteFilesParams): Promise<null> {
     for (const { uri } of files) {
@@ -108,69 +130,69 @@ export default class FileOperationsProvider implements Provider {
   }
 
   async onDidRenameFiles({ files }: lsp.RenameFilesParams): Promise<null> {
-    const fileRenames = await this.adaptFolderRenames(files);
-
-    for (const file of fileRenames) {
-      this.ctx.logger.info(`renaming ${file.oldUri} to ${file.newUri}`);
-      this.ctx.documentUpdates.delete(file.oldUri);
-      const processed = this.ctx.store.get(file.oldUri);
-      if (processed) {
-        this.ctx.documentUpdates.set(file.newUri, Symbol());
-        processed.uri = file.newUri;
-        relocateSymbols(processed.symbols, file.newUri);
-        this.ctx.store.set(file.newUri, processed);
-        this.ctx.store.delete(file.oldUri);
-        // Replace TextDocument with correct uri
-        if (isProcessed(processed)) {
-          const { languageId, version } = processed.document;
-          processed.document = TextDocument.create(
-            file.newUri,
-            languageId,
-            version,
-            processed.document.getText(),
-          );
-        }
+    const renames = projectFileRenames(files);
+    if (!renames) return null;
+    this.ctx.documentConfigs.clear();
+    const { moveUri } = renames;
+    const moved = Array.from(this.ctx.store, ([oldUri, document]) => ({
+      oldUri,
+      newUri: moveUri(oldUri),
+      document,
+    })).filter(({ oldUri, newUri }) => oldUri !== newUri);
+    for (const { oldUri } of moved) {
+      this.ctx.documentUpdates.delete(oldUri);
+      this.ctx.store.delete(oldUri);
+    }
+    for (const { oldUri, newUri, document } of moved) {
+      this.ctx.logger.info(`renaming ${oldUri} to ${newUri}`);
+      if (isProcessed(this.ctx.store.get(newUri))) continue;
+      this.ctx.documentUpdates.set(newUri, Symbol());
+      document.uri = newUri;
+      relocateSymbols(document.symbols, newUri);
+      if (isProcessed(document)) {
+        const { languageId, version } = document.document;
+        document.document = TextDocument.create(
+          newUri,
+          languageId,
+          version,
+          document.document.getText(),
+        );
       }
-
-      // Update referenced URIs
-      for (const processedDoc of this.ctx.store.values()) {
-        const refIndex = processedDoc.referencedUris.indexOf(file.oldUri);
-        if (refIndex !== -1) {
-          processedDoc.referencedUris[refIndex] = file.newUri;
-          // TODO: update include directives in referencing file
-        }
-      }
+      this.ctx.store.set(newUri, document);
     }
 
-    if (fileRenames.length) this.ctx.scheduleSemanticTokensRefresh?.();
+    // Refresh disk-backed includers after the client has applied the edits.
+    const processor = new DocumentProcessor(this.ctx);
+    const movedUris = new Set(moved.map(({ newUri }) => newUri));
+    const reindex = new Set(movedUris);
+    for (const document of this.ctx.store.values()) {
+      const references = document.referencedUris.map(moveUri);
+      if (
+        references.some((uri, index) => uri !== document.referencedUris[index])
+      ) {
+        document.referencedUris = references;
+        reindex.add(document.uri);
+      }
+    }
+    for (const entry of getEntryPoints(this.ctx)) {
+      if (!movedUris.has(entry)) continue;
+      for (const included of getIncluded(entry, this.ctx))
+        reindex.add(included);
+    }
+    if (!reindex.size) return null;
+    await Promise.all(Array.from(reindex, (uri) => processor.index(uri)));
+    await processor.settleIncludes();
+    if (moved.length) this.ctx.scheduleSemanticTokensRefresh?.();
     return null;
   }
 
-  /**
-   * Adapt folder renames to file renames
-   */
-  async adaptFolderRenames(files: lsp.FileRename[]): Promise<lsp.FileRename[]> {
-    const renames = await Promise.all(
-      files.map(async ({ oldUri, newUri }) => {
-        if (await isDir(newUri)) {
-          const filesInDir = await getAsmFilesInDir(newUri);
-          return filesInDir.map((fileUrl) => {
-            const oldPrefix = oldUri.replace(/\/$/, "");
-            const newPrefix = newUri.replace(/\/$/, "");
-            return {
-              oldUri: oldPrefix + fileUrl.slice(newPrefix.length),
-              newUri: fileUrl.toString(),
-            };
-          });
-        }
-
-        return { oldUri, newUri };
-      }),
-    );
-    return renames.flat().filter(({ newUri }) => isAsmExt(newUri));
-  }
-
-  register(connection: lsp.Connection): lsp.ServerCapabilities {
+  register(
+    connection: lsp.Connection,
+    capabilities: lsp.ClientCapabilities = {},
+  ): lsp.ServerCapabilities {
+    this.versionedEdits =
+      capabilities.workspace?.workspaceEdit?.documentChanges ?? false;
+    connection.workspace.onWillRenameFiles(this.onWillRenameFiles.bind(this));
     connection.workspace.onWillDeleteFiles(this.onWillDeleteFiles.bind(this));
     connection.workspace.onDidDeleteFiles(this.onDidDeleteFiles.bind(this));
     connection.workspace.onDidRenameFiles(this.onDidRenameFiles.bind(this));
@@ -193,6 +215,7 @@ export default class FileOperationsProvider implements Provider {
     return {
       workspace: {
         fileOperations: {
+          willRename: { filters: [folderOperationFilter] },
           willDelete: {
             filters: [fileOperationFilter, folderOperationFilter],
           },

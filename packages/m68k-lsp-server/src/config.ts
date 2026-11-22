@@ -164,13 +164,16 @@ export function vasmRunDirectory(
  * the file is found and wherever vasm is run from. Throws if the file cannot be
  * read or is not JSON.
  */
-export function readConfigFile(path: string): Partial<Config> {
+export function readConfigFile(
+  path: string,
+  configLocation = path,
+): Partial<Config> {
   const config = JSON.parse(readFileSync(path, "utf8")) as Partial<Config>;
   if (typeof config.sourceRoot === "string")
-    config.sourceRoot = resolve(dirname(path), config.sourceRoot);
+    config.sourceRoot = resolve(dirname(configLocation), config.sourceRoot);
   if (Array.isArray(config.includePaths))
     config.includePaths = config.includePaths.map((include) =>
-      resolve(dirname(path), include),
+      resolve(dirname(configLocation), include),
     );
   return config;
 }

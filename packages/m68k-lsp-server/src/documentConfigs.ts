@@ -23,6 +23,7 @@ export class DocumentConfigs {
   constructor(
     private readonly logger: lsp.Logger,
     private base: Config,
+    private readonly actualPath?: (path: string) => string | undefined,
   ) {}
 
   /**
@@ -40,6 +41,11 @@ export class DocumentConfigs {
     this.loaded.clear();
   }
 
+  /** Read configs through a proposed filesystem change without altering cached configs. */
+  project(actualPath: (path: string) => string | undefined): DocumentConfigs {
+    return new DocumentConfigs(this.logger, this.base, actualPath);
+  }
+
   /** The config for a document, or undefined when no config file applies to it. */
   for(uri: string): Config | undefined {
     if (!uri.startsWith("file:")) return undefined;
@@ -47,7 +53,7 @@ export class DocumentConfigs {
     let path = this.found.get(dir);
     if (path === undefined) {
       try {
-        path = findAssemblyConfigSync(dir) ?? null;
+        path = findAssemblyConfigSync(dir, this.actualPath) ?? null;
       } catch {
         // An unreadable directory on the way up is not worth failing over.
         path = null;
@@ -61,7 +67,10 @@ export class DocumentConfigs {
     let config = this.loaded.get(path);
     if (config === undefined) {
       try {
-        config = mergeConfig(readConfigFile(path), this.base);
+        const actual = this.actualPath ? this.actualPath(path) : path;
+        config = actual
+          ? mergeConfig(readConfigFile(actual, path), this.base)
+          : null;
         this.logger.info("Found config " + path);
       } catch (err) {
         this.logger.error(

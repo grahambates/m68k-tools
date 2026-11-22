@@ -35,6 +35,7 @@ Adds language support for Motorola 68000 Assembly to Visual Studio Code.
   - Evaluated value of constant assignments (see [68kcounter](https://marketplace.visualstudio.com/items?itemName=gigabates.68kcounter) for cycle/size annotations)
 - Multiple workspaces
 - Rename Symbols
+- Update include paths on file and folder rename or move
 - Signature Help
 - Problem matching for vasm output
 - Build tasks using bundled or native vasm

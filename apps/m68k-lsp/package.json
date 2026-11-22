@@ -122,6 +122,7 @@
     ],
     "configurationDefaults": {
       "[m68k]": {
+        "editor.acceptSuggestionOnEnter": "off",
         "files.associations": {
           "*.s": "m68k",
           "*.asm": "m68k"

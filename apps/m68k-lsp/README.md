@@ -47,6 +47,8 @@ ChangeLog is located [here](https://github.com/grahambates/m68k-tools/blob/main/
 
 Requires VS Code 1.101 or later. For local development, open the monorepo root and select **Assembly: Extension** in Run and Debug.
 
+In assembly files, Enter starts a new line even when the suggestion list is open. Press Tab to accept a highlighted suggestion. To accept suggestions with Enter as well, set `editor.acceptSuggestionOnEnter` to `"on"` under `[m68k]` in your VS Code settings.
+
 ### Register analysis scope
 
 Register commands and the remapping view work on the selection. Without one, the scope is the block around the cursor. A block starts at the previous non-local label and covers every line its control flow reaches from there:

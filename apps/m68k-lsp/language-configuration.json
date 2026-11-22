@@ -56,7 +56,7 @@
     ["'", "'"]
   ],
   "indentationRules": {
-    "increaseIndentPattern": "^.+:$",
+    "increaseIndentPattern": "^(?:[A-Za-z0-9_.$\\\\<>@!?+-]+:*|[ \\t]+[A-Za-z0-9_.$\\\\<>@!?+-]+:+)[ \\t]*(?:[;*].*)?$",
     "decreaseIndentPattern": "(?!)"
   }
 }

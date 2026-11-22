@@ -228,6 +228,37 @@ describe("Error Handling and Edge Cases", () => {
       expect(line.errors).toHaveLength(0);
     });
 
+    it("accepts substitutions in both registers of an indexed operand", () => {
+      const line = parseLine(" move.l (\\2, \\1.w),\\1");
+      expect(line.errors).toHaveLength(0);
+      expect(line.value.operands?.[0]).toMatchObject({
+        type: "address-register-indirect-index",
+        baseRegister: {
+          type: "macro-parameter",
+          param: "2",
+          loc: { start: 9, end: 11 },
+        },
+        indexRegister: {
+          type: "macro-parameter",
+          param: "1",
+          loc: { start: 13, end: 15 },
+        },
+        indexSize: { type: "size", size: "w" },
+      });
+    });
+
+    it("retains independent size and scale substitutions", () => {
+      const line = parseLine(" move.l (\\2,\\1.\\3*\\4),\\1");
+      expect(line.errors).toHaveLength(0);
+      expect(line.value.operands?.[0]).toMatchObject({
+        indexSize: { type: "macro-parameter", param: "3" },
+        scaleFactor: { type: "macro-parameter", param: "4" },
+      });
+      expect(parseLine(" move.l (\\2,\\1.w*3),\\1").errors?.[0].code).toBe(
+        "INVALID_SCALE_FACTOR",
+      );
+    });
+
     it("accepts macro parameter in displacement", () => {
       const line = parseLine(" move.w \\1(a0),d0");
       expect(line.errors).toHaveLength(0);

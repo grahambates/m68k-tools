@@ -310,7 +310,7 @@ function parseIndexSpec(
   if (text[pos] === ".") {
     pos++; // skip dot
     // Find the size part (up to * or end)
-    const sizeMatch = /^([wl]|\\\S+|\w+)/i.exec(text.substring(pos));
+    const sizeMatch = /^([wl]|\\[^*\s]+|\w+)/i.exec(text.substring(pos));
     if (sizeMatch) {
       const indexSizeResult = createAddressSizeNode(sizeMatch[1], {
         start: loc.start + pos,
@@ -872,11 +872,12 @@ function parseIndexedAddressing(
   // Parse based on number of parts
   if (parts.length === 2) {
     // (base,index.size*scale) or disp(base,index.size*scale)
-    const baseReg = parts[0].toLowerCase();
+    const baseReg = parts[0];
     const indexPart = parts[1];
 
     // Parse index: d1.w*2, a2.l*4, d1*(foo+1), etc.
-    const indexPartStart = text.indexOf(",") + 1;
+    const commaEnd = text.indexOf(",", openParen.position) + 1;
+    const indexPartStart = commaEnd + text.slice(commaEnd).search(/\S/);
     const indexSpec = parseIndexSpec(indexPart, {
       start: loc.start + indexPartStart,
       end: loc.start + indexPartStart + indexPart.length,
@@ -906,7 +907,7 @@ function parseIndexedAddressing(
     }
 
     // Check if PC relative or address register
-    if (baseReg === "pc") {
+    if (baseReg.toLowerCase() === "pc") {
       return {
         value: {
           type: "pc-relative-index",
@@ -924,9 +925,11 @@ function parseIndexedAddressing(
     // Positioned from the paren that was actually consumed rather than the
     // first one in the text, which belongs to the displacement in forms like
     // `(W+32)/8(a0,d0.w)`.
+    const parenEnd = openParen.position + 1;
+    const basePartStart = parenEnd + text.slice(parenEnd).search(/\S/);
     const baseRegLoc: Location = {
-      start: loc.start + openParen.position + 1,
-      end: loc.start + openParen.position + 1 + baseReg.length,
+      start: loc.start + basePartStart,
+      end: loc.start + basePartStart + baseReg.length,
       line: loc.line,
     };
 
@@ -1679,10 +1682,17 @@ export function parseOperand(
 
   // Displacement inside parens where the register is not a literal address
   // register: `(vposr+1,\1)` or `(8,\1)`. Only when the first part is a
-  // compound expression rather than a bare name, since `(sin,x)` with two
-  // plain identifiers is ambiguous and is read as base plus index above.
+  // compound expression rather than a bare name. A macro parameter can
+  // become a base register, so keep an index spec such as `\1.w` in index
+  // position in `(\2,\1.w)` and let assembly check the substituted registers.
   const dispInParensExpr = /^\(([^,)]+),\s*([^,)\s]+)\s*\)$/di.exec(text);
-  if (dispInParensExpr && !isValidIdentifier(dispInParensExpr[1].trim())) {
+  const firstPart = dispInParensExpr?.[1].trim();
+  if (
+    dispInParensExpr &&
+    firstPart !== undefined &&
+    !isValidIdentifier(firstPart) &&
+    !(parseMacroParameter(firstPart, loc) && isIndexSpec(dispInParensExpr[2]))
+  ) {
     const displacement = dispInParensExpr[1];
     const register = dispInParensExpr[2];
 

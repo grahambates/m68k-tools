@@ -89,6 +89,13 @@
         "title": "M68k: Swap Registers"
       }
     ],
+    "keybindings": [
+      {
+        "key": "enter",
+        "command": "m68k.enterWithSuggestion",
+        "when": "(editorLangId == m68k || editorLangId == vasmmot) && editorTextFocus && !editorReadonly && suggestWidgetVisible && suggestWidgetHasFocusedSuggestion && acceptSuggestionOnEnter && suggestionMakesTextEdit"
+      }
+    ],
     "menus": {
       "editor/context": [
         {
@@ -132,7 +139,6 @@
     ],
     "configurationDefaults": {
       "[m68k]": {
-        "editor.acceptSuggestionOnEnter": "off",
         "files.associations": {
           "*.s": "m68k",
           "*.asm": "m68k"

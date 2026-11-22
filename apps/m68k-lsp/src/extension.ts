@@ -20,6 +20,7 @@ import type {
 } from "@m68k-lsp/protocol";
 import * as path from "path";
 import { registerVasmTasks } from "./vasmTasks";
+import { registerLabelEnter } from "./labelEnter";
 import { MacroPreview } from "./macroPreview";
 import {
   DecorationRangeBehavior,
@@ -122,7 +123,10 @@ const registerColours = new Map([
 ]);
 
 export function activate(context: ExtensionContext): void {
-  context.subscriptions.push(registerVasmTasks(context.extensionPath));
+  context.subscriptions.push(
+    registerVasmTasks(context.extensionPath),
+    registerLabelEnter(),
+  );
   const macroPreview = new MacroPreview();
   context.subscriptions.push(...macroPreview.register());
   const decorations = new Map(

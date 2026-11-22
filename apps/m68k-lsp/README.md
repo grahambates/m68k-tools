@@ -50,7 +50,7 @@ ChangeLog is located [here](https://github.com/grahambates/m68k-tools/blob/main/
 
 Requires VS Code 1.101 or later. For local development, open the monorepo root and select **Assembly: Extension** in Run and Debug.
 
-In assembly files, Enter starts a new line even when the suggestion list is open. Press Tab to accept a highlighted suggestion. To accept suggestions with Enter as well, set `editor.acceptSuggestionOnEnter` to `"on"` under `[m68k]` in your VS Code settings.
+Pressing Enter in an assembly label starts a new line even when the suggestion list is open. Tab accepts the highlighted suggestion. In mnemonics and operands, Enter follows VS Code’s `editor.acceptSuggestionOnEnter` setting.
 
 ### Build with vasm
 

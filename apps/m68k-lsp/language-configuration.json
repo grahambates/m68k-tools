@@ -57,6 +57,6 @@
   ],
   "indentationRules": {
     "increaseIndentPattern": "^.+:$",
-    "decreaseIndentPattern": "^[^ ]$"
+    "decreaseIndentPattern": "(?!)"
   }
 }

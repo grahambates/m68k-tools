@@ -9,6 +9,7 @@ import {
   RegisterSwapRequest,
   RegisterRemapRequest,
   BlockRangeRequest,
+  MacroExpansionRequest,
   IndexChangedNotification,
 } from "@m68k-lsp/protocol";
 import type {
@@ -19,6 +20,7 @@ import type {
 } from "@m68k-lsp/protocol";
 import * as path from "path";
 import { registerVasmTasks } from "./vasmTasks";
+import { MacroPreview } from "./macroPreview";
 import {
   DecorationRangeBehavior,
   OverviewRulerLane,
@@ -121,6 +123,8 @@ const registerColours = new Map([
 
 export function activate(context: ExtensionContext): void {
   context.subscriptions.push(registerVasmTasks(context.extensionPath));
+  const macroPreview = new MacroPreview();
+  context.subscriptions.push(...macroPreview.register());
   const decorations = new Map(
     Array.from(registerColours, ([register, color]) => [
       register,
@@ -710,6 +714,42 @@ export function activate(context: ExtensionContext): void {
       "m68k.swapRegistersInSelection",
       swapRegistersInSelection,
     ),
+  );
+
+  context.subscriptions.push(
+    commands.registerCommand("m68k.peekMacroExpansion", async () => {
+      const editor = window.activeTextEditor;
+      if (
+        !clientReady ||
+        !editor ||
+        !isM68kEditor(editor) ||
+        editor.document.uri.scheme !== "file"
+      ) {
+        return;
+      }
+
+      const version = editor.document.version;
+      const position = editor.selection.active;
+      const result = await client.sendRequest(MacroExpansionRequest, {
+        textDocument: { uri: editor.document.uri.toString() },
+        documentVersion: version,
+        position,
+      });
+      if (
+        editor.document.version !== version ||
+        window.activeTextEditor !== editor ||
+        !editor.selection.active.isEqual(position)
+      ) {
+        return;
+      }
+      if (!result) {
+        void window.showInformationMessage(
+          "No macro definition found for this line.",
+        );
+        return;
+      }
+      await macroPreview.show(result);
+    }),
   );
 
   // The server bundle is copied next to the extension at build time, so the

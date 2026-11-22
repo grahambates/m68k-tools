@@ -1,5 +1,6 @@
 import { NotificationType0, RequestType } from "vscode-languageserver-protocol";
 import type {
+  Location,
   Position,
   Range,
   TextDocumentIdentifier,
@@ -78,6 +79,19 @@ export interface BlockRangeResult {
   label: string;
 }
 
+export interface MacroExpansionParams {
+  textDocument: TextDocumentIdentifier;
+  documentVersion: number;
+  position: Position;
+}
+
+export interface MacroExpansionResult {
+  name: string;
+  definition: Location;
+  lines: string[];
+  incomplete: boolean;
+}
+
 export interface RegisterSwapParams extends RegisterUsageParams {
   documentVersion: number;
   registers: [string, string];
@@ -153,6 +167,11 @@ export const BlockRangeRequest = new RequestType<
   BlockRangeResult | undefined,
   void
 >("m68k/blockRange");
+export const MacroExpansionRequest = new RequestType<
+  MacroExpansionParams,
+  MacroExpansionResult | undefined,
+  void
+>("m68k/macroExpansion");
 export const IndexChangedNotification = new NotificationType0(
   "m68k/indexChanged",
 );

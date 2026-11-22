@@ -25,6 +25,7 @@ Adds language support for Motorola 68000 Assembly to Visual Studio Code.
 - Find References
 - Go to definition
 - Call Hierarchy
+- Peek Macro Expansion
 - Hover
   - Instruction/directive documentation
   - Symbol info
@@ -70,6 +71,12 @@ Add a task to `.vscode/tasks.json` to build an entry point with the bundled asse
 ```
 
 Run **Tasks: Run Build Task**. To use a native assembler, set `"assembler": "native"` in the task. It uses `m68k.vasm.binPath` unless you supply a task-level `binPath`. Specify any include directories, CPU options, and output format in the task's arguments. The default `$vasm` problem matcher, shown explicitly above, resolves relative diagnostic paths from the task's workspace folder.
+
+### Peek Macro Expansion
+
+Place the cursor on a macro call and run **M68k: Peek Macro Expansion** from the Command Palette or the editor context menu. The read-only tab shows the macro body with the call's arguments substituted. Follow the definition link on the first line to jump to the macro, including when it is defined in an include file.
+
+The preview follows known nested calls and shows their call sites as comments. It shows conditional and repeat directives as written after substitution and leaves assembler-generated identifiers such as `\@` visible. An incomplete expansion is marked in the preview.
 
 ### Register analysis scope
 

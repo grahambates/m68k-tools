@@ -45,7 +45,10 @@ vi.mock(
     },
     commands: { registerCommand: vi.fn() },
     tasks: { registerTaskProvider: vi.fn() },
+    languages: { registerDocumentLinkProvider: vi.fn() },
     workspace: {
+      registerTextDocumentContentProvider: vi.fn(),
+      onDidCloseTextDocument: vi.fn(),
       getConfiguration: () => ({
         get: (_key: string, fallback: unknown) => fallback,
       }),

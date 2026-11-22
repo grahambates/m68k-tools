@@ -72,6 +72,11 @@
     },
     "commands": [
       {
+        "command": "m68k.peekMacroExpansion",
+        "title": "M68k: Peek Macro Expansion",
+        "enablement": "resourceScheme == file && (editorLangId == m68k || editorLangId == vasmmot)"
+      },
+      {
         "command": "m68k.toggleRegisterColours",
         "title": "M68k: Toggle Register Colours"
       },
@@ -86,6 +91,11 @@
     ],
     "menus": {
       "editor/context": [
+        {
+          "command": "m68k.peekMacroExpansion",
+          "when": "resourceScheme == file && (editorLangId == m68k || editorLangId == vasmmot)",
+          "group": "navigation"
+        },
         {
           "command": "m68k.listRegistersInSelection",
           "when": "editorLangId == m68k || editorLangId == vasmmot",

@@ -27,7 +27,6 @@ import type {
   BlockStructure,
   ExpandedMacroLine,
   MacroExpansion,
-  MacroDefinition,
   ParsedFile,
   ParsedLine,
 } from "m68k-parser";
@@ -35,7 +34,7 @@ import { type AstNode, descendants, walkFile, walkLine } from "./ast";
 import { type Context } from "./context";
 import { symbolsCaseSensitive } from "./config";
 import { isProcessed } from "./DocumentProcessor";
-import { getUnitFilesByDistance } from "./files";
+import { findMacroDefinition } from "./macros";
 import { DefinitionType, resolveDefinitionByName } from "./symbols";
 import { locationAsRange } from "m68k-parser";
 
@@ -1842,13 +1841,13 @@ function expandMacroCall(
     return;
   }
   return expandMacro(
-    definition,
+    definition.definition,
     macroInvocation<lsp.Range>(line, lineText, (text, loc) => ({
       origin: locationAsRange(loc),
       literal: !!canonicalGeneralPurposeRegister(text),
     })),
     {
-      resolve: (name) => findMacroDefinition(name, uri, ctx),
+      resolve: (name) => findMacroDefinition(name, uri, ctx)?.definition,
       fallbackOrigin: locationAsRange(line.mnemonic.loc),
     },
   );
@@ -1968,23 +1967,6 @@ function collectMacroDefinitionLines(blocks: Block[]): Set<number> {
   };
   visit(blocks);
   return lines;
-}
-
-function findMacroDefinition(
-  name: string,
-  documentUri: string,
-  ctx: Context,
-): MacroDefinition | undefined {
-  const key = symbolKey(name, symbolsCaseSensitive(ctx.config));
-  for (const uri of [
-    documentUri,
-    ...getUnitFilesByDistance(documentUri, ctx),
-  ]) {
-    const definition = ctx.store.get(uri)?.macros.get(key);
-    if (definition) {
-      return definition;
-    }
-  }
 }
 
 function addExpandedRegisters(

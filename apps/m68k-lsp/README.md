@@ -5,6 +5,7 @@ Adds language support for Motorola 68000 Assembly to Visual Studio Code.
 ## Features:
 
 - Syntax highlighting
+- Semantic highlighting for labels, constants, variables, macros, register aliases and sections
 - Snippets
 - Auto-completion:
   - Instruction mnemonics
@@ -71,6 +72,10 @@ Add a task to `.vscode/tasks.json` to build an entry point with the bundled asse
 ```
 
 Run **Tasks: Run Build Task**. To use a native assembler, set `"assembler": "native"` in the task. It uses `m68k.vasm.binPath` unless you supply a task-level `binPath`. Specify any include directories, CPU options, and output format in the task's arguments. The default `$vasm` problem matcher, shown explicitly above, resolves relative diagnostic paths from the task's workspace folder.
+
+### Semantic highlighting
+
+Themes with semantic highlighting enabled can style labels, constants, variables, macros, register aliases and sections. References use the kind of their resolved definition, including definitions in includes. To customize the colors, use `editor.semanticTokenColorCustomizations` with selectors such as `label:m68k`, `variable.readonly:m68k`, `macro:m68k`, or `register:m68k`.
 
 ### Peek Macro Expansion
 

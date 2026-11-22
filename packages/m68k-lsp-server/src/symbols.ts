@@ -441,6 +441,21 @@ export function processSymbols(
       );
     }
 
+    if (directive === "macro" && !line.label) {
+      const name = line.operands?.[0] && symbolIn(line.operands[0]);
+      if (name) {
+        addDefinition(
+          name.name,
+          name.interpolated === true,
+          DefinitionType.Macro,
+          locationAsRange(name.loc, index),
+          range,
+          index,
+        );
+      }
+      continue;
+    }
+
     if (isCallInstruction(line)) {
       const target = callTargetSymbol(line.operands);
       if (target && target.interpolated !== true) {

@@ -65,6 +65,7 @@ export default class DocumentProcessor {
    */
   async process(document: TextDocument): Promise<ProcessedDocument> {
     this.ctx.logger.log("processDocument: " + document.uri);
+    const previous = this.ctx.store.get(document.uri);
     const update = Symbol();
     this.ctx.documentUpdates.set(document.uri, update);
 
@@ -96,8 +97,9 @@ export default class DocumentProcessor {
     };
 
     this.ctx.store.set(document.uri, processed);
+    this.refreshSymbolKinds(previous, processed);
 
-    await this.resolveReferences(processed, update);
+    await this.resolveReferences(processed, update, previous?.referencedUris);
 
     return processed;
   }
@@ -150,15 +152,16 @@ export default class DocumentProcessor {
     };
 
     this.ctx.store.set(uri, indexed);
+    this.refreshSymbolKinds(existing, indexed);
 
-    await this.resolveReferences(indexed, update);
+    await this.resolveReferences(indexed, update, existing?.referencedUris);
     return indexed;
   }
 
   /** Release editor text immediately, then rebuild symbols from the saved file. */
   async close(uri: string): Promise<void> {
     this.ctx.documentUpdates.delete(uri);
-    this.ctx.store.delete(uri);
+    if (this.ctx.store.delete(uri)) this.ctx.scheduleSemanticTokensRefresh?.();
     await this.index(uri);
   }
 
@@ -168,7 +171,7 @@ export default class DocumentProcessor {
       return;
     }
     this.ctx.documentUpdates.delete(uri);
-    this.ctx.store.delete(uri);
+    if (this.ctx.store.delete(uri)) this.ctx.scheduleSemanticTokensRefresh?.();
     for (const document of this.ctx.store.values()) {
       referenceUpdates.delete(document);
       document.referencedUris = document.referencedUris.filter(
@@ -218,6 +221,7 @@ export default class DocumentProcessor {
   private async resolveReferences(
     document: IndexedDocument,
     update: symbol | undefined,
+    previousReferences = document.referencedUris,
   ): Promise<void> {
     const referenceUpdate = Symbol();
     referenceUpdates.set(document, referenceUpdate);
@@ -231,6 +235,32 @@ export default class DocumentProcessor {
     }
     document.referencedUris = resolved;
     await Promise.all(resolved.map((uri) => this.indexIfAbsent(uri)));
+    if (
+      resolved.length !== previousReferences.length ||
+      resolved.some((uri, index) => uri !== previousReferences[index])
+    ) {
+      this.ctx.scheduleSemanticTokensRefresh?.();
+    }
+  }
+
+  private refreshSymbolKinds(
+    previous: IndexedDocument | undefined,
+    next: IndexedDocument,
+  ) {
+    const refresh = this.ctx.scheduleSemanticTokensRefresh;
+    if (!refresh) return;
+    const definitions = next.symbols.definitions;
+    const before = previous?.symbols.definitions;
+    if (definitions.size !== (before?.size ?? 0)) {
+      refresh();
+      return;
+    }
+    for (const [key, definition] of definitions) {
+      if (before?.get(key)?.type !== definition.type) {
+        refresh();
+        return;
+      }
+    }
   }
 
   /** Index a file and everything it includes, skipping what is already known. */

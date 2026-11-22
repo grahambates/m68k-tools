@@ -22,6 +22,7 @@ family assembly, using [m68k-parser](https://github.com/grahambates/m68k-tools/t
 - Code Folding
 - Document Formatting
 - Document Highlights
+- Semantic highlighting for resolved symbols and their declarations
 - Document Links
 - Document Symbols
 - Register usage and availability analysis, navigation, swapping and remapping;

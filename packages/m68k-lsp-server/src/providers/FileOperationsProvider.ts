@@ -142,6 +142,7 @@ export default class FileOperationsProvider implements Provider {
       }
     }
 
+    if (fileRenames.length) this.ctx.scheduleSemanticTokensRefresh?.();
     return null;
   }
 

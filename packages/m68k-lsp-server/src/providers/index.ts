@@ -22,6 +22,7 @@ import MacroExpansionProvider from "./MacroExpansionProvider";
 import ReferencesProvider from "./ReferencesProvider";
 import RegisterProvider from "./RegisterProvider";
 import RenameProvider from "./RenameProvider";
+import SemanticTokensProvider from "./SemanticTokensProvider";
 import SignatureHelpProvider from "./SignatureHelpProvider";
 import TextDocumentSyncProvider from "./TextDocumentSyncProvider";
 import WorkspaceSymbolProvider from "./WorkspaceSymbolProvider";
@@ -50,6 +51,7 @@ const providers = [
   ReferencesProvider,
   RegisterProvider,
   RenameProvider,
+  SemanticTokensProvider,
   SignatureHelpProvider,
   TextDocumentSyncProvider,
   WorkspaceSymbolProvider,

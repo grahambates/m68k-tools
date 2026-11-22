@@ -8,6 +8,7 @@ export interface Context {
   store: ProcessedDocumentStore;
   /** Identifies the newest open/index operation for each document. */
   documentUpdates: Map<string, symbol>;
+  scheduleSemanticTokensRefresh?: () => void;
   workspaceFolders: lsp.WorkspaceFolder[];
   logger: lsp.Logger;
   connection: lsp.Connection;

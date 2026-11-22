@@ -139,6 +139,27 @@
         }
       }
     },
+    "semanticTokenTypes": [
+      {
+        "id": "register",
+        "description": "Assembly register alias"
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "m68k",
+        "scopes": {
+          "label": [
+            "entity.name.label",
+            "entity.name.function"
+          ],
+          "register": [
+            "keyword.other.register.m68k",
+            "variable.language"
+          ]
+        }
+      }
+    ],
     "grammars": [
       {
         "language": "m68k",

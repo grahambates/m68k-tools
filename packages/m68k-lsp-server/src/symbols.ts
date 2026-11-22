@@ -73,6 +73,7 @@ export interface Symbols {
   definitions: Map<string, Definition>;
   references: Map<string, NamedSymbol[]>;
   includes: Literal[];
+  binaryIncludes: Literal[];
   incDirs: Literal[];
   calls: CallSite[];
 }
@@ -284,6 +285,7 @@ export function processSymbols(
     definitions: new Map<string, Definition>(),
     references: new Map<string, NamedSymbol[]>(),
     includes: [],
+    binaryIncludes: [],
     incDirs: [],
     calls: [],
   };
@@ -379,18 +381,27 @@ export function processSymbols(
     const range = lsp.Range.create(index, start, endLine, end);
 
     // Include paths are recorded rather than treated as symbols.
-    if (directive === "include" || directive === "incdir") {
+    if (
+      directive === "include" ||
+      directive === "incdir" ||
+      directive === "incbin"
+    ) {
       const operand = line.operands?.[0];
       if (operand?.type === "string-literal") {
         const literal = {
           location: { uri, range: locationAsRange(operand.loc, index) },
           text: processPath(lineText.slice(operand.loc.start, operand.loc.end)),
         };
-        (directive === "include" ? symbols.includes : symbols.incDirs).push(
-          literal,
-        );
+        const paths =
+          directive === "include"
+            ? symbols.includes
+            : directive === "incbin"
+              ? symbols.binaryIncludes
+              : symbols.incDirs;
+        paths.push(literal);
       }
-      continue;
+      // An incbin can carry symbol references in its offset and length.
+      if (directive !== "incbin") continue;
     }
 
     // `section name,type` names the section in its first operand.

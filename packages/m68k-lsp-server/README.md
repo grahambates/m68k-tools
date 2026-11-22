@@ -161,7 +161,7 @@ Default: unset
 
 ### Updating includes when files move
 
-When the editor supports the LSP file-rename request, the server offers edits to literal `include` operands in indexed workspace sources. It checks how the include resolves before and after the move, including when an assembly entry point moves and changes the search directory for nested includes. Paths that still resolve correctly are left as written. An include with conflicting targets in different assembly units is skipped.
+When the editor supports the LSP file-rename request, the server offers edits to literal `include` and `incbin` operands in indexed workspace sources. It checks how the include resolves before and after the move, including when an assembly entry point moves and changes the search directory for nested includes. Paths that still resolve correctly are left as written. An include with conflicting targets in different assembly units is skipped.
 
 ### Inferred include paths:
 

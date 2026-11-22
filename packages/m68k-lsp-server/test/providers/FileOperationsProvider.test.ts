@@ -341,6 +341,44 @@ describe("file rename locations", () => {
     );
   });
 
+  it.each([false, true])(
+    "updates an incbin path without indexing the asset (folder move=%s)",
+    async (folderMove) => {
+      const assets = join(dir, "assets");
+      await mkdir(assets);
+      const asset = join(assets, "data.bin");
+      await writeFile(asset, Buffer.from([0, 0xff, 0x7f, 0x42]));
+      const source = join(dir, "main.s");
+      const original =
+        "Start equ 1\n incbin assets/data.bin,Start,2 ; asset slice\n";
+      await writeFile(source, original);
+      const uri = pathToFileURL(source).toString();
+      const processor = new DocumentProcessor(ctx);
+      await processor.index(uri);
+      const oldPath = folderMove ? assets : asset;
+      const newPath = folderMove
+        ? join(dir, "new assets")
+        : join(assets, "new data.bin");
+      const edits = await new FileOperationsProvider(ctx).onWillRenameFiles({
+        files: [
+          {
+            oldUri: pathToFileURL(oldPath).toString(),
+            newUri: pathToFileURL(newPath).toString(),
+          },
+        ],
+      });
+      const path = folderMove ? "new assets/data.bin" : "assets/new data.bin";
+      expect(applyEdits(original, edits!.changes![uri])).toBe(
+        `Start equ 1\n incbin "${path}",Start,2 ; asset slice\n`,
+      );
+      expect(ctx.store.get(uri)?.referencedUris).toEqual([]);
+      expect(ctx.store.get(uri)?.symbols.references.get("Start")).toHaveLength(
+        1,
+      );
+      expect(ctx.store.has(pathToFileURL(asset).toString())).toBe(false);
+    },
+  );
+
   it("leaves shared include text alone when two programs resolve it differently", async () => {
     for (const project of ["a", "b"]) {
       await mkdir(join(dir, project));

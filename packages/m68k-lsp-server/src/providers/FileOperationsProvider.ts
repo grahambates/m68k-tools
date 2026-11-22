@@ -250,7 +250,11 @@ function relocateSymbols(symbols: Symbols, uri: string): void {
       reference.location.uri = uri;
     }
   }
-  for (const literal of [...symbols.includes, ...symbols.incDirs]) {
+  for (const literal of [
+    ...symbols.includes,
+    ...symbols.incDirs,
+    ...symbols.binaryIncludes,
+  ]) {
     literal.location.uri = uri;
   }
 }

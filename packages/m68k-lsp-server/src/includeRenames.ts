@@ -105,6 +105,8 @@ export async function includeRenameEdits(
     if (moveUri(uri) !== uri) affected.add(uri);
     if (doc.referencedUris.some((ref) => moveUri(ref) !== ref))
       affected.add(uri);
+    // Binary assets are outside the source include graph.
+    if (doc.symbols.binaryIncludes.length) affected.add(uri);
   }
   const roots = workspacePaths(ctx);
   const present = fileFinder((path) => path);
@@ -112,7 +114,18 @@ export async function includeRenameEdits(
   const changes = await Promise.all(
     Array.from(affected, async (uri) => {
       const doc = ctx.store.get(uri);
-      if (!doc?.symbols.includes.length || !uri.startsWith("file:")) return;
+      if (!doc || !uri.startsWith("file:")) return;
+      const paths = [
+        ...doc.symbols.includes.map((literal) => ({
+          literal,
+          directive: "include",
+        })),
+        ...doc.symbols.binaryIncludes.map((literal) => ({
+          literal,
+          directive: "incbin",
+        })),
+      ];
+      if (!paths.length) return;
       if (
         roots.length &&
         !roots.some(
@@ -123,7 +136,7 @@ export async function includeRenameEdits(
       const current = includeSearch(uri, ctx);
       const proposed = includeSearch(moveUri(uri), projected);
       const updates = await Promise.all(
-        doc.symbols.includes.map(async (literal) => {
+        paths.map(async ({ literal, directive }) => {
           const path = await movedIncludePath(
             literal.text,
             current,
@@ -132,7 +145,7 @@ export async function includeRenameEdits(
             present,
             future,
           );
-          return { literal, path };
+          return { literal, path, directive };
         }),
       );
       if (!updates.some(({ path }) => path !== undefined)) return;
@@ -141,7 +154,7 @@ export async function includeRenameEdits(
         : await readDocumentFromUri(uri);
       if (!document || ctx.store.get(uri) !== doc) return;
       const edits: TextEdit[] = [];
-      for (const { literal, path } of updates) {
+      for (const { literal, path, directive } of updates) {
         if (path === undefined) continue;
         const range = literal.location.range;
         const original = document.getText(range);
@@ -158,7 +171,7 @@ export async function includeRenameEdits(
           const operand = statement.operands?.[0];
           if (
             statement.mnemonic?.type !== "directive" ||
-            statement.mnemonic.directive.toLowerCase() !== "include" ||
+            statement.mnemonic.directive.toLowerCase() !== directive ||
             operand?.type !== "string-literal" ||
             operand.loc.start !== range.start.character ||
             operand.loc.end !== range.end.character

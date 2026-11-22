@@ -35,6 +35,7 @@ Adds language support for Motorola 68000 Assembly to Visual Studio Code.
 - Rename Symbols
 - Signature Help
 - Problem matching for vasm output
+- Build tasks using bundled or native vasm
 
 ## Language server
 
@@ -48,6 +49,27 @@ ChangeLog is located [here](https://github.com/grahambates/m68k-tools/blob/main/
 Requires VS Code 1.101 or later. For local development, open the monorepo root and select **Assembly: Extension** in Run and Debug.
 
 In assembly files, Enter starts a new line even when the suggestion list is open. Press Tab to accept a highlighted suggestion. To accept suggestions with Enter as well, set `editor.acceptSuggestionOnEnter` to `"on"` under `[m68k]` in your VS Code settings.
+
+### Build with vasm
+
+Add a task to `.vscode/tasks.json` to build an entry point with the bundled assembler. This example assembles `src/main.s` into a raw binary in the workspace folder.
+
+```json
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build main with vasm",
+      "type": "vasm",
+      "args": ["-Fbin", "-o", "main.bin", "src/main.s"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": "$vasm"
+    }
+  ]
+}
+```
+
+Run **Tasks: Run Build Task**. To use a native assembler, set `"assembler": "native"` in the task. It uses `m68k.vasm.binPath` unless you supply a task-level `binPath`. Specify any include directories, CPU options, and output format in the task's arguments. The default `$vasm` problem matcher, shown explicitly above, resolves relative diagnostic paths from the task's workspace folder.
 
 ### Register analysis scope
 

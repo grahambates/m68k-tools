@@ -44,6 +44,7 @@ vi.mock(
       constructor(readonly id: string) {}
     },
     commands: { registerCommand: vi.fn() },
+    tasks: { registerTaskProvider: vi.fn() },
     workspace: {
       getConfiguration: () => ({
         get: (_key: string, fallback: unknown) => fallback,

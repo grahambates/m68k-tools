@@ -136,16 +136,48 @@
         "path": "./syntaxes/M68k-Assembly.tmLanguage.json"
       }
     ],
+    "taskDefinitions": [
+      {
+        "type": "vasm",
+        "when": "processExecutionSupported",
+        "required": [
+          "args"
+        ],
+        "properties": {
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "description": "Arguments to pass directly to vasm, including the source file and any output and format options."
+          },
+          "assembler": {
+            "type": "string",
+            "enum": [
+              "wasm",
+              "native"
+            ],
+            "default": "wasm",
+            "description": "Use the bundled WebAssembly assembler or a native vasm executable."
+          },
+          "binPath": {
+            "type": "string",
+            "description": "Executable name or path for native builds. Defaults to m68k.vasm.binPath."
+          }
+        }
+      }
+    ],
     "problemMatchers": [
       {
         "name": "vasm",
         "owner": "m68k",
         "fileLocation": [
-          "relative",
+          "autodetect",
           "${workspaceFolder}"
         ],
         "pattern": {
-          "regexp": "^(.\\w+) (\\d+) in line (\\d+) of \"([^\"]*)\": (.*)$",
+          "regexp": "^(?:fatal )?(error|warning|message) (\\d+) in line (\\d+) of \"([^\"]*)\": (.*)$",
           "severity": 1,
           "line": 3,
           "file": 4,

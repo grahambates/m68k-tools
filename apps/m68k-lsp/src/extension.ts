@@ -18,6 +18,7 @@ import type {
   TextEdit,
 } from "@m68k-lsp/protocol";
 import * as path from "path";
+import { registerVasmTasks } from "./vasmTasks";
 import {
   DecorationRangeBehavior,
   OverviewRulerLane,
@@ -119,6 +120,7 @@ const registerColours = new Map([
 ]);
 
 export function activate(context: ExtensionContext): void {
+  context.subscriptions.push(registerVasmTasks(context.extensionPath));
   const decorations = new Map(
     Array.from(registerColours, ([register, color]) => [
       register,

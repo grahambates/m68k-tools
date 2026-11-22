@@ -74,6 +74,8 @@ Run **Tasks: Run Build Task**. To use a native assembler, set `"assembler": "nat
 
 ### Peek Macro Expansion
 
+Hover over a macro name at a call site to see its expansion with arguments substituted.
+
 Place the cursor on a macro call and run **M68k: Peek Macro Expansion** from the Command Palette or the editor context menu. The read-only tab shows the macro body with the call's arguments substituted. Follow the definition link on the first line to jump to the macro, including when it is defined in an include file.
 
 The preview follows known nested calls and shows their call sites as comments. It shows conditional and repeat directives as written after substitution and leaves assembler-generated identifiers such as `\@` visible. An incomplete expansion is marked in the preview.

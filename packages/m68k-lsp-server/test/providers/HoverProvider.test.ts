@@ -37,6 +37,60 @@ describe("HoverProvider", () => {
   });
 
   describe("#onHover()", () => {
+    it("shows substituted macro code on the call's mnemonic", async () => {
+      const textDocument = await createDoc(
+        "macro-hover.s",
+        "Load macro\n moveq #\\1,\\2\n endm\n Load 7,d2",
+      );
+
+      const hover = await provider.onHover({
+        textDocument,
+        position: lsp.Position.create(3, 2),
+      });
+
+      expect(hover?.range).toEqual(range(3, 1, 3, 5));
+      expect(hover?.contents).toEqual({
+        kind: lsp.MarkupKind.Markdown,
+        value: "**Macro expansion**\n\n```m68k\n moveq #7,d2\n```",
+      });
+    });
+
+    it("shows macro expansion lines beyond the visible hover area", async () => {
+      const textDocument = await createDoc(
+        "long-macro-hover.s",
+        [
+          "LongMacro macro",
+          ...Array(12).fill(" nop"),
+          " rts",
+          " endm",
+          " LongMacro",
+        ].join("\n"),
+      );
+
+      const hover = await provider.onHover({
+        textDocument,
+        position: lsp.Position.create(15, 2),
+      });
+
+      const value = (hover?.contents as lsp.MarkupContent).value;
+      expect(value.match(/ nop/g)).toHaveLength(12);
+      expect(value).toContain(" rts");
+      expect(value).not.toContain("Partial preview");
+    });
+
+    it("marks an incomplete expansion without editor-specific instructions", async () => {
+      const textDocument = await createDoc(
+        "recursive-macro-hover.s",
+        "Recursive macro\n Recursive\n endm\n Recursive",
+      );
+      const hover = await provider.onHover({
+        textDocument,
+        position: lsp.Position.create(3, 2),
+      });
+      const value = (hover?.contents as lsp.MarkupContent).value;
+      expect(value.split("\n").slice(-2)).toEqual(["", "Partial preview."]);
+    });
+
     it("provide hover info for symbol reference", async () => {
       const textDocument = await createDoc(
         "example.s",

@@ -1,7 +1,7 @@
+import type { MacroExpansionResult } from "@m68k-lsp/protocol";
 import type {
   DirectiveNode,
   InstructionNode,
-  MacroNode,
   NumericLiteralNode,
   SizeNode,
   SpecialRegisterNode,
@@ -37,6 +37,9 @@ import {
   formatNumeric,
 } from "../formatting";
 import { type MarkupContent } from "vscode-languageserver";
+import { expandMacroAtLine } from "../macros";
+
+const macroHoverColumnLimit = 200;
 
 export default class HoverProvider implements Provider {
   constructor(protected readonly ctx: Context) {}
@@ -71,15 +74,19 @@ export default class HoverProvider implements Provider {
           "directive",
           position.line,
         );
-      case "macro":
-        // An unrecognised mnemonic parses as a macro call. Some are directives
-        // the parser does not know but the docs do, so still try a lookup, and
-        // fall through to no hover rather than labelling it a macro.
-        return this.hoverKnownMnemonic(
-          (node as unknown as MacroNode).macro,
-          node,
-          position.line,
-        );
+      case "macro": {
+        const expansion = expandMacroAtLine(this.ctx, processed, position.line);
+        const contents = expansion
+          ? formatMacroHover(expansion)
+          : // Some documented directives parse as unknown mnemonics.
+            line.mnemonic?.type === "macro"
+            ? lookupMnemonicDoc(line.mnemonic.macro)
+            : undefined;
+        if (contents) {
+          return { range: locationAsRange(node.loc, position.line), contents };
+        }
+        break;
+      }
       case "size":
         return this.hoverSize(node, position.line);
       // A label is the definition site of a symbol; both resolve through the
@@ -144,13 +151,6 @@ export default class HoverProvider implements Provider {
         value: `(${kind}) ` + text.toUpperCase(),
       },
     };
-  }
-
-  private async hoverKnownMnemonic(text: string, node: AstNode, line: number) {
-    const docs = lookupMnemonicDoc(text);
-    if (docs) {
-      return { range: locationAsRange(node.loc, line), contents: docs };
-    }
   }
 
   private async hoverSize(node: AstNode, line: number) {
@@ -316,6 +316,34 @@ export default class HoverProvider implements Provider {
       },
     };
   }
+}
+
+function formatMacroHover({
+  lines,
+  incomplete,
+}: MacroExpansionResult): MarkupContent {
+  const shortened = lines.some((line) => line.length > macroHoverColumnLimit);
+  const code = lines
+    .map((line) =>
+      line.length > macroHoverColumnLimit
+        ? line.slice(0, macroHoverColumnLimit - 1) + "…"
+        : line,
+    )
+    .join("\n");
+  // Macro source can contain Markdown fences in assembly comments or strings.
+  let fenceLength = 3;
+  for (const [run] of code.matchAll(/`+/g)) {
+    fenceLength = Math.max(fenceLength, run.length + 1);
+  }
+  const fence = "`".repeat(fenceLength);
+  const preview = code
+    ? `${fence}m68k\n${code}\n${fence}`
+    : "The macro body is empty.";
+  const note = incomplete || shortened ? "\n\nPartial preview." : "";
+  return {
+    kind: lsp.MarkupKind.Markdown,
+    value: `**Macro expansion**\n\n${preview}${note}`,
+  };
 }
 
 /**

@@ -32,6 +32,7 @@ family assembly, using [m68k-parser](https://github.com/grahambates/m68k-tools/t
 - Call Hierarchy
 - Macro expansion preview through the `m68k/macroExpansion` request
 - Hover
+  - Macro call expansion preview
   - Instruction/directive documentation
   - Symbol info
   - Data/address register descriptions from comments and assignments

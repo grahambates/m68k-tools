@@ -41,7 +41,7 @@ family assembly, using [m68k-parser](https://github.com/grahambates/m68k-tools/t
   - Evaluated value of constant assignments (`equ`/`fequ`/`=`/`set`)
 - Multiple workspaces
 - Rename Symbols
-- Signature Help
+- Signature Help and completions that take the size suffix and operand forms into account
 
 Requires Node.js 22.15.1 or later. The VS Code extension requires VS Code 1.101 or later.
 

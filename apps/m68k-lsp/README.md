@@ -73,6 +73,10 @@ Add a task to `.vscode/tasks.json` to build an entry point with the bundled asse
 
 Run **Tasks: Run Build Task**. To use a native assembler, set `"assembler": "native"` in the task. It uses `m68k.vasm.binPath` unless you supply a task-level `binPath`. Specify any include directories, CPU options, and output format in the task's arguments. The default `$vasm` problem matcher, shown explicitly above, resolves relative diagnostic paths from the task's workspace folder.
 
+### Operand completion and signature help
+
+The current size suffix and operands help select a matching instruction form. For example, after `move.l usp,`, completion offers address registers and matching aliases. Signature help selects the corresponding form and keeps the documented alternatives available.
+
 ### Semantic highlighting
 
 Themes with semantic highlighting enabled can style labels, constants, variables, macros, register aliases and sections. References use the kind of their resolved definition, including definitions in includes. To customize the colors, use `editor.semanticTokenColorCustomizations` with selectors such as `label:m68k`, `variable.readonly:m68k`, `macro:m68k`, or `register:m68k`.

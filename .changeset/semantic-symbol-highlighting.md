@@ -1,4 +1,4 @@
----
+****---
 "m68k-lsp-server": minor
 "m68k-lsp": minor
 ---

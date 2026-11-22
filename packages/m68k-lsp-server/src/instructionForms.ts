@@ -1,24 +1,13 @@
 import { addressingMode, type OperandNode } from "m68k-parser";
 import type { AddressingModes, InstructionDoc } from "./docs";
 import type { AddressingMode } from "./syntax";
+import {
+  parseSignature,
+  splitSignatureOperands,
+  type SignatureInfo,
+} from "./signature";
 
 type Match = boolean | undefined;
-
-function splitOperands(text: string): string[] {
-  const parts: string[] = [];
-  let depth = 0,
-    start = 0;
-  for (let i = 0; i < text.length; i++) {
-    if (text[i] === "(") depth++;
-    if (text[i] === ")") depth--;
-    if (text[i] === "," && depth === 0) {
-      parts.push(text.slice(start, i).trim());
-      start = i + 1;
-    }
-  }
-  if (text.trim()) parts.push(text.slice(start).trim());
-  return parts;
-}
 
 function forms(signature: string): string[][] {
   const space = signature.indexOf(" ");
@@ -26,10 +15,44 @@ function forms(signature: string): string[][] {
   const optional = /\[([^[\]]*)\]/.exec(text);
   if (optional)
     return [
-      splitOperands(text.replace(optional[0], "")),
-      splitOperands(text.replace(optional[0], optional[1])),
+      splitSignatureOperands(text.replace(optional[0], "")),
+      splitSignatureOperands(text.replace(optional[0], optional[1])),
     ];
-  return [splitOperands(text)];
+  return [splitSignatureOperands(text)];
+}
+
+/** Compatible documented signatures, best match first. Unknown operands keep alternatives open. */
+export function rankInstructionSignatures(
+  doc: InstructionDoc,
+  size: string | undefined,
+  operands: readonly (OperandNode | undefined)[],
+  activeOperand?: number,
+): { signature: SignatureInfo; patterns: string[] }[] {
+  return doc.syntax
+    .map(parseSignature)
+    .flatMap((signature) => {
+      const explicitSize =
+        size !== undefined && signature.sizes.some((item) => item === size);
+      if (size && signature.sizes.length && !explicitSize) return [];
+      return forms(signature.label).flatMap((patterns) => {
+        if (
+          patterns.length < operands.length ||
+          (activeOperand !== undefined && activeOperand >= patterns.length)
+        )
+          return [];
+        let score = explicitSize ? 1 : 0;
+        for (const [index, operand] of operands.entries()) {
+          if (!operand) continue;
+          const pattern = patterns[index];
+          const match = matches(pattern, operand, doc, false);
+          if (match === false) return [];
+          if (match) score++;
+        }
+        return [{ signature, patterns, score }];
+      });
+    })
+    .sort((a, b) => b.score - a.score)
+    .map(({ signature, patterns }) => ({ signature, patterns }));
 }
 
 /** The modes an instruction's documentation describes. */

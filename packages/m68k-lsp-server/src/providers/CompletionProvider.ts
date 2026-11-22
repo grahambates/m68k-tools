@@ -33,8 +33,11 @@ import {
 } from "../symbols";
 import { type Context } from "../context";
 import { configFor } from "../documentConfigs";
-import { componentAtIndex, ComponentType, parseLine } from "../parse";
+import { ComponentType } from "../parse";
 import { parseSignature } from "../signature";
+import { rankInstructionSignatures } from "../instructionForms";
+import { instructionAtCursor, operandsForSignatures } from "../operandHelp";
+import { createAliasResolver } from "../registerAnalysis";
 import { formatMnemonicDoc } from "../formatting";
 import { isProcessed, type ProcessedDocument } from "../DocumentProcessor";
 
@@ -79,35 +82,19 @@ export default class CompletionProvider implements Provider {
       return [];
     }
 
-    const lines = processed.document.getText().split(/\r?\n/g);
-    const line = parseLine(lines[position.line] ?? "");
-    if (!line) {
-      return [];
-    }
-
-    const info = componentAtIndex(line, position.character);
+    const { line, component: info } = instructionAtCursor(
+      processed,
+      position.line,
+      position.character,
+    );
     const value = info?.component.value ?? "";
-    let type = info?.type;
     const mnemonic = line.mnemonic?.value.toLowerCase();
     const doc = mnemonic && mnemonicDocs[mnemonic];
-    const signature =
-      doc && doc.syntax.length ? parseSignature(doc.syntax[0]) : null; // TODO: find active
+    const instruction = mnemonic ? instructionDocs[mnemonic] : undefined;
 
     const isUpperCase = value.length > 0 && value.toUpperCase() === value;
 
-    // Default to operand if after mnemonic and last component
-    if (!info) {
-      if (
-        line.mnemonic &&
-        position.character > line.mnemonic.end &&
-        !line.comment &&
-        !line.operands
-      ) {
-        type = ComponentType.Operand;
-      }
-    }
-
-    switch (type) {
+    switch (info?.type) {
       case ComponentType.Mnemonic:
         return this.completeMnemonics(isUpperCase, processed, position);
       case ComponentType.Size: {
@@ -116,13 +103,48 @@ export default class CompletionProvider implements Provider {
           line.mnemonic !== undefined &&
           line.mnemonic.value.length > 0 &&
           line.mnemonic.value.toUpperCase() === line.mnemonic.value;
-        return this.completeSizes(upperCase, signature?.sizes);
+        const compatible =
+          instruction &&
+          rankInstructionSignatures(
+            instruction,
+            undefined,
+            operandsForSignatures(this.ctx, processed, position.line),
+          );
+        const forms = compatible?.length
+          ? compatible.map(({ signature }) => signature)
+          : doc
+            ? doc.syntax.map(parseSignature)
+            : [];
+        const allowed = forms.length
+          ? [...new Set(forms.flatMap((form) => form.sizes))]
+          : undefined;
+        return this.completeSizes(upperCase, allowed);
       }
       case ComponentType.Operand: {
         if (!mnemonic) {
           return [];
         }
-        switch (signature?.operands[info?.index ?? 0].value) {
+        const index = info.index ?? 0;
+        if (instruction) {
+          const compatible = rankInstructionSignatures(
+            instruction,
+            line.size?.value.toLowerCase(),
+            operandsForSignatures(this.ctx, processed, position.line, index),
+            index,
+          );
+          const patterns = compatible.map((form) => form.patterns[index]);
+          if (patterns.length && patterns.every(isRegisterPattern)) {
+            return this.completeRegisterForms(
+              patterns,
+              isUpperCase,
+              processed,
+              position,
+            );
+          }
+        }
+        const signature =
+          doc && doc.syntax[0] ? parseSignature(doc.syntax[0]) : undefined;
+        switch (signature?.operands[index]?.value) {
           case "<file>":
           case "<path>":
             return this.completePath(mnemonic, value, textDocument.uri);
@@ -139,21 +161,6 @@ export default class CompletionProvider implements Provider {
             );
             return symbols.filter((n) => n.detail === "(label)");
           }
-          case "Rn":
-          case "Rx":
-          case "Ry": {
-            // TODO: register defintions
-            const regs = [...this.addrRegs, ...this.dataRegs];
-            return this.ucItems(regs, isUpperCase);
-          }
-          case "An":
-          case "Ax":
-          case "Ay":
-            return this.ucItems(this.addrRegs, isUpperCase);
-          case "Dn":
-          case "Dx":
-          case "Dy":
-            return this.ucItems(this.dataRegs, isUpperCase);
           default:
             return this.completeOperands(isUpperCase, processed, position);
         }
@@ -161,6 +168,37 @@ export default class CompletionProvider implements Provider {
       default:
         return [];
     }
+  }
+
+  private async completeRegisterForms(
+    patterns: string[],
+    uppercase: boolean,
+    processed: ProcessedDocument,
+    position: lsp.Position,
+  ) {
+    const registers = this.completeRegisters(uppercase).filter((item) =>
+      patterns.some((pattern) =>
+        acceptsRegister(pattern, [item.label.toLowerCase()]),
+      ),
+    );
+    const resolveAlias = createAliasResolver(this.ctx, processed.uri);
+    const aliases = (
+      await this.completeAllDefinitions(processed, position)
+    ).filter((item) => {
+      if (item.detail !== "(register)" && item.detail !== "(register_list)")
+        return false;
+      const registers = resolveAlias(item.label);
+      return (
+        registers &&
+        patterns.some(
+          (pattern) =>
+            (item.detail !== "(register_list)" ||
+              pattern === "<register_list>") &&
+            acceptsRegister(pattern, registers),
+        )
+      );
+    });
+    return [...aliases, ...registers];
   }
 
   ucItems(items: lsp.CompletionItem[], uppercase: boolean) {
@@ -353,6 +391,26 @@ export default class CompletionProvider implements Provider {
       },
     };
   }
+}
+
+function isRegisterPattern(pattern: string | undefined): pattern is string {
+  return (
+    pattern !== undefined &&
+    /^(?:[DAR][nxy]|FP[nxy]|CCR|SR|USP|<register_list>)$/i.test(pattern)
+  );
+}
+
+function acceptsRegister(pattern: string, registers: string[]): boolean {
+  if (pattern === "<register_list>") {
+    return registers.every((register) => /^(?:[da][0-7]|sp)$/.test(register));
+  }
+  if (registers.length !== 1) return false;
+  const [register] = registers;
+  if (/^D[nxy]$/i.test(pattern)) return /^d[0-7]$/.test(register);
+  if (/^A[nxy]$/i.test(pattern)) return /^(?:a[0-7]|sp)$/.test(register);
+  if (/^R[nxy]$/i.test(pattern)) return /^(?:[da][0-7]|sp)$/.test(register);
+  if (/^FP[nxy]$/i.test(pattern)) return /^fp[0-7]$/.test(register);
+  return pattern.toLowerCase() === register;
 }
 
 function enumValues(values: readonly string[]): lsp.CompletionItem[] {

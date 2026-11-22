@@ -69,6 +69,45 @@ describe("SignatureHelpProvider", () => {
       );
     });
 
-    // TODO: more coverage needed
+    it.each([
+      [" move.l usp,", "move[.l] USP,An", 2],
+      [" move.w sr,d0", "move[.w] SR,<destination>", 2],
+      [" addx.w -(a0),", "addx[.(bwl)] -(Ay),-(Ax)", 2],
+      [" movem.l (a0)+,", "movem[.(wl)] <source>,<register_list>", 2],
+      [" movep.w 4(a0),", "movep[.(wl)] (d,Ay),Dx", 2],
+      [" lsl.w (a0)", "lsl[.(bwl)] [<count>,]<destination>", 2],
+    ])(
+      "selects the matching form for %s",
+      async (source, signature, parameter) => {
+        const textDocument = await createDoc("instruction-form.s", source);
+        const help = await provider.onSignatureHelp({
+          textDocument,
+          position: lsp.Position.create(0, source.length),
+        });
+        expect(help?.signatures[help.activeSignature ?? 0].label).toBe(
+          signature,
+        );
+        expect(help?.activeParameter).toBe(parameter);
+        if (signature.startsWith("movep")) {
+          expect(
+            help?.signatures[help.activeSignature ?? 0].parameters,
+          ).toHaveLength(3);
+        }
+      },
+    );
+
+    it("uses a register alias to distinguish the two directions of movem", async () => {
+      const textDocument = await createDoc(
+        "alias-signature.s",
+        "Saved reg d2-d3\n movem.l Saved,",
+      );
+      const help = await provider.onSignatureHelp({
+        textDocument,
+        position: lsp.Position.create(1, 15),
+      });
+      expect(help?.signatures[help.activeSignature ?? 0].label).toBe(
+        "movem[.(wl)] <register_list>,<destination>",
+      );
+    });
   });
 });

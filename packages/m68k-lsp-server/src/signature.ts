@@ -8,6 +8,22 @@ export interface SignatureInfo {
   operands: Component[];
 }
 
+export function splitSignatureOperands(text: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === "(") depth++;
+    if (text[i] === ")") depth--;
+    if (text[i] === "," && depth === 0) {
+      parts.push(text.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  if (text.trim()) parts.push(text.slice(start).trim());
+  return parts;
+}
+
 /**
  * Get components from syntax signature text.
  *
@@ -19,7 +35,9 @@ export function parseSignature(text: string): SignatureInfo {
   const info: SignatureInfo = { label: text, sizes: [], operands: [] };
   let end = 0;
 
-  const [inst, opList] = text.split(" ");
+  const space = text.indexOf(" ");
+  const inst = space < 0 ? text : text.slice(0, space);
+  const opList = space < 0 ? "" : text.slice(space + 1);
   const [, size] = inst.split(".");
   if (size) {
     const value = size.replace(/[\]]/g, "");
@@ -30,7 +48,7 @@ export function parseSignature(text: string): SignatureInfo {
   }
 
   if (opList) {
-    for (const op of opList.split(",")) {
+    for (const op of splitSignatureOperands(opList)) {
       const value = op.replace(/[[\]]/g, "");
       const start = end + text.substring(end).indexOf(value);
       end = start + value.length;

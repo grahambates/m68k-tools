@@ -39,6 +39,64 @@ describe("CompletionProvider", () => {
   });
 
   describe("#onCompletion()", () => {
+    it("uses the source operand to suggest address registers and matching aliases", async () => {
+      const source =
+        "Table equ 7\nPtr equr a2\nCount equr d3\nSaved reg a2\n move.l usp,";
+      const textDocument = await createDoc("usp-completion.s", source);
+      const labels = (
+        await provider.onCompletion({
+          textDocument,
+          position: lsp.Position.create(4, source.split("\n")[4].length),
+        })
+      ).map(({ label }) => label);
+
+      expect(labels).toContain("a0");
+      expect(labels).toContain("Ptr");
+      expect(labels).not.toContain("d0");
+      expect(labels).not.toContain("Count");
+      expect(labels).not.toContain("Saved");
+      expect(labels).not.toContain("Table");
+    });
+
+    it("keeps alternatives open when the earlier operand is a macro parameter", async () => {
+      const source = " move.l \\1,";
+      const textDocument = await createDoc("unknown-operand.s", source);
+      const items = await provider.onCompletion({
+        textDocument,
+        position: lsp.Position.create(0, source.length),
+      });
+      expect(items.map(({ label }) => label)).toEqual(
+        expect.arrayContaining(["d0", "a0"]),
+      );
+    });
+
+    it("uses the existing operands when completing a size suffix", async () => {
+      const textDocument = await createDoc(
+        "size-with-operands.s",
+        " move. usp,a0",
+      );
+      const items = await provider.onCompletion({
+        textDocument,
+        position: lsp.Position.create(0, 6),
+      });
+      expect(items.map(({ label }) => label)).toEqual(["l"]);
+    });
+
+    it("offers register lists after a movem memory source", async () => {
+      const textDocument = await createDoc(
+        "movem-completion.s",
+        "Saved reg d2-d4/a2\nTable equ 7\n movem.l (a1)+,",
+      );
+      const items = await provider.onCompletion({
+        textDocument,
+        position: lsp.Position.create(2, 15),
+      });
+      expect(items.map(({ label }) => label)).toEqual(
+        expect.arrayContaining(["Saved", "d0", "a0"]),
+      );
+      expect(items.map(({ label }) => label)).not.toContain("Table");
+    });
+
     it("completes mnemonics", async () => {
       const textDocument = await createDoc("example.s", "  mov");
 

@@ -3,8 +3,10 @@ import { type Provider } from ".";
 import { mnemonicDocs, isInstructionDoc } from "../docs/index";
 import { type Context } from "../context";
 import { isProcessed } from "../DocumentProcessor";
-import { componentAtIndex, ComponentType, parseLine } from "../parse";
+import { ComponentType } from "../parse";
 import { parseSignature } from "../signature";
+import { rankInstructionSignatures } from "../instructionForms";
+import { instructionAtCursor, operandsForSignatures } from "../operandHelp";
 import { MarkupKind } from "vscode-languageserver";
 import { formatAddressingModes } from "../formatting";
 
@@ -20,14 +22,12 @@ export default class SignatureHelpProvider implements Provider {
       return null;
     }
 
-    const lines = processed.document.getText().split(/\r?\n/g);
-    const line = parseLine(lines[position.line]);
-    if (!line) {
-      return null;
-    }
-
+    const { line, component: info } = instructionAtCursor(
+      processed,
+      position.line,
+      position.character,
+    );
     const mnemonic = line.mnemonic?.value.toLowerCase();
-    const info = componentAtIndex(line, position.character);
 
     const doc = mnemonic && mnemonicDocs[mnemonic];
     if (!doc) {
@@ -38,35 +38,41 @@ export default class SignatureHelpProvider implements Provider {
       return null;
     }
 
-    const activeSignature = 0; // TODO
-    let activeParameter = null;
-
-    const hasSize = signatures[activeSignature].size !== undefined;
-
-    switch (info?.type) {
-      case ComponentType.Size:
-        activeParameter = 0;
-        break;
-      case ComponentType.Operand:
-        activeParameter = info.index ?? 0;
-        if (hasSize) {
-          activeParameter++;
-        }
-    }
-
-    // Default to first operand if after mnemonic and last component
-    if (activeParameter === null) {
-      if (
-        line.mnemonic &&
-        position.character > line.mnemonic.end &&
-        !line.comment &&
-        !line.operands
-      ) {
-        activeParameter = hasSize ? 1 : 0;
-      } else {
-        return null;
-      }
-    }
+    if (
+      info?.type !== ComponentType.Size &&
+      info?.type !== ComponentType.Operand
+    )
+      return null;
+    const chosen = isInstructionDoc(doc)
+      ? rankInstructionSignatures(
+          doc,
+          info.type === ComponentType.Size
+            ? undefined
+            : line.size?.value.toLowerCase(),
+          operandsForSignatures(
+            this.ctx,
+            processed,
+            position.line,
+            position.character < info.component.end ? info.index : undefined,
+          ),
+          info.index,
+        )[0]
+      : undefined;
+    const activeSignature = chosen
+      ? doc.syntax.indexOf(chosen.signature.label)
+      : 0;
+    const operandIndex = info.index ?? 0;
+    const selected = signatures[activeSignature];
+    const sourceParameter =
+      chosen && chosen.patterns.length !== selected.operands.length
+        ? selected.operands.findIndex(
+            ({ value }) => value === chosen.patterns[operandIndex],
+          )
+        : operandIndex;
+    const activeParameter =
+      info.type === ComponentType.Size
+        ? 0
+        : Math.max(0, sourceParameter) + Number(selected.size !== undefined);
 
     return {
       signatures: signatures.map(({ label, size, operands }) => {

@@ -1,6 +1,6 @@
 import type { FixAnnotation } from "../core/fix.js";
 import { readFile, stat } from "node:fs/promises";
-import { dirname, join, parse, resolve } from "node:path";
+import { basename, dirname, join, parse, resolve } from "node:path";
 import type {
   LintConfig,
   OptimizationGoal,
@@ -24,7 +24,12 @@ export {
   type IncludeFs,
 } from "./project-includes.js";
 
-export const configFileNames = ["m68k-lint.json", ".m68klintrc.json"] as const;
+/**
+ * Names a lint config file can have, the preferred one first: it is the name
+ * a new file is given, dotted like the shared `.m68krc.json`, and the one used
+ * where a directory has both. `m68k-lint.json` is still read.
+ */
+export const configFileNames = [".m68klintrc.json", "m68k-lint.json"] as const;
 
 const processors = new Set<Processor>([
   "mc68000",
@@ -124,6 +129,23 @@ export async function findProjectConfig(
     if (dir === root) return undefined;
     dir = dirname(dir);
   }
+}
+
+/**
+ * Lint config files beside `configPath` that it hides: those under the other
+ * names, which are not read while it exists.
+ */
+export async function shadowedConfigFiles(
+  configPath: string,
+): Promise<string[]> {
+  const dir = dirname(configPath);
+  const name = basename(configPath);
+  const shadowed: string[] = [];
+  for (const other of configFileNames) {
+    if (other === name) continue;
+    if (await isFile(join(dir, other))) shadowed.push(join(dir, other));
+  }
+  return shadowed;
 }
 
 function assertStringArray(

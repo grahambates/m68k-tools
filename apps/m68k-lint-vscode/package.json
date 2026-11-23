@@ -39,8 +39,8 @@
   "activationEvents": [
     "onLanguage:m68k",
     "onLanguage:vasmmot",
-    "workspaceContains:**/m68k-lint.json",
-    "workspaceContains:**/.m68klintrc.json"
+    "workspaceContains:**/.m68klintrc.json",
+    "workspaceContains:**/m68k-lint.json"
   ],
   "contributes": {
     "languages": [
@@ -62,8 +62,8 @@
     "jsonValidation": [
       {
         "fileMatch": [
-          "m68k-lint.json",
-          ".m68klintrc.json"
+          ".m68klintrc.json",
+          "m68k-lint.json"
         ],
         "url": "./out/m68k-lint.schema.json"
       }
@@ -108,7 +108,7 @@
             "atari"
           ],
           "default": "generic",
-          "markdownDescription": "Target platform, used when the workspace has no config file. A checked-in `m68k-lint.json` overrides this."
+          "markdownDescription": "Target platform, used when the workspace has no config file. A checked-in `.m68klintrc.json` overrides this."
         },
         "m68kLint.defaults.processors": {
           "type": "array",
@@ -127,7 +127,7 @@
           "default": [
             "mc68000"
           ],
-          "markdownDescription": "Target CPUs, used when the workspace has no config file. A checked-in `m68k-lint.json` overrides this."
+          "markdownDescription": "Target CPUs, used when the workspace has no config file. A checked-in `.m68klintrc.json` overrides this."
         },
         "m68kLint.defaults.goal": {
           "type": "string",

@@ -1,7 +1,11 @@
 import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { findProjectConfig, loadProjectConfig } from "../cli/project-config.js";
+import {
+  findProjectConfig,
+  loadProjectConfig,
+  shadowedConfigFiles,
+} from "../cli/project-config.js";
 
 describe("project config", () => {
   test("rejects the removed performance category", async () => {
@@ -38,6 +42,19 @@ describe("project config", () => {
     const config = join(root, "m68k-lint.json");
     await writeFile(config, JSON.stringify({ platform: "amiga" }));
     expect(await findProjectConfig(nested)).toBe(config);
+  });
+
+  test("prefers .m68klintrc.json, and names the file it hides", async () => {
+    const root = await mkdtemp(join(tmpdir(), "m68k-lint-config-both-"));
+    const dotted = join(root, ".m68klintrc.json");
+    const plain = join(root, "m68k-lint.json");
+    await writeFile(plain, "{}");
+    expect(await findProjectConfig(root)).toBe(plain);
+    expect(await shadowedConfigFiles(plain)).toEqual([]);
+
+    await writeFile(dotted, "{}");
+    expect(await findProjectConfig(root)).toBe(dotted);
+    expect(await shadowedConfigFiles(dotted)).toEqual([plain]);
   });
 
   test("loads lint and discovery settings", async () => {

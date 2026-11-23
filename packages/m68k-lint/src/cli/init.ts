@@ -1,11 +1,30 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { basename, join } from "node:path";
 import type { OptimizationGoal, Platform, Processor } from "../core/config.js";
 import { defaultAssemblyExtensions } from "./file-discovery.js";
+import { configFileNames } from "./project-config.js";
 import { paint } from "./format.js";
 import { VERSION } from "./version.js";
 
-export const initConfigFileName = "m68k-lint.json";
+/** The name a new lint config file is written under. */
+export const initConfigFileName = configFileNames[0];
+
+/**
+ * The file `--init` writes: the lint config already in `dir`, under either
+ * name, so as not to leave two; otherwise a new `.m68klintrc.json`.
+ */
+export async function initConfigPath(dir: string): Promise<string> {
+  for (const name of configFileNames) {
+    const path = join(dir, name);
+    try {
+      await readFile(path, "utf8");
+      return path;
+    } catch {
+      // Not under this name.
+    }
+  }
+  return join(dir, initConfigFileName);
+}
 
 /**
  * The questions are asked through this rather than readline directly, so the
@@ -258,13 +277,14 @@ export function terminalPrompt(rl: {
 export async function runInit(color: boolean): Promise<number> {
   if (!process.stdin.isTTY) {
     console.error(
-      "m68k-lint: --init needs an interactive terminal. Write m68k-lint.json by hand instead;",
+      `m68k-lint: --init needs an interactive terminal. Write ${initConfigFileName} by hand instead;`,
     );
     console.error(`its schema is at ${schemaUrl()}.`);
     return 2;
   }
 
-  const target = resolve(process.cwd(), initConfigFileName);
+  const target = await initConfigPath(process.cwd());
+  const targetName = basename(target);
   const { createInterface } = await import("node:readline/promises");
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   try {
@@ -279,10 +299,7 @@ export async function runInit(color: boolean): Promise<number> {
     const prompt = terminalPrompt(rl);
     if (
       existing &&
-      !(await prompt.confirm(
-        `${initConfigFileName} already exists. Overwrite?`,
-        false,
-      ))
+      !(await prompt.confirm(`${targetName} already exists. Overwrite?`, false))
     ) {
       console.log("Cancelled; nothing written.");
       return 0;
@@ -297,14 +314,14 @@ export async function runInit(color: boolean): Promise<number> {
 
     const contents = renderInitConfig(answers);
     console.log(`\n${contents}`);
-    if (!(await prompt.confirm(`Write ${initConfigFileName}?`, true))) {
+    if (!(await prompt.confirm(`Write ${targetName}?`, true))) {
       console.log("Cancelled; nothing written.");
       return 0;
     }
 
     await writeFile(target, contents, "utf8");
     console.log(
-      `${paint(color, 32, "Created")} ${initConfigFileName} (${describeInitConfig(answers)})`,
+      `${paint(color, 32, "Created")} ${targetName} (${describeInitConfig(answers)})`,
     );
     return 0;
   } catch (error) {

@@ -6,6 +6,7 @@ import {
   collectInitAnswers,
   describeInitConfig,
   detectSourceGlobs,
+  initConfigPath,
   normalizeIgnoreGlobs,
   renderInitConfig,
   schemaUrl,
@@ -179,6 +180,13 @@ describe("m68k-lint --init", () => {
       ]);
       expect(await detectSourceGlobs(root)).toEqual(["**"]);
     });
+  });
+
+  test("writes .m68klintrc.json, or replaces the config already there", async () => {
+    const root = await mkdtemp(join(tmpdir(), "m68k-lint-init-target-"));
+    expect(await initConfigPath(root)).toBe(join(root, ".m68klintrc.json"));
+    await writeFile(join(root, "m68k-lint.json"), "{}");
+    expect(await initConfigPath(root)).toBe(join(root, "m68k-lint.json"));
   });
 
   test("summarises what the config turns on", () => {

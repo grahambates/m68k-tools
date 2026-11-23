@@ -22,7 +22,8 @@ what assembles fine but is wrong, suspicious or slow.
 
 ## Configuration
 
-Add a `m68k-lint.json` to your project (`m68k-lint --init` writes one). It is found by walking
+Add a `.m68klintrc.json` to your project (`m68k-lint --init` writes one; the older name
+`m68k-lint.json` is still read). It is found by walking
 up from the file being linted, and it takes precedence over this extension's settings — so a
 config file checked into a repo gives everyone on the team the same results.
 

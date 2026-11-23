@@ -79,6 +79,17 @@ describe("diagnostics", () => {
     assert.deepEqual(diagnostics, [], "m68k-lint.json turns prefer-moveq off");
   });
 
+  it("uses .m68klintrc.json over m68k-lint.json beside it", async () => {
+    const client = withClient();
+    await client.initialize(fixture("bothconfigs"));
+    const { diagnostics } = await client.open(fixture("bothconfigs/moveq.s"));
+    assert.deepEqual(
+      diagnostics,
+      [],
+      ".m68klintrc.json turns prefer-moveq off",
+    );
+  });
+
   it("resolves constants defined in another file", async () => {
     const client = withClient();
     await client.initialize(fixture("includes"));
@@ -642,8 +653,10 @@ describe("ignoring a file from a code action", () => {
     const action = actions.find((a) => title.test(a.title));
 
     assert.ok(action, "the action is offered");
-    assert.equal(action.title, "Ignore this file (creates m68k-lint.json)");
-    const configUri = pathToFileURL(fixture("basic/m68k-lint.json")).toString();
+    assert.equal(action.title, "Ignore this file (creates .m68klintrc.json)");
+    const configUri = pathToFileURL(
+      fixture("basic/.m68klintrc.json"),
+    ).toString();
     const [create, edit] = action.edit.documentChanges;
     assert.equal(create.kind, "create");
     assert.equal(create.uri, configUri);

@@ -40,6 +40,7 @@ import {
   configIncludePaths,
   configSourceRoot,
   findProjectConfig,
+  shadowedConfigFiles,
   followIncludes,
   knownProcessors,
   includeCaseOnDisk,
@@ -463,6 +464,13 @@ export async function run(argv: string[]): Promise<number> {
       : options.useConfig
         ? await findProjectConfig()
         : undefined;
+    if (projectConfigPath && !options.configPath) {
+      for (const shadowed of await shadowedConfigFiles(projectConfigPath)) {
+        console.error(
+          `m68k-lint: using ${relative(process.cwd(), projectConfigPath) || projectConfigPath}; ${relative(process.cwd(), shadowed) || shadowed} beside it is ignored`,
+        );
+      }
+    }
     if (projectConfigPath)
       projectConfig = await loadProjectConfig(projectConfigPath);
   } catch (error) {

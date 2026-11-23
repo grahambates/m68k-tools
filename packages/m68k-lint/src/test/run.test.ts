@@ -526,6 +526,24 @@ describe("symbol case and the shared config", () => {
     expect(resolved(out)).toBe(0);
   });
 
+  test("uses .m68klintrc.json over m68k-lint.json beside it, and says so", async () => {
+    const dir = await project({
+      ".m68klintrc.json": { caseSensitive: false },
+      "m68k-lint.json": { caseSensitive: true },
+    });
+    // The config is searched for from the working directory.
+    const cwd = vi.spyOn(process, "cwd").mockReturnValue(dir);
+    try {
+      const { out, err } = await lint(dir);
+      expect(resolved(out)).toBe(0);
+      expect(err).toContain(
+        "m68k-lint: using .m68klintrc.json; m68k-lint.json beside it is ignored",
+      );
+    } finally {
+      cwd.mockRestore();
+    }
+  });
+
   test("case is folded by the shared file alone", async () => {
     const dir = await project({ ".m68krc.json": { caseSensitive: false } });
     expect(resolved((await lint(dir)).out)).toBe(0);

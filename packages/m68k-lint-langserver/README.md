@@ -24,7 +24,8 @@ other also provides would turn into a formatter prompt or a definition picker fo
 
 ## Configuration
 
-Reads `m68k-lint.json` / `.m68klintrc.json`, found by walking up from the file being linted.
+Reads `.m68klintrc.json` (or the older `m68k-lint.json`), found by walking up from the file
+being linted. Where a directory has both, `.m68klintrc.json` is used, with a warning.
 That file takes precedence over LSP settings.
 
 Files matched by the config's `ignores` are not linted here either, the same as on the
@@ -65,7 +66,7 @@ Settings, under the `m68kLint` section:
 vim.lsp.config("m68k_lint", {
   cmd = { "m68k-lint-langserver", "--stdio" },
   filetypes = { "asm68k", "m68k", "asm" },
-  root_markers = { "m68k-lint.json", ".m68klintrc.json", ".git" },
+  root_markers = { ".m68klintrc.json", "m68k-lint.json", ".git" },
 })
 vim.lsp.enable("m68k_lint")
 ```

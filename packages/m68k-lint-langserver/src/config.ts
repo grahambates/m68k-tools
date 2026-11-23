@@ -1,5 +1,5 @@
 import type { FixAnnotation } from "m68k-lint";
-import { dirname, relative, sep } from "node:path";
+import { basename, dirname, relative, sep } from "node:path";
 import { defaultConfig, type LintConfig } from "m68k-lint";
 import {
   configIgnores,
@@ -10,6 +10,7 @@ import {
   knownProcessors,
   loadProjectConfig,
   lintConfigFromProject,
+  shadowedConfigFiles,
 } from "m68k-lint/project-config";
 import {
   findAssemblyConfig,
@@ -22,7 +23,7 @@ import {
  * Editor settings, under the `m68kLint` section.
  *
  * The lint-semantic fields mirror the project config file, but the file wins
- * where both speak. A checked-in `m68k-lint.json` is what makes a team's
+ * where both speak. A checked-in `.m68klintrc.json` is what makes a team's
  * results match; per-user settings quietly overriding it is how "works on my
  * machine" starts. These apply when a workspace has no config file at all.
  */
@@ -154,6 +155,16 @@ export class ConfigResolver {
         warnings,
       };
 
+    const found = configPath;
+    const shadowed = await shadowedConfigFiles(found).catch(() => []);
+    const allWarnings = [
+      ...warnings,
+      ...shadowed.map(
+        (other) =>
+          `${found}: used instead of ${basename(other)} beside it, which is ignored`,
+      ),
+    ];
+
     try {
       const project = await loadProjectConfig(configPath);
       // lintConfigFromProject returns every key, undefined where the file was
@@ -169,14 +180,14 @@ export class ConfigResolver {
         ).includePaths,
         sourceRoot:
           configSourceRoot(project, dirname(configPath)) ?? shared.sourceRoot,
-        warnings,
+        warnings: allWarnings,
       };
     } catch (error) {
       return {
         config: base,
         configPath,
         error: error instanceof Error ? error.message : String(error),
-        warnings,
+        warnings: allWarnings,
       };
     }
   }

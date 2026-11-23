@@ -157,14 +157,16 @@ m68k-lint --init
 ```
 
 Asks for platform, processors, optimization goal and the style preset, then
-writes `m68k-lint.json`. Source globs are suggested from where the assembly
+writes `.m68klintrc.json`, or replaces the config already in the directory. Source globs are suggested from where the assembly
 files actually are: `**` when any sit in the project root, otherwise the
 subdirectories that contain them. Only
 answers that differ from the defaults are written, and an ignore entry naming a
 bare directory gets the trailing `/**` it needs to match anything. It shows the
 file and asks before writing, and asks again before overwriting an existing one.
 
-The CLI searches upward for `m68k-lint.json` or `.m68klintrc.json`. Precedence is
+The CLI searches upward for `.m68klintrc.json`, named like the shared `.m68krc.json`. The
+older name `m68k-lint.json` is still read; where a directory has both, `.m68klintrc.json` is
+used and the CLI says the other is ignored. Precedence is
 defaults < config file < CLI, with `rules` merged so `--rule` overrides only the
 named rule. File and ignore patterns are relative to the config file's directory.
 
@@ -240,7 +242,7 @@ the constants in it unresolved.
 
 The language server applies the same patterns, and offers an **Ignore this file** quick fix on
 any finding. It adds the file to `ignores` in the config that applies, beside the entries
-already there and leaving the rest of the file as it was, and creates `m68k-lint.json` at the
+already there and leaving the rest of the file as it was, and creates `.m68klintrc.json` at the
 workspace root if the project has none (which needs a client that can create a file as part of
 an edit, and a file inside the workspace).
 
@@ -507,7 +509,7 @@ whether it lasts for this run or is written down.
 
 `Y` and `N` settle a rule for the rest of the session and leave nothing behind:
 the next run asks again. That is what separates `N` from `d`, which writes the
-rule off in `m68k-lint.json` for good, preserving anything already in the file.
+rule off in the config file for good (creating `.m68klintrc.json` if there is none), preserving anything already in the file.
 
 `a` and `d` are the answers that persist, one against a single line and one
 against everything. Both are the useful answers for a finding with no rewrite,

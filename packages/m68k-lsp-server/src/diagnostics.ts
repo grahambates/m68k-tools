@@ -11,7 +11,12 @@ import { tmpdir } from "os";
 import { basename, dirname, join, relative } from "path";
 import { minimatch } from "minimatch";
 
-import { type Config, assemblerArgs, vasmRunDirectory } from "./config";
+import {
+  type Config,
+  assemblerArgs,
+  symbolsCaseSensitive,
+  vasmRunDirectory,
+} from "./config";
 import { configFor } from "./documentConfigs";
 import { type InferredDirectory } from "@m68k-lsp/assembly-options";
 import { existsSync } from "fs";
@@ -22,9 +27,10 @@ import {
   unresolvedIncludes,
 } from "./includeInference";
 import { type Context } from "./context";
-import { getEntryPointsFor } from "./files";
+import { getEntryPointsFor, getIncluded, getIncluders } from "./files";
 import { instructionDocs } from "./docs";
-import { locationAsRange } from "m68k-parser";
+import { locationAsRange, symbolKey } from "m68k-parser";
+import { analyzeConditionals } from "./inactiveConditionals";
 
 const wasmPath = join(__dirname, "..", "wasm", "vasmm68k_mot");
 
@@ -295,7 +301,56 @@ export default class DiagnosticProcessor {
       }
     }
 
-    return diagnostics;
+    const includes = this.ctx.store.get(uri)?.resolvedIncludeLines;
+    const conditional = analyzeConditionals(
+      parsed,
+      blocks,
+      conf,
+      (line) => {
+        const included = includes?.get(line);
+        return included
+          ? this.ctx.store.get(included)?.assemblyConstants
+          : undefined;
+      },
+      true,
+      (line, name) => {
+        if (getIncluders(uri, this.ctx).length) return true;
+        const key = (value: string) =>
+          symbolKey(value, symbolsCaseSensitive(conf));
+        const target = key(name);
+        return parsed.lines
+          .slice(0, line)
+          .some(({ label, mnemonic }, index) => {
+            if (label && key(label.label) === target) return true;
+            if (
+              mnemonic?.type === "macro" ||
+              mnemonic?.type === "macro-parameter"
+            )
+              return true;
+            if (
+              mnemonic?.type !== "directive" ||
+              mnemonic.directive !== "include"
+            )
+              return false;
+            const included = includes?.get(index);
+            if (!included) return true;
+            return [included, ...getIncluded(included, this.ctx)].some(
+              (file) => {
+                const indexed = this.ctx.store.get(file);
+                return (
+                  !indexed ||
+                  indexed.symbols.includes.length !==
+                    (indexed.resolvedIncludeLines?.size ?? 0) ||
+                  [...indexed.symbols.definitions.keys()].some(
+                    (symbol) => key(symbol) === target,
+                  )
+                );
+              },
+            );
+          });
+      },
+    );
+    return [...diagnostics, ...conditional.diagnostics];
   }
 }
 

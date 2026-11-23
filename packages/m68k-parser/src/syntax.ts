@@ -909,7 +909,7 @@ export const blockOpeners: Record<string, readonly string[]> = {
 };
 
 /** Directives that end one arm of a conditional and begin the next. */
-export const blockAlternatives = new Set(["else", "elseif"]);
+export const blockAlternatives = new Set(["else", "elseif", "elif"]);
 
 /** Every directive that closes a block. */
 export const blockTerminators = new Set(["endm", "endr", "endc", "endif"]);

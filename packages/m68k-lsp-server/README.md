@@ -23,6 +23,7 @@ family assembly, using [m68k-parser](https://github.com/grahambates/m68k-tools/t
 - Document Formatting
 - Document Highlights
 - Semantic highlighting for resolved symbols and their declarations
+- Dimming for conditional assembly branches that can be resolved from known source values
 - Document Links
 - Document Symbols
 - Register usage and availability analysis, navigation, swapping and remapping;

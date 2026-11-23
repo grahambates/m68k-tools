@@ -8,10 +8,12 @@ import {
 import type { BlockStructure, MacroDefinition, ParsedFile } from "m68k-parser";
 import { type TextDocument } from "vscode-languageserver-textdocument";
 
-import { readDocumentFromUri, resolveReferencedUris } from "./files";
+import { readDocumentFromUri, resolveIncludeLines } from "./files";
 import { processSymbols, type Symbols } from "./symbols";
 import { type Context } from "./context";
 import { symbolsCaseSensitive } from "./config";
+import { configFor } from "./documentConfigs";
+import { analyzeConditionals } from "./inactiveConditionals";
 
 /**
  * What every file in the workspace contributes to resolution.
@@ -24,6 +26,8 @@ export interface IndexedDocument {
   uri: string;
   symbols: Symbols;
   referencedUris: string[];
+  resolvedIncludeLines?: Map<number, string>;
+  assemblyConstants?: ReadonlyMap<string, number>;
   macros: Map<string, MacroDefinition>;
 }
 
@@ -88,6 +92,13 @@ export default class DocumentProcessor {
         symbolsCaseSensitive(this.ctx.config),
       ),
       referencedUris: [],
+      assemblyConstants: analyzeConditionals(
+        parsed,
+        blocks,
+        configFor(this.ctx, document.uri),
+        undefined,
+        false,
+      ).constants,
       macros: collectMacroDefinitions(
         parsed,
         blocks,
@@ -143,6 +154,13 @@ export default class DocumentProcessor {
         symbolsCaseSensitive(this.ctx.config),
       ),
       referencedUris: [],
+      assemblyConstants: analyzeConditionals(
+        parsed,
+        blocks,
+        configFor(this.ctx, document.uri),
+        undefined,
+        false,
+      ).constants,
       macros: collectMacroDefinitions(
         parsed,
         blocks,
@@ -225,7 +243,8 @@ export default class DocumentProcessor {
   ): Promise<void> {
     const referenceUpdate = Symbol();
     referenceUpdates.set(document, referenceUpdate);
-    const resolved = await resolveReferencedUris(document.uri, this.ctx);
+    const includeLines = await resolveIncludeLines(document.uri, this.ctx);
+    const resolved = [...new Set(includeLines.values())];
     if (
       referenceUpdates.get(document) !== referenceUpdate ||
       this.ctx.store.get(document.uri) !== document ||
@@ -234,6 +253,7 @@ export default class DocumentProcessor {
       return;
     }
     document.referencedUris = resolved;
+    document.resolvedIncludeLines = includeLines;
     await Promise.all(resolved.map((uri) => this.indexIfAbsent(uri)));
     if (
       resolved.length !== previousReferences.length ||

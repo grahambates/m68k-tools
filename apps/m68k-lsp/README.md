@@ -6,6 +6,7 @@ Adds language support for Motorola 68000 Assembly to Visual Studio Code.
 
 - Syntax highlighting
 - Semantic highlighting for labels, constants, variables, macros, register aliases and sections
+- Dimming for conditional assembly with known conditions
 - Snippets
 - Auto-completion:
   - Instruction mnemonics
@@ -77,6 +78,10 @@ Run **Tasks: Run Build Task**. To use a native assembler, set `"assembler": "nat
 ### Operand completion and signature help
 
 The current size suffix and operands help select a matching instruction form. For example, after `move.l usp,`, completion offers address registers and matching aliases. Signature help selects the corresponding form and keeps the documented alternatives available.
+
+### Conditional assembly
+
+The editor dims branches that the language server can rule out using numeric expressions and earlier assignments in the same file and known constants from resolved direct includes. It uses `-D` flags from `vasm.args` and recognises simple `ifnd` defaults when no earlier definition is possible. Other build flags, unresolved includes and macro arguments can leave a condition undecided. The PUAE Debugger can use the vasm listing from a debug build to shade those branches when the listing provides enough evidence.
 
 ### Semantic highlighting
 

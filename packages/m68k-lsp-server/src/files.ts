@@ -152,23 +152,20 @@ export async function* resolveIncludesGen(
 /**
  * Get array of URIs referenced in document
  */
-export async function resolveReferencedUris(
+export async function resolveIncludeLines(
   documentUri: string,
   ctx: ResolveContext,
-): Promise<string[]> {
-  const uris = new Set<string>();
-  const docSymbols = ctx.store.get(documentUri)?.symbols;
-  if (docSymbols) {
-    await Promise.all(
-      docSymbols.includes.map(async (path) => {
-        const resolved = await resolveInclude(documentUri, path.text, ctx);
-        if (resolved) {
-          uris.add(URI.file(resolved).toString());
-        }
-      }),
-    );
-  }
-  return Array.from(uris);
+): Promise<Map<number, string>> {
+  const includes = ctx.store.get(documentUri)?.symbols.includes ?? [];
+  const resolved = await Promise.all(
+    includes.map(async ({ location, text }) => {
+      const path = await resolveInclude(documentUri, text, ctx);
+      return path
+        ? ([location.range.start.line, URI.file(path).toString()] as const)
+        : undefined;
+    }),
+  );
+  return new Map(resolved.filter((entry) => entry !== undefined));
 }
 
 /**

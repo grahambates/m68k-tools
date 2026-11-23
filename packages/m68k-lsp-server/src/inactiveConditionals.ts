@@ -73,6 +73,7 @@ export function analyzeConditionals(
 ) {
   const values: Values = new Map();
   let atLine: Values | undefined;
+  let captureTarget = targetLine !== undefined;
   const defaults = new Map<string, ExpressionNode>();
   if (errors.length)
     return {
@@ -266,8 +267,9 @@ export function analyzeConditionals(
   ) {
     let next = 0;
     for (let index = start; index < end; index++) {
-      if (targetLine !== undefined && index > targetLine) return;
-      if (index === targetLine) atLine = new Map(values);
+      if (captureTarget && targetLine !== undefined && index > targetLine)
+        return;
+      if (captureTarget && index === targetLine) atLine = new Map(values);
       const block = children[next];
       if (block?.start === index && block.end !== undefined) {
         if (block.kind === "conditional")
@@ -276,6 +278,7 @@ export function analyzeConditionals(
         // do not execute until invoked and cannot inherit today's values.
         if (
           block.kind !== "conditional" &&
+          captureTarget &&
           targetLine !== undefined &&
           targetLine > block.start &&
           targetLine < block.end
@@ -304,7 +307,7 @@ export function analyzeConditionals(
     let remaining: boolean | undefined = true;
     for (let i = 0; i < arms.length - 1; i++) {
       const head = arms[i];
-      if (head === targetLine) atLine = new Map(values);
+      if (captureTarget && head === targetLine) atLine = new Map(values);
       const end = arms[i + 1];
       let selected = remaining === false ? false : condition(head, values);
       if (headerGuard && block === outer) selected = true;
@@ -386,6 +389,55 @@ export function analyzeConditionals(
     }
   }
 
+  const target = targetLine === undefined ? undefined : lines[targetLine];
+  const initialValues =
+    target?.mnemonic?.type === "instruction" && !target.inlineCondition
+      ? new Map(values)
+      : undefined;
+  let forwardValues: Values | undefined;
+
+  function evaluateOperand(
+    expression: ExpressionNode,
+    snapshot: Values,
+    line: number,
+  ) {
+    const value = evaluate(expression, snapshot);
+    if (value !== undefined || !initialValues) return value;
+    if (!forwardValues) {
+      // An instruction operand can refer to an immutable equate defined
+      // later. Parse-time conditions and assignments still use source order.
+      const later = new Map(initialValues);
+      captureTarget = false;
+      walk(0, lines.length, blocks, later, false);
+      const definitions = new Map<string, number>();
+      const candidates = new Set<string>();
+      for (const [index, source] of lines.entries()) {
+        if (source.label?.scope !== "global") continue;
+        const name = key(source.label.label);
+        definitions.set(name, (definitions.get(name) ?? 0) + 1);
+        if (
+          index > line &&
+          !source.inlineCondition &&
+          ["=", "equ"].includes(directive(source) ?? "")
+        ) {
+          candidates.add(name);
+        }
+      }
+      forwardValues = new Map(snapshot);
+      for (const name of candidates) {
+        const entry = later.get(name);
+        if (
+          entry?.immutable &&
+          definitions.get(name) === 1 &&
+          !forwardValues.has(name)
+        ) {
+          forwardValues.set(name, entry);
+        }
+      }
+    }
+    return evaluate(expression, forwardValues);
+  }
+
   walk(0, lines.length, blocks, values, reportDiagnostics);
   const constants = new Map<string, number>();
   for (const [name, entry] of values) {
@@ -399,7 +451,8 @@ export function analyzeConditionals(
     guard: headerGuard,
     evaluateAtLine:
       snapshot && targetLine !== undefined && !invalid.has(targetLine)
-        ? (expression: ExpressionNode) => evaluate(expression, snapshot)
+        ? (expression: ExpressionNode) =>
+            evaluateOperand(expression, snapshot, targetLine)
         : undefined,
   };
 }

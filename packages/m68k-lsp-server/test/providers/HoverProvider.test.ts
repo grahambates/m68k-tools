@@ -223,6 +223,42 @@ describe("HoverProvider", () => {
       );
     });
 
+    it("resolves a forward equate in operands without using it in a condition", async () => {
+      const document = await createDoc(
+        "forward-operand-hover.s",
+        [
+          "HEIGHT = 128",
+          " move.w #SCROLL_ROW,(a2)+",
+          " lea SCROLL_ROW*2(a1),a1",
+          " ifeq SCROLL_ROW",
+          " nop",
+          " endc",
+          "SCROLL_ROW = HEIGHT",
+        ].join("\n"),
+      );
+      const hover = (line: number, character: number) =>
+        provider.onHover({
+          textDocument: document,
+          position: lsp.Position.create(line, character),
+        });
+      expect((await hover(1, 12))?.contents).toEqual([
+        {
+          language: "vasmmot",
+          value: "SCROLL_ROW = HEIGHT\n           = 128 ($80)",
+        },
+      ]);
+      expect((await hover(2, 10))?.contents).toEqual([
+        {
+          language: "vasmmot",
+          value:
+            "SCROLL_ROW = HEIGHT\n           = 128 ($80)\nExpression = 256 ($100)",
+        },
+      ]);
+      expect((await hover(3, 9))?.contents).toEqual([
+        { language: "vasmmot", value: "SCROLL_ROW = HEIGHT" },
+      ]);
+    });
+
     it("provide hover info for instructions", async () => {
       const textDocument = await createDoc("example.s", ` move #foo,d1`);
 

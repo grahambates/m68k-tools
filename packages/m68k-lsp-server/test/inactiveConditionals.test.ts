@@ -357,6 +357,49 @@ describe("inactive conditional assembly", async () => {
     expect(constants?.has("early")).toBe(false);
   });
 
+  it("merges what nested arms change, and what a macro call in an arm forgets", async () => {
+    const source = [
+      "Wait macro",
+      " nop",
+      " endm",
+      "COUNT set 1",
+      "KEEP set 5",
+      "SIZE equ 3",
+      " ifne BUILD",
+      " ifne 1",
+      "COUNT set 2",
+      " endc",
+      " else",
+      "COUNT set 2",
+      " endc",
+      // Every path leaves COUNT at 2.
+      " ifeq COUNT-2",
+      " nop",
+      " else",
+      " illegal",
+      " endc",
+      " ifne BUILD",
+      " Wait",
+      " endc",
+      // The macro may have changed KEEP, on one path only.
+      " ifeq KEEP-5",
+      " nop",
+      " else",
+      " illegal",
+      " endc",
+      // A constant cannot change, whatever the macro does.
+      " ifeq SIZE-3",
+      " nop",
+      " else",
+      " illegal",
+      " endc",
+    ].join("\n");
+    expect(await lines(source)).toEqual([
+      [16, 17],
+      [29, 30],
+    ]);
+  });
+
   it("dims the statement of a known-false inline condition", async () => {
     expect((await inactive(" iif 0 nop"))[0]?.range.start).toEqual({
       line: 0,

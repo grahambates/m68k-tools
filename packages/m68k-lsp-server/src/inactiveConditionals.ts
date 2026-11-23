@@ -31,7 +31,76 @@ interface KnownValue {
 
 type Pending = (values: Values) => number | undefined;
 
-type Values = Map<string, KnownValue>;
+/**
+ * Symbols known at a point in the walk.
+ *
+ * A conditional's arms each start from the same values. Rather than copy every
+ * symbol for each arm, an arm runs on these values while a journal records the
+ * first earlier entry of each name it changes; the arm's changes are read from
+ * the journal and then undone. That keeps a conditional's cost to what it
+ * changes, where copying made a file of many conditionals and many symbols
+ * quadratic. Mutable names are kept apart for the same reason, as includes and
+ * macro calls forget them.
+ */
+class Values extends Map<string, KnownValue> {
+  private readonly mutable = new Set<string>();
+  private readonly journals: Map<string, KnownValue | undefined>[] = [];
+
+  constructor(entries?: Iterable<readonly [string, KnownValue]>) {
+    // Entries are added here rather than by Map, whose constructor would call
+    // `set` before the fields above exist.
+    super();
+    for (const [name, entry] of entries ?? []) this.set(name, entry);
+  }
+
+  private record(name: string) {
+    const journal = this.journals.at(-1);
+    if (journal && !journal.has(name)) journal.set(name, super.get(name));
+  }
+
+  override set(name: string, entry: KnownValue): this {
+    this.record(name);
+    if (entry.immutable) this.mutable.delete(name);
+    else this.mutable.add(name);
+    return super.set(name, entry);
+  }
+
+  override delete(name: string): boolean {
+    if (!super.has(name)) return false;
+    this.record(name);
+    this.mutable.delete(name);
+    return super.delete(name);
+  }
+
+  override clear(): void {
+    for (const name of [...this.keys()]) this.delete(name);
+  }
+
+  /** Includes and macro calls can change SET values, but not constants. */
+  forgetMutable() {
+    for (const name of [...this.mutable]) this.delete(name);
+  }
+
+  /** Start recording changes, for `undo` to take back. */
+  begin() {
+    this.journals.push(new Map());
+  }
+
+  /**
+   * Take back the changes since `begin`, returning what they left: each
+   * changed name's entry then, or undefined where it was removed.
+   */
+  undo(): Map<string, KnownValue | undefined> {
+    const journal = this.journals.pop()!;
+    const changes = new Map<string, KnownValue | undefined>();
+    for (const [name, earlier] of journal) {
+      changes.set(name, super.get(name));
+      if (earlier === undefined) this.delete(name);
+      else this.set(name, earlier);
+    }
+    return changes;
+  }
+}
 
 /** Directives whose operands vasm can resolve from later definitions. */
 const FINAL_PASS_DIRECTIVES = new Set([
@@ -83,12 +152,6 @@ export interface AssemblyConstants {
   guard?: string;
 }
 
-function forgetMutableValues(values: Values) {
-  for (const [name, entry] of values) {
-    if (!entry.immutable) values.delete(name);
-  }
-}
-
 const directive = ({ mnemonic }: ParsedLine) =>
   mnemonic?.type === "directive" ? mnemonic.directive : undefined;
 
@@ -119,7 +182,7 @@ export function analyzeConditionals(
    */
   offsetCountersStart?: number,
 ) {
-  const values: Values = new Map();
+  const values = new Values();
   /** What each assignment line assigned, as the walk reached it. */
   const defined = new Map<number, KnownValue>();
   let atLine: Values | undefined;
@@ -301,7 +364,7 @@ export function analyzeConditionals(
       line.mnemonic?.type === "macro" ||
       line.mnemonic?.type === "macro-parameter"
     ) {
-      forgetMutableValues(values);
+      values.forgetMutable();
       if (
         name === "include" &&
         (!line.inlineCondition || conditional !== undefined)
@@ -451,7 +514,7 @@ export function analyzeConditionals(
     for (let index = start; index < end; index++) {
       if (captureTarget && targetLine !== undefined && index > targetLine)
         return;
-      if (captureTarget && index === targetLine) atLine = new Map(values);
+      if (captureTarget && index === targetLine) atLine = new Values(values);
       const block = children[next];
       if (block?.start === index && block.end !== undefined) {
         if (block.kind === "conditional")
@@ -465,11 +528,11 @@ export function analyzeConditionals(
           targetLine > block.start &&
           targetLine < block.end
         ) {
-          atLine = new Map(values);
-          forgetMutableValues(atLine);
+          atLine = new Values(values);
+          atLine.forgetMutable();
           return;
         }
-        if (block.kind === "repeat") forgetMutableValues(values);
+        if (block.kind === "repeat") values.forgetMutable();
         index = block.end;
         next++;
       } else if (
@@ -485,11 +548,12 @@ export function analyzeConditionals(
 
   function walkConditional(block: Block, values: Values, report: boolean) {
     const arms = [block.start, ...block.alternatives, block.end!];
-    const outcomes: Values[] = [];
+    // What each arm that may assemble changes, from the values before it.
+    const outcomes: Map<string, KnownValue | undefined>[] = [];
     let remaining: boolean | undefined = true;
     for (let i = 0; i < arms.length - 1; i++) {
       const head = arms[i];
-      if (captureTarget && head === targetLine) atLine = new Map(values);
+      if (captureTarget && head === targetLine) atLine = new Values(values);
       const end = arms[i + 1];
       let selected = remaining === false ? false : condition(head, values);
       if (headerGuard && block === outer) selected = true;
@@ -539,34 +603,41 @@ export function analyzeConditionals(
         if (report && head + 1 < end)
           dim({ line: head + 1, character: 0 }, { line: end, character: 0 });
       } else {
-        const branch = new Map(values);
+        values.begin();
         walk(
           head + 1,
           end,
           block.children.filter(
             (child) => child.start > head && child.start < end,
           ),
-          branch,
+          values,
           report && remaining === true && selected === true,
         );
-        outcomes.push(branch);
+        outcomes.push(values.undo());
       }
       if (selected === true) remaining = false;
       else if (selected === undefined) remaining = undefined;
     }
-    if (remaining !== false) outcomes.push(new Map(values));
+    // The path that skips every arm changes nothing.
+    if (remaining !== false) outcomes.push(new Map());
 
     // A value remains usable after the conditional if every possible path
-    // gives it the same value, including the path that skips all arms.
-    values.clear();
-    for (const [name, entry] of outcomes[0] ?? []) {
-      if (
-        outcomes.every((outcome) => outcome.get(name)?.value === entry.value)
-      ) {
+    // gives it the same value, including the path that skips all arms. Only
+    // names some arm changed can differ.
+    const changed = new Set(outcomes.flatMap((outcome) => [...outcome.keys()]));
+    for (const name of changed) {
+      const before = values.get(name);
+      const results = outcomes.map((outcome) =>
+        outcome.has(name) ? outcome.get(name) : before,
+      );
+      const [first] = results;
+      if (first && results.every((result) => result?.value === first.value)) {
         values.set(name, {
-          value: entry.value,
-          immutable: outcomes.every((outcome) => outcome.get(name)?.immutable),
+          value: first.value,
+          immutable: results.every((result) => result?.immutable),
         });
+      } else {
+        values.delete(name);
       }
     }
   }
@@ -582,7 +653,7 @@ export function analyzeConditionals(
     (target.mnemonic?.type === "instruction" ||
       (targetDirective !== undefined &&
         FINAL_PASS_DIRECTIVES.has(targetDirective)))
-      ? new Map(values)
+      ? new Values(values)
       : undefined;
   let forwardValues: Values | undefined;
 
@@ -596,7 +667,7 @@ export function analyzeConditionals(
     if (!forwardValues) {
       // Such a line can refer to a constant or offset defined later, or, for
       // an offset's own label, on the line itself.
-      const later = new Map(initialValues);
+      const later = new Values(initialValues);
       captureTarget = false;
       walk(0, lines.length, blocks, later, false);
       const definitions = definitionCounts();
@@ -612,7 +683,7 @@ export function analyzeConditionals(
           candidates.add(name);
         }
       }
-      forwardValues = new Map(snapshot);
+      forwardValues = new Values(snapshot);
       for (const name of candidates) {
         const entry = later.get(name);
         if (
@@ -649,7 +720,7 @@ export function analyzeConditionals(
     if (typeof entry.value === "number") return entry.value;
     if (!resolvedAtEnd) {
       const counts = definitionCounts();
-      resolvedAtEnd = new Map(
+      resolvedAtEnd = new Values(
         [...values].filter(
           ([name, known]) => known.immutable && (counts.get(name) ?? 0) <= 1,
         ),

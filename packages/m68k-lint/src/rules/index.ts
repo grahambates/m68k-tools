@@ -18,6 +18,7 @@ import { staleConditionCode } from "./suspicious/stale-condition-code.js";
 import { zeroSizedStorage } from "./suspicious/zero-sized-storage.js";
 import { conditionAfterPreservedCcr } from "./suspicious/condition-after-preserved-ccr.js";
 import { moveaWordSignExtension } from "./suspicious/movea-word-sign-extension.js";
+import { addressWordImmediateSignExtension } from "./suspicious/address-word-immediate-sign-extension.js";
 import { bitNumberWraparound } from "./suspicious/bit-number-wraparound.js";
 import { bufferOverrun } from "./suspicious/buffer-overrun.js";
 import { divisionResultWidth } from "./suspicious/division-result-width.js";
@@ -239,6 +240,7 @@ export {
   zeroSizedStorage,
   conditionAfterPreservedCcr,
   moveaWordSignExtension,
+  addressWordImmediateSignExtension,
   bitNumberWraparound,
   partialRegisterWrite,
   divisionResultWidth,
@@ -516,6 +518,7 @@ export const defaultRules: readonly Rule[] = [
   zeroSizedStorage,
   conditionAfterPreservedCcr,
   moveaWordSignExtension,
+  addressWordImmediateSignExtension,
   bitNumberWraparound,
   partialRegisterWrite,
   divisionResultWidth,

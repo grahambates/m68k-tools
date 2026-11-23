@@ -2091,6 +2091,18 @@ describe("mnemonic canonicalisation", () => {
     expect(isInstructionFamily(file.lines[1], "add")).toBe(true);
   });
 
+  test("reads MOVE USP,An as MOVE, not MOVEA", () => {
+    const file = parseFixture(
+      " move.l usp,a0\n move.l d0,a0\n addi.l #1,a0\n move.l a0,usp",
+    );
+    expect(isInstruction(file.lines[0], "move")).toBe(true);
+    expect(isInstruction(file.lines[0], "movea")).toBe(false);
+    expect(isInstruction(file.lines[1], "movea")).toBe(true);
+    // An immediate spelling to An is still ADDA.
+    expect(isInstruction(file.lines[2], "adda")).toBe(true);
+    expect(isInstruction(file.lines[3], "move")).toBe(true);
+  });
+
   test("normalises immediate instruction spellings", () => {
     expect(canonicalMnemonicName("ADDI")).toBe("add");
     expect(canonicalMnemonicName("SUBI")).toBe("sub");

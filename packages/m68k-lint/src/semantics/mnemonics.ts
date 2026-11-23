@@ -1,6 +1,7 @@
 import {
-  addressRegisterForm,
+  addressingMode,
   canonicalConditionMnemonic,
+  encodedInstruction,
   type ParsedLine,
 } from "m68k-parser";
 
@@ -46,8 +47,17 @@ export function semanticMnemonic(line: ParsedLine): string | undefined {
   const mnemonic = canonicalMnemonic(line);
   if (!mnemonic) return undefined;
 
-  if (hasAddressRegisterDestination(line))
-    return addressRegisterForm(mnemonic) ?? mnemonic;
+  // The parser decides which instructions take a separate form for an address
+  // register, and the exceptions: `move usp,a0` is MOVE USP, not MOVEA. Only
+  // that choice is taken from it, as the immediate forms (ADDI and the like)
+  // are folded into their generic names here.
+  if (hasAddressRegisterDestination(line)) {
+    const source = line.operands?.[0];
+    return encodedInstruction(mnemonic, [
+      source && addressingMode(source),
+      "an",
+    ]);
+  }
 
   return mnemonic;
 }

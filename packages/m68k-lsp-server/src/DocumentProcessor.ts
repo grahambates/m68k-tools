@@ -13,7 +13,10 @@ import { processSymbols, type Symbols } from "./symbols";
 import { type Context } from "./context";
 import { symbolsCaseSensitive } from "./config";
 import { configFor } from "./documentConfigs";
-import { analyzeConditionals } from "./inactiveConditionals";
+import {
+  analyzeConditionals,
+  type AssemblyConstants,
+} from "./inactiveConditionals";
 
 /**
  * What every file in the workspace contributes to resolution.
@@ -27,7 +30,7 @@ export interface IndexedDocument {
   symbols: Symbols;
   referencedUris: string[];
   resolvedIncludeLines?: Map<number, string>;
-  assemblyConstants?: ReadonlyMap<string, number>;
+  assemblyConstants?: AssemblyConstants;
   macros: Map<string, MacroDefinition>;
 }
 
@@ -98,7 +101,7 @@ export default class DocumentProcessor {
         configFor(this.ctx, document.uri),
         undefined,
         false,
-      ).constants,
+      ),
       macros: collectMacroDefinitions(
         parsed,
         blocks,
@@ -160,7 +163,7 @@ export default class DocumentProcessor {
         configFor(this.ctx, document.uri),
         undefined,
         false,
-      ).constants,
+      ),
       macros: collectMacroDefinitions(
         parsed,
         blocks,

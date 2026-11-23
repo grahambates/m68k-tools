@@ -6,6 +6,7 @@ Adds language support for Motorola 68000 Assembly to Visual Studio Code.
 
 - Syntax highlighting
 - Semantic highlighting for labels, constants, variables, macros, register aliases and sections
+- Decimal and hexadecimal values on hover for resolved constants and operand expressions
 - Dimming for conditional assembly with known conditions
 - Snippets
 - Auto-completion:

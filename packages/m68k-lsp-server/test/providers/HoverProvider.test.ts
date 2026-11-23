@@ -105,8 +105,122 @@ describe("HoverProvider", () => {
 
       expect(hover).toEqual({
         range: range(1, 7, 1, 10),
-        contents: [{ language: "vasmmot", value: "foo = 1" }],
+        contents: [{ language: "vasmmot", value: "foo = 1 ($1)" }],
       });
+    });
+
+    it("shows simple decimal and hex assignments on one line", async () => {
+      const doc = await createDoc(
+        "literal-assignments.s",
+        "FOO = 256\nBAR equ $100\n",
+      );
+      for (const [line, value] of [
+        "FOO = 256 ($100)",
+        "BAR equ 256 ($100)",
+      ].entries()) {
+        const hover = await provider.onHover({
+          textDocument: doc,
+          position: lsp.Position.create(line, 1),
+        });
+        expect(hover?.contents).toEqual([{ language: "vasmmot", value }]);
+      }
+    });
+
+    it("shows evaluated constants and whole operand expressions in decimal and hex", async () => {
+      const document = await createDoc(
+        "expression-hover.s",
+        [
+          "SCREEN_BW equ 40",
+          "SCREEN_H equ 200",
+          "BPLS equ 4",
+          "SCREEN_SIZE = SCREEN_BW*SCREEN_H*BPLS",
+          " move.l #(SCREEN_SIZE/2)+4,d0",
+          " move.l #(UNKNOWN+4),d0",
+        ].join("\n"),
+      );
+      const hover = (line: number, character: number) =>
+        provider.onHover({
+          textDocument: document,
+          position: lsp.Position.create(line, character),
+        });
+      expect((await hover(3, 4))?.contents).toEqual([
+        {
+          language: "vasmmot",
+          value:
+            "SCREEN_SIZE = SCREEN_BW*SCREEN_H*BPLS\n            = 32000 ($7D00)",
+        },
+      ]);
+      const operand = await hover(4, 16);
+      expect(operand?.range).toEqual(range(4, 9, 4, 26));
+      expect(operand?.contents).toEqual([
+        {
+          language: "vasmmot",
+          value:
+            "SCREEN_SIZE = SCREEN_BW*SCREEN_H*BPLS\n            = 32000 ($7D00)\nExpression = 16004 ($3E84)",
+        },
+      ]);
+      expect((await hover(4, 8))?.contents).toEqual([
+        { language: "vasmmot", value: "Expression = 16004 ($3E84)" },
+      ]);
+      expect(await hover(5, 13)).toBeUndefined();
+    });
+
+    it("uses the SET value in effect at the hovered operand", async () => {
+      const document = await createDoc(
+        "set-hover.s",
+        "COUNT set 3\n move #COUNT*2,d0\nCOUNT set 7\n",
+      );
+      const result = await provider.onHover({
+        textDocument: document,
+        position: lsp.Position.create(1, 9),
+      });
+      expect(result?.contents).toContainEqual(
+        expect.objectContaining({
+          language: "vasmmot",
+          value: expect.stringContaining("3 ($3)\nExpression = 6 ($6)"),
+        }),
+      );
+    });
+
+    it("shows values at immediate and displacement use sites in templates", async () => {
+      const document = await createDoc(
+        "operand-use-hover.s",
+        [
+          "SIZE equ 32",
+          "TEST macro",
+          " add.l #SIZE,a0",
+          " lea SIZE(a0),a0",
+          " move.l #(unresolved+SIZE),d0",
+          " endm",
+          " rept 3",
+          " add.l #SIZE+4,a0",
+          " endr",
+        ].join("\n"),
+      );
+      const hover = (line: number, character: number) =>
+        provider.onHover({
+          textDocument: document,
+          position: lsp.Position.create(line, character),
+        });
+      for (const [line, column] of [
+        [2, 7],
+        [2, 10],
+        [3, 6],
+        [4, 24],
+      ]) {
+        expect((await hover(line, column))?.contents).toContainEqual(
+          expect.objectContaining({
+            language: "vasmmot",
+            value: expect.stringContaining("32 ($20)"),
+          }),
+        );
+      }
+      expect((await hover(7, 10))?.contents).toContainEqual(
+        expect.objectContaining({
+          language: "vasmmot",
+          value: expect.stringContaining("Expression = 36 ($24)"),
+        }),
+      );
     });
 
     it("provide hover info for instructions", async () => {
@@ -193,6 +307,14 @@ describe("HoverProvider", () => {
           kind: "markdown",
           value: '40 | $28 | %101000 | @50 | "("',
         },
+      });
+      const onPrefix = await provider.onHover({
+        textDocument,
+        position: lsp.Position.create(0, 6),
+      });
+      expect(onPrefix).toEqual({
+        range: range(0, 6, 0, 9),
+        contents: hover?.contents,
       });
     });
 

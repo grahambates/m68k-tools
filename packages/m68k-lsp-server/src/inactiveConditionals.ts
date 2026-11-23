@@ -23,6 +23,12 @@ interface KnownValue {
 
 type Values = Map<string, KnownValue>;
 
+export interface AssemblyConstants {
+  constants: ReadonlyMap<string, number>;
+  defaults: ReadonlyMap<string, ExpressionNode>;
+  guard?: string;
+}
+
 function forgetMutableValues(values: Values) {
   for (const [name, entry] of values) {
     if (!entry.immutable) values.delete(name);
@@ -56,13 +62,25 @@ export function analyzeConditionals(
   parsed: ParsedFile,
   { blocks, errors }: BlockStructure,
   config: Config,
-  includeConstants?: (line: number) => ReadonlyMap<string, number> | undefined,
+  includeConstants?: (line: number) => AssemblyConstants | undefined,
   reportDiagnostics = true,
-  mayDefineEarlier?: (line: number, name: string) => boolean,
+  mayDefineEarlier?: (
+    line: number,
+    name: string,
+    fromCurrentInclude?: boolean,
+  ) => boolean,
+  targetLine?: number,
 ) {
   const values: Values = new Map();
+  let atLine: Values | undefined;
+  const defaults = new Map<string, ExpressionNode>();
   if (errors.length)
-    return { diagnostics: [], constants: new Map<string, number>() };
+    return {
+      diagnostics: [],
+      constants: new Map<string, number>(),
+      defaults,
+      evaluateAtLine: undefined,
+    };
   const { lines } = parsed;
   const invalid = new Set(parsed.errors.map(({ loc }) => (loc.line ?? 0) - 1));
   const diagnostics: Diagnostic[] = [];
@@ -82,7 +100,7 @@ export function analyzeConditionals(
   };
 
   const commandLineDefinitions = new Set<string>();
-  if (reportDiagnostics) {
+  if (reportDiagnostics || targetLine !== undefined) {
     const args = config.vasm.args;
     for (let i = 0; i < args.length; i++) {
       if (!args[i].startsWith("-D")) continue;
@@ -96,6 +114,36 @@ export function analyzeConditionals(
         ? undefined
         : evaluate(parsed.value, values);
       if (value !== undefined) values.set(name, { value, immutable: true });
+    }
+  }
+
+  // A conventional header guard encloses the entire file and defines its
+  // own marker before declaring any constants.
+  const outer = blocks.length === 1 ? blocks[0] : undefined;
+  let headerGuard: string | undefined;
+  if (
+    !reportDiagnostics &&
+    targetLine === undefined &&
+    outer?.kind === "conditional" &&
+    outer.end !== undefined &&
+    !outer.alternatives.length &&
+    directive(lines[outer.start]) === "ifnd" &&
+    !invalid.has(outer.start) &&
+    !invalid.has(outer.start + 1) &&
+    [...lines.slice(0, outer.start), ...lines.slice(outer.end + 1)].every(
+      (line) => !line.mnemonic && !line.label,
+    )
+  ) {
+    const guard = expression(lines[outer.start]);
+    const marker = lines[outer.start + 1];
+    if (
+      guard?.type === "symbol" &&
+      marker?.label &&
+      key(guard.name) === key(marker.label.label) &&
+      ["set", "equ", "="].includes(directive(marker) ?? "") &&
+      evaluate(expression(marker), values) !== undefined
+    ) {
+      headerGuard = guard.name;
     }
   }
 
@@ -168,8 +216,30 @@ export function analyzeConditionals(
         name === "include" &&
         (!line.inlineCondition || conditional !== undefined)
       ) {
-        for (const [name, value] of includeConstants?.(index) ?? []) {
+        const included = includeConstants?.(index);
+        if (included?.guard) {
+          const guard = key(included.guard);
+          if (
+            values.has(guard) ||
+            commandLineDefinitions.has(guard) ||
+            mayDefineEarlier?.(index, included.guard, true)
+          )
+            return;
+        }
+        for (const [name, value] of included?.constants ?? []) {
           if (!values.has(name)) values.set(name, { value, immutable: true });
+        }
+        for (const [name, expr] of included?.defaults ?? []) {
+          const symbol = key(name);
+          if (
+            values.has(symbol) ||
+            commandLineDefinitions.has(symbol) ||
+            mayDefineEarlier?.(index, name)
+          )
+            continue;
+          const value = evaluate(expr, values);
+          if (value !== undefined)
+            values.set(symbol, { value, immutable: true });
         }
       }
       return;
@@ -196,12 +266,24 @@ export function analyzeConditionals(
   ) {
     let next = 0;
     for (let index = start; index < end; index++) {
+      if (targetLine !== undefined && index > targetLine) return;
+      if (index === targetLine) atLine = new Map(values);
       const block = children[next];
       if (block?.start === index && block.end !== undefined) {
         if (block.kind === "conditional")
           walkConditional(block, values, report);
         // A repeat may change constants with each iteration. Macro definitions
         // do not execute until invoked and cannot inherit today's values.
+        if (
+          block.kind !== "conditional" &&
+          targetLine !== undefined &&
+          targetLine > block.start &&
+          targetLine < block.end
+        ) {
+          atLine = new Map(values);
+          forgetMutableValues(atLine);
+          return;
+        }
         if (block.kind === "repeat") forgetMutableValues(values);
         index = block.end;
         next++;
@@ -222,13 +304,14 @@ export function analyzeConditionals(
     let remaining: boolean | undefined = true;
     for (let i = 0; i < arms.length - 1; i++) {
       const head = arms[i];
+      if (head === targetLine) atLine = new Map(values);
       const end = arms[i + 1];
       let selected = remaining === false ? false : condition(head, values);
-      // A conventional IFND default is evaluated for the configured build.
-      // A bare missing name elsewhere can still come from an outer context.
+      if (headerGuard && block === outer) selected = true;
+      // Index simple, file-level defaults for resolution in the includer's
+      // assembly context, where preceding includes and -D flags are known.
       if (
         selected === undefined &&
-        mayDefineEarlier &&
         i === 0 &&
         block.alternatives.length === 0 &&
         end === head + 2 &&
@@ -238,14 +321,34 @@ export function analyzeConditionals(
         const guard = expression(lines[head]);
         const assignment = lines[head + 1];
         const assignmentKind = directive(assignment);
+        const expr = expression(assignment);
         if (
           guard?.type === "symbol" &&
           assignment.label &&
+          expr &&
+          !invalid.has(head + 1) &&
           key(assignment.label.label) === key(guard.name) &&
-          (assignmentKind === "=" || assignmentKind === "equ") &&
-          !mayDefineEarlier(head, guard.name)
-        )
-          selected = true;
+          (assignmentKind === "=" || assignmentKind === "equ")
+        ) {
+          if (mayDefineEarlier && !mayDefineEarlier(head, guard.name))
+            selected = true;
+          if (
+            !reportDiagnostics &&
+            targetLine === undefined &&
+            blocks.includes(block) &&
+            !lines
+              .slice(0, head)
+              .some(
+                (line) =>
+                  directive(line) === "include" ||
+                  line.mnemonic?.type === "macro" ||
+                  line.mnemonic?.type === "macro-parameter" ||
+                  (line.label && key(line.label.label) === key(guard.name)),
+              )
+          ) {
+            defaults.set(guard.name, expr);
+          }
+        }
       }
       if (selected === false) {
         if (report && head + 1 < end)
@@ -288,5 +391,15 @@ export function analyzeConditionals(
   for (const [name, entry] of values) {
     if (entry.immutable) constants.set(name, entry.value);
   }
-  return { diagnostics, constants };
+  const snapshot = atLine;
+  return {
+    diagnostics,
+    constants,
+    defaults,
+    guard: headerGuard,
+    evaluateAtLine:
+      snapshot && targetLine !== undefined && !invalid.has(targetLine)
+        ? (expression: ExpressionNode) => evaluate(expression, snapshot)
+        : undefined,
+  };
 }

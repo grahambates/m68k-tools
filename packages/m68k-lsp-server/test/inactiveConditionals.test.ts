@@ -105,7 +105,10 @@ describe("inactive conditional assembly", async () => {
   it("uses an indexed include constant only after the include executes", async () => {
     const folder = await mkdtemp(join(tmpdir(), "m68k-conditional-"));
     try {
-      await writeFile(join(folder, "consts.i"), "COLORS = 64\n");
+      await writeFile(
+        join(folder, "consts.i"),
+        " ifnd COLORS\nCOLORS = 64\n endc\n",
+      );
       const uri = pathToFileURL(join(folder, "main.asm")).href;
       const text = [
         " ifeq COLORS-64",
@@ -128,6 +131,60 @@ describe("inactive conditional assembly", async () => {
       expect(
         tags.map(({ range }) => [range.start.line, range.end.line]),
       ).toEqual([[7, 8]]);
+    } finally {
+      await rm(folder, { recursive: true, force: true });
+    }
+  });
+
+  it("resolves bitmask expressions from a guarded header also included indirectly", async () => {
+    const folder = await mkdtemp(join(tmpdir(), "m68k-header-guard-"));
+    try {
+      await writeFile(
+        join(folder, "hw.i"),
+        [
+          " ifnd _HW_I",
+          "_HW_I set 1",
+          "DMAF_SETCLR = $8000",
+          "DMAF_MASTER = $0200",
+          "DMAF_RASTER = $0100",
+          "DMAF_COPPER = $0080",
+          "DMAF_BLITTER = $0040",
+          " endc",
+        ].join("\n"),
+      );
+      await writeFile(join(folder, "startup.i"), ' include "hw.i"\n');
+      const uri = pathToFileURL(join(folder, "main.asm")).href;
+      const text = [
+        ' include "startup.i"',
+        ' include "hw.i"',
+        "DMASET = DMAF_SETCLR!DMAF_MASTER!DMAF_RASTER!DMAF_COPPER!DMAF_BLITTER",
+        " ifeq DMASET-$83C0",
+        " nop",
+        " else",
+        " illegal",
+        " endc",
+      ].join("\n");
+      for (const [args, expected] of [
+        [[], [[6, 7]]],
+        [["-D_HW_I"], []],
+      ] as const) {
+        const ctx = await createTestContext({
+          vasm: { ...defaultConfig.vasm, args: [...args] },
+        });
+        const doc = await new DocumentProcessor(ctx).process(
+          TextDocument.create(uri, "m68k", 1, text),
+        );
+        const diagnostics = new DiagnosticProcessor(ctx).parserDiagnostics(
+          uri,
+          doc.parsed,
+          doc.blocks,
+        );
+        expect(
+          diagnostics
+            .filter((d) => d.code === "inactive-conditional")
+            .map(({ range }) => [range.start.line, range.end.line]),
+        ).toEqual(expected);
+      }
     } finally {
       await rm(folder, { recursive: true, force: true });
     }

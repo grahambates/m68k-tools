@@ -1,6 +1,7 @@
 import type { MacroExpansionResult } from "@m68k-lsp/protocol";
 import type {
   DirectiveNode,
+  ExpressionNode,
   InstructionNode,
   NumericLiteralNode,
   SizeNode,
@@ -10,8 +11,13 @@ import type {
 import * as lsp from "vscode-languageserver";
 import { type TextDocument } from "vscode-languageserver-textdocument";
 import { type Provider } from ".";
-import { type AstNode, nodeAtPosition } from "../ast";
-import { isLocalLabelName, locationAsRange } from "m68k-parser";
+import { childNodes, type AstNode, nodeAtPosition } from "../ast";
+import {
+  evaluateConstant,
+  isLocalLabelName,
+  locationAsRange,
+  parseLine,
+} from "m68k-parser";
 import { resolveInclude } from "../files";
 import { DefinitionType, escapeMarkdown, getDefinitions } from "../symbols";
 import {
@@ -38,8 +44,13 @@ import {
 } from "../formatting";
 import { type MarkupContent } from "vscode-languageserver";
 import { expandMacroAtLine } from "../macros";
+import { analyzeDocumentConditionals } from "../documentConditionals";
 
 const macroHoverColumnLimit = 200;
+
+function formatEvaluatedValue(value: number): string {
+  return String(value) + " ($" + (value >>> 0).toString(16).toUpperCase() + ")";
+}
 
 export default class HoverProvider implements Provider {
   constructor(protected readonly ctx: Context) {}
@@ -58,6 +69,141 @@ export default class HoverProvider implements Provider {
       return;
     }
     const { node, line } = path;
+    const compound = [...path.ancestors, node].find(
+      ({ type }) =>
+        type === "binary-op" || type === "unary-op" || type === "group",
+    ) as ExpressionNode | undefined;
+    const symbolExpression =
+      node.type === "symbol" ? (node as ExpressionNode) : undefined;
+    let expression = compound ?? symbolExpression;
+    if (
+      !expression &&
+      [
+        "immediate",
+        "absolute-address",
+        "value",
+        "address-register-indirect-displacement",
+        "pc-relative",
+      ].includes(node.type)
+    ) {
+      const [operand] = childNodes(node);
+      if (
+        operand &&
+        [
+          "binary-op",
+          "unary-op",
+          "group",
+          "numeric-literal",
+          "symbol",
+        ].includes(operand.type)
+      ) {
+        if (operand.type === "numeric-literal") {
+          const hover = await this.hoverNumber(
+            operand as NumericLiteralNode,
+            position.line,
+          );
+          return { ...hover, range: locationAsRange(node.loc, position.line) };
+        }
+        expression = operand as ExpressionNode;
+      }
+    }
+    if (
+      !expression &&
+      node.type === "label" &&
+      line.mnemonic?.type === "directive" &&
+      ["equ", "=", "set"].includes(line.mnemonic.directive)
+    ) {
+      const operand = line.operands?.[0];
+      if (operand?.type === "value") expression = operand.value;
+      else if (operand?.type === "string-literal") expression = operand;
+    }
+    if (expression) {
+      const { evaluateAtLine } = analyzeDocumentConditionals(
+        this.ctx,
+        processed.uri,
+        processed.parsed,
+        processed.blocks,
+        position.line,
+      );
+      const value = evaluateAtLine?.(expression);
+      const symbolValue = symbolExpression
+        ? expression === symbolExpression
+          ? value
+          : evaluateAtLine?.(symbolExpression)
+        : node.type === "label"
+          ? value
+          : undefined;
+      if (value !== undefined || symbolValue !== undefined) {
+        const symbol =
+          node.type === "symbol" || node.type === "label"
+            ? await this.hoverSymbol(node, processed.document, position)
+            : undefined;
+        const contents = [...(symbol?.contents ?? [])];
+        const declarationIndex = contents.findIndex(
+          (part) => typeof part !== "string",
+        );
+        const declaration = contents[declarationIndex];
+        const code: string[] = [];
+        if (declaration && typeof declaration !== "string") {
+          code.push(declaration.value);
+          contents.splice(declarationIndex, 1);
+        }
+        if (symbolValue !== undefined) {
+          if (code.length) {
+            const original = code[0];
+            const { value: parsed, errors } = parseLine(original);
+            const operand = parsed.operands?.[0];
+            const expr = operand?.type === "value" ? operand.value : undefined;
+            const literal =
+              expr?.type === "numeric-literal" ||
+              (expr?.type === "unary-op" &&
+                (expr.operator === "+" || expr.operator === "-") &&
+                expr.operand.type === "numeric-literal");
+            const result =
+              literal && !errors.length ? evaluateConstant(expr) : undefined;
+            const formatted = formatEvaluatedValue(symbolValue);
+            if (expr && result?.known && result.value === symbolValue) {
+              code[0] =
+                original.slice(0, expr.loc.start) +
+                formatted +
+                original.slice(expr.loc.end);
+            } else {
+              const indent = /^[^=\s]+\s*/.exec(original)?.[0].length ?? 0;
+              code.push(" ".repeat(indent) + "= " + formatted);
+            }
+          } else {
+            const name = processed.document.getText(
+              locationAsRange(node.loc, position.line),
+            );
+            code.push(name + " = " + formatEvaluatedValue(symbolValue));
+          }
+        }
+        if (
+          value !== undefined &&
+          expression !== symbolExpression &&
+          node.type !== "label"
+        ) {
+          const name =
+            expression.type === "symbol"
+              ? processed.document.getText(
+                  locationAsRange(expression.loc, position.line),
+                )
+              : "Expression";
+          code.push(name + " = " + formatEvaluatedValue(value));
+        }
+        return {
+          range: locationAsRange(
+            (node.type === "label" || value === undefined ? node : expression)
+              .loc,
+            position.line,
+          ),
+          contents: [
+            ...contents,
+            { language: processed.document.languageId, value: code.join("\n") },
+          ],
+        };
+      }
+    }
 
     switch (node.type) {
       case "instruction":

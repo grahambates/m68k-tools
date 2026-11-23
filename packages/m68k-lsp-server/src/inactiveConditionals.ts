@@ -1,4 +1,6 @@
 import {
+  conditionalComparison,
+  isUnconditionalAlternative,
   evaluateConstant,
   parseExpression,
   symbolKey,
@@ -34,17 +36,6 @@ function forgetMutableValues(values: Values) {
     if (!entry.immutable) values.delete(name);
   }
 }
-
-const numericTests: Record<string, (value: number) => boolean> = {
-  if: (value) => value !== 0,
-  ifne: (value) => value !== 0,
-  ifeq: (value) => value === 0,
-  ifgt: (value) => value > 0,
-  ifge: (value) => value >= 0,
-  iflt: (value) => value < 0,
-  ifle: (value) => value <= 0,
-  elif: (value) => value !== 0,
-};
 
 const directive = ({ mnemonic }: ParsedLine) =>
   mnemonic?.type === "directive" ? mnemonic.directive : undefined;
@@ -166,7 +157,7 @@ export function analyzeConditionals(
     if (invalid.has(index)) return;
     const line = lines[index];
     const name = directive(line);
-    if (name === "else" || name === "elseif") return true;
+    if (isUnconditionalAlternative(name)) return true;
     const expr = expression(line);
     if ((name === "ifd" || name === "ifnd") && expr?.type === "symbol") {
       if (
@@ -176,7 +167,7 @@ export function analyzeConditionals(
         return name === "ifd";
       return;
     }
-    const test = name && numericTests[name];
+    const test = name && conditionalComparison(name);
     if (!test) return;
     const value = evaluate(expr, values);
     return value === undefined ? undefined : test(value);

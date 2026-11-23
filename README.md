@@ -16,7 +16,7 @@ Tools for Motorola 68000 assembly: parsing, formatting, cycle counting, static a
 | `apps/68kcounter-vscode`        | Cycle counter VS Code extension         |
 | `apps/68kcounter-web`           | Vite web application                    |
 
-The two language servers remain independent. The counter extension currently uses the published counter 3.x API; upgrading it to the workspace library is a separate application change.
+The two language servers remain independent. The counter extension and web application both use the workspace counter library.
 
 ## Development
 
@@ -45,7 +45,7 @@ pnpm package:counter
 
 Workspace tests and typechecks run through package-level scripts; TypeScript project references are built before the individual typechecks. The server build scripts also build and stage their corresponding VS Code extensions. `pnpm clean` removes package build outputs, TypeScript build metadata, coverage and extension staging. `pnpm test:coverage:assembly` covers the assembly suites and formatter; linter coverage remains `pnpm --filter m68k-lint test:coverage`.
 
-Build before running the isolated tarball checks. Their consumer fixtures live in `scripts/fixtures/packages` and are copied into a temporary installation to check the actual npm archives. VS Code host tests run separately with `pnpm test:extension-host` and require a graphical display (or Xvfb on Linux). Counter packaging generates `.staging/68kcounter-vscode` and preserves Marketplace identity `gigabates.68kcounter`.
+Build before running the isolated tarball checks. Their consumer fixtures live in `scripts/fixtures/packages` and are copied into a temporary installation to check the actual npm archives. VS Code host tests run separately with `pnpm --filter m68k-lsp test:extension-host` for assembly or `pnpm test:extension-host` for the counter and require a graphical display (or Xvfb on Linux). Counter packaging generates `.staging/68kcounter-vscode` and preserves Marketplace identity `gigabates.68kcounter`.
 
 All active projects use the root Prettier configuration and ESLint rules. React-specific checks and the linter’s existing type-aware checks are scoped in the root ESLint configuration. Package lint entry points delegate to the root. Only the root Husky hook is used.
 

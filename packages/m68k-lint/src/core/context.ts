@@ -376,7 +376,7 @@ export class DefaultRuleContext implements RuleContext {
     for (let round = 0; round < 4; round++) {
       prepareConditionals(file, value, this.sourceLines);
       const now = signature();
-      if (now === last || !now.includes("1")) break;
+      if (now === last || (!last && !now.includes("1"))) break;
       last = now;
       const { unassembled } = conditionalAssembly(file);
       this.symbols = new DefaultSymbolTable(

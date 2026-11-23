@@ -23,6 +23,10 @@ export {
 } from "./block-parser.js";
 
 export { parseExpression } from "./expression-parser.js";
+export {
+  conditionalComparison,
+  isUnconditionalAlternative,
+} from "./conditional-tests.js";
 export { evaluateConstant, type EvaluateOptions } from "./evaluate.js";
 export type { ConstantResult, ConstantResolver } from "./evaluate.js";
 

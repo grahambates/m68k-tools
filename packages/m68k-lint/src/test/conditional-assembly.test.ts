@@ -72,19 +72,41 @@ describe("conditional assembly", () => {
       expect(leftOut(source)).toEqual([6]);
     });
 
-    test("ELSEIF takes the first arm that holds", () => {
+    test("ELIF takes the first arm that holds", () => {
       const source = [
         "IF 0",
         "nop",
-        "ELSEIF 1",
+        "ELIF 1",
         "moveq #1,d0",
-        "ELSEIF 1",
+        "ELIF 1",
         "moveq #2,d0",
         "ELSE",
         "rts",
         "ENDC",
       ].join("\n");
       expect(leftOut(source)).toEqual([2, 6, 8]);
+    });
+
+    test("ELSEIF is an alias for ELSE", () => {
+      expect(
+        leftOut(["IF 0", "nop", "ELSEIF", "rts", "ENDC"].join("\n")),
+      ).toEqual([2]);
+    });
+
+    test("a discarded or undecided definition cannot decide a later IFD", () => {
+      for (const guard of ["IFEQ 1", "IF EXTERNAL"]) {
+        const source = [
+          guard,
+          "FLAG equ 1",
+          "ENDC",
+          "IFD FLAG",
+          "nop",
+          "ELSE",
+          "rts",
+          "ENDC",
+        ].join("\n");
+        expect(leftOut(source)).not.toContain(7);
+      }
     });
 
     test("nested blocks", () => {
@@ -170,7 +192,7 @@ describe("conditional assembly", () => {
       const source = [
         "IF UNKNOWN",
         "nop",
-        "ELSEIF 1",
+        "ELIF 1",
         "rts",
         "ELSE",
         "moveq #1,d0",

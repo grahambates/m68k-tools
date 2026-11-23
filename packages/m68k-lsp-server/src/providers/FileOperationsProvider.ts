@@ -11,6 +11,7 @@ import {
   getAsmFilesInDir,
   getEntryPoints,
   getIncluded,
+  getIncluders,
   isAsmExt,
   isDir,
 } from "../files";
@@ -58,6 +59,7 @@ export default class FileOperationsProvider implements Provider {
   }
 
   async onDidDeleteFiles({ files }: lsp.DeleteFilesParams): Promise<null> {
+    const dependents = new Set<string>();
     const processor = new DocumentProcessor(this.ctx);
     for (const { uri } of files) {
       // didDelete may arrive without willDelete (for example from another client).
@@ -72,6 +74,8 @@ export default class FileOperationsProvider implements Provider {
         ).filter((key) => key.startsWith(uri.replace(/\/$/, "") + "/")),
       ]);
       for (const deleteUri of deleted) {
+        for (const includer of getIncluders(deleteUri, this.ctx))
+          dependents.add(includer);
         processor.remove(deleteUri, false);
         if (!isProcessed(this.ctx.store.get(deleteUri))) {
           this.ctx.connection.sendDiagnostics({
@@ -82,6 +86,7 @@ export default class FileOperationsProvider implements Provider {
       }
       this.fileDeletesMap.delete(uri);
     }
+    await this.ctx.refreshDependentDiagnostics?.(dependents);
     this.ctx.connection.sendNotification(IndexChangedNotification);
     return null;
   }
@@ -105,6 +110,7 @@ export default class FileOperationsProvider implements Provider {
     const processor = new DocumentProcessor(this.ctx);
     // Editors may report several events for one save; process the final state.
     const latest = new Map(changes.map((change) => [change.uri, change.type]));
+    const dependents = new Set<string>();
     let changed = false;
     for (const [uri, type] of latest) {
       if (
@@ -114,6 +120,8 @@ export default class FileOperationsProvider implements Provider {
         continue;
       }
       changed = true;
+      for (const includer of getIncluders(uri, this.ctx))
+        dependents.add(includer);
       if (type === lsp.FileChangeType.Deleted) {
         processor.remove(uri);
         if (!isProcessed(this.ctx.store.get(uri))) {
@@ -125,6 +133,11 @@ export default class FileOperationsProvider implements Provider {
     }
     if (changed) {
       await processor.settleIncludes();
+      for (const uri of latest.keys()) {
+        for (const includer of getIncluders(uri, this.ctx))
+          dependents.add(includer);
+      }
+      await this.ctx.refreshDependentDiagnostics?.(dependents);
       this.ctx.connection.sendNotification(IndexChangedNotification);
     }
   }
@@ -182,6 +195,7 @@ export default class FileOperationsProvider implements Provider {
     if (!reindex.size) return null;
     await Promise.all(Array.from(reindex, (uri) => processor.index(uri)));
     await processor.settleIncludes();
+    await this.ctx.refreshDependentDiagnostics?.(reindex);
     if (moved.length) this.ctx.scheduleSemanticTokensRefresh?.();
     return null;
   }

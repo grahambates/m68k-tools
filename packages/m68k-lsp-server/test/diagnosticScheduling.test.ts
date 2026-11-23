@@ -1,3 +1,9 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { FileChangeType } from "vscode-languageserver";
+import FileOperationsProvider from "../src/providers/FileOperationsProvider";
 import type * as lsp from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import DocumentProcessor from "../src/DocumentProcessor";
@@ -32,6 +38,58 @@ describe("diagnostic scheduling", () => {
     );
   });
   afterEach(() => vi.restoreAllMocks());
+
+  it("refreshes an open includer after header edits, close and disk changes", async () => {
+    vi.spyOn(
+      DiagnosticProcessor.prototype,
+      "vasmDiagnostics",
+    ).mockResolvedValue([]);
+    const folder = await mkdtemp(join(tmpdir(), "m68k-include-diagnostics-"));
+    const header = join(folder, "values.i");
+    const headerUri = pathToFileURL(header).href;
+    const mainUri = pathToFileURL(join(folder, "main.asm")).href;
+    const open = (uri: string, text: string) =>
+      sync.onDidOpenTextDocument({
+        textDocument: { uri, languageId: "m68k", text, version: 1 },
+      });
+    const latest = () =>
+      vi
+        .mocked(ctx.connection.sendDiagnostics)
+        .mock.calls.map(([notice]) => notice)
+        .filter((notice) => notice.uri === mainUri)
+        .at(-1);
+    const expectInactive = (line: number) => {
+      expect(latest()?.version).toBe(1);
+      expect(
+        latest()
+          ?.diagnostics.filter((d) => d.code === "inactive-conditional")
+          .map((d) => d.range.start.line),
+      ).toEqual([line]);
+    };
+    try {
+      await writeFile(header, "FEATURE = 1\n");
+      await open(
+        mainUri,
+        ' include "values.i"\n ifne FEATURE\n nop\n else\n illegal\n endc\n',
+      );
+      expectInactive(4);
+      await open(headerUri, "FEATURE = 1\n");
+      await sync.onDidChangeTextDocument({
+        textDocument: { uri: headerUri, version: 2 },
+        contentChanges: [{ text: "FEATURE = 0\n" }],
+      });
+      expectInactive(2);
+      await sync.onDidCloseTextDocument({ textDocument: { uri: headerUri } });
+      expectInactive(4);
+      await writeFile(header, "FEATURE = 0\n");
+      await new FileOperationsProvider(ctx).onDidChangeWatchedFiles({
+        changes: [{ uri: headerUri, type: FileChangeType.Changed }],
+      });
+      expectInactive(2);
+    } finally {
+      await rm(folder, { recursive: true, force: true });
+    }
+  });
 
   it("drops assembly diagnostics if the editor changes before completion", async () => {
     const assembly = deferred<lsp.Diagnostic[]>();

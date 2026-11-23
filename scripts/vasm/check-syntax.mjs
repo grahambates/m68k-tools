@@ -286,7 +286,8 @@ const cases = [
 
 const results = await inParallel(cases, async (text) => {
   const source = text.replace(/\bl$|\bl\b(?=\W|$)/g, "l") + "\nl:\n";
-  const { bytes, messages } = await assemble(vasm, `${source}\n`);
+  const args = text === `${T}bra.l l` ? ["-m68020"] : [];
+  const { bytes, messages } = await assemble(vasm, `${source}\n`, { args });
   return { text, source, bytes, messages };
 });
 

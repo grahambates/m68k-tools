@@ -6,4 +6,5 @@ tsconfig.json
 out/*.map
 
 test/**
+extension-test/**
 **/*.vsix

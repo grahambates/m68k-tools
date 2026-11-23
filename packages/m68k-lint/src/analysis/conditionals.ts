@@ -1,4 +1,6 @@
 import {
+  conditionalComparison,
+  isUnconditionalAlternative,
   collectMacroDefinitions,
   parseBlocks,
   type ExpressionNode,
@@ -44,18 +46,6 @@ export function conditionalAssembly(file: ParsedFile): ConditionalAssembly {
 }
 
 export type Arm = "yes" | "no" | "maybe";
-
-/** Compare an expression's value to zero as each IF form does. */
-const COMPARISONS: Record<string, (value: number) => boolean> = {
-  if: (v) => v !== 0,
-  ifne: (v) => v !== 0,
-  ifeq: (v) => v === 0,
-  ifgt: (v) => v > 0,
-  ifge: (v) => v >= 0,
-  iflt: (v) => v < 0,
-  ifle: (v) => v <= 0,
-  elseif: (v) => v !== 0,
-};
 
 /**
  * Whether the two strings of an IFC line are the same, compared exactly, or
@@ -124,7 +114,7 @@ export function evaluateCondition(
     return same === (directive === "ifc") ? "yes" : "no";
   }
 
-  const compare = COMPARISONS[directive];
+  const compare = conditionalComparison(directive);
   if (!compare) return undefined;
   const first = operands?.[0];
   const expression =
@@ -155,29 +145,50 @@ export function prepareConditionals(
   const unassembled = new Array<boolean>(file.lines.length).fill(false);
   const decided = new Array<boolean>(file.lines.length).fill(false);
 
-  // Names the file defines, and where, for IFD and IFMACROD.
-  const symbols = new Map<string, number>();
+  // A definition can be proven only on a path known to assemble.
+  const symbols = new Map<string, number[]>();
+  const macros = new Map<string, number[]>();
+  const uncertainDefinitions = new Array<boolean>(file.lines.length).fill(
+    false,
+  );
+  const record = (
+    table: Map<string, number[]>,
+    name: string,
+    index: number,
+  ) => {
+    const key = nameKey(file, name);
+    const definitions = table.get(key) ?? [];
+    definitions.push(index);
+    table.set(key, definitions);
+  };
   file.lines.forEach((line, index) => {
     if (regions.region[index] !== 0) return;
-    for (const name of [line.label?.label, constantDefinition(line)?.name] as (
-      string | undefined
-    )[])
-      if (name && !symbols.has(nameKey(file, name)))
-        symbols.set(nameKey(file, name), index);
+    for (const name of [line.label?.label, constantDefinition(line)?.name]) {
+      if (name) record(symbols, name, index);
+    }
   });
-  const macros = new Map<string, number>();
-  for (const macro of collectMacroDefinitions(file, [], parseBlocks(file)))
-    if (!macros.has(nameKey(file, macro.name)))
-      macros.set(nameKey(file, macro.name), macro.start);
+  for (const macro of collectMacroDefinitions(file, [], parseBlocks(file))) {
+    record(macros, macro.name, macro.start);
+  }
+  const definedBefore = (
+    table: Map<string, number[]>,
+    symbol: string,
+    before: number,
+  ) =>
+    table
+      .get(symbol)
+      ?.some(
+        (at) => at < before && !unassembled[at] && !uncertainDefinitions[at],
+      );
 
   const directive = (index: number) =>
     file.lines[index].mnemonic?.type === "directive"
       ? file.lines[index].mnemonic.directive.toLowerCase()
       : undefined;
 
-  const condition = (index: number): Arm => {
+  const condition = (index: number, before: number): Arm => {
     const name = directive(index);
-    if (name === "else") return "yes";
+    if (isUnconditionalAlternative(name)) return "yes";
     if (!name) return "maybe";
     const first = file.lines[index].operands?.[0];
 
@@ -197,13 +208,11 @@ export function prepareConditionals(
         : undefined;
     if (!symbolName) return "maybe";
     if (name === "ifd" || name === "ifnd") {
-      const at = symbols.get(symbolName);
-      if (at === undefined || at >= index) return "maybe";
+      if (!definedBefore(symbols, symbolName, before)) return "maybe";
       return name === "ifd" ? "yes" : "no";
     }
     if (name === "ifmacrod" || name === "ifmacrond") {
-      const at = macros.get(symbolName);
-      if (at === undefined || at >= index) return "maybe";
+      if (!definedBefore(macros, symbolName, before)) return "maybe";
       return name === "ifmacrod" ? "yes" : "no";
     }
     return "maybe";
@@ -228,14 +237,14 @@ export function prepareConditionals(
   const blocks: ConditionalBlock[] = regions.conditionals;
   for (const block of blocks) {
     // A macro body is not assembled where it is written.
-    if (regions.region[block.start] !== 0) continue;
+    if (regions.region[block.start] !== 0 || unassembled[block.start]) continue;
 
     const starts = [block.start, ...block.alternatives];
     const arms: Arm[] = [];
     let taken = false;
     let uncertain = false;
     for (const start of starts) {
-      const wanted = taken ? "no" : condition(start);
+      const wanted = taken ? "no" : condition(start, block.start);
       // An arm whose condition holds is assembled if control gets to it, and
       // either way nothing after it can be: if an earlier arm was taken this
       // one is skipped, and if not this one is.
@@ -248,11 +257,15 @@ export function prepareConditionals(
       for (const at of [...starts, block.end]) decided[at] = true;
     }
     arms.forEach((arm, k) => {
-      if (arm !== "no") return;
+      if (arm === "yes") return;
       const end = (starts[k + 1] ?? block.end) - 1;
       for (let i = starts[k] + 1; i <= end; i++) {
-        unassembled[i] = true;
-        changed = true;
+        if (arm === "no") {
+          unassembled[i] = true;
+          changed = true;
+        } else {
+          uncertainDefinitions[i] = true;
+        }
       }
     });
   }

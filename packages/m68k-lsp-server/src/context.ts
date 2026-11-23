@@ -9,6 +9,10 @@ export interface Context {
   /** Identifies the newest open/index operation for each document. */
   documentUpdates: Map<string, symbol>;
   scheduleSemanticTokensRefresh?: () => void;
+  refreshDependentDiagnostics?: (
+    uris: Iterable<string>,
+    assemble?: boolean,
+  ) => Promise<void>;
   workspaceFolders: lsp.WorkspaceFolder[];
   logger: lsp.Logger;
   connection: lsp.Connection;

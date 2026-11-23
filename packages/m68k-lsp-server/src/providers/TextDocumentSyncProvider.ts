@@ -6,6 +6,7 @@ import { type Provider } from ".";
 import { type Context } from "../context";
 import DiagnosticProcessor from "../diagnostics";
 import DocumentProcessor, { isProcessed } from "../DocumentProcessor";
+import { getIncluders } from "../files";
 
 export default class TextDocumentSyncProvider implements Provider {
   private processor: DocumentProcessor;
@@ -17,6 +18,11 @@ export default class TextDocumentSyncProvider implements Provider {
     this.processor = new DocumentProcessor(ctx);
     this.diagnostics = new DiagnosticProcessor(ctx);
     this.connection = ctx.connection;
+    ctx.refreshDependentDiagnostics = async (uris, assemble = false) => {
+      await Promise.all(
+        [...new Set(uris)].map((uri) => this.fileDiagnostics(uri, assemble)),
+      );
+    };
   }
 
   async onDidOpenTextDocument({
@@ -31,7 +37,10 @@ export default class TextDocumentSyncProvider implements Provider {
         this.diagnosticRuns.get(uri) === run &&
         this.ctx.store.get(uri) === processed
       ) {
-        await this.fileDiagnostics(uri);
+        await Promise.all([
+          this.fileDiagnostics(uri),
+          this.ctx.refreshDependentDiagnostics?.(getIncluders(uri, this.ctx)),
+        ]);
       }
     } catch (error) {
       this.ctx.logger.error(`Unable to process ${uri}: ${String(error)}`);
@@ -77,6 +86,7 @@ export default class TextDocumentSyncProvider implements Provider {
           ...includes,
         ],
       });
+      await this.ctx.refreshDependentDiagnostics?.(getIncluders(uri, this.ctx));
     } catch (error) {
       this.ctx.logger.error(`Unable to process ${uri}: ${String(error)}`);
     }
@@ -89,6 +99,7 @@ export default class TextDocumentSyncProvider implements Provider {
     this.connection.sendDiagnostics({ uri, diagnostics: [] });
     try {
       await this.processor.close(uri);
+      await this.ctx.refreshDependentDiagnostics?.(getIncluders(uri, this.ctx));
       this.connection.sendNotification(IndexChangedNotification);
     } catch (error) {
       this.ctx.logger.error(
@@ -100,11 +111,14 @@ export default class TextDocumentSyncProvider implements Provider {
   async onDidSaveTextDocument({
     textDocument: { uri },
   }: lsp.DidSaveTextDocumentParams) {
-    await this.fileDiagnostics(uri);
+    await Promise.all([
+      this.fileDiagnostics(uri),
+      this.ctx.refreshDependentDiagnostics?.(getIncluders(uri, this.ctx), true),
+    ]);
   }
 
   /** Publish only the latest diagnostics for the same open document snapshot. */
-  async fileDiagnostics(uri: string) {
+  async fileDiagnostics(uri: string, assemble = true) {
     const existing = this.ctx.store.get(uri);
     if (!isProcessed(existing)) {
       return;
@@ -113,7 +127,9 @@ export default class TextDocumentSyncProvider implements Provider {
     const run = Symbol();
     this.diagnosticRuns.set(uri, run);
     try {
-      const vasmDiagnostics = await this.diagnostics.vasmDiagnostics(uri);
+      const vasmDiagnostics = assemble
+        ? await this.diagnostics.vasmDiagnostics(uri)
+        : [];
       const includes = await this.diagnostics.includeDiagnostics(uri);
       if (
         this.diagnosticRuns.get(uri) !== run ||

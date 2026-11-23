@@ -73,11 +73,11 @@ describe("configFor", () => {
     const ctx = await context();
     ctx.documentConfigs.reset({
       ...ctx.config,
-      inlayHints: { enabled: false },
+      escapeSequences: true,
     });
     const config = configFor(ctx, uri("demos/main.s"));
     expect(config.processors).toEqual(["mc68020"]);
-    expect(config.inlayHints.enabled).toBe(false);
+    expect(config.escapeSequences).toBe(true);
   });
 
   it("is the workspace config where no file applies", async () => {

@@ -100,11 +100,14 @@
       }
     },
     "inlayHints": {
+      "description": "No longer used: hover shows the values of constants and expressions.",
+      "deprecationMessage": "No longer used: hover shows the values of constants and expressions.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "enabled": {
-          "description": "Show evaluated values of constant assignments inline.",
+          "description": "No longer used: hover shows the values of constants and expressions.",
+          "deprecationMessage": "No longer used: hover shows the values of constants and expressions.",
           "type": "boolean",
           "default": true
         }

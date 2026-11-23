@@ -183,8 +183,6 @@ export function analyzeConditionals(
   offsetCountersStart?: number,
 ) {
   const values = new Values();
-  /** What each assignment line assigned, as the walk reached it. */
-  const defined = new Map<number, KnownValue>();
   let atLine: Values | undefined;
   let captureTarget = targetLine !== undefined;
   const defaults = new Map<string, ExpressionNode>();
@@ -193,7 +191,6 @@ export function analyzeConditionals(
       diagnostics: [],
       constants: new Map<string, number>(),
       defaults,
-      definitionValue: undefined,
       evaluateAtLine: undefined,
     };
   const { lines } = parsed;
@@ -421,21 +418,15 @@ export function analyzeConditionals(
     const symbol = key(line.label.label);
     const expr = expression(line);
     if ((name === "equ" || name === "=") && usable && expr) {
-      const entry: KnownValue = {
+      values.set(symbol, {
         value: settle((current) => evaluate(expr, current), values),
         immutable: true,
-      };
-      values.set(symbol, entry);
-      defined.set(index, entry);
+      });
       return;
     }
     const value = name === "set" && usable ? evaluate(expr, values) : undefined;
     if (value === undefined) values.delete(symbol);
-    else {
-      const entry = { value, immutable: false };
-      values.set(symbol, entry);
-      defined.set(index, entry);
-    }
+    else values.set(symbol, { value, immutable: false });
   }
 
   /**
@@ -711,23 +702,6 @@ export function analyzeConditionals(
 
   walk(0, lines.length, blocks, values, reportDiagnostics);
 
-  // A constant still waiting on a later one is resolved as vasm resolves it,
-  // once the whole source is read, from constants that have only one value.
-  let resolvedAtEnd: Values | undefined;
-  const definitionValue = (line: number): number | undefined => {
-    const entry = defined.get(line);
-    if (!entry) return;
-    if (typeof entry.value === "number") return entry.value;
-    if (!resolvedAtEnd) {
-      const counts = definitionCounts();
-      resolvedAtEnd = new Values(
-        [...values].filter(
-          ([name, known]) => known.immutable && (counts.get(name) ?? 0) <= 1,
-        ),
-      );
-    }
-    return resolve(entry, resolvedAtEnd);
-  };
   const constants = new Map<string, number>();
   for (const [name, entry] of values) {
     const value = entry.immutable ? resolve(entry, values) : undefined;
@@ -739,12 +713,6 @@ export function analyzeConditionals(
     constants,
     defaults,
     guard: headerGuard,
-    /**
-     * The value an `equ`, `=` or `set` line assigns, where the walk of the
-     * whole file reached it: not inside a macro or repeat body, nor a branch
-     * known not to assemble.
-     */
-    definitionValue: targetLine === undefined ? definitionValue : undefined,
     evaluateAtLine:
       snapshot && targetLine !== undefined && !invalid.has(targetLine)
         ? (expression: ExpressionNode) =>

@@ -6,10 +6,6 @@ import { dirname, isAbsolute, relative, resolve } from "path";
 import { optionsFromVasmArgs, vasmArgs } from "@m68k-lsp/assembly-options";
 import { type VasmOptions } from "./diagnostics";
 
-export interface InlayHintOptions {
-  enabled: boolean;
-}
-
 export interface Config {
   format: FormatterOptions;
   /**
@@ -44,7 +40,6 @@ export interface Config {
   inferIncludePaths?: boolean;
   processors: Processor[];
   vasm: VasmOptions;
-  inlayHints: InlayHintOptions;
 }
 
 export const defaultConfig: Config = {
@@ -58,9 +53,6 @@ export const defaultConfig: Config = {
     binPath: os.platform() === "win32" ? "vasmm68k_mot.exe" : "vasmm68k_mot",
     args: [],
     exclude: [],
-  },
-  inlayHints: {
-    enabled: true,
   },
 };
 
@@ -82,10 +74,6 @@ export function mergeConfig(
     vasm: {
       ...defaultConfig.vasm,
       ...config?.vasm,
-    },
-    inlayHints: {
-      ...defaultConfig.inlayHints,
-      ...config?.inlayHints,
     },
   };
 }

@@ -235,7 +235,8 @@
         "m68k.inlayHints.enabled": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Show the evaluated value of constant assignments (`equ`, `fequ`, `=`, `set`) inline."
+          "markdownDescription": "No longer used: hover shows the values of constants and expressions.",
+          "markdownDeprecationMessage": "No longer used: hover shows the values of constants and expressions."
         },
         "m68k.format.align.indentConditional": {
           "type": "integer",

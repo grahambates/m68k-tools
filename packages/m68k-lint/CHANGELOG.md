@@ -1,5 +1,15 @@
 # m68k-lint
 
+## 2.5.3
+
+### Patch Changes
+
+- ec5f8f8: Refresh conditional diagnostics when an include changes. Use vasm's ELIF and ELSEIF semantics in the linter and keep conditions undecided when a definition only appears in an inactive or unconfirmed branch.
+- Updated dependencies [ec5f8f8]
+- Updated dependencies [3c5a786]
+- Updated dependencies [ea0abe9]
+  - m68k-parser@2.4.1
+
 ## 2.5.2
 
 ### Patch Changes

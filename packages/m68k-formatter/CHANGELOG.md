@@ -1,5 +1,15 @@
 # m68k-formatter
 
+## 0.4.1
+
+### Patch Changes
+
+- fb52be3: Update glob and minimatch in the formatter and language services to versions that fix npm security advisories.
+- Updated dependencies [ec5f8f8]
+- Updated dependencies [3c5a786]
+- Updated dependencies [ea0abe9]
+  - m68k-parser@2.4.1
+
 ## 0.4.0
 
 ### Minor Changes

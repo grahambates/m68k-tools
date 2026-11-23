@@ -1,5 +1,13 @@
 # m68k-parser
 
+## 2.4.1
+
+### Patch Changes
+
+- ec5f8f8: Refresh conditional diagnostics when an include changes. Use vasm's ELIF and ELSEIF semantics in the linter and keep conditions undecided when a definition only appears in an inactive or unconfirmed branch.
+- 3c5a786: Accept macro parameters in indexed address operands such as `(\2,\1.w)`, including separate substitutions for index size and scale.
+- ea0abe9: Dim conditional assembly branches when the condition can be resolved from known source values. Recognise `elif` as an alternative in conditional blocks.
+
 ## 2.4.0
 
 ### Minor Changes

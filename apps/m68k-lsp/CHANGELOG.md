@@ -1,5 +1,30 @@
 # m68k-lsp
 
+## 0.17.0
+
+### Minor Changes
+
+- 50ae627: Show evaluated integer constants and operand expressions in decimal and hexadecimal on hover when their value can be resolved.
+- ea0abe9: Dim conditional assembly branches when the condition can be resolved from known source values. Recognise `elif` as an alternative in conditional blocks.
+- 6e480f6: Show a compact macro expansion when hovering over a macro call.
+- 5e35469: Use the size suffix and operands to select instruction signatures and offer matching register and alias completions.
+- 4467159: Add a read-only Peek Macro Expansion command and its language-server request. Preview substituted macro bodies and nested calls, and jump to the macro definition.
+- 5cd868f: Update literal `incbin` paths when the editor renames or moves a binary asset or its folder.
+- fb52be3: Update literal assembly include paths when the editor renames or moves a source file or directory.
+- 6b85059: Add semantic highlighting for assembly symbol definitions and references, including symbols resolved through include files.
+- ac0374e: Add a VS Code `vasm` build task that runs the bundled WebAssembly assembler or a native executable. The `$vasm` problem matcher also recognizes fatal errors with source locations.
+
+### Patch Changes
+
+- ec5f8f8: Refresh conditional diagnostics when an include changes. Use vasm's ELIF and ELSEIF semantics in the linter and keep conditions undecided when a definition only appears in an inactive or unconfirmed branch.
+- a605b86: Show the values of forward equates in instruction operand hovers.
+- 3c5a786: Accept macro parameters in indexed address operands such as `(\2,\1.w)`, including separate substitutions for index size and scale.
+- 3f1da6c: Pressing Enter in an assembly label starts a new line even when VS Code has a suggestion selected. Tab still accepts the suggestion. Elsewhere in assembly files, Enter follows the editor's suggestion setting.
+- fb52be3: Update glob and minimatch in the formatter and language services to versions that fix npm security advisories.
+- 50a9355: Keep the first character of a label or constant at column one when typing in VS Code.
+  Indent the next line after a standalone label, including labels without a colon.
+- e2ba0b0: Update the bundled WebAssembly assembler to vasm 2.0f with the Motorola syntax module 3.19f.
+
 ## 0.16.0
 
 ### Minor Changes

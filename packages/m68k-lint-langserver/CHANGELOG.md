@@ -1,5 +1,12 @@
 # m68k-lint-langserver
 
+## 0.7.3
+
+### Patch Changes
+
+- ec5f8f8: Refresh conditional diagnostics when an include changes. Use vasm's ELIF and ELSEIF semantics in the linter and keep conditions undecided when a definition only appears in an inactive or unconfirmed branch.
+- fb52be3: Update glob and minimatch in the formatter and language services to versions that fix npm security advisories.
+
 ## 0.7.2
 
 ### Patch Changes

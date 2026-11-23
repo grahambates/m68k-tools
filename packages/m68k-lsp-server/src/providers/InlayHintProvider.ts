@@ -1,7 +1,14 @@
-import { evaluateConstant, type ParsedLine, type ValueNode } from "m68k-parser";
+import {
+  evaluateConstant,
+  symbolKey,
+  type ParsedLine,
+  type ValueNode,
+} from "m68k-parser";
 import * as lsp from "vscode-languageserver";
 import { type Provider } from ".";
 import { type Context } from "../context";
+import { symbolsCaseSensitive } from "../config";
+import { analyzeDocumentConditionals } from "../documentConditionals";
 import { configFor } from "../documentConfigs";
 import { isProcessed } from "../DocumentProcessor";
 import { locationAsRange } from "m68k-parser";
@@ -41,23 +48,57 @@ export default class InlayHintProvider implements Provider {
       return [];
     }
 
-    // Built up sequentially, matching vasm's requirement that a constant is
-    // defined before it is used, so a hint's value never assumes a forward
-    // reference that assembly itself would not resolve.
-    const known = new Map<string, number>();
+    // The values hover and conditional assembly use: worked out in source
+    // order, as vasm decides conditions and SET, with constants that refer to
+    // later ones resolved once the whole file is read, as vasm resolves them.
+    const { definitionValue, constants, diagnostics } =
+      analyzeDocumentConditionals(
+        this.ctx,
+        textDocument.uri,
+        doc.parsed,
+        doc.blocks,
+      );
+    const caseSensitive = symbolsCaseSensitive(
+      configFor(this.ctx, textDocument.uri),
+    );
+    const inactive = diagnostics
+      .filter(({ code }) => code === "inactive-conditional")
+      .map(({ range }) => range);
     const hints: lsp.InlayHint[] = [];
 
     for (const [index, line] of doc.parsed.lines.entries()) {
       const value = constantExpression(line);
-      if (!value) {
+      if (!value || index < range.start.line || index > range.end.line) {
+        continue;
+      }
+      // Code that does not assemble gets no value.
+      if (
+        inactive.some(
+          ({ start, end }) =>
+            index >= start.line &&
+            (index < end.line || (index === end.line && end.character > 0)),
+        )
+      ) {
         continue;
       }
 
-      const result = evaluateConstant(value.value, (name) => known.get(name));
+      // Lines the walk does not reach, such as those in a macro body, and FEQU,
+      // which is not limited to integers, use the file's constants. SET takes
+      // its value where it stands, so only literals can be read without the
+      // walk.
+      const directive = directiveOf(line);
+      const known = directive === "fequ" ? undefined : definitionValue?.(index);
+      const result =
+        known !== undefined
+          ? { known: true as const, value: known }
+          : evaluateConstant(value.value, (name) =>
+              directive === "set"
+                ? undefined
+                : constants.get(symbolKey(name, caseSensitive)),
+            );
       if (!result.known) {
         continue;
       }
-      known.set(line.label!.label, result.value);
 
       // A bare decimal literal already shows its own value in the source.
       // Hex/binary/octal/float literals still gain a decimal hint.
@@ -67,10 +108,6 @@ export default class InlayHintProvider implements Provider {
       ) {
         continue;
       }
-      if (index < range.start.line || index > range.end.line) {
-        continue;
-      }
-
       hints.push({
         position: locationAsRange(value.loc, index).end,
         label: ` = ${result.value}`,

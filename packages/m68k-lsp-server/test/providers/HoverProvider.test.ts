@@ -223,6 +223,62 @@ describe("HoverProvider", () => {
       );
     });
 
+    describe("offsets and constants defined later", () => {
+      const source = [
+        " rsreset",
+        "Obj_x rs.w 1",
+        "Obj_y rs.w 1",
+        "Obj_flags rs.b 1",
+        "Obj_sizeof rs.b 0",
+        " move.w Obj_y(a0),d0",
+        " lea Obj_sizeof*4(a1),a1",
+        "A equ B*2",
+        " move.w #A,d0",
+        "B equ Later_sizeof",
+        " rsreset",
+        "Later_a rs.l 3",
+        "Later_sizeof rs.b 0",
+      ].join("\n");
+      const hoverCode = async (line: number, character: number) => {
+        const textDocument = await createDoc("offset-hover.s", source);
+        const hover = await provider.onHover({
+          textDocument,
+          position: lsp.Position.create(line, character),
+        });
+        return (hover?.contents as { value: string }[] | undefined)?.map(
+          ({ value }) => value,
+        );
+      };
+
+      it.each([
+        [2, 1, "Obj_y rs.w 1\n      = 2 ($2)"],
+        [4, 2, "Obj_sizeof rs.b 0\n           = 5 ($5)"],
+        [11, 2, "Later_a rs.l 3\n        = 0 ($0)"],
+      ])(
+        "shows the offset an RS label takes, on line %i",
+        async (line, character, code) => {
+          expect(await hoverCode(line, character)).toEqual([code]);
+        },
+      );
+
+      it("shows offsets where they are used", async () => {
+        expect(await hoverCode(5, 10)).toEqual([
+          "Obj_y rs.w 1\n      = 2 ($2)",
+        ]);
+        expect(await hoverCode(6, 8)).toEqual([
+          "Obj_sizeof rs.b 0\n           = 5 ($5)\nExpression = 20 ($14)",
+        ]);
+      });
+
+      it("resolves constants through later constants and offsets", async () => {
+        expect(await hoverCode(7, 0)).toEqual(["A equ B*2\n  = 24 ($18)"]);
+        expect(await hoverCode(8, 10)).toEqual(["A equ B*2\n  = 24 ($18)"]);
+        expect(await hoverCode(9, 0)).toEqual([
+          "B equ Later_sizeof\n  = 12 ($C)",
+        ]);
+      });
+    });
+
     it("resolves a forward equate in operands without using it in a condition", async () => {
       const document = await createDoc(
         "forward-operand-hover.s",

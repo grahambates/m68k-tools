@@ -151,6 +151,98 @@ B = A+1`,
       expect(hints).toEqual([]);
     });
 
+    const labels = async (filename: string, text: string) => {
+      const textDocument = await createDoc(filename, text);
+      const hints = await provider.onInlayHint({
+        textDocument,
+        range: wholeFile,
+      });
+      return (hints ?? []).map(({ position, label }) => [position.line, label]);
+    };
+
+    it("resolves a constant from one defined after it", async () => {
+      expect(
+        await labels("forward.s", ["A equ B*2", "B equ 1+2"].join("\n")),
+      ).toEqual([
+        [0, " = 6"],
+        [1, " = 3"],
+      ]);
+    });
+
+    it("resolves constants from RS offsets", async () => {
+      expect(
+        await labels(
+          "offsets.s",
+          [
+            " rsreset",
+            "Obj_x rs.w 1",
+            "Obj_y rs.l 1",
+            "Obj_sizeof rs.b 0",
+            "TABLE_SIZE equ Obj_sizeof*8",
+          ].join("\n"),
+        ),
+      ).toEqual([[4, " = 48"]]);
+    });
+
+    it("gives SET the value it has where it stands", async () => {
+      expect(
+        await labels(
+          "set.s",
+          [
+            "X set 1+1",
+            "Y equ X*10",
+            "X set X+1",
+            "Z set LATER",
+            "LATER equ 9",
+          ].join("\n"),
+        ),
+      ).toEqual([
+        [0, " = 2"],
+        [1, " = 20"],
+        [2, " = 3"],
+      ]);
+    });
+
+    it("skips constants in code that does not assemble", async () => {
+      expect(
+        await labels(
+          "inactive.s",
+          [" ifne 0", "A equ 1+1", " else", "B equ 2+2", " endc"].join("\n"),
+        ),
+      ).toEqual([[3, " = 4"]]);
+    });
+
+    it("reads symbols without case when vasm folds it", async () => {
+      const folded = await createTestContext({
+        inlayHints: { enabled: true },
+        caseSensitive: false,
+      });
+      const textDocument = TextDocument.create(
+        folded.workspaceFolders[0].uri + "/nocase.s",
+        "vasmmot",
+        0,
+        ["Width equ 1+3", "AREA equ WIDTH*2"].join("\n"),
+      );
+      await new DocumentProcessor(folded).process(textDocument);
+      const hints = await new InlayHintProvider(folded).onInlayHint({
+        textDocument,
+        range: wholeFile,
+      });
+      expect(hints?.map(({ label }) => label)).toEqual([" = 4", " = 8"]);
+    });
+
+    it("evaluates constants in a macro body from the file's constants", async () => {
+      expect(
+        await labels(
+          "macro-body.s",
+          ["SIZE equ 2+2", "M macro", "LOCAL equ SIZE*2", " endm"].join("\n"),
+        ),
+      ).toEqual([
+        [0, " = 4"],
+        [2, " = 8"],
+      ]);
+    });
+
     it("still resolves earlier constants used outside the requested range", async () => {
       const textDocument = await createDoc(
         "ranged.s",

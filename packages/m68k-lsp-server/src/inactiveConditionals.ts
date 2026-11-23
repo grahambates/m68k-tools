@@ -19,11 +19,63 @@ import {
 import { escapeSequencesOn, symbolsCaseSensitive, type Config } from "./config";
 
 interface KnownValue {
-  value: number;
+  /**
+   * The value, or how to work it out from the symbols known where it is read.
+   * vasm resolves an `equ` that refers to a symbol not yet defined once that
+   * symbol is, as it does an offset counted with one, so `A equ B*2` above
+   * `B equ 3` is 6 from there on.
+   */
+  value: number | Pending;
   immutable: boolean;
 }
 
+type Pending = (values: Values) => number | undefined;
+
 type Values = Map<string, KnownValue>;
+
+/** Directives whose operands vasm can resolve from later definitions. */
+const FINAL_PASS_DIRECTIVES = new Set([
+  "equ",
+  "=",
+  "rs",
+  "so",
+  "fo",
+  "dc",
+  "dcb",
+  "ds",
+  "blk",
+]);
+
+/** Definitions a final-pass line can see from before they are made. */
+const FORWARD_DEFINITIONS = new Set(["equ", "=", "rs", "so", "fo"]);
+
+/** The offset counters, and the directives that count with or set them. */
+const OFFSET_COUNTERS: Readonly<Record<string, string>> = {
+  rs: "__RS",
+  so: "__SO",
+  fo: "__FO",
+};
+const OFFSET_RESETS: Readonly<Record<string, string>> = {
+  rsreset: "__RS",
+  clrso: "__SO",
+  clrfo: "__FO",
+};
+const OFFSET_SETS: Readonly<Record<string, string>> = {
+  rsset: "__RS",
+  setso: "__SO",
+  setfo: "__FO",
+};
+
+const SIZE_BYTES: Readonly<Record<string, number>> = {
+  b: 1,
+  w: 2,
+  l: 4,
+  q: 8,
+  s: 4,
+  d: 8,
+  x: 12,
+  p: 12,
+};
 
 export interface AssemblyConstants {
   constants: ReadonlyMap<string, number>;
@@ -61,8 +113,15 @@ export function analyzeConditionals(
     fromCurrentInclude?: boolean,
   ) => boolean,
   targetLine?: number,
+  /**
+   * Where the offset counters start, which for vasm is 0. Leave it out for a
+   * file that may be included, where they hold whatever the includer left.
+   */
+  offsetCountersStart?: number,
 ) {
   const values: Values = new Map();
+  /** What each assignment line assigned, as the walk reached it. */
+  const defined = new Map<number, KnownValue>();
   let atLine: Values | undefined;
   let captureTarget = targetLine !== undefined;
   const defaults = new Map<string, ExpressionNode>();
@@ -71,6 +130,7 @@ export function analyzeConditionals(
       diagnostics: [],
       constants: new Map<string, number>(),
       defaults,
+      definitionValue: undefined,
       evaluateAtLine: undefined,
     };
   const { lines } = parsed;
@@ -79,17 +139,55 @@ export function analyzeConditionals(
   const caseSensitive = symbolsCaseSensitive(config);
   const options = { escapeSequences: escapeSequencesOn(config) };
   const key = (name: string) => symbolKey(name, caseSensitive);
+  // Pending values being worked out, so a definition that refers back to
+  // itself, directly or through others, is unknown rather than endless.
+  const resolving = new Set<Pending>();
+  const resolve = (
+    entry: KnownValue | undefined,
+    values: Values,
+  ): number | undefined => {
+    if (!entry) return;
+    const pending = entry.value;
+    if (typeof pending === "number") return pending;
+    if (resolving.has(pending)) return;
+    resolving.add(pending);
+    try {
+      return pending(values);
+    } finally {
+      resolving.delete(pending);
+    }
+  };
   const evaluate = (expr: ExpressionNode | undefined, values: Values) => {
     if (!expr) return;
     const result = evaluateConstant(
       expr,
-      (name) => values.get(key(name))?.value,
+      (name) => resolve(values.get(key(name)), values),
       options,
     );
     return result.known && Number.isInteger(result.value)
       ? result.value
       : undefined;
   };
+  /** A value known now, or else one to work out when it is read. */
+  const settle = (pending: Pending, values: Values): number | Pending =>
+    pending(values) ?? pending;
+
+  // vasm aligns offsets to even under -devpac or -align, for any size but a
+  // byte. Measured against vasm 2.0f: RS and SO round the counter up before
+  // the label takes it; FO subtracts first and then takes (x - 1) & ~1, so
+  // even a counter that is already even moves down by two (SETFO -4 then
+  // FO.L 1 is -10).
+  const alignOffsets = config.vasm.args.some(
+    (arg) => arg === "-devpac" || arg === "-align",
+  );
+  if (offsetCountersStart !== undefined) {
+    for (const counter of Object.values(OFFSET_COUNTERS)) {
+      values.set(key(counter), {
+        value: offsetCountersStart,
+        immutable: false,
+      });
+    }
+  }
 
   const commandLineDefinitions = new Set<string>();
   if (reportDiagnostics || targetLine !== undefined) {
@@ -236,17 +334,110 @@ export function analyzeConditionals(
       }
       return;
     }
+    const usable =
+      !invalid.has(index) &&
+      (!line.inlineCondition || conditional !== undefined);
+    if (name && (OFFSET_RESETS[name] || OFFSET_SETS[name])) {
+      const counter = key(OFFSET_RESETS[name] ?? OFFSET_SETS[name]);
+      // vasm requires a constant here, so it is never left pending.
+      const value = !usable
+        ? undefined
+        : OFFSET_RESETS[name]
+          ? 0
+          : evaluate(expression(line), values);
+      if (value === undefined) values.delete(counter);
+      else values.set(counter, { value, immutable: false });
+      return;
+    }
+    if (name && OFFSET_COUNTERS[name]) {
+      applyOffset(line, name, values, usable);
+      return;
+    }
+
     if (line.label?.scope !== "global") return;
     const symbol = key(line.label.label);
-    const value =
-      (name === "equ" || name === "=" || name === "set") &&
-      !invalid.has(index) &&
-      (!line.inlineCondition || conditional !== undefined)
-        ? evaluate(expression(line), values)
-        : undefined;
+    const expr = expression(line);
+    if ((name === "equ" || name === "=") && usable && expr) {
+      const entry: KnownValue = {
+        value: settle((current) => evaluate(expr, current), values),
+        immutable: true,
+      };
+      values.set(symbol, entry);
+      defined.set(index, entry);
+      return;
+    }
+    const value = name === "set" && usable ? evaluate(expr, values) : undefined;
     if (value === undefined) values.delete(symbol);
-    else
-      values.set(symbol, { value, immutable: name === "equ" || name === "=" });
+    else {
+      const entry = { value, immutable: false };
+      values.set(symbol, entry);
+      defined.set(index, entry);
+    }
+  }
+
+  /**
+   * `label RS.size count`: the label takes the counter, which then moves on by
+   * size × count; FO moves the counter down first and the label takes that.
+   */
+  function applyOffset(
+    line: ParsedLine,
+    name: string,
+    values: Values,
+    usable: boolean,
+  ) {
+    const counter = key(OFFSET_COUNTERS[name]);
+    const qualifier = line.qualifier;
+    const bytes = !qualifier
+      ? SIZE_BYTES.w
+      : qualifier.type === "size"
+        ? SIZE_BYTES[qualifier.size.toLowerCase()]
+        : undefined;
+    const count = expression(line);
+    const base = values.get(counter);
+    const align = alignOffsets && bytes !== undefined && bytes > 1;
+    const step: Pending = (current) => {
+      const start = resolve(base, current);
+      const n = evaluate(count, current);
+      return start === undefined || n === undefined || bytes === undefined
+        ? undefined
+        : start;
+    };
+    let label: Pending;
+    let next: Pending;
+    if (name === "fo") {
+      next = (current) => {
+        const start = step(current);
+        if (start === undefined) return;
+        const moved = start - bytes! * evaluate(count, current)!;
+        return align ? (moved - 1) & ~1 : moved;
+      };
+      label = next;
+    } else {
+      label = (current) => {
+        const start = resolve(base, current);
+        if (start === undefined) return;
+        return align ? (start + 1) & ~1 : start;
+      };
+      next = (current) => {
+        const start = step(current) === undefined ? undefined : label(current);
+        return start === undefined
+          ? undefined
+          : start + bytes! * evaluate(count, current)!;
+      };
+    }
+    if (usable && bytes !== undefined && count) {
+      values.set(counter, { value: settle(next, values), immutable: false });
+    } else {
+      values.delete(counter);
+    }
+    if (line.label?.scope === "global") {
+      const symbol = key(line.label.label);
+      if (usable) {
+        values.set(symbol, { value: settle(label, values), immutable: true });
+      } else {
+        values.delete(symbol);
+      }
+    }
   }
 
   function walk(
@@ -380,9 +571,17 @@ export function analyzeConditionals(
     }
   }
 
+  // Lines vasm resolves once the whole source is read, which can use what is
+  // defined after them: instructions, data, and the definitions of constants
+  // and offsets. Conditions and SET are decided where they stand.
   const target = targetLine === undefined ? undefined : lines[targetLine];
+  const targetDirective = target && directive(target);
   const initialValues =
-    target?.mnemonic?.type === "instruction" && !target.inlineCondition
+    target &&
+    !target.inlineCondition &&
+    (target.mnemonic?.type === "instruction" ||
+      (targetDirective !== undefined &&
+        FINAL_PASS_DIRECTIVES.has(targetDirective)))
       ? new Map(values)
       : undefined;
   let forwardValues: Values | undefined;
@@ -395,21 +594,20 @@ export function analyzeConditionals(
     const value = evaluate(expression, snapshot);
     if (value !== undefined || !initialValues) return value;
     if (!forwardValues) {
-      // An instruction operand can refer to an immutable equate defined
-      // later. Parse-time conditions and assignments still use source order.
+      // Such a line can refer to a constant or offset defined later, or, for
+      // an offset's own label, on the line itself.
       const later = new Map(initialValues);
       captureTarget = false;
       walk(0, lines.length, blocks, later, false);
-      const definitions = new Map<string, number>();
+      const definitions = definitionCounts();
       const candidates = new Set<string>();
       for (const [index, source] of lines.entries()) {
         if (source.label?.scope !== "global") continue;
         const name = key(source.label.label);
-        definitions.set(name, (definitions.get(name) ?? 0) + 1);
         if (
-          index > line &&
+          index >= line &&
           !source.inlineCondition &&
-          ["=", "equ"].includes(directive(source) ?? "")
+          FORWARD_DEFINITIONS.has(directive(source) ?? "")
         ) {
           candidates.add(name);
         }
@@ -429,10 +627,40 @@ export function analyzeConditionals(
     return evaluate(expression, forwardValues);
   }
 
+  /** How many lines of the file define each name. */
+  function definitionCounts() {
+    const counts = new Map<string, number>();
+    for (const source of lines) {
+      if (source.label?.scope !== "global") continue;
+      const name = key(source.label.label);
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    return counts;
+  }
+
   walk(0, lines.length, blocks, values, reportDiagnostics);
+
+  // A constant still waiting on a later one is resolved as vasm resolves it,
+  // once the whole source is read, from constants that have only one value.
+  let resolvedAtEnd: Values | undefined;
+  const definitionValue = (line: number): number | undefined => {
+    const entry = defined.get(line);
+    if (!entry) return;
+    if (typeof entry.value === "number") return entry.value;
+    if (!resolvedAtEnd) {
+      const counts = definitionCounts();
+      resolvedAtEnd = new Map(
+        [...values].filter(
+          ([name, known]) => known.immutable && (counts.get(name) ?? 0) <= 1,
+        ),
+      );
+    }
+    return resolve(entry, resolvedAtEnd);
+  };
   const constants = new Map<string, number>();
   for (const [name, entry] of values) {
-    if (entry.immutable) constants.set(name, entry.value);
+    const value = entry.immutable ? resolve(entry, values) : undefined;
+    if (value !== undefined) constants.set(name, value);
   }
   const snapshot = atLine;
   return {
@@ -440,6 +668,12 @@ export function analyzeConditionals(
     constants,
     defaults,
     guard: headerGuard,
+    /**
+     * The value an `equ`, `=` or `set` line assigns, where the walk of the
+     * whole file reached it: not inside a macro or repeat body, nor a branch
+     * known not to assemble.
+     */
+    definitionValue: targetLine === undefined ? definitionValue : undefined,
     evaluateAtLine:
       snapshot && targetLine !== undefined && !invalid.has(targetLine)
         ? (expression: ExpressionNode) =>

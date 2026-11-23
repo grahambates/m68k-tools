@@ -69,6 +69,17 @@ test("resolves zero and preserves unknown results", () => {
   });
 });
 
+test("asks the resolver for built-in symbols, unknown when it has none", () => {
+  const rs = parseExpression("__RS+2").value;
+  expect(
+    evaluateConstant(rs, (name) => (name === "__RS" ? 6 : undefined)),
+  ).toEqual({ known: true, value: 8 });
+  expect(evaluateConstant(rs)).toEqual({
+    known: false,
+    reason: "builtin-symbol",
+  });
+});
+
 // Values are 32-bit signed, as vasm has them: every expected value below is
 // what vasm (mot syntax, native build) assembled for `dc.l <expression>`.
 const wrapped: [string, number][] = [

@@ -144,8 +144,12 @@ export function evaluateConstant(
       const value = resolveSymbol(expr.name);
       return value === undefined ? unknown("unknown-symbol") : known(value);
     }
-    case "builtin-symbol":
-      return unknown("builtin-symbol");
+    case "builtin-symbol": {
+      // The assembler's own symbols, such as the offset counter `__RS`, are
+      // asked of the resolver for callers that follow them.
+      const value = resolveSymbol(expr.name);
+      return value === undefined ? unknown("builtin-symbol") : known(value);
+    }
     case "current-address":
       return unknown("current-address");
     case "macro-parameter":

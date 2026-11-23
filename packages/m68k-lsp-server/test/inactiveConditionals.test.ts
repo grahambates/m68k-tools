@@ -238,6 +238,125 @@ describe("inactive conditional assembly", async () => {
     ).toEqual([]);
   });
 
+  it("resolves a constant from one defined after it, once that is defined", async () => {
+    const source = [
+      "A equ B*2",
+      " ifd A",
+      " nop",
+      " else",
+      " illegal",
+      " endc",
+      "B equ 3",
+      " ifeq A-6",
+      " nop",
+      " else",
+      " illegal",
+      " endc",
+    ].join("\n");
+    // A is defined from its own line, though not yet known; vasm decides each
+    // condition where it stands.
+    expect(await lines(source)).toEqual([
+      [4, 5],
+      [10, 11],
+    ]);
+  });
+
+  it("leaves constants defined in terms of each other unknown", async () => {
+    expect(
+      await lines(
+        ["A equ B", "B equ A", " ifeq A", " nop", " endc"].join("\n"),
+      ),
+    ).toEqual([]);
+  });
+
+  // Offsets measured against vasm 2.0f with -no-opt, with and without -devpac.
+  it.each([
+    [[], 1, 3],
+    [["-devpac"], 2, 4],
+    [["-align"], 2, 4],
+  ])("counts RS offsets with vasm args %j", async (args, b, c) => {
+    const source = [
+      " rsreset",
+      "a rs.b 1",
+      "b rs.w 1",
+      "c rs.l 1",
+      ` ifeq b-${b}`,
+      " nop",
+      " else",
+      " illegal",
+      " endc",
+      ` ifeq c-${c}`,
+      " nop",
+      " else",
+      " illegal",
+      " endc",
+    ].join("\n");
+    expect(
+      (await inactive(source, args)).map(({ range }) => range.start.line),
+    ).toEqual([7, 12]);
+  });
+
+  it.each([
+    // FO moves the counter down before the label takes it. Aligned, vasm
+    // takes (x - 1) & ~1, so an even counter still moves: -8 becomes -10.
+    [[], [-1, -3, -7]],
+    [["-align"], [-1, -4, -10]],
+  ])("counts FO offsets with vasm args %j", async (args, expected) => {
+    const checks = ["a", "b", "c"].flatMap((name, i) => [
+      ` ifeq ${name}-(${expected[i]})`,
+      " nop",
+      " else",
+      " illegal",
+      " endc",
+    ]);
+    const source = [
+      " clrfo",
+      "a fo.b 1",
+      "b fo.w 1",
+      "c fo.l 1",
+      ...checks,
+    ].join("\n");
+    expect(
+      (await inactive(source, args)).map(({ range }) => range.start.line),
+    ).toEqual([7, 12, 17]);
+  });
+
+  it("follows RSSET, SO and __RS, and counts with a later constant", async () => {
+    const source = [
+      " rsset 100",
+      "i rs.w 2",
+      "size equ __RS",
+      " clrso",
+      "p so.w 3",
+      "q so.b 0",
+      " rsreset",
+      "x rs.w later",
+      "y rs.b 0",
+      "later equ 3",
+      " ifeq (i-100)+(size-104)+(q-6)+(y-6)",
+      " nop",
+      " else",
+      " illegal",
+      " endc",
+    ].join("\n");
+    expect(await lines(source)).toEqual([[13, 14]]);
+  });
+
+  it("does not assume offset counters start at zero in an included file", async () => {
+    const ctx = await createTestContext();
+    const document = TextDocument.create(
+      "file:///project/struct.i",
+      "vasmmot",
+      0,
+      ["early rs.w 1", " rsreset", "first rs.w 1", "second rs.l 1"].join("\n"),
+    );
+    const processed = await new DocumentProcessor(ctx).process(document);
+    const constants = processed.assemblyConstants?.constants;
+    expect(constants?.get("first")).toBe(0);
+    expect(constants?.get("second")).toBe(2);
+    expect(constants?.has("early")).toBe(false);
+  });
+
   it("dims the statement of a known-false inline condition", async () => {
     expect((await inactive(" iif 0 nop"))[0]?.range.start).toEqual({
       line: 0,

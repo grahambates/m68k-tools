@@ -83,6 +83,7 @@ type Directive = string;
 /** Definition kinds hover renders as a declaration. */
 const declarationTypes = new Set([
   DefinitionType.Constant,
+  DefinitionType.Offset,
   DefinitionType.Variable,
   DefinitionType.Register,
   DefinitionType.RegisterList,

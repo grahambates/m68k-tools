@@ -20,6 +20,7 @@ import {
   isLocalLabelName,
   locationAsRange,
   type OperandNode,
+  parseExpression,
   parseLine,
 } from "m68k-parser";
 import { resolveInclude } from "../files";
@@ -127,6 +128,18 @@ export default class HoverProvider implements Provider {
       if (operand?.type === "value") expression = operand.value;
       else if (operand?.type === "string-literal") expression = operand;
     }
+    // An offset's label stands for the counter, so it is the label that is
+    // evaluated, as if it were used where it is defined.
+    if (
+      !expression &&
+      node.type === "label" &&
+      line.mnemonic?.type === "directive" &&
+      ["rs", "so", "fo"].includes(line.mnemonic.directive) &&
+      line.label
+    ) {
+      const parsedLabel = parseExpression(line.label.label);
+      if (!parsedLabel.errors.length) expression = parsedLabel.value;
+    }
     if (expression) {
       const { evaluateAtLine } = analyzeDocumentConditionals(
         this.ctx,
@@ -163,7 +176,12 @@ export default class HoverProvider implements Provider {
             const original = code[0];
             const { value: parsed, errors } = parseLine(original);
             const operand = parsed.operands?.[0];
-            const expr = operand?.type === "value" ? operand.value : undefined;
+            // An offset's operand is a count, not its value.
+            const assigns =
+              parsed.mnemonic?.type === "directive" &&
+              ["equ", "=", "set"].includes(parsed.mnemonic.directive);
+            const expr =
+              assigns && operand?.type === "value" ? operand.value : undefined;
             const literal =
               expr?.type === "numeric-literal" ||
               (expr?.type === "unary-op" &&
@@ -369,6 +387,7 @@ export default class HoverProvider implements Provider {
         case DefinitionType.Register:
         case DefinitionType.RegisterList:
         case DefinitionType.Constant:
+        case DefinitionType.Offset:
         case DefinitionType.Variable: {
           // The declaration line is captured when the symbol is recorded, so
           // this works whether or not the defining file is open.

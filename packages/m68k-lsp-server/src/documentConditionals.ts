@@ -56,5 +56,8 @@ export function analyzeDocumentConditionals(
       });
     },
     line,
+    // vasm starts the offset counters at 0, which is where they stand in
+    // a file nothing includes.
+    getIncluders(uri, ctx).length ? undefined : 0,
   );
 }

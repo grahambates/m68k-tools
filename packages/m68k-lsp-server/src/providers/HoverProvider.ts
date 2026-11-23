@@ -13,9 +13,13 @@ import { type TextDocument } from "vscode-languageserver-textdocument";
 import { type Provider } from ".";
 import { childNodes, type AstNode, nodeAtPosition } from "../ast";
 import {
+  addressingMode,
+  type AddressingModeName,
+  encodedInstruction,
   evaluateConstant,
   isLocalLabelName,
   locationAsRange,
+  type OperandNode,
   parseLine,
 } from "m68k-parser";
 import { resolveInclude } from "../files";
@@ -32,7 +36,12 @@ import {
   routineContract,
   type RegisterDescriptionResult,
 } from "../registerDescriptions";
-import { mnemonicDocs, registerDocs, sizeDocs } from "../docs/index";
+import {
+  instructionFormDocs,
+  mnemonicDocs,
+  registerDocs,
+  sizeDocs,
+} from "../docs/index";
 import type { Size } from "m68k-parser";
 import { type RegisterName } from "../syntax";
 import { type Context } from "../context";
@@ -44,6 +53,7 @@ import {
 } from "../formatting";
 import { type MarkupContent } from "vscode-languageserver";
 import { expandMacroAtLine } from "../macros";
+import { type AliasResolver, registersAt } from "../registerEffects";
 import { analyzeDocumentConditionals } from "../documentConditionals";
 
 const macroHoverColumnLimit = 200;
@@ -207,10 +217,11 @@ export default class HoverProvider implements Provider {
 
     switch (node.type) {
       case "instruction":
-        return this.hoverMnemonic(
+        return this.hoverInstruction(
           (node as unknown as InstructionNode).instruction,
+          line.operands ?? [],
           node,
-          "instruction",
+          textDocument.uri,
           position.line,
         );
       case "directive":
@@ -297,6 +308,36 @@ export default class HoverProvider implements Provider {
         value: `(${kind}) ` + text.toUpperCase(),
       },
     };
+  }
+
+  /**
+   * Documents the instruction the line is encoded as, which the operands can
+   * change: `cmp.w d0,a0` is CMPA and `add.w #1,(a0)` is ADDI. Where the
+   * reference gives a form a page of its own, such as MOVE to CCR, that page
+   * is shown rather than the entry combining every form.
+   */
+  private async hoverInstruction(
+    text: string,
+    operands: readonly OperandNode[],
+    node: AstNode,
+    uri: string,
+    line: number,
+  ) {
+    const modes = operandModes(operands, createAliasResolver(this.ctx, uri));
+    const encoded = encodedInstruction(text, modes);
+    const form = instructionForm(encoded, modes);
+    const doc = form ? instructionFormDocs[form] : mnemonicDocs[encoded];
+    if (!doc) {
+      return this.hoverMnemonic(text, node, "instruction", line);
+    }
+    const docs = formatMnemonicDoc(doc);
+    const written = text.toLowerCase();
+    if ((form ?? encoded) !== written) {
+      // A form's title keeps the reference's casing: "MOVE to CCR".
+      const title = form ? doc.title : encoded.toUpperCase();
+      docs.value = `Assembled as **${title}**\n${docs.value}`;
+    }
+    return { range: locationAsRange(node.loc, line), contents: docs };
   }
 
   private async hoverSize(node: AstNode, line: number) {
@@ -587,6 +628,49 @@ function formatRegisterDescription(
     );
   }
   return sections.join("\n\n");
+}
+
+/**
+ * Addressing modes of a line's operands, reading a register alias written as
+ * a whole operand (`count` for `count equr d0`) as the register it names.
+ */
+function operandModes(
+  operands: readonly OperandNode[],
+  aliases: AliasResolver,
+): (AddressingModeName | undefined)[] {
+  return operands.map((operand) => {
+    if (operand.type === "absolute-address") {
+      const [alias] = registersAt(operand, aliases);
+      if (alias) {
+        // A list alias has no single mode; leave the form to the mnemonic.
+        if (alias.registers.length !== 1) return undefined;
+        return alias.registers[0].startsWith("a") ? "an" : "dn";
+      }
+    }
+    return addressingMode(operand);
+  });
+}
+
+/**
+ * The key of the separately documented form an encoded instruction takes with
+ * these operands, such as "move to ccr", or undefined if it has none or an
+ * operand's mode is not known, when the combined entry is the safer answer.
+ */
+function instructionForm(
+  encoded: string,
+  modes: readonly (AddressingModeName | undefined)[],
+): string | undefined {
+  if (!instructionFormDocs[encoded] || modes.includes(undefined)) return;
+  const [source, destination] = modes;
+  let form = encoded;
+  if (encoded === "move" && (source === "usp" || destination === "usp")) {
+    form = "move usp";
+  } else if (destination === "ccr" || destination === "sr") {
+    form = `${encoded} to ${destination}`;
+  } else if (encoded === "move" && (source === "ccr" || source === "sr")) {
+    form = `move from ${source}`;
+  }
+  return instructionFormDocs[form] ? form : undefined;
 }
 
 function lookupMnemonicDoc(mnemonic: string): MarkupContent | undefined {

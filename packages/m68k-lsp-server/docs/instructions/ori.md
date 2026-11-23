@@ -8,7 +8,7 @@ IF [S] = 1<br/>&nbsp;&nbsp;THEN<br/>&nbsp;&nbsp;&nbsp;&nbsp;[SR] ← \<literal\>
 ## Syntax
 ```assembly
 ORI[.(bwl)] #<data>,<destination>
-ORI[.w] #<data>,CCR
+ORI[.b] #<data>,CCR
 ORI[.w] #<data>,SR
 ```
 

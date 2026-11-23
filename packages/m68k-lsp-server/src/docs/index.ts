@@ -1,5 +1,6 @@
 import instructionsJson from "./instructions.json";
 import directivesJson from "./directives.json";
+import instructionFormsJson from "./instruction-forms.json";
 import type { Size } from "m68k-parser";
 import { type AddressingMode, type RegisterName } from "../syntax";
 
@@ -57,6 +58,15 @@ export const isInstructionDoc = (doc: MnemonicDoc): doc is InstructionDoc =>
   (doc as InstructionDoc).operation !== undefined;
 
 export const instructionDocs = instructionsJson as Record<
+  string,
+  InstructionDoc
+>;
+/**
+ * Forms of an instruction the reference documents on pages of their own, such
+ * as MOVE to CCR, keyed by title in lower case ("move to ccr"). The entries in
+ * `instructionDocs` combine them under one mnemonic, as operand matching needs.
+ */
+export const instructionFormDocs = instructionFormsJson as Record<
   string,
   InstructionDoc
 >;

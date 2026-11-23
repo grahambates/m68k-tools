@@ -79,6 +79,7 @@ export type { AddressingModeName } from "./addressing-mode.js";
 export {
   addressRegisterForm,
   canonicalConditionMnemonic,
+  encodedInstruction,
 } from "./mnemonic-aliases.js";
 
 export {

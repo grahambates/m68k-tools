@@ -3,12 +3,10 @@ const fs = require("fs");
 // const yaml = require("js-yaml");
 const summaries = require("../packages/m68k-lsp-server/docs/instructions-single.json");
 
-function processMd(mnemonic) {
-  const file =
-    __dirname +
-    "/../packages/m68k-lsp-server/docs/instructions/" +
-    mnemonic.toLowerCase() +
-    ".md";
+const docsDir = __dirname + "/../packages/m68k-lsp-server/docs";
+
+function processMd(mnemonic, dir = docsDir + "/instructions") {
+  const file = dir + "/" + mnemonic.toLowerCase() + ".md";
   if (!fs.existsSync(file)) {
     return;
   }
@@ -171,6 +169,70 @@ for (const line of lines) {
 
 const json = JSON.stringify(out, null, 2);
 fs.writeFileSync(__dirname + "/../packages/m68k-lsp-server/src/docs/instructions.json", json);
+
+// Forms of an instruction the reference documents on pages of their own, such
+// as MOVE to CCR, which the entries above combine under one mnemonic. They are
+// keyed by their reference title in lower case ("move to ccr"), and take their
+// summary and processors from the reference's rows for that title.
+function csvFields(line) {
+  return [...line.matchAll(/("[^"]*"|[^,]*)(,|$)/g)]
+    .slice(0, -1)
+    .map(([, field]) => field.replace(/^"|"$/g, ""));
+}
+
+const formProcs = {};
+for (const line of fs
+  .readFileSync(docsDir + "/inst-proc-xref.csv", "utf-8")
+  .replace(/^\uFEFF/, "")
+  .split(/\r?\n/)
+  .slice(1)) {
+  const [title, ...flags] = csvFields(line);
+  if (title) formProcs[title] = flags.map(Boolean);
+}
+
+const formSummaries = {};
+for (const line of fs
+  .readFileSync(docsDir + "/instructions.csv", "utf-8")
+  .split(/\r?\n/)) {
+  const [title, summary] = line.split("|");
+  if (summary) formSummaries[title] = summary;
+}
+
+const processorNames = [
+  "mc68000",
+  "mc68010",
+  "mc68020",
+  "mc68030",
+  "mc68040",
+  "mc68060",
+  "mc68881",
+  "mc68851",
+  "cpu32",
+];
+
+const formsDir = docsDir + "/instructions/forms";
+const forms = {};
+for (const file of fs.readdirSync(formsDir).sort()) {
+  const inst = processMd(file.replace(/\.md$/, ""), formsDir);
+  const flags = formProcs[inst.title];
+  if (!flags) throw new Error(`No processors for ${inst.title}`);
+  forms[inst.title.toLowerCase()] = {
+    title: inst.title,
+    summary: formSummaries[inst.title] ?? inst.summary,
+    operation: inst.operation,
+    syntax: inst.syntax,
+    description: inst.description,
+    src: inst.srcAddressing,
+    dest: inst.destAddressing,
+    ccr: inst.conditionCodes,
+    conditionCodeDescription: inst.conditionCodeDescription,
+    procs: Object.fromEntries(processorNames.map((name, i) => [name, flags[i]])),
+  };
+}
+fs.writeFileSync(
+  __dirname + "/../packages/m68k-lsp-server/src/docs/instruction-forms.json",
+  JSON.stringify(forms, null, 2),
+);
 
 // const yml = yaml.dump(out, {});
 // fs.writeFileSync(__dirname + "/../packages/m68k-lsp-server/src/docs/instructions.yaml", yml);

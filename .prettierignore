@@ -8,6 +8,7 @@ package-lock.json
 packages/m68k-lsp-server/docs/
 packages/m68k-lsp-server/src/docs/directives.json
 packages/m68k-lsp-server/src/docs/instructions.json
+packages/m68k-lsp-server/src/docs/instruction-forms.json
 
 # Vendored / generated editor assets
 apps/m68k-lsp/syntaxes/

@@ -3218,13 +3218,13 @@
   "eori": {
     "title": "EORI",
     "summary": "Logical Exclusive-OR Immediate",
-    "operation": "IF [S] = 1<br/>\n&nbsp;THEN<br/>\n&nbsp;&nbsp;[SR] ← \\<literal\\> ⊕ [SR]<br/>\n&nbsp;ELSE TRAP<br/>",
+    "operation": "[destination] ← \\<literal\\> ⊕ [destination]\n[CCR] ← \\<literal\\> ⊕ [CCR]\nIF [S] = 1<br/>&nbsp;&nbsp;THEN<br/>&nbsp;&nbsp;&nbsp;&nbsp;[SR] ← \\<literal\\> ⊕ [SR]<br/>&nbsp;&nbsp;ELSE TRAP",
     "syntax": [
       "eori[.(bwl)] #<data>,<destination>",
-      "eori #<data>,CCR",
-      "eori #<data>,SR"
+      "eori[.b] #<data>,CCR",
+      "eori[.w] #<data>,SR"
     ],
-    "description": "EOR (exclusive OR) the immediate data with the contents of the status register and store the result in the status register. All bits of the status register are affected.",
+    "description": "EOR the immediate data with the contents of the destination operand. Store the result in the destination operand.\n\n** EORI to CCR - Exclusive OR immediate to condition code register **\n\nEOR the immediate data with the contents of the condition code register (i.e., the least-significant byte of the status register). Used to toggle bits in the CCR. For example, `EORI #$0C,CCR` toggles the N- and Z-bits of the CCR.\n\n** EORI to SR - Exclusive OR immediate to status register **\n\nEOR (exclusive OR) the immediate data with the contents of the status register and store the result in the status register. All bits of the status register are affected.",
     "dest": {
       "dn": true,
       "an": false,
@@ -3240,11 +3240,11 @@
       "imm": false
     },
     "ccr": {
-      "x": "*",
+      "x": "-",
       "n": "*",
       "z": "*",
-      "v": "*",
-      "c": "*"
+      "v": "0",
+      "c": "0"
     },
     "procs": {
       "mc68000": true,
@@ -6152,7 +6152,7 @@
     "operation": "[destination] ← \\<literal\\> + [destination]\n[CCR] ← \\<literal\\> + [CCR]\nIF [S] = 1<br/>&nbsp;&nbsp;THEN<br/>&nbsp;&nbsp;&nbsp;&nbsp;[SR] ← \\<literal\\> + [SR]<br/>&nbsp;&nbsp;ELSE TRAP",
     "syntax": [
       "ori[.(bwl)] #<data>,<destination>",
-      "ori[.w] #<data>,CCR",
+      "ori[.b] #<data>,CCR",
       "ori[.w] #<data>,SR"
     ],
     "description": "OR the immediate data with the destination operand. Store the result in the destination operand.\n\n** ORI to CCR - Inclusive OR immediate to CCR **\n\nOR the immediate data with the condition code register (i.e., the least-significant byte of the status register). For example, the Z flag of the CCR can be set by `ORI #$04,CCR`.\n\n** ORI to SR - Inclusive OR immediate to status register **\nOR the immediate data to the status register and store the result in the status register. All bits of the status register are affected.\n\nUsed to set bits in the SR (i.e., the S, T, and interrupt mask bits). For example, `ORI #$8000,SR` sets bit 15 of the SR (i.e., the trace bit).",

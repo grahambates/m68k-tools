@@ -332,7 +332,11 @@ Small pieces that several tools need, kept here so they agree:
   an operand is written in. `canonicalConditionMnemonic(name)` reads `HS`, `LO` and
   `DBRA` as `CC`, `CS` and `DBF`, and `addressRegisterForm(name)` gives `MOVEA`,
   `ADDA`, `SUBA` or `CMPA` for the generic spelling of an instruction on an address
-  register.
+  register. `encodedInstruction(name, modes)` names the instruction a line is encoded as
+  from its operands' addressing modes, before assembler optimisations: `cmp.w d0,a0`
+  is `CMPA`, `cmp (a0)+,(a1)+` is `CMPM`, and `add #n` to anything but a data
+  register is `ADDI` (likewise `SUBI`, `ANDI`, `ORI`, `CMPI`; `eor #n` is always
+  `EORI`).
 - **Data sizes** — `directiveSize(line, { evaluate })` is the number of bytes a
   `dc`, `dcb` or `ds` (and `db`, `dw`, `dl`, `blk`) emits, or `undefined` when it is
   not known. Without a size they take a word, and every character of a string

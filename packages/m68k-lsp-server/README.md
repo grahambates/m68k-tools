@@ -36,7 +36,9 @@ family assembly, using [m68k-parser](https://github.com/grahambates/m68k-tools/t
 - Macro expansion preview through the `m68k/macroExpansion` request
 - Hover
   - Macro call expansion preview
-  - Instruction/directive documentation
+  - Instruction/directive documentation, for the instruction the operands select
+    (`cmp.w d0,a0` shows CMPA, `add.w #1,(a0)` shows ADDI, `move.w d0,ccr` shows
+    MOVE to CCR)
   - Symbol info
   - Data/address register descriptions from comments and assignments
 - Inlay Hints

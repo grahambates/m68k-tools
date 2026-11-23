@@ -1,0 +1,511 @@
+{
+  "andi to ccr": {
+    "title": "ANDI to CCR",
+    "summary": "AND Immediate to Condition Code Register",
+    "operation": "[CCR] ← \\<data\\>.[CCR]",
+    "syntax": ["andi[.b] #<data>,CCR"],
+    "description": "*AND* the immediate data to the condition code register (i.e., the least-significant byte of the status register).",
+    "ccr": {
+      "x": "*",
+      "n": "*",
+      "z": "*",
+      "v": "*",
+      "c": "*"
+    },
+    "conditionCodeDescription": "X:= cleared if bit 4 of data = 0; unchanged otherwise<br/>\nN:= cleared if bit 3 of data = 0; unchanged otherwise<br/>\nZ:= cleared if bit 2 of data = 0; unchanged otherwise<br/>\nV:= cleared if bit 1 of data = 0; unchanged otherwise<br/>\nC:= cleared if bit 0 of data = 0; unchanged otherwise",
+    "procs": {
+      "mc68000": true,
+      "mc68010": true,
+      "mc68020": true,
+      "mc68030": true,
+      "mc68040": true,
+      "mc68060": true,
+      "mc68881": false,
+      "mc68851": false,
+      "cpu32": true
+    }
+  },
+  "andi to sr": {
+    "title": "ANDI to SR",
+    "summary": "AND Immediate to Status Register",
+    "operation": "IF [S] = 1<br/>&nbsp;&nbsp;THEN [SR] ← \\<literal\\>.[SR]<br/>ELSE TRAP",
+    "syntax": ["andi[.w] #<data>,SR"],
+    "description": "*AND* the immediate data to the status register and store the result in the status register. All bits of the SR are affected. This is a privileged instruction.",
+    "ccr": {
+      "x": "*",
+      "n": "*",
+      "z": "*",
+      "v": "*",
+      "c": "*"
+    },
+    "conditionCodeDescription": "X:= cleared if bit 4 of data = 0; unchanged otherwise<br/>\nN:= cleared if bit 3 of data = 0; unchanged otherwise<br/>\nZ:= cleared if bit 2 of data = 0; unchanged otherwise<br/>\nV:= cleared if bit 1 of data = 0; unchanged otherwise<br/>\nC:= cleared if bit 0 of data = 0; unchanged otherwise",
+    "procs": {
+      "mc68000": true,
+      "mc68010": true,
+      "mc68020": true,
+      "mc68030": true,
+      "mc68040": true,
+      "mc68060": true,
+      "mc68881": false,
+      "mc68851": false,
+      "cpu32": true
+    }
+  },
+  "andi": {
+    "title": "ANDI",
+    "summary": "Logical AND Immediate",
+    "operation": "[destination] ← \\<literal\\>.[destination]",
+    "syntax": ["andi[.(bwl)] #<data>,<destination>"],
+    "description": "*AND* the immediate data to the destination operand. The `ANDI` permits a literal operand to be ANDed with a destination other than a data register. For example, `ANDI #$FE00,$1234` or `ANDI.B #$F0,(A2)+`.",
+    "dest": {
+      "dn": true,
+      "an": false,
+      "anIndirect": true,
+      "anPostInc": true,
+      "anPreDec": true,
+      "anOffset": true,
+      "anIdx": true,
+      "absW": true,
+      "absL": true,
+      "pcOffset": false,
+      "pcIdx": false,
+      "imm": false
+    },
+    "ccr": {
+      "x": "-",
+      "n": "*",
+      "z": "*",
+      "v": "0",
+      "c": "0"
+    },
+    "procs": {
+      "mc68000": true,
+      "mc68010": true,
+      "mc68020": true,
+      "mc68030": true,
+      "mc68040": true,
+      "mc68060": true,
+      "mc68881": false,
+      "mc68851": false,
+      "cpu32": true
+    }
+  },
+  "eori to ccr": {
+    "title": "EORI to CCR",
+    "summary": "Exclusive-OR Immediate to Condition Code Register",
+    "operation": "[CCR] ← \\<literal\\> ⊕ [CCR]",
+    "syntax": ["eori[.b] #<data>,CCR"],
+    "description": "EOR the immediate data with the contents of the condition code register (i.e., the least-significant byte of the status register).",
+    "ccr": {
+      "x": "*",
+      "n": "*",
+      "z": "*",
+      "v": "*",
+      "c": "*"
+    },
+    "conditionCodeDescription": "X:= toggled if bit 4 of data = 1; unchanged otherwise<br/>\nN:= toggled if bit 3 of data = 1; unchanged otherwise<br/>\nZ:= toggled if bit 2 of data = 1; unchanged otherwise<br/>\nV:= toggled if bit 1 of data = 1; unchanged otherwise<br/>\nC:= toggled if bit 0 of data = 1; unchanged otherwise",
+    "procs": {
+      "mc68000": true,
+      "mc68010": true,
+      "mc68020": true,
+      "mc68030": true,
+      "mc68040": true,
+      "mc68060": true,
+      "mc68881": false,
+      "mc68851": false,
+      "cpu32": true
+    }
+  },
+  "eori to sr": {
+    "title": "EORI to SR",
+    "summary": "Exclusive-OR Immediate to Status Register",
+    "operation": "IF [S] = 1<br/>&nbsp;&nbsp;THEN [SR] ← \\<literal\\> ⊕ [SR]<br/>ELSE TRAP",
+    "syntax": ["eori[.w] #<data>,SR"],
+    "description": "EOR (exclusive OR) the immediate data with the contents of the status register and store the result in the status register. All bits of the status register are affected. This is a privileged instruction.",
+    "ccr": {
+      "x": "*",
+      "n": "*",
+      "z": "*",
+      "v": "*",
+      "c": "*"
+    },
+    "conditionCodeDescription": "X:= toggled if bit 4 of data = 1; unchanged otherwise<br/>\nN:= toggled if bit 3 of data = 1; unchanged otherwise<br/>\nZ:= toggled if bit 2 of data = 1; unchanged otherwise<br/>\nV:= toggled if bit 1 of data = 1; unchanged otherwise<br/>\nC:= toggled if bit 0 of data = 1; unchanged otherwise",
+    "procs": {
+      "mc68000": true,
+      "mc68010": true,
+      "mc68020": true,
+      "mc68030": true,
+      "mc68040": true,
+      "mc68060": true,
+      "mc68881": false,
+      "mc68851": false,
+      "cpu32": true
+    }
+  },
+  "eori": {
+    "title": "EORI",
+    "summary": "Logical Exclusive-OR Immediate",
+    "operation": "[destination] ← \\<literal\\> ⊕ [destination]",
+    "syntax": ["eori[.(bwl)] #<data>,<destination>"],
+    "description": "EOR the immediate data with the contents of the destination operand. Store the result in the destination operand.",
+    "dest": {
+      "dn": true,
+      "an": false,
+      "anIndirect": true,
+      "anPostInc": true,
+      "anPreDec": true,
+      "anOffset": true,
+      "anIdx": true,
+      "absW": true,
+      "absL": true,
+      "pcOffset": false,
+      "pcIdx": false,
+      "imm": false
+    },
+    "ccr": {
+      "x": "-",
+      "n": "*",
+      "z": "*",
+      "v": "0",
+      "c": "0"
+    },
+    "procs": {
+      "mc68000": true,
+      "mc68010": true,
+      "mc68020": true,
+      "mc68030": true,
+      "mc68040": true,
+      "mc68060": true,
+      "mc68881": false,
+      "mc68851": false,
+      "cpu32": true
+    }
+  },
+  "move from ccr": {
+    "title": "MOVE from CCR",
+    "summary": "Move from Condition Code Register",
+    "operation": "[destination] ← [CCR]",
+    "syntax": ["move[.w] CCR,<destination>"],
+    "description": "Move the contents of the condition code register, zero-extended to a word, to the destination location. The operand size is a word, and the bits above the condition codes are written as zeros. This instruction is not available on the 68000; it lets user-mode code read the condition codes on later processors, where `MOVE SR,<destination>` is privileged.",
+    "dest": {
+      "dn": true,
+      "an": false,
+      "anIndirect": true,
+      "anPostInc": true,
+      "anPreDec": true,
+      "anOffset": true,
+      "anIdx": true,
+      "absW": true,
+      "absL": true,
+      "pcOffset": false,
+      "pcIdx": false,
+      "imm": false
+    },
+    "ccr": {
+      "x": "-",
+      "n": "-",
+      "z": "-",
+      "v": "-",
+      "c": "-"
+    },
+    "procs": {
+      "mc68000": false,
+      "mc68010": true,
+      "mc68020": true,
+      "mc68030": true,
+      "mc68040": true,
+      "mc68060": true,
+      "mc68881": false,
+      "mc68851": false,
+      "cpu32": true
+    }
+  },
+  "move from sr": {
+    "title": "MOVE from SR",
+    "summary": "Move from Status Register",
+    "operation": "[destination] ← [SR]",
+    "syntax": ["move[.w] SR,<destination>"],
+    "description": "Move the contents of the status register to the destination location. The source operand, the status register, is a word. This instruction is not privileged in the 68000, but is privileged in the 68010 and later processors. Executing a `MOVE SR,<destination>` while in the user mode on these processors results in a privilege violation trap; `MOVE CCR,<destination>` reads the condition codes without one.",
+    "dest": {
+      "dn": true,
+      "an": false,
+      "anIndirect": true,
+      "anPostInc": true,
+      "anPreDec": true,
+      "anOffset": true,
+      "anIdx": true,
+      "absW": true,
+      "absL": true,
+      "pcOffset": false,
+      "pcIdx": false,
+      "imm": false
+    },
+    "ccr": {
+      "x": "-",
+      "n": "-",
+      "z": "-",
+      "v": "-",
+      "c": "-"
+    },
+    "procs": {
+      "mc68000": true,
+      "mc68010": true,
+      "mc68020": true,
+      "mc68030": true,
+      "mc68040": true,
+      "mc68060": true,
+      "mc68881": false,
+      "mc68851": false,
+      "cpu32": true
+    }
+  },
+  "move to ccr": {
+    "title": "MOVE to CCR",
+    "summary": "Move to Condition Code Register",
+    "operation": "[CCR] ← [source]",
+    "syntax": ["move[.w] <source>,CCR"],
+    "description": "Move the contents of the source operand to the condition code register. The source operand is a *word*, but only the low-order *byte* contains the condition codes. The upper byte is neglected. Note that `MOVE <source>,CCR` is a word operation, but `ANDI`, `ORI`, and `EORI` to `CCR` are all byte operations.",
+    "src": {
+      "dn": true,
+      "an": false,
+      "anIndirect": true,
+      "anPostInc": true,
+      "anPreDec": true,
+      "anOffset": true,
+      "anIdx": true,
+      "absW": true,
+      "absL": true,
+      "pcOffset": true,
+      "pcIdx": true,
+      "imm": true
+    },
+    "ccr": {
+      "x": "*",
+      "n": "*",
+      "z": "*",
+      "v": "*",
+      "c": "*"
+    },
+    "conditionCodeDescription": "X:= set to bit 4 of the source operand<br/>\nN:= set to bit 3 of the source operand<br/>\nZ:= set to bit 2 of the source operand<br/>\nV:= set to bit 1 of the source operand<br/>\nC:= set to bit 0 of the source operand",
+    "procs": {
+      "mc68000": true,
+      "mc68010": true,
+      "mc68020": true,
+      "mc68030": true,
+      "mc68040": true,
+      "mc68060": true,
+      "mc68881": false,
+      "mc68851": false,
+      "cpu32": true
+    }
+  },
+  "move to sr": {
+    "title": "MOVE to SR",
+    "summary": "Move to Status Register",
+    "operation": "IF [S] = 1<br/>&nbsp;&nbsp;THEN [SR] ← [source]<br/>ELSE TRAP",
+    "syntax": ["move[.w] <source>,SR"],
+    "description": "Move the contents of the source operand to the status register. The source operand is a word and all bits of the status register are affected. This is a privileged instruction.",
+    "src": {
+      "dn": true,
+      "an": false,
+      "anIndirect": true,
+      "anPostInc": true,
+      "anPreDec": true,
+      "anOffset": true,
+      "anIdx": true,
+      "absW": true,
+      "absL": true,
+      "pcOffset": true,
+      "pcIdx": true,
+      "imm": true
+    },
+    "ccr": {
+      "x": "*",
+      "n": "*",
+      "z": "*",
+      "v": "*",
+      "c": "*"
+    },
+    "conditionCodeDescription": "Set according to the source operand: X from bit 4, N from bit 3, Z from bit 2, V from bit 1 and C from bit 0.",
+    "procs": {
+      "mc68000": true,
+      "mc68010": true,
+      "mc68020": true,
+      "mc68030": true,
+      "mc68040": true,
+      "mc68060": true,
+      "mc68881": false,
+      "mc68851": false,
+      "cpu32": true
+    }
+  },
+  "move usp": {
+    "title": "MOVE USP",
+    "summary": "Move User Stack Pointer",
+    "operation": "IF [S] = 1&nbsp;&nbsp;&nbsp;&nbsp;{MOVE USP,An form}<br/> &nbsp;&nbsp;THEN [An] ← [USP]<br/> ELSE TRAP\nIF [S] = 1&nbsp;&nbsp;&nbsp;&nbsp;{MOVE An,USP form}<br/> &nbsp;&nbsp;THEN [USP] ← [An]<br/> ELSE TRAP",
+    "syntax": ["move[.l] USP,An", "move[.l] An,USP"],
+    "description": "Move the contents of the user stack pointer to an address register or vice versa. This is a privileged instruction and allows the operating system running in the supervisor state either to read the contents of the user stack pointer or to set up the user stack pointer.",
+    "ccr": {
+      "x": "-",
+      "n": "-",
+      "z": "-",
+      "v": "-",
+      "c": "-"
+    },
+    "procs": {
+      "mc68000": true,
+      "mc68010": true,
+      "mc68020": true,
+      "mc68030": true,
+      "mc68040": true,
+      "mc68060": true,
+      "mc68881": false,
+      "mc68851": false,
+      "cpu32": true
+    }
+  },
+  "move": {
+    "title": "MOVE",
+    "summary": "Move",
+    "operation": "[destination] ← [source]",
+    "syntax": ["move[.(bwl)] <source>,<destination>"],
+    "description": "Move the contents of the source to the destination location. The data is examined as it is moved and the condition codes set accordingly. Note that this is actually a *copy* command because the source is not affected by the move. The move instruction has the widest range of addressing modes of all the 68000's instructions.",
+    "src": {
+      "dn": true,
+      "an": true,
+      "anIndirect": true,
+      "anPostInc": true,
+      "anPreDec": true,
+      "anOffset": true,
+      "anIdx": true,
+      "absW": true,
+      "absL": true,
+      "pcOffset": true,
+      "pcIdx": true,
+      "imm": true
+    },
+    "dest": {
+      "dn": true,
+      "an": false,
+      "anIndirect": true,
+      "anPostInc": true,
+      "anPreDec": true,
+      "anOffset": true,
+      "anIdx": true,
+      "absW": true,
+      "absL": true,
+      "pcOffset": false,
+      "pcIdx": false,
+      "imm": false
+    },
+    "ccr": {
+      "x": "-",
+      "n": "*",
+      "z": "*",
+      "v": "0",
+      "c": "0"
+    },
+    "procs": {
+      "mc68000": true,
+      "mc68010": true,
+      "mc68020": true,
+      "mc68030": true,
+      "mc68040": true,
+      "mc68060": true,
+      "mc68881": false,
+      "mc68851": false,
+      "cpu32": true
+    }
+  },
+  "ori to ccr": {
+    "title": "ORI to CCR",
+    "summary": "Inclusive-OR Immediate to Condition Code Register",
+    "operation": "[CCR] ← \\<literal\\> + [CCR]",
+    "syntax": ["ori[.b] #<data>,CCR"],
+    "description": "OR the immediate data with the condition code register (i.e., the least-significant byte of the status register).",
+    "ccr": {
+      "x": "*",
+      "n": "*",
+      "z": "*",
+      "v": "*",
+      "c": "*"
+    },
+    "conditionCodeDescription": "X:= set if bit 4 of data = 1; unchanged otherwise<br/>\nN:= set if bit 3 of data = 1; unchanged otherwise<br/>\nZ:= set if bit 2 of data = 1; unchanged otherwise<br/>\nV:= set if bit 1 of data = 1; unchanged otherwise<br/>\nC:= set if bit 0 of data = 1; unchanged otherwise",
+    "procs": {
+      "mc68000": true,
+      "mc68010": true,
+      "mc68020": true,
+      "mc68030": true,
+      "mc68040": true,
+      "mc68060": true,
+      "mc68881": false,
+      "mc68851": false,
+      "cpu32": true
+    }
+  },
+  "ori to sr": {
+    "title": "ORI to SR",
+    "summary": "Inclusive-OR Immediate to Status Register",
+    "operation": "IF [S] = 1<br/>&nbsp;&nbsp;THEN [SR] ← \\<literal\\> + [SR]<br/>ELSE TRAP",
+    "syntax": ["ori[.w] #<data>,SR"],
+    "description": "OR the immediate data to the status register and store the result in the status register. All bits of the status register are affected. This is a privileged instruction.",
+    "ccr": {
+      "x": "*",
+      "n": "*",
+      "z": "*",
+      "v": "*",
+      "c": "*"
+    },
+    "conditionCodeDescription": "X:= set if bit 4 of data = 1; unchanged otherwise<br/>\nN:= set if bit 3 of data = 1; unchanged otherwise<br/>\nZ:= set if bit 2 of data = 1; unchanged otherwise<br/>\nV:= set if bit 1 of data = 1; unchanged otherwise<br/>\nC:= set if bit 0 of data = 1; unchanged otherwise",
+    "procs": {
+      "mc68000": true,
+      "mc68010": true,
+      "mc68020": true,
+      "mc68030": true,
+      "mc68040": true,
+      "mc68060": true,
+      "mc68881": false,
+      "mc68851": false,
+      "cpu32": true
+    }
+  },
+  "ori": {
+    "title": "ORI",
+    "summary": "Logical Inclusive-OR Immediate",
+    "operation": "[destination] ← \\<literal\\> + [destination]",
+    "syntax": ["ori[.(bwl)] #<data>,<destination>"],
+    "description": "OR the immediate data with the destination operand. Store the result in the destination operand.",
+    "dest": {
+      "dn": true,
+      "an": false,
+      "anIndirect": true,
+      "anPostInc": true,
+      "anPreDec": true,
+      "anOffset": true,
+      "anIdx": true,
+      "absW": true,
+      "absL": true,
+      "pcOffset": false,
+      "pcIdx": false,
+      "imm": false
+    },
+    "ccr": {
+      "x": "-",
+      "n": "*",
+      "z": "*",
+      "v": "0",
+      "c": "0"
+    },
+    "procs": {
+      "mc68000": true,
+      "mc68010": true,
+      "mc68020": true,
+      "mc68030": true,
+      "mc68040": true,
+      "mc68060": true,
+      "mc68881": false,
+      "mc68851": false,
+      "cpu32": true
+    }
+  }
+}

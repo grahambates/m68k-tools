@@ -278,6 +278,96 @@ describe("HoverProvider", () => {
       });
     });
 
+    describe("documents the instruction the operands select", () => {
+      const hoverValue = async (
+        source: string,
+        line = source.split("\n").length - 1,
+      ) => {
+        const textDocument = await createDoc("variant.s", source);
+        const hover = await provider.onHover({
+          textDocument,
+          position: lsp.Position.create(line, 2),
+        });
+        return (hover?.contents as lsp.MarkupContent).value;
+      };
+
+      it.each([
+        [" cmp.w d0,a1", "CMPA", "Compare Address"],
+        [" move.l d0,a0", "MOVEA", "Move Address"],
+        [" add.w #5,(a0)", "ADDI", "Add Immediate"],
+        [" cmp.b (a0)+,(a1)+", "CMPM", "Compare Memory"],
+        [" eor.w #5,d0", "EORI", "Logical Exclusive-OR Immediate"],
+        [" dbra d0,*", "DBF", "Test Condition, Decrement and Branch"],
+        [" move.w d0,ccr", "MOVE to CCR", "Move to Condition Code Register"],
+        [
+          " move.w ccr,d0",
+          "MOVE from CCR",
+          "Move from Condition Code Register",
+        ],
+        [" move.w #$2700,sr", "MOVE to SR", "Move to Status Register"],
+        [" move.w sr,-(sp)", "MOVE from SR", "Move from Status Register"],
+        [" move.l usp,a0", "MOVE USP", "Move User Stack Pointer"],
+        [" and.b #1,ccr", "ANDI to CCR", "AND Immediate to Condition Code"],
+        [" andi.w #$f8ff,sr", "ANDI to SR", "AND Immediate to Status Register"],
+        [" or.b #4,ccr", "ORI to CCR", "Inclusive-OR Immediate to Condition"],
+        [
+          " eori.b #1,ccr",
+          "EORI to CCR",
+          "Exclusive-OR Immediate to Condition",
+        ],
+      ])("%s as %s", async (source, encoded, summary) => {
+        const value = await hoverValue(source);
+        expect(value.startsWith(`Assembled as **${encoded}**\n`)).toBe(true);
+        expect(value).toContain(`**${summary}`);
+      });
+
+      it("shows only the form in use", async () => {
+        const value = await hoverValue(" move.w d0,ccr");
+        expect(value).toContain("move[.w] <source>,CCR");
+        expect(value).not.toContain("USP");
+        expect(value).not.toContain("<destination>");
+        // Every flag comes from the source, unlike a plain MOVE.
+        expect(value).toContain("| * | * | * | * | * |");
+      });
+
+      it("shows the plain form without the special register ones", async () => {
+        const value = await hoverValue(" move.w d0,d1");
+        expect(value).not.toContain("Assembled as");
+        expect(value).toContain("move[.(bwl)] <source>,<destination>");
+        expect(value).not.toContain("CCR");
+        expect(value).not.toContain("USP");
+      });
+
+      it("shows the general EORI page for a memory destination", async () => {
+        const value = await hoverValue(" eori.w #5,(a0)");
+        expect(value).not.toContain("Assembled as");
+        expect(value).not.toContain("status register");
+        expect(value).toContain("| - | * | * | 0 | 0 |");
+      });
+
+      it("keeps every form when an operand is not known", async () => {
+        const value = await hoverValue("Set macro\n move.w \\1,\\2\n endm", 1);
+        expect(value).toContain("move[.w] <source>,CCR");
+        expect(value).toContain("move[.l] USP,An");
+      });
+
+      it("keeps the generic instruction for an immediate to a data register", async () => {
+        const value = await hoverValue(" add.w #5,d0");
+        expect(value).not.toContain("Assembled as");
+        expect(value).toContain("add[.(bwl)] <source>,<destination>");
+      });
+
+      it("reads a register alias as the register it names", async () => {
+        const value = await hoverValue("ptr equr a2\n add.l #4,ptr");
+        expect(value.startsWith("Assembled as **ADDA**\n")).toBe(true);
+      });
+
+      it("does not take a data register alias for memory", async () => {
+        const value = await hoverValue("count equr d3\n add.w #1,count");
+        expect(value).not.toContain("Assembled as");
+      });
+    });
+
     it("provide hover info for directives", async () => {
       const textDocument = await createDoc("example.s", ` section foo,bss`);
 

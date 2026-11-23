@@ -282,6 +282,128 @@ global3:
       expect(completions).toHaveLength(0);
     });
 
+    describe("label definitions", () => {
+      const complete = async (name: string, source: string, line: number) => {
+        const textDocument = await createDoc(name, source);
+        const lines = source.split("\n");
+        const character = /^\S*/.exec(lines[line])![0].length;
+        return provider.onCompletion({
+          textDocument,
+          position: lsp.Position.create(line, character),
+        });
+      };
+
+      it("offers local labels the routine uses but does not define", async () => {
+        const items = await complete(
+          "undefined-locals.s",
+          [
+            "Other:",
+            " bra .elsewhere",
+            "Routine:",
+            " moveq #7,d0",
+            ".loop:",
+            " dbf d0,.loop",
+            " beq .done",
+            " bra .skip",
+            ".",
+            "Next:",
+            " bra .later",
+          ].join("\n"),
+          8,
+        );
+        const labels = items.map(({ label }) => label).sort();
+
+        expect(labels).toEqual([".done", ".skip"]);
+        expect(items[0]).toMatchObject({
+          textEdit: {
+            range: { start: { character: 0 }, end: { character: 1 } },
+          },
+        });
+      });
+
+      it("replaces the label typed so far", async () => {
+        const items = await complete(
+          "partial-local.s",
+          "Routine:\n bne .again\n.ag",
+          2,
+        );
+
+        expect(items).toEqual([
+          expect.objectContaining({
+            label: ".again",
+            detail: "(undefined label) used on line 2",
+            textEdit: lsp.TextEdit.replace(
+              lsp.Range.create(2, 0, 2, 3),
+              ".again",
+            ),
+          }),
+        ]);
+      });
+
+      it("offers a global label nothing defines", async () => {
+        const items = await complete(
+          "undefined-globals.s",
+          "Start:\n bsr Init\n bsr Start\n jmp Main\nIn",
+          4,
+        );
+
+        expect(items.map(({ label }) => label).sort()).toEqual([
+          "Init",
+          "Main",
+        ]);
+      });
+
+      it("counts a label defined after a new one being typed", async () => {
+        const items = await complete(
+          "defined-later.s",
+          "Routine:\n bra .end\nNe\n nop\n.end:\n rts",
+          2,
+        );
+
+        expect(items.map(({ label }) => label)).not.toContain(".end");
+      });
+
+      it("ignores names used in macro bodies", async () => {
+        const items = await complete(
+          "macro-body-refs.s",
+          "Wait macro\n bra .poll\n endm\nRoutine:\n.",
+          4,
+        );
+
+        expect(items).toHaveLength(0);
+      });
+
+      it("offers labels at the start of an empty line when asked", async () => {
+        const items = await complete(
+          "empty-line.s",
+          "Routine:\n bra .out\n\n rts",
+          2,
+        );
+
+        expect(items.map(({ label }) => label)).toEqual([".out"]);
+      });
+
+      it("offers labels used in another file of the unit", async () => {
+        // The included file has to exist on disk for the include to resolve.
+        await createDoc(
+          "uses-setup.s",
+          ` include "label-completion.i"\n bsr Setup`,
+        );
+        const items = await complete(
+          "label-completion.i",
+          "; Included by a completion test that uses a label defined nowhere yet.\nSe\n",
+          1,
+        );
+
+        expect(items).toEqual([
+          expect.objectContaining({
+            label: "Setup",
+            detail: "(undefined label) used in uses-setup.s:2",
+          }),
+        ]);
+      });
+    });
+
     it("doesn't complete on first character of line", async () => {
       const textDocument = await createDoc("example.s", ``);
 

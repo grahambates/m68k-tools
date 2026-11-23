@@ -16,6 +16,7 @@ family assembly, using [m68k-parser](https://github.com/grahambates/m68k-tools/t
   - Assembler directives
   - Registers
   - Symbols
+  - Label definitions: labels the code uses but does not define yet
 - Code Linting
   - Parser errors
   - Processor support

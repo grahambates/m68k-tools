@@ -37,6 +37,7 @@ import { ComponentType } from "../parse";
 import { parseSignature } from "../signature";
 import { rankInstructionSignatures } from "../instructionForms";
 import { instructionAtCursor, operandsForSignatures } from "../operandHelp";
+import { undefinedLabelCompletions } from "../labelCompletion";
 import { createAliasResolver } from "../registerAnalysis";
 import { formatMnemonicDoc } from "../formatting";
 import { isProcessed, type ProcessedDocument } from "../DocumentProcessor";
@@ -95,6 +96,18 @@ export default class CompletionProvider implements Provider {
     const isUpperCase = value.length > 0 && value.toUpperCase() === value;
 
     switch (info?.type) {
+      case ComponentType.Label:
+        return undefinedLabelCompletions(
+          this.ctx,
+          processed,
+          position.line,
+          lsp.Range.create(
+            position.line,
+            info.component.start,
+            position.line,
+            info.component.end,
+          ),
+        );
       case ComponentType.Mnemonic:
         return this.completeMnemonics(isUpperCase, processed, position);
       case ComponentType.Size: {
@@ -165,8 +178,26 @@ export default class CompletionProvider implements Provider {
             return this.completeOperands(isUpperCase, processed, position);
         }
       }
-      default:
+      default: {
+        // Asked for at the start of a line with no label yet, which is where
+        // one would go.
+        const text = processed.document.getText(
+          lsp.Range.create(position.line, 0, position.line + 1, 0),
+        );
+        if (
+          !info &&
+          position.character === 0 &&
+          /^(?:[ \t]|\r?\n|$)/.test(text)
+        ) {
+          return undefinedLabelCompletions(
+            this.ctx,
+            processed,
+            position.line,
+            lsp.Range.create(position, position),
+          );
+        }
         return [];
+      }
     }
   }
 

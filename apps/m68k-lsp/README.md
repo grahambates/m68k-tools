@@ -14,6 +14,7 @@ Adds language support for Motorola 68000 Assembly to Visual Studio Code.
   - Assembler directives
   - Registers
   - Symbols
+  - Label definitions: labels the code uses but does not define yet
 - Code Linting
   - Parser errors
   - Processor support
@@ -53,7 +54,7 @@ ChangeLog is located [here](https://github.com/grahambates/m68k-tools/blob/main/
 
 Requires VS Code 1.101 or later. For local development, open the monorepo root and select **Assembly: Extension** in Run and Debug.
 
-Pressing Enter in an assembly label starts a new line even when the suggestion list is open. Tab accepts the highlighted suggestion. In mnemonics and operands, Enter follows VS Code’s `editor.acceptSuggestionOnEnter` setting.
+Pressing Enter in an assembly label starts a new line even when the suggestion list is open, so a new label is kept as typed. Tab accepts the highlighted suggestion, such as a label already used by a branch but not yet defined. In mnemonics and operands, Enter follows VS Code’s `editor.acceptSuggestionOnEnter` setting.
 
 ### Build with vasm
 

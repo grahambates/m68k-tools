@@ -21,6 +21,7 @@ Adds language support for Motorola 68000 Assembly to Visual Studio Code.
 - Code Folding
 - Document Formatting
 - Document Highlights
+- Colour swatches and a colour picker for values written to Amiga colour registers (`dc.w COLOR00,$0f80`)
 - Document Links
 - Document Symbols
 - Used/unused data and address registers for a selected range

@@ -7,6 +7,7 @@ import { type Context } from "../context";
 
 import CallHierarchyProvider from "./CallHierarchyProvider";
 import CodeActionProvider from "./CodeActionProvider";
+import ColorProvider from "./ColorProvider";
 import CompletionProvider from "./CompletionProvider";
 import ConfiguratonProvider from "./ConfigurationProvider";
 import DefinitionProvider from "./DefinitionProvider";
@@ -35,6 +36,7 @@ export interface Provider {
 const providers = [
   CallHierarchyProvider,
   CodeActionProvider,
+  ColorProvider,
   CompletionProvider,
   ConfiguratonProvider,
   DefinitionProvider,

@@ -662,7 +662,7 @@ export const registerDocs: readonly RegisterDoc[] = [
   {
     names: ["COLORxx"],
     summary:
-      "Colour palette entry, as 12-bit RGB: $0RGB, four bits per component. On AGA these write one bank of the 256-entry 24-bit palette, selected by BPLCON3's BANK bits, and LOCT chooses the high or low nibbles.",
+      "Colour palette entry, as 12-bit RGB: $RGB, four bits per component. On AGA these write one bank of the 256-entry 24-bit palette, selected by BPLCON3's BANK bits, and LOCT chooses the high or low nibbles.",
     bits: [
       {
         bits: 15,

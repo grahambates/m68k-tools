@@ -23,6 +23,7 @@ family assembly, using [m68k-parser](https://github.com/grahambates/m68k-tools/t
 - Code Folding
 - Document Formatting
 - Document Highlights
+- Colour swatches and a colour picker for values written to Amiga colour registers (`dc.w COLOR00,$0f80`)
 - Semantic highlighting for resolved symbols and their declarations
 - Values on hover for resolved constants, `rs`/`so`/`fo` offsets and operand expressions, including constants defined later in the source, in decimal, hexadecimal, binary and octal and as characters
 - Dimming for conditional assembly branches that can be resolved from known source values

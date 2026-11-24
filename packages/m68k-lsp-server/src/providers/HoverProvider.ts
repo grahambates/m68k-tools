@@ -56,6 +56,7 @@ import {
 import { type MarkupContent } from "vscode-languageserver";
 import { expandMacroAtLine } from "../macros";
 import { copperDocs } from "../amigaCopper";
+import { libraryFunctionDocs } from "../amigaLibraries";
 import {
   ciaAccess,
   ciaBitDocs,
@@ -135,8 +136,9 @@ export default class HoverProvider implements Provider {
   }
 
   /**
-   * Documentation for an Amiga register or flag the hovered symbol names, or a
-   * label defining one, checked against the symbol's value where it is known.
+   * Documentation for an Amiga register, flag or library function the hovered
+   * symbol names, or a label defining one, checked against the symbol's value
+   * where it is known.
    */
   private hardwareDocs(
     processed: ProcessedDocument,
@@ -175,7 +177,9 @@ export default class HoverProvider implements Provider {
     if (name) {
       const value = lookup(name);
       const symbolDocs =
-        amigaHardwareDocs(name, value) ?? ciaSymbolDocs(name, value, cia?.cia);
+        amigaHardwareDocs(name, value) ??
+        ciaSymbolDocs(name, value, cia?.cia) ??
+        libraryFunctionDocs(name, value, line);
       if (symbolDocs) docs.push(symbolDocs);
     }
 

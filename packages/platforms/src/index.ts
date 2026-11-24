@@ -37,3 +37,10 @@ export {
   type CopperInstruction,
 } from "./amiga/copper.js";
 export { describeMinterm } from "./amiga/minterms.js";
+export {
+  libraryFunction,
+  libraryFunctionSynopsis,
+  type Library,
+  type LibraryArgument,
+  type LibraryFunction,
+} from "./amiga/libraries.js";

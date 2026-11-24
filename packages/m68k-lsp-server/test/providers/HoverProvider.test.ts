@@ -480,6 +480,49 @@ describe("HoverProvider", () => {
         });
       });
 
+      describe("library functions", () => {
+        it("documents a function's offset symbol, defined or not", async () => {
+          const text = await hoverText(" jsr _LVOOpenLibrary(a6)", 0, 10);
+          expect(text).toContain(
+            "**OpenLibrary** · exec.library · offset -552 (-$228)",
+          );
+          expect(text).toContain(
+            "struct Library *OpenLibrary(CONST_STRPTR libName /* a1 */, ULONG version /* d0 */)",
+          );
+          expect(text).toContain(
+            "Call with the library base, SysBase, in A6; the result is in D0.",
+          );
+          expect(text).toMatch(/\[Autodoc\]\(http:\/\/.*node0222\.html\)/);
+          expect(
+            await hoverText(
+              "_LVOLoadView equ -222\n jsr _lvoloadview(a6)",
+              1,
+              10,
+            ),
+          ).toContain("**LoadView** · graphics.library");
+        });
+
+        it("says nothing where the project gives the symbol another value", async () => {
+          expect(
+            await hoverText(
+              "_LVOLoadView equ -30\n jsr _LVOLoadView(a6)",
+              1,
+              10,
+            ),
+          ).not.toContain("graphics.library");
+        });
+
+        it("reads a function's bare name in a call macro", async () => {
+          expect(await hoverText(" CALLEXEC Forbid", 0, 11)).toContain(
+            "**Forbid** · exec.library · offset -132",
+          );
+          // Elsewhere a bare name is just a name.
+          expect(await hoverText(" bsr Forbid", 0, 6)).not.toContain(
+            "exec.library",
+          );
+        });
+      });
+
       describe("values written to registers", () => {
         it.each([
           [

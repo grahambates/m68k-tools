@@ -80,6 +80,23 @@ describe("project config", () => {
     expect(loaded.inlineConfig).toBe(false);
     expect(loaded.presets).toEqual(["style"]);
   });
+
+  test("reads processors by mc name and by number", async () => {
+    const root = await mkdtemp(join(tmpdir(), "m68k-lint-config-cpu-"));
+    const config = join(root, ".m68klintrc.json");
+    await writeFile(
+      config,
+      JSON.stringify({ processors: ["68020", "mc68030"] }),
+    );
+    expect((await loadProjectConfig(config)).processors).toEqual([
+      "mc68020",
+      "mc68030",
+    ]);
+    await writeFile(config, JSON.stringify({ processors: ["68050"] }));
+    await expect(loadProjectConfig(config)).rejects.toThrow(
+      /unknown CPU; expected mc68000/,
+    );
+  });
 });
 
 test("validates project annotation modes", async () => {

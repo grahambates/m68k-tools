@@ -8,17 +8,9 @@ import type {
 } from "../core/config.js";
 import type { RuleCategory, Severity } from "../core/diagnostic.js";
 import { normalizeExtensions } from "./file-discovery.js";
+import { processorNames, toProcessor } from "./project-config.js";
 import { VERSION } from "./version.js";
 
-export const processors: readonly Processor[] = [
-  "mc68000",
-  "mc68010",
-  "mc68020",
-  "mc68030",
-  "mc68040",
-  "mc68060",
-  "cpu32",
-];
 export const categories: readonly RuleCategory[] = [
   "correctness",
   "suspicious",
@@ -153,6 +145,22 @@ function parseCsv<T extends string>(
   return values as T[];
 }
 
+/** Processors on the command line: `mc68020`, or the number alone, `68020`. */
+function parseProcessors(value: string, option: string): Processor[] {
+  return value
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean)
+    .map((item) => {
+      const processor = toProcessor(item);
+      if (!processor)
+        throw new Error(
+          `${option}: unknown value '${item}'. Expected one of: ${processorNames.join(", ")}`,
+        );
+      return processor;
+    });
+}
+
 /**
  * Read the command line.
  *
@@ -282,11 +290,7 @@ export function parseArgs(
       continue;
     }
     if (arg === "--cpu") {
-      options.processors = parseCsv(
-        requireValue(argv, i, arg),
-        processors,
-        arg,
-      );
+      options.processors = parseProcessors(requireValue(argv, i, arg), arg);
       i++;
       continue;
     }

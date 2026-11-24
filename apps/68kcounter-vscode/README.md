@@ -49,7 +49,7 @@ Set project defaults in `.vscode/settings.json`:
 
 ```json
 {
-  "68kcounter.defaultCpu": "68020",
+  "68kcounter.defaultCpu": "mc68020",
   "68kcounter.cacheModel": "worst"
 }
 ```

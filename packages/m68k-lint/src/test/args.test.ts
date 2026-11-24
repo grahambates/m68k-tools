@@ -75,6 +75,17 @@ describe("parseArgs", () => {
     expect(() => parse(["--cpu", "z80"])).toThrow("unknown value 'z80'");
   });
 
+  test("reads processors by number as well as by mc name", () => {
+    expect(parse(["--cpu", "68000,MC68020,cpu32"]).processors).toEqual([
+      "mc68000",
+      "mc68020",
+      "cpu32",
+    ]);
+    expect(() => parse(["--cpu", "68050"])).toThrow(
+      "Expected one of: mc68000, mc68010",
+    );
+  });
+
   test("validates single-value enums", () => {
     expect(parse(["--platform", "amiga"]).platform).toBe("amiga");
     expect(() => parse(["--platform", "spectrum"])).toThrow(

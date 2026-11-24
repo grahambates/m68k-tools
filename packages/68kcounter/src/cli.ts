@@ -6,6 +6,9 @@ import { hideBin } from "yargs/helpers";
 
 import parse, { calculateTotals } from ".";
 import { CacheModels, Cpus, toCpu } from "./syntax";
+
+/** The CPUs `--cpu` takes, as the other tools' settings name them. */
+const cpuNames = Object.values(Cpus).map((cpu) => `mc${cpu}`);
 import {
   type Formatter,
   type IncludedElements,
@@ -48,10 +51,16 @@ const argv = yargs(hideBin(process.argv))
       alias: "w",
     },
     cpu: {
-      describe: "Target CPU model",
+      describe: `Target CPU model: ${cpuNames.join(", ")}, or the number alone`,
       type: "string",
-      choices: Object.values(Cpus),
-      default: Cpus.MC68000,
+      default: "mc68000",
+      coerce: (value: string) => {
+        if (!toCpu(value))
+          throw new Error(
+            `Unknown CPU '${value}'. Expected one of: ${cpuNames.join(", ")}`,
+          );
+        return value;
+      },
     },
     cache: {
       describe:

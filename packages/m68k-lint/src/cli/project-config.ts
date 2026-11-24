@@ -10,6 +10,7 @@ import type {
   RuleSetting,
 } from "../core/config.js";
 import type { RuleCategory } from "../core/diagnostic.js";
+import { processorId } from "@m68k-lsp/assembly-options";
 
 export { addIgnoreToConfigText, newConfigText } from "./config-edit.js";
 export { alwaysIgnored, isIgnored } from "./ignores.js";
@@ -58,13 +59,23 @@ const categories = new Set<RuleCategory>([
   "style",
 ]);
 
+/**
+ * A processor as a config file or the command line names it, `mc68020` or the
+ * number alone, `68020`, if this linter knows it.
+ */
+export function toProcessor(name: string): Processor | undefined {
+  const id = processorId(name);
+  return processors.has(id as Processor) ? (id as Processor) : undefined;
+}
+
+/** The processors this linter knows, as settings name them. */
+export const processorNames: readonly string[] = [...processors];
+
 /** The names in a list that are processors this linter knows, or undefined if there are none. */
 export function knownProcessors(
   names: readonly string[] | undefined,
 ): Processor[] | undefined {
-  const known = (names ?? []).filter((name): name is Processor =>
-    processors.has(name as Processor),
-  );
+  const known = (names ?? []).flatMap((name) => toProcessor(name) ?? []);
   return known.length ? known : undefined;
 }
 
@@ -223,13 +234,15 @@ export async function loadProjectConfig(path: string): Promise<ProjectConfig> {
   ] as const) {
     if (config[field] !== undefined) assertStringArray(config[field], field);
   }
-  if (
-    config.processors !== undefined &&
-    (config.processors as string[]).some(
-      (item) => !processors.has(item as Processor),
-    )
-  )
-    throw new Error("processors contains an unknown CPU");
+  if (config.processors !== undefined) {
+    const named = config.processors as string[];
+    const known = named.map(toProcessor);
+    if (known.includes(undefined))
+      throw new Error(
+        `processors contains an unknown CPU; expected ${processorNames.join(", ")}`,
+      );
+    config.processors = known;
+  }
   if (
     config.presets !== undefined &&
     (config.presets as string[]).some(

@@ -128,16 +128,8 @@ Lists the processor(s) that your code is targeted at. This controls completion s
 
 Default: `["mc68000"]`
 
-Supported values:
-`mc68000`
-,`mc68010`
-,`mc68020`
-,`mc68030`
-,`mc68040`
-,`mc68060`
-,`mc68881`
-,`mc68851`
-,`cpu32`
+Supported values: `mc68000`, `mc68010`, `mc68020`, `mc68030`, `mc68040`, `mc68060`, `mc68881`,
+`mc68851`, `cpu32`. The number alone, such as `68030`, is accepted too.
 
 ### Include Paths:
 

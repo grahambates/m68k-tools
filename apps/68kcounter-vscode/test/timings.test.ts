@@ -129,6 +129,13 @@ test("project defaults are resource scoped and source directives override them",
   ).toHaveLength(3);
 });
 
+test("reads the default CPU by mc name or by number", () => {
+  for (const name of ["mc68020", "68020"]) {
+    state.config.defaultCpu = name;
+    expect(counterOptions(window.activeTextEditor!.document).cpu).toBe("68020");
+  }
+});
+
 test("visible annotations refresh when cache settings change", () => {
   const annotator = new Annotator(window.activeTextEditor!.document);
   const worst =

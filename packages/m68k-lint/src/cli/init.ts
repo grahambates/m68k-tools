@@ -2,7 +2,11 @@ import { readdir, readFile, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import type { OptimizationGoal, Platform, Processor } from "../core/config.js";
 import { defaultAssemblyExtensions } from "./file-discovery.js";
-import { configFileNames } from "./project-config.js";
+import {
+  configFileNames,
+  processorNames,
+  toProcessor,
+} from "./project-config.js";
 import { paint } from "./format.js";
 import { VERSION } from "./version.js";
 
@@ -50,15 +54,6 @@ export interface InitAnswers {
 }
 
 const PLATFORMS: readonly Platform[] = ["generic", "amiga", "atari"];
-const PROCESSORS: readonly Processor[] = [
-  "mc68000",
-  "mc68010",
-  "mc68020",
-  "mc68030",
-  "mc68040",
-  "mc68060",
-  "cpu32",
-];
 const GOALS: readonly OptimizationGoal[] = ["balanced", "speed", "size"];
 
 const SKIP_DIRECTORIES = new Set([
@@ -152,10 +147,13 @@ export async function collectInitAnswers(
   detectedFiles: readonly string[],
 ): Promise<InitAnswers> {
   const platform = await prompt.choice("Target platform", PLATFORMS, "generic");
-  const processors = (await prompt.list(
-    `Target processor(s), comma separated (${PROCESSORS.join(", ")})`,
-    ["mc68000"],
-  )) as Processor[];
+  // Unknown names are kept for validateProcessors to report.
+  const processors = (
+    await prompt.list(
+      `Target processor(s), comma separated (${processorNames.join(", ")})`,
+      ["mc68000"],
+    )
+  ).map((name) => toProcessor(name) ?? name) as Processor[];
   const goal = await prompt.choice("Optimization goal", GOALS, "balanced");
   const style = await prompt.confirm("Enable the opt-in style preset?", false);
   const files = await prompt.list("Source globs to lint", detectedFiles);
@@ -167,16 +165,15 @@ export async function collectInitAnswers(
   return { platform, processors, goal, style, files, ignores };
 }
 
+/** The processors answered, `mc68020` or the number alone, as `mc68020`. */
 export function validateProcessors(values: readonly string[]): Processor[] {
-  const unknown = values.filter(
-    (value) => !PROCESSORS.includes(value as Processor),
-  );
+  const unknown = values.filter((value) => !toProcessor(value));
   if (unknown.length)
     throw new Error(
-      `Unknown processor(s): ${unknown.join(", ")}. Expected: ${PROCESSORS.join(", ")}`,
+      `Unknown processor(s): ${unknown.join(", ")}. Expected: ${processorNames.join(", ")}`,
     );
   if (!values.length) throw new Error("At least one processor is required");
-  return [...values] as Processor[];
+  return values.map((value) => toProcessor(value)!);
 }
 
 /**

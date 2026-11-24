@@ -124,6 +124,10 @@ describe("m68k-lint --init", () => {
     expect(() => validateProcessors(["mc68000", "mc68050"])).toThrow(/mc68050/);
     expect(() => validateProcessors([])).toThrow(/at least one/i);
     expect(validateProcessors(["mc68030"])).toEqual(["mc68030"]);
+    expect(validateProcessors(["68000", "68030"])).toEqual([
+      "mc68000",
+      "mc68030",
+    ]);
   });
 
   describe("source glob detection", () => {

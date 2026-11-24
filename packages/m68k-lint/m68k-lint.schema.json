@@ -13,16 +13,25 @@
       "minItems": 1,
       "uniqueItems": true,
       "items": {
-        "enum": [
-          "mc68000",
-          "mc68010",
-          "mc68020",
-          "mc68030",
-          "mc68040",
-          "mc68060",
-          "cpu32"
+        "anyOf": [
+          {
+            "enum": [
+              "mc68000",
+              "mc68010",
+              "mc68020",
+              "mc68030",
+              "mc68040",
+              "mc68060",
+              "cpu32"
+            ]
+          },
+          {
+            "enum": ["68000", "68010", "68020", "68030", "68040", "68060"],
+            "deprecationMessage": "Same as the mc name, such as mc68020, which is preferred."
+          }
         ]
-      }
+      },
+      "description": "Processors the code targets."
     },
     "platform": {
       "enum": ["generic", "amiga", "atari"]

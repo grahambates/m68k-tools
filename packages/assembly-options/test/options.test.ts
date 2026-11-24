@@ -7,8 +7,24 @@ import {
   loadAssemblyOptions,
   mergeOptions,
   optionsFromVasmArgs,
+  processorId,
   vasmArgs,
 } from "../src/index";
+
+describe("processor names", () => {
+  it("reads both spellings, in any case", () => {
+    expect(
+      ["68020", "mc68020", "MC68020", "68881", "cpu32", "CPU32"].map(
+        processorId,
+      ),
+    ).toEqual(["mc68020", "mc68020", "mc68020", "mc68881", "cpu32", "cpu32"]);
+  });
+
+  it("passes an unknown name through, for the caller to judge", () => {
+    expect(processorId("68k")).toBe("68k");
+    expect(processorId("mc68070")).toBe("mc68070");
+  });
+});
 
 describe("optionsFromVasmArgs", () => {
   it("reads -nocase", () => {
@@ -168,6 +184,15 @@ describe("the project config file", () => {
       caseSensitive: false,
     });
     expect(warnings).toEqual([]);
+  });
+
+  it("reads processors written as the number alone", async () => {
+    const dir = await project({
+      ".m68krc.json": JSON.stringify({ processors: ["68020", "mc68881"] }),
+    });
+    const { options } = await loadAssemblyOptions(join(dir, ".m68krc.json"));
+    expect(options.processors).toEqual(["mc68020", "mc68881"]);
+    expect(vasmArgs(options)).toEqual(["-m68020", "-m68881"]);
   });
 
   it("leaves a relative -I in the vasm arguments as written, for the search to try from both directories", async () => {

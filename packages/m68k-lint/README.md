@@ -193,6 +193,9 @@ named rule. File and ignore patterns are relative to the config file's directory
 }
 ```
 
+`processors` names each CPU as `--cpu` does: `mc68000`, `mc68010`, `mc68020`, `mc68030`,
+`mc68040`, `mc68060` or `cpu32`. The number alone, such as `68020`, is read too.
+
 `includePaths` are the directories the assembler searches for includes; see
 [Includes outside the project](#includes-outside-the-project). `sourceRoot` is the directory the
 assembler is run from, so an include named from there (`include "lib/defs.i"`) is found; it is looked in after the

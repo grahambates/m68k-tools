@@ -129,6 +129,10 @@ export class ConfigResolver {
       ...defaultConfig,
       fixAnnotate: this.settings.quickFix.annotate,
       ...this.settings.defaults,
+      // The editor's setting may name them `mc68020` or `68020`.
+      processors:
+        knownProcessors(this.settings.defaults.processors) ??
+        defaultConfig.processors,
     };
     const { shared, warnings } = await this.loadShared(dir);
     const base: LintConfig = {

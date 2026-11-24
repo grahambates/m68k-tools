@@ -10,7 +10,7 @@ import { dirname, isAbsolute, join, parse, resolve } from "node:path";
  * are arguments given to the assembler.
  */
 export interface AssemblyOptions {
-  /** Target processors, in the `mc68020` spelling. */
+  /** Target processors, as `mc68020`, whichever of `mc68020` or `68020` the file wrote. */
   processors?: string[];
   /** Directories the assembler searches for includes, absolute. */
   includePaths?: string[];
@@ -31,6 +31,38 @@ export interface AssemblyOptions {
 
 /** A project config file: a name containing `.m68krc`, as the assembly server matches it. */
 export const configFileNames = [".m68krc.json", ".m68krc"] as const;
+
+/**
+ * Processors as settings name them: Motorola's part names, `mc68020`, as the
+ * source's `machine` directive does. The number alone, `68020`, is read too;
+ * see {@link processorId}.
+ */
+export const processorNames = [
+  "mc68000",
+  "mc68010",
+  "mc68020",
+  "mc68030",
+  "mc68040",
+  "mc68060",
+  "mc68881",
+  "mc68851",
+  "cpu32",
+] as const;
+
+export type ProcessorName = (typeof processorNames)[number];
+
+/**
+ * A processor named in a setting, `mc68020` or the number alone, `68020`, in
+ * any case, as `mc68020`. A name that is neither comes back as given,
+ * lowercased, for the caller to reject or ignore.
+ */
+export function processorId(name: string): string {
+  const lower = name.trim().toLowerCase();
+  const prefixed = /^68[0-9]{3}$/.test(lower) ? `mc${lower}` : lower;
+  return (processorNames as readonly string[]).includes(prefixed)
+    ? prefixed
+    : lower;
+}
 
 const PROCESSOR_ARG = /^-m(680[0-9]0|cpu32)$/;
 
@@ -180,7 +212,8 @@ export async function loadAssemblyOptions(
 
   const warnings: string[] = [];
   const stated: AssemblyOptions = {};
-  if (isStrings(json.processors)) stated.processors = json.processors;
+  if (isStrings(json.processors))
+    stated.processors = json.processors.map(processorId);
   if (isStrings(json.includePaths))
     stated.includePaths = json.includePaths.map((p) => resolve(dir, p));
   if (typeof json.caseSensitive === "boolean")

@@ -3,7 +3,11 @@ import { type FormatterOptions, defaultOptions } from "m68k-formatter";
 import { readFileSync } from "fs";
 import * as os from "os";
 import { dirname, isAbsolute, relative, resolve } from "path";
-import { optionsFromVasmArgs, vasmArgs } from "@m68k-lsp/assembly-options";
+import {
+  optionsFromVasmArgs,
+  processorId,
+  vasmArgs,
+} from "@m68k-lsp/assembly-options";
 import { type VasmOptions } from "./diagnostics";
 import { type PlatformSetting } from "./platform";
 
@@ -39,6 +43,10 @@ export interface Config {
    * directory as an include path. On unless turned off.
    */
   inferIncludePaths?: boolean;
+  /**
+   * Target processors, `mc68020`. The number alone, `68020`, is read too, and
+   * once merged is in the `mc68020` spelling.
+   */
   processors: Processor[];
   vasm: VasmOptions;
   /**
@@ -70,6 +78,10 @@ export function mergeConfig(
   return {
     ...defaultConfig,
     ...config,
+    // `mc68020` or the number alone, `68020`, as `mc68020`.
+    processors: Array.isArray(config?.processors)
+      ? (config.processors.map(processorId) as Processor[])
+      : defaultConfig.processors,
     format: {
       ...defaultConfig.format,
       ...config?.format,

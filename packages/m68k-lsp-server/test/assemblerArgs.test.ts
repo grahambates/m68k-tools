@@ -1,4 +1,9 @@
-import { assemblerArgs, defaultConfig } from "../src/config";
+import {
+  assemblerArgs,
+  type Config,
+  defaultConfig,
+  mergeConfig,
+} from "../src/config";
 
 const config = (over: Partial<typeof defaultConfig>) => ({
   ...defaultConfig,
@@ -14,6 +19,18 @@ describe("assemblerArgs", () => {
     );
     expect(args).toContain("-Iinc");
     expect(args).toContain("-m68020");
+  });
+
+  it("reads processors by number as well as by mc name", () => {
+    const merged = mergeConfig(
+      { processors: ["68020", "MC68881"] } as unknown as Partial<Config>,
+      defaultConfig,
+    );
+    expect(merged.processors).toEqual(["mc68020", "mc68881"]);
+    expect(assemblerArgs(merged)).toEqual(
+      expect.arrayContaining(["-m68020", "-m68881"]),
+    );
+    expect(mergeConfig({}, merged).processors).toEqual(["mc68020", "mc68881"]);
   });
 
   it("adds -nocase when case is folded by setting", () => {

@@ -51,13 +51,13 @@
         "68kcounter.defaultCpu": {
           "type": "string",
           "enum": [
-            "68000",
-            "68020",
-            "68030",
-            "68040",
-            "68060"
+            "mc68000",
+            "mc68020",
+            "mc68030",
+            "mc68040",
+            "mc68060"
           ],
-          "default": "68000",
+          "default": "mc68000",
           "scope": "resource",
           "description": "Default timing CPU. Supported machine directives in the source override this setting."
         },

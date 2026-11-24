@@ -29,8 +29,8 @@ See `npx 68kcounter --help` for more options.
 
 ### Target CPU
 
-The counter targets the **68000** by default. Pass `--cpu 68020` to select the
-68020 (or `--cpu 68030` for the 68030), or declare it in the source with a `machine mc68020` (or bare `mc68020`)
+The counter targets the **68000** by default. Pass `--cpu mc68020` to select the
+68020 (or `--cpu mc68030` for the 68030; the number alone, `--cpu 68030`, works too), or declare it in the source with a `machine mc68020` (or bare `mc68020`)
 directive, which overrides the flag for that file.
 
 > **68020 status:** 68020 timings are transcribed from the MC68020 User's
@@ -95,7 +95,7 @@ Conditional assembly is not evaluated: every arm of an `IF` is counted, since ea
 
 ### 68030 timings
 
-Select `--cpu 68030`, `{ cpu: "68030" }` in the library, or `machine mc68030` in source. `--cache` / `{ cacheModel: "cache" }` selects the instruction-cache case. The default (`cacheModel: "worst"`, retained for API compatibility) selects the **average no-cache case**, not an absolute worst case.
+Select `--cpu mc68030`, `{ cpu: "68030" }` in the library, or `machine mc68030` in source. `--cache` / `{ cacheModel: "cache" }` selects the instruction-cache case. The default (`cacheModel: "worst"`, retained for API compatibility) selects the **average no-cache case**, not an absolute worst case.
 
 The data comes from Motorola's [MC68030 User's Manual, section 11.6](https://www.nxp.com/docs/en/reference-manual/MC68030UM-P2.pdf). It assumes two-clock reads/writes and aligned operands. Timings include operand reads, instruction prefetches and writes as separate columns. Operation and effective-address costs are added without head/tail overlap; totals are isolated-instruction estimates, not pipeline simulation. Data-cache hits, MMU table walks, bus contention and additional wait states are not modelled.
 
@@ -117,7 +117,7 @@ ESM imports and CommonJS `require` are supported through conditional exports, wi
 
 ### 68040 and 68060 cached references
 
-Select `--cpu 68040` / `--cpu 68060`, the matching library `cpu` option, or a `machine mc68040` / `machine mc68060` directive. These CPUs currently always use cached reference costs, regardless of `--cache` or `cacheModel`. Both instruction and data accesses are assumed to hit their caches, with aligned operands. No memory-system or uncached estimate is provided.
+Select `--cpu mc68040` / `--cpu mc68060`, the matching library `cpu` option, or a `machine mc68040` / `machine mc68060` directive. These CPUs currently always use cached reference costs, regardless of `--cache` or `cacheModel`. Both instruction and data accesses are assumed to hit their caches, with aligned operands. No memory-system or uncached estimate is provided.
 
 The tables are based on [MC68040UM §10.4–6](https://www.nxp.com/docs/en/reference-manual/MC68040UM.pdf) and [MC68060UM §10.4–14](https://www.nxp.com/docs/en/data-sheet/MC68060UM.pdf). The 040 clock column reports the manual's execution-stage lead + base cost; JSON/library results preserve the separate address-calculation and execution fields in `timing.reference.stages`. Pipeline stages overlap, so those fields must not be added together. The 060 reports the manual's instruction-execution reference, without instruction pairing. Branch prediction alternatives have separate labels; word division uses the published maximum cost.
 

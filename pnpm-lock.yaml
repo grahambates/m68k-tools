@@ -425,6 +425,9 @@ importers:
       '@m68k-lsp/assembly-options':
         specifier: workspace:^
         version: link:../assembly-options
+      '@m68k-lsp/platforms':
+        specifier: workspace:^
+        version: link:../platforms
       '@m68k-lsp/workspace-files':
         specifier: workspace:^
         version: link:../workspace-files
@@ -502,6 +505,9 @@ importers:
       '@m68k-lsp/assembly-options':
         specifier: workspace:^
         version: link:../assembly-options
+      '@m68k-lsp/platforms':
+        specifier: workspace:^
+        version: link:../platforms
       '@m68k-lsp/protocol':
         specifier: workspace:^
         version: link:../protocol
@@ -529,6 +535,8 @@ importers:
       vitest:
         specifier: 5.1.1
         version: 5.1.1(@types/node@22.18.0)(@vitest/coverage-v8@5.1.1)(jsdom@29.1.1)(vite@8.3.8(@types/node@22.18.0)(esbuild@0.28.2)(yaml@2.9.0))
+
+  packages/platforms: {}
 
   packages/protocol:
     dependencies:

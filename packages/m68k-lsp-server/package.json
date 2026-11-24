@@ -40,6 +40,7 @@
     "@types/which": "^3.0.4",
     "@m68k-lsp/protocol": "workspace:^",
     "@m68k-lsp/assembly-options": "workspace:^",
+    "@m68k-lsp/platforms": "workspace:^",
     "@m68k-lsp/workspace-files": "workspace:^"
   },
   "scripts": {

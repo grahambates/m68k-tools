@@ -195,9 +195,12 @@ describe("HoverProvider", () => {
           textDocument,
           position: lsp.Position.create(line, character),
         });
-        return (hover?.contents as (string | { value: string })[])
-          .map((part) => (typeof part === "string" ? part : part.value))
-          .slice(0, -1);
+        return (
+          (hover?.contents as (string | { value: string })[])
+            .map((part) => (typeof part === "string" ? part : part.value))
+            // The code block alone: the value's forms and any hardware docs follow.
+            .slice(0, 1)
+        );
       };
 
       it.each([
@@ -232,6 +235,95 @@ describe("HoverProvider", () => {
 
       it("keeps a hexadecimal definition hexadecimal first", async () => {
         expect(await code(0, 1)).toEqual(["custom equ $DFF000 (14675968)"]);
+      });
+    });
+
+    describe("Amiga hardware symbols", () => {
+      const hoverText = async (
+        source: string,
+        line: number,
+        column: number,
+      ) => {
+        const textDocument = await createDoc("amiga-hardware.s", source);
+        const hover = await provider.onHover({
+          textDocument,
+          position: lsp.Position.create(line, column),
+        });
+        const contents = hover?.contents;
+        if (!contents) return "";
+        return (Array.isArray(contents) ? contents : [contents])
+          .map((part) => (typeof part === "string" ? part : part.value))
+          .join("\n");
+      };
+
+      it("documents a register named by the includes, defined or not", async () => {
+        const text = await hoverText(" move.w #$7fff,intena(a6)", 0, 17);
+        expect(text).toContain(
+          "**INTENA** · $DFF09A · write *(also INTENAR $DFF01C, read)*",
+        );
+        expect(text).toContain(
+          "| 5 | VERTB | Level 3: Start of vertical blank |",
+        );
+        expect(text).toContain(
+          "[Hardware Reference Manual](http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0036.html)",
+        );
+      });
+
+      it("adds the docs beneath the symbol's own value, in either case", async () => {
+        const text = await hoverText(
+          "INTENA equ $09a\n move.w #$7fff,INTENA(a6)",
+          1,
+          17,
+        );
+        expect(text).toContain("INTENA equ $9A (154)");
+        expect(text).toContain("**INTENA** · $DFF09A");
+      });
+
+      it("accepts the register's absolute address as its value", async () => {
+        const text = await hoverText(
+          "dmacon equ $dff096\n move.w d0,dmacon",
+          1,
+          12,
+        );
+        expect(text).toContain("**DMACON** · $DFF096");
+      });
+
+      it("documents the definition of a register symbol", async () => {
+        expect(await hoverText("intreq equ $09c", 0, 2)).toContain(
+          "**INTREQ** · $DFF09C",
+        );
+      });
+
+      it("finds numbered registers and pointer pairs", async () => {
+        expect(await hoverText(" move.w d0,COLOR17(a6)", 0, 14)).toContain(
+          "**COLOR17** · $DFF1A2 · write",
+        );
+        expect(await hoverText(" move.l d0,cop1lc(a6)", 0, 13)).toContain(
+          "**COP1LC** · $DFF080 · long, COP1LCH/COP1LCL",
+        );
+      });
+
+      it("documents the include files' flags", async () => {
+        const source = " move.w #DMAF_SETCLR|DMAF_SPRITE,dmacon(a6)";
+        expect(await hoverText(source, 0, 23)).toContain(
+          "**DMAF_SPRITE** · DMACON bit 5 · mask $0020\n\nSPREN: Sprite DMA",
+        );
+        expect(await hoverText(" btst #INTB_VERTB,d0", 0, 10)).toContain(
+          "**INTB_VERTB** · INTENA/INTREQ bit 5\n\nVERTB: Level 3: Start of vertical blank",
+        );
+      });
+
+      it("says nothing of a symbol that only shares a register's name", async () => {
+        expect(
+          await hoverText("intena equ 5\n move.w d0,intena(a6)", 1, 13),
+        ).not.toContain("**INTENA**");
+        expect(
+          await hoverText("DMAF_SPRITE equ 3\n move.w #DMAF_SPRITE,d0", 1, 12),
+        ).not.toContain("DMACON");
+      });
+
+      it("says nothing of other symbols", async () => {
+        expect(await hoverText(" move.w d0,foo(a6)", 0, 12)).toBe("");
       });
     });
 

@@ -46,7 +46,7 @@ import {
 import type { Size } from "m68k-parser";
 import { type RegisterName } from "../syntax";
 import { type Context } from "../context";
-import { isProcessed } from "../DocumentProcessor";
+import { isProcessed, type ProcessedDocument } from "../DocumentProcessor";
 import {
   formatDeclaration,
   formatMnemonicDoc,
@@ -55,6 +55,7 @@ import {
 } from "../formatting";
 import { type MarkupContent } from "vscode-languageserver";
 import { expandMacroAtLine } from "../macros";
+import { amigaHardwareDocs } from "../amigaHardware";
 import { type AliasResolver, registersAt } from "../registerEffects";
 import { analyzeDocumentConditionals } from "../documentConditionals";
 
@@ -109,7 +110,47 @@ function isAddressOperand(path: AstPath): boolean {
 export default class HoverProvider implements Provider {
   constructor(protected readonly ctx: Context) {}
 
-  async onHover({
+  async onHover(params: lsp.HoverParams): Promise<lsp.Hover | undefined> {
+    const hover = await this.hoverAt(params);
+    const processed = this.ctx.store.get(params.textDocument.uri);
+    if (!isProcessed(processed)) return hover;
+    const path = nodeAtPosition(processed.parsed, params.position);
+    const docs = path && this.hardwareDocs(processed, path, params.position);
+    return docs
+      ? withDocs(hover, docs, path.node.loc, params.position.line)
+      : hover;
+  }
+
+  /**
+   * Documentation for an Amiga register or flag the hovered symbol names, or a
+   * label defining one, checked against the symbol's value where it is known.
+   */
+  private hardwareDocs(
+    processed: ProcessedDocument,
+    path: AstPath,
+    position: lsp.Position,
+  ): string | undefined {
+    const { node } = path;
+    const name =
+      node.type === "symbol"
+        ? (node as unknown as { name: string }).name
+        : node.type === "label"
+          ? path.line.label?.label
+          : undefined;
+    if (!name) return;
+    const symbol = parseExpression(name);
+    if (symbol.errors.length) return;
+    const { evaluateAtLine } = analyzeDocumentConditionals(
+      this.ctx,
+      processed.uri,
+      processed.parsed,
+      processed.blocks,
+      position.line,
+    );
+    return amigaHardwareDocs(name, evaluateAtLine?.(symbol.value));
+  }
+
+  private async hoverAt({
     textDocument,
     position,
   }: lsp.HoverParams): Promise<lsp.Hover | undefined> {
@@ -754,6 +795,30 @@ function instructionForm(
     form = `move from ${source}`;
   }
   return instructionFormDocs[form] ? form : undefined;
+}
+
+/** A hover with Markdown documentation added beneath what it already shows. */
+function withDocs(
+  hover: lsp.Hover | undefined,
+  docs: string,
+  loc: AstNode["loc"],
+  line: number,
+): lsp.Hover {
+  if (!hover) {
+    return {
+      range: locationAsRange(loc, line),
+      contents: { kind: lsp.MarkupKind.Markdown, value: docs },
+    };
+  }
+  const { contents } = hover;
+  if (Array.isArray(contents))
+    return { ...hover, contents: [...contents, docs] };
+  if (lsp.MarkupContent.is(contents))
+    return {
+      ...hover,
+      contents: { ...contents, value: `${contents.value}\n\n---\n\n${docs}` },
+    };
+  return { ...hover, contents: [contents, docs] };
 }
 
 function lookupMnemonicDoc(mnemonic: string): MarkupContent | undefined {

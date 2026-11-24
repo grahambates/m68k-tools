@@ -386,6 +386,24 @@ describe("HoverProvider", () => {
             "Written to **BPLCON0**: BPU = 0 · COLOR · BPU3 · ECSENA",
           ],
           [
+            "scroll values for the original chips",
+            " move.w #$008f,bplcon1(a6)",
+            9,
+            "Written to **BPLCON1**: PF2H = 8 · PF1H = 15",
+          ],
+          [
+            "AGA scroll bits, each by its own name",
+            " move.w #$c08f,bplcon1(a6)",
+            9,
+            "Written to **BPLCON1**: PF2H7–PF2H6 = 3 · PF2H3–PF2H0 = 8 · PF1H = 15",
+          ],
+          [
+            "fields that share a name, by their descriptions",
+            " move.w #$2102,diwhigh(a6)",
+            9,
+            "Written to **DIWHIGH**: H8 · Vertical stop, high bits = 1 · Vertical start, high bits = 2",
+          ],
+          [
             "unused bits",
             " move.w #$9800,dmacon(a6)",
             9,

@@ -253,21 +253,31 @@ export function registerWriteDocs(
   if (!decoded) return;
 
   const parts: string[] = [];
-  const flags = decoded.flags.map((bit) => bit.name ?? bit.text);
   if (decoded.setClear) {
+    const flags = labels(decoded.flags);
     parts.push(
       `${decoded.setClear === "set" ? "Sets" : "Clears"} ${flags.join(", ") || "nothing"}`,
     );
   } else {
+    // A field a later chip set added is left out at 0, as it is in code for
+    // the original chips: BPLCON1's AGA scroll bits would otherwise crowd out
+    // the two that matter.
+    const fields = decoded.fields.filter(
+      ({ bit, value }) => value !== 0 || !bit.chipset,
+    );
     // Bits and fields in the order they sit in the register.
     const items = [
-      ...decoded.flags.map((bit) => ({ bit, text: bit.name ?? bit.text })),
-      ...decoded.fields.map(({ bit, value }) => ({
-        bit,
-        text: `${fieldName(bit.name)} = ${value}`,
-      })),
+      ...decoded.flags.map((bit) => ({ bit, value: undefined })),
+      ...fields,
     ].sort((a, b) => highBit(b.bit.bits) - highBit(a.bit.bits));
-    parts.push(items.map(({ text }) => text).join(" · ") || "No bits set");
+    const names = labels(items.map(({ bit }) => bit));
+    parts.push(
+      items
+        .map(({ value }, i) =>
+          value === undefined ? names[i] : `${names[i]} = ${value}`,
+        )
+        .join(" · ") || "No bits set",
+    );
   }
   if (decoded.unknown.length)
     parts.push(`Bits not described here: ${decoded.unknown.join(", ")}`);
@@ -277,6 +287,39 @@ export function registerWriteDocs(
 
 const highBit = (bits: number | readonly [number, number]) =>
   typeof bits === "number" ? bits : bits[0];
+
+/**
+ * What to call each bit or field shown together: a field by its name without
+ * the bit range, BPU for BPU2–BPU0, where that is the only one so called; by
+ * its full name where it is not, as for BPLCON1's PF2H7–PF2H6 beside
+ * PF2H3–PF2H0; and by its description where even that is shared, as for
+ * DIWHIGH's two V10–V8 fields, one for the start and one for the stop.
+ */
+function labels(bits: readonly RegisterBit[]): string[] {
+  const count = (names: string[]) => {
+    const counts = new Map<string, number>();
+    for (const name of names) counts.set(name, (counts.get(name) ?? 0) + 1);
+    return counts;
+  };
+  const full = bits.map((bit) => bit.name ?? plainText(bit));
+  const short = bits.map((bit) =>
+    typeof bit.bits === "number"
+      ? (bit.name ?? plainText(bit))
+      : fieldName(bit.name),
+  );
+  const shortCounts = count(short);
+  const fullCounts = count(full);
+  return bits.map((bit, i) =>
+    shortCounts.get(short[i]) === 1
+      ? short[i]
+      : fullCounts.get(full[i]) === 1
+        ? full[i]
+        : plainText(bit),
+  );
+}
+
+/** A bit's description without any note in parentheses, to name it by. */
+const plainText = (bit: RegisterBit) => bit.text.replace(/\s*\([^)]*\)/g, "");
 
 /** A field's name without its bit range: BPU for BPU2–BPU0. */
 function fieldName(name: string | undefined): string {

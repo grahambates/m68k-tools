@@ -14,6 +14,7 @@
  */
 
 import type { Chipset } from "./custom-registers.js";
+import { ciaDocs, type Cia } from "./cia.js";
 
 export interface RegisterBit {
   /** The bit, or the highest and lowest bits of a field. */
@@ -34,6 +35,8 @@ export interface RegisterBit {
   zero?: number;
   /** The chip set that added it, where it is not the original. */
   chipset?: Chipset;
+  /** A blitter logic function, read as an equation by `describeMinterm`. */
+  minterm?: true;
 }
 
 export interface RegisterDoc {
@@ -48,7 +51,14 @@ export interface RegisterDoc {
   flags?: string;
   /** The chip set that added the register, where it is not the original. */
   chipset?: Chipset;
+  /** Its width in bits, where it is not a 16-bit custom chip register. */
+  width?: 8;
+  /** For a CIA register that differs between the two, which CIA. */
+  cia?: Cia;
 }
+
+/** Whether a bit is SET/CLR, which says how the other bits written act. */
+const isSetClear = (bit: RegisterBit) => bit.include === "SETCLR";
 
 const setClear: RegisterBit = {
   bits: 15,
@@ -267,6 +277,7 @@ export const registerDocs: readonly RegisterDoc[] = [
         bits: [7, 0],
         name: "LF7–LF0",
         text: "Minterms: which A/B/C combinations write 1 to D",
+        minterm: true,
       },
     ],
   },
@@ -302,6 +313,14 @@ export const registerDocs: readonly RegisterDoc[] = [
     names: ["BLTCON0L"],
     summary: "The low byte of BLTCON0, the minterms, on its own.",
     chipset: "ECS",
+    bits: [
+      {
+        bits: [7, 0],
+        name: "LF7–LF0",
+        text: "Minterms: which A/B/C combinations write 1 to D",
+        minterm: true,
+      },
+    ],
   },
   {
     names: ["BLTDDAT"],
@@ -1221,19 +1240,21 @@ export function flagSymbol(name: string): FlagSymbol | undefined {
   const match = /^([A-Z]+)([FB])_(\w+)$/.exec(name.toUpperCase());
   if (!match) return undefined;
   const [, prefix, kind, flag] = match;
-  const docs = registerDocs.filter((d) => d.flags === prefix);
-  const doc = docs[0];
-  if (!doc?.bits) return undefined;
+  // Several registers can share a prefix: CIAB_ names bits in three CIA
+  // ports, and INTF_ the same bits in INTENA and INTREQ.
   const group = flagGroups[prefix]?.[flag];
-  const bits = group
-    ? doc.bits.filter(
-        (bit) => typeof bit.bits === "number" && group.includes(bit.bits),
-      )
-    : doc.bits.filter(
-        (bit) =>
-          typeof bit.bits === "number" &&
-          (bit.include ?? bit.name)?.toUpperCase() === flag,
-      );
+  const named = (doc: RegisterDoc) =>
+    (doc.bits ?? []).filter((bit) =>
+      typeof bit.bits !== "number"
+        ? false
+        : group
+          ? group.includes(bit.bits)
+          : (bit.include ?? bit.name)?.toUpperCase() === flag,
+    );
+  const docs = [...registerDocs, ...ciaDocs].filter(
+    (doc) => doc.flags === prefix && named(doc).length,
+  );
+  const bits = docs.length ? named(docs[0]) : [];
   // A bit number names one bit; only a mask can name several.
   if (!bits.length || (kind === "B" && bits.length > 1)) return undefined;
   return { docs, bits, bitNumber: kind === "B" };
@@ -1242,8 +1263,8 @@ export function flagSymbol(name: string): FlagSymbol | undefined {
 /** A value written to a register, read against its bits. */
 export interface DecodedValue {
   /**
-   * For a register written with SET/CLR in bit 15, whether the other bits
-   * written as 1 are set or cleared.
+   * For a register written with a SET/CLR bit (bit 15, or bit 7 of a CIA's
+   * ICR), whether the other bits written as 1 are set or cleared.
    */
   setClear?: "set" | "clear";
   /** The single bits written as 1, apart from SET/CLR. */
@@ -1260,20 +1281,21 @@ export function decodeRegisterValue(
   value: number,
 ): DecodedValue | undefined {
   if (!doc.bits?.length) return undefined;
-  const word = value & 0xffff;
+  const width = doc.width ?? 16;
+  const word = value & ((1 << width) - 1);
   const decoded: DecodedValue = { flags: [], fields: [], unknown: [] };
   let described = 0;
   for (const bit of doc.bits) {
     if (typeof bit.bits === "number") {
       described |= 1 << bit.bits;
       if (!(word & (1 << bit.bits))) continue;
-      if (bit.name === "SET/CLR") continue;
+      if (isSetClear(bit)) continue;
       decoded.flags.push(bit);
       continue;
     }
     const [high, low] = bit.bits;
-    const width = high - low + 1;
-    const mask = ((1 << width) - 1) << low;
+    const fieldWidth = high - low + 1;
+    const mask = ((1 << fieldWidth) - 1) << low;
     described |= mask;
     const field = (word & mask) >>> low;
     decoded.fields.push({
@@ -1281,9 +1303,11 @@ export function decodeRegisterValue(
       value: field === 0 && bit.zero ? bit.zero : field,
     });
   }
-  if (doc.bits.some((bit) => bit.name === "SET/CLR"))
-    decoded.setClear = word & 0x8000 ? "set" : "clear";
-  for (let bit = 15; bit >= 0; bit--)
+  const setClearBit = doc.bits.find(isSetClear);
+  if (setClearBit)
+    decoded.setClear =
+      word & (1 << (setClearBit.bits as number)) ? "set" : "clear";
+  for (let bit = width - 1; bit >= 0; bit--)
     if (word & (1 << bit) && !(described & (1 << bit)))
       decoded.unknown.push(bit);
   return decoded;

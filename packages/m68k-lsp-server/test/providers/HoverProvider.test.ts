@@ -341,6 +341,145 @@ describe("HoverProvider", () => {
         expect(await hoverText(" move.w d0,foo(a6)", 0, 12)).toBe("");
       });
 
+      describe("Copper lists", () => {
+        it.each([
+          [
+            "a WAIT",
+            "copper:\n dc.w $2c07,$fffe",
+            1,
+            7,
+            "Copper **WAIT** for line $2C (44), horizontal $06",
+          ],
+          [
+            "a WAIT on the line alone, in a list ending as usual",
+            "list:\n dc.w $9601,$ff00\n dc.w $ffff,$fffe",
+            1,
+            13,
+            "Copper **WAIT** for line $96 (150), any horizontal position",
+          ],
+          [
+            "the end of the list",
+            "list:\n dc.w $9601,$ff00\n dc.w $ffff,$fffe",
+            2,
+            7,
+            "Copper **WAIT** for a position that never comes: the end of the Copper list, until the next frame.",
+          ],
+          [
+            "a SKIP, in a list with a named MOVE",
+            "list:\n dc.w COLOR00,$0f80\n dc.w $8001,$ffff",
+            2,
+            7,
+            "Copper **SKIP** the next instruction once at line $80 (128), horizontal $00",
+          ],
+          [
+            "a wait for the blitter",
+            "copper:\n dc.w $2c01,$7ffe",
+            1,
+            7,
+            "Copper **WAIT** for line $2C (44), horizontal $00, and for the blitter to finish",
+          ],
+          [
+            "a MOVE written as numbers",
+            "copper:\n dc.w $0180,$0f80",
+            1,
+            13,
+            "Copper **MOVE** to **COLOR00** ($180)  \nWritten to **COLOR00**: R = 15 · G = 8 · B = 0",
+          ],
+          [
+            "a MOVE the Copper needs its danger bit for",
+            "copper:\n dc.w $0010,$0000",
+            1,
+            7,
+            "Copper **MOVE** to **ADKCONR** ($010). Only with COPCON's danger bit set can the Copper write this.",
+          ],
+        ])("decodes %s", async (_what, source, line, column, expected) => {
+          expect(await hoverText(source, line, column)).toContain(expected);
+        });
+
+        it("reads nothing into numbers that are not in a Copper list", async () => {
+          expect(
+            await hoverText("table:\n dc.w $2c07,$fffe", 1, 7),
+          ).not.toContain("Copper");
+          expect(
+            await hoverText("copper:\n dc.l $2c07fffe", 1, 7),
+          ).not.toContain("Copper");
+        });
+      });
+
+      describe("CIAs", () => {
+        it("says what a bit tested on a named CIA register is", async () => {
+          expect(await hoverText(" btst #6,ciaa+ciapra", 0, 7)).toContain(
+            "Bit 6 of **CIA-A PRA**: /FIR0 · Game port 0 fire button (the left mouse button), 0 when pressed",
+          );
+          // The base alone is PRA.
+          expect(await hoverText(" bclr #1,_ciaa", 0, 7)).toContain(
+            "Bit 1 of **CIA-A PRA**: /LED · Power LED: 0 is bright",
+          );
+          expect(await hoverText(" bset #7,ciab+ciaprb", 0, 7)).toContain(
+            "Bit 7 of **CIA-B PRB**: /MTR · Drive motor on, at 0",
+          );
+        });
+
+        it("documents a CIA flag from the includes, and the bit it tests", async () => {
+          const text = await hoverText(" btst #CIAB_GAMEPORT0,ciaa", 0, 12);
+          expect(text).toContain("**CIAB_GAMEPORT0** · CIA-A PRA bit 6");
+          expect(text).toContain("Bit 6 of **CIA-A PRA**: /FIR0");
+        });
+
+        it("describes a CIA register for the chip its operand names", async () => {
+          const text = await hoverText(" move.b d0,ciab+ciaicr", 0, 18);
+          expect(text).toContain("**CIAICR** · CIA-B ICR · $BFDD00");
+          expect(text).toContain("| 0 | TA | Timer A underflow |");
+        });
+
+        it("describes both CIAs' port where the chip is not said", async () => {
+          const text = await hoverText(" move.b ciapra(a0),d0", 0, 10);
+          expect(text).toContain(
+            "**CIAPRA** · PRA · CIA-A $BFE001, CIA-B $BFD000",
+          );
+          expect(text).toContain("**CIA-A:** CIA-A port A");
+          expect(text).toContain("**CIA-B:** CIA-B port A");
+        });
+
+        it("documents the CIA base symbols", async () => {
+          expect(await hoverText(" lea _ciab,a0", 0, 7)).toContain(
+            "**_CIAB** · CIA-B · $BFD000",
+          );
+        });
+
+        it("decodes a byte written to a CIA register", async () => {
+          expect(await hoverText(" move.b #$81,_ciaa+ciaicr", 0, 10)).toContain(
+            "Written to **CIA-A ICR**: Sets TA",
+          );
+          expect(
+            await hoverText(
+              " move.b #CIACRAF_START!CIACRAF_RUNMODE,ciacra(a1)",
+              0,
+              12,
+            ),
+          ).toContain("Written to **CRA**: RUNMODE · START");
+        });
+
+        it("names the register an operand gives, not the one it shares a description with", async () => {
+          // A timer byte has no bits to decode.
+          expect(
+            await hoverText(" move.b #$12,ciaa+ciatahi", 0, 10),
+          ).not.toContain("Written to");
+          expect(await hoverText(" move.b #$12,ciaa+ciatahi", 0, 20)).toContain(
+            "**CIATAHI** · CIA-A TAHI · $BFE501",
+          );
+        });
+
+        it("says nothing of a symbol that only shares a CIA name", async () => {
+          expect(
+            await hoverText("ciapra equ 5\n btst #6,ciapra(a0)", 1, 15),
+          ).not.toContain("CIAPRA");
+          expect(
+            await hoverText("ciapra equ 5\n btst #6,ciapra(a0)", 1, 7),
+          ).not.toContain("Bit 6");
+        });
+      });
+
       describe("values written to registers", () => {
         it.each([
           [
@@ -402,6 +541,24 @@ describe("HoverProvider", () => {
             " move.w #$2102,diwhigh(a6)",
             9,
             "Written to **DIWHIGH**: H8 · Vertical stop, high bits = 1 · Vertical start, high bits = 2",
+          ],
+          [
+            "a blitter copy",
+            " move.w #$09f0,bltcon0(a6)",
+            9,
+            "Written to **BLTCON0**: ASH = 0 · USEA · USED · LF = $F0 (D = A, copy A)",
+          ],
+          [
+            "the cookie-cut minterm",
+            " move.w #$0fca,bltcon0(a6)",
+            9,
+            "Written to **BLTCON0**: ASH = 0 · USEA · USEB · USEC · USED · LF = $CA (D = AB + ¬AC, cookie-cut)",
+          ],
+          [
+            "a minterm written on its own",
+            " move.w #$5a,bltcon0l(a6)",
+            9,
+            "Written to **BLTCON0L**: LF = $5A (D = A¬C + ¬AC)",
           ],
           [
             "unused bits",

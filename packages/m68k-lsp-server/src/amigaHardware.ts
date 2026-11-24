@@ -1,9 +1,11 @@
 import type { ExpressionNode, ParsedLine } from "m68k-parser";
 import {
   CUSTOM_BASE,
+  ciaManualUrl,
   customRegisterAt,
   customRegisterSymbols,
   decodeRegisterValue,
+  describeMinterm,
   flagSymbol,
   hardwareManualUrl,
   registerDoc,
@@ -30,7 +32,7 @@ export function amigaHardwareDocs(
   return registerDocs(name, value) ?? flagDocs(name, value);
 }
 
-const hex = (value: number, digits = 0) =>
+export const hex = (value: number, digits = 0) =>
   "$" + value.toString(16).toUpperCase().padStart(digits, "0");
 
 function registerDocs(
@@ -95,7 +97,7 @@ function flagDocs(name: string, value: number | undefined): string | undefined {
   if (value !== undefined && value !== (flag.bitNumber ? numbers[0] : mask))
     return;
 
-  const registers = flag.docs.map((doc) => doc.names[0]).join("/");
+  const registers = flag.docs.map(registerLabel).join("/");
   const where =
     numbers.length === 1
       ? `bit ${numbers[0]}`
@@ -103,17 +105,28 @@ function flagDocs(name: string, value: number | undefined): string | undefined {
   const header = [
     `**${name.toUpperCase()}**`,
     `${registers} ${where}`,
-    ...(flag.bitNumber ? [] : [`mask ${hex(mask, 4)}`]),
+    ...(flag.bitNumber
+      ? []
+      : [`mask ${hex(mask, flag.docs[0].width === 8 ? 2 : 4)}`]),
   ].join(" · ");
   const lines = flag.bits.map(
     (bit) => `${bit.name ? `${bit.name}: ` : ""}${describe(bit)}`,
   );
-  return [header, lines.join("  \n"), manualLink(flag.docs[0].names[0])]
-    .filter(Boolean)
-    .join("\n\n");
+  const [doc] = flag.docs;
+  const link =
+    doc.width === 8 ? ciaLink(doc.names[0]) : manualLink(doc.names[0]);
+  return [header, lines.join("  \n"), link].filter(Boolean).join("\n\n");
 }
 
-function describe(bit: RegisterBit): string {
+/** A register's name, with its CIA where the description is for one: CIA-A PRA. */
+export const registerLabel = (doc: RegisterDoc) =>
+  doc.cia ? `CIA-${doc.cia} ${doc.names[0]}` : doc.names[0];
+
+/** A link to the Hardware Reference Manual's page on a CIA register. */
+export const ciaLink = (name?: string) =>
+  `[Hardware Reference Manual](${ciaManualUrl(name)})`;
+
+export function describe(bit: RegisterBit): string {
   return [
     bit.level !== undefined ? `Level ${bit.level}: ` : "",
     bit.text,
@@ -122,7 +135,7 @@ function describe(bit: RegisterBit): string {
   ].join("");
 }
 
-function bitTable(doc: RegisterDoc): string | undefined {
+export function bitTable(doc: RegisterDoc): string | undefined {
   if (!doc.bits?.length) return;
   const rows = doc.bits.map((bit) => {
     const where =
@@ -249,7 +262,19 @@ export function registerWriteDocs(
   )
     return;
   const doc = registerDoc(name);
-  const decoded = doc && decodeRegisterValue(doc, value);
+  return doc && describeWrite(name.toUpperCase(), doc, value);
+}
+
+/**
+ * A value written to a register, read against its bits, under the register's
+ * name, or undefined for one whose bits are not described.
+ */
+export function describeWrite(
+  label: string,
+  doc: RegisterDoc,
+  value: number,
+): string | undefined {
+  const decoded = decodeRegisterValue(doc, value);
   if (!decoded) return;
 
   const parts: string[] = [];
@@ -273,8 +298,12 @@ export function registerWriteDocs(
     const names = labels(items.map(({ bit }) => bit));
     parts.push(
       items
-        .map(({ value }, i) =>
-          value === undefined ? names[i] : `${names[i]} = ${value}`,
+        .map(({ bit, value }, i) =>
+          value === undefined
+            ? names[i]
+            : bit.minterm
+              ? `${names[i]} = ${minterm(value)}`
+              : `${names[i]} = ${value}`,
         )
         .join(" · ") || "No bits set",
     );
@@ -282,7 +311,13 @@ export function registerWriteDocs(
   if (decoded.unknown.length)
     parts.push(`Bits not described here: ${decoded.unknown.join(", ")}`);
 
-  return `Written to **${name.toUpperCase()}**: ${parts.join(". ")}`;
+  return `Written to **${label}**: ${parts.join(". ")}`;
+}
+
+/** A blitter logic function, with its equation: $CA (D = AB + ¬AC, cookie-cut). */
+function minterm(value: number): string {
+  const { equation, name } = describeMinterm(value);
+  return `${hex(value, 2)} (${[equation, name].filter(Boolean).join(", ")})`;
 }
 
 const highBit = (bits: number | readonly [number, number]) =>

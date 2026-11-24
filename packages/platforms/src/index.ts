@@ -18,3 +18,22 @@ export {
   type RegisterBit,
   type RegisterDoc,
 } from "./amiga/register-docs.js";
+export {
+  CIA_BASE,
+  ciaBase,
+  ciaDocs,
+  ciaDocsFor,
+  ciaManualUrl,
+  ciaRegister,
+  ciaRegisters,
+  type Cia,
+  type CiaRegister,
+} from "./amiga/cia.js";
+export {
+  COPPER_DANGER_REGISTER,
+  COPPER_SAFE_REGISTER,
+  decodeCopperInstruction,
+  isCopperEnd,
+  type CopperInstruction,
+} from "./amiga/copper.js";
+export { describeMinterm } from "./amiga/minterms.js";

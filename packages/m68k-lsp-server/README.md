@@ -43,7 +43,9 @@ family assembly, using [m68k-parser](https://github.com/grahambates/m68k-tools/t
     MOVE to CCR)
   - Symbol info
   - Data/address register descriptions from comments and assignments
-  - Amiga custom chip registers and flags named as the includes name them (`intena`, `DMAF_SPRITE`), with their bits and a link to the Hardware Reference Manual, and values written to them decoded bit by bit
+  - Amiga custom chip registers and flags named as the includes name them (`intena`, `DMAF_SPRITE`), with their bits and a link to the Hardware Reference Manual, and values written to them decoded bit by bit, including blitter minterms as logic equations
+  - Amiga CIA registers and flags (`ciaa+ciapra`, `CIAB_GAMEPORT0`), the bits `btst`/`bset`/`bclr`/`bchg` test and change in them, and bytes written to them
+  - Copper WAIT, SKIP and numeric MOVE instructions in copper lists (`dc.w $2c07,$fffe`)
 - Multiple workspaces
 - Rename Symbols
 - Signature Help and completions that take the size suffix and operand forms into account

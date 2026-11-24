@@ -55,6 +55,14 @@ import {
 } from "../formatting";
 import { type MarkupContent } from "vscode-languageserver";
 import { expandMacroAtLine } from "../macros";
+import { copperDocs } from "../amigaCopper";
+import {
+  ciaAccess,
+  ciaBitDocs,
+  ciaOperand,
+  ciaSymbolDocs,
+  ciaWriteDocs,
+} from "../amigaCia";
 import {
   amigaHardwareDocs,
   registerWrite,
@@ -144,6 +152,19 @@ export default class HoverProvider implements Provider {
       position.line,
     );
     const docs: string[] = [];
+    const lookup = (symbolName: string) => {
+      const parsed = parseExpression(symbolName);
+      return parsed.errors.length ? undefined : evaluateAtLine?.(parsed.value);
+    };
+    const operands = (line.operands ?? []) as AstNode[];
+    const index = operands.findIndex(
+      (operand) => operand === node || path.ancestors.includes(operand),
+    );
+    // A CIA register operand, which can say which CIA a symbol in it means.
+    const cia =
+      index >= 0 && line.operands
+        ? ciaOperand(line.operands[index], lookup)
+        : undefined;
 
     const name =
       node.type === "symbol"
@@ -151,20 +172,36 @@ export default class HoverProvider implements Provider {
         : node.type === "label"
           ? line.label?.label
           : undefined;
-    const symbol = name ? parseExpression(name) : undefined;
-    if (name && symbol && !symbol.errors.length) {
-      const symbolDocs = amigaHardwareDocs(
-        name,
-        evaluateAtLine?.(symbol.value),
-      );
+    if (name) {
+      const value = lookup(name);
+      const symbolDocs =
+        amigaHardwareDocs(name, value) ?? ciaSymbolDocs(name, value, cia?.cia);
       if (symbolDocs) docs.push(symbolDocs);
     }
 
+    // A bit tested or changed in a CIA register, or a byte written to one.
+    const access = index >= 0 ? ciaAccess(line, index, lookup) : undefined;
+    const accessValue =
+      access &&
+      evaluateAtLine &&
+      (evaluateAtLine(access.value) ??
+        evaluateWithStandardFlags(access.value, evaluateAtLine));
+    if (access && accessValue !== undefined) {
+      const accessDocs =
+        access.kind === "bit"
+          ? ciaBitDocs(access.operand, accessValue)
+          : ciaWriteDocs(access.operand, accessValue);
+      if (accessDocs) docs.push(accessDocs);
+    }
+
+    // A Copper instruction written as numbers.
+    const copper =
+      index >= 0
+        ? copperDocs(processed.parsed, position.line, index, lookup)
+        : undefined;
+    if (copper) docs.push(copper);
+
     // A value written to a named register, read against its bits.
-    const operands = (line.operands ?? []) as AstNode[];
-    const index = operands.findIndex(
-      (operand) => operand === node || path.ancestors.includes(operand),
-    );
     const write = index >= 0 ? registerWrite(line, index) : undefined;
     // Flags the project does not define take the includes' values.
     const value =

@@ -5,11 +5,15 @@
  * The wording is our own, kept to a sentence per register and a phrase per
  * bit; the Hardware Reference Manual page linked alongside has the full
  * details. Bit positions and names follow the manual's register summary
- * (Appendix A, as published on the Amiga Developer CD 2.1), which describes
- * the original chip set: bits ECS and AGA added are left out until checked
- * against a reference for them, as a wrong entry would mislead where a missing
+ * (Appendix A, as published on the Amiga Developer CD 2.1) for the original
+ * chip set, its Appendix C for ECS, and AGA.guide for AGA, which has no
+ * official documentation. Where they name a bit differently, the manual's
+ * name is kept and the other mentioned. A register or bit not yet checked
+ * against these is left out, as a wrong entry would mislead where a missing
  * one does not.
  */
+
+import type { Chipset } from "./custom-registers.js";
 
 export interface RegisterBit {
   /** The bit, or the highest and lowest bits of a field. */
@@ -26,6 +30,10 @@ export interface RegisterBit {
   level?: number;
   /** A bit that can only be read, in a register that is otherwise written. */
   readOnly?: boolean;
+  /** What a field means when it is 0, where that is not 0: BLTSIZE's width is 64. */
+  zero?: number;
+  /** The chip set that added it, where it is not the original. */
+  chipset?: Chipset;
 }
 
 export interface RegisterDoc {
@@ -38,6 +46,8 @@ export interface RegisterDoc {
   bits?: readonly RegisterBit[];
   /** Flag symbol prefixes the includes use for these bits: `DMAF_` and `DMAB_`. */
   flags?: string;
+  /** The chip set that added the register, where it is not the original. */
+  chipset?: Chipset;
 }
 
 const setClear: RegisterBit = {
@@ -176,6 +186,65 @@ export const registerDocs: readonly RegisterDoc[] = [
     ],
   },
   {
+    names: ["BEAMCON0"],
+    summary:
+      "Beam counter control: PAL or NTSC, and programmable sync and blanking for other scan rates. Badly set, it can drive a monitor out of its range.",
+    chipset: "ECS",
+    bits: [
+      {
+        bits: 14,
+        name: "HARDDIS",
+        text: "Disable the hardwired display window limits",
+      },
+      {
+        bits: 13,
+        name: "LPENDIS",
+        text: "Read the beam position, not the latched light pen position",
+      },
+      {
+        bits: 12,
+        name: "VARVBEN",
+        text: "Vertical blank from VBSTRT and VBSTOP",
+      },
+      {
+        bits: 11,
+        name: "LOLDIS",
+        text: "Disable the long and short line toggle",
+      },
+      {
+        bits: 10,
+        name: "CSCBEN",
+        text: "Variable composite sync and blank on the HSY and VSY pins",
+      },
+      {
+        bits: 9,
+        name: "VARVSYEN",
+        text: "Vertical sync from VSSTRT and VSSTOP",
+      },
+      {
+        bits: 8,
+        name: "VARHSYEN",
+        text: "Horizontal sync from HSSTRT and HSSTOP",
+      },
+      {
+        bits: 7,
+        name: "VARBEAMEN",
+        text: "Variable beam counters, from HTOTAL and VTOTAL",
+      },
+      { bits: 6, name: "DUAL", text: "Separate beam counter for UHRES" },
+      { bits: 5, name: "PAL", text: "PAL timing; 0 is NTSC" },
+      { bits: 4, name: "VARCSYEN", text: "Variable composite sync" },
+      {
+        bits: 3,
+        name: "BLANKEN",
+        text: "Composite blank redirection (unused on AGA)",
+      },
+      { bits: 2, name: "CSYTRUE", text: "Composite sync is active high" },
+      { bits: 1, name: "VSYTRUE", text: "Vertical sync is active high" },
+      { bits: 0, name: "HSYTRUE", text: "Horizontal sync is active high" },
+    ],
+  },
+  {
     names: ["BLTAFWM", "BLTALWM"],
     summary:
       "Masks ANDed with the first and last word of each line from source A. All 1s for fill or line mode.",
@@ -211,6 +280,12 @@ export const registerDocs: readonly RegisterDoc[] = [
         name: "BSH3–BSH0",
         text: "Shift source B right 0–15 pixels (line mode: texture start)",
       },
+      {
+        bits: 7,
+        name: "DOFF",
+        text: "Disable the output to destination D",
+        chipset: "ECS",
+      },
       { bits: 6, text: "Line mode: SIGN, sign of the error term" },
       { bits: 4, name: "EFE", text: "Exclusive fill (line mode: SUD)" },
       { bits: 3, name: "IFE", text: "Inclusive fill (line mode: SUL)" },
@@ -225,7 +300,8 @@ export const registerDocs: readonly RegisterDoc[] = [
   },
   {
     names: ["BLTCON0L"],
-    summary: "The low byte of BLTCON0, the minterms, on its own. ECS.",
+    summary: "The low byte of BLTCON0, the minterms, on its own.",
+    chipset: "ECS",
   },
   {
     names: ["BLTDDAT"],
@@ -237,17 +313,29 @@ export const registerDocs: readonly RegisterDoc[] = [
     summary:
       "Blitter size, and start: write it last. In line mode the width is 2 and the height the line length.",
     bits: [
-      { bits: [15, 6], name: "H9–H0", text: "Height in lines (0 is 1024)" },
-      { bits: [5, 0], name: "W5–W0", text: "Width in words (0 is 64)" },
+      {
+        bits: [15, 6],
+        name: "H9–H0",
+        text: "Height in lines (0 is 1024)",
+        zero: 1024,
+      },
+      {
+        bits: [5, 0],
+        name: "W5–W0",
+        text: "Width in words (0 is 64)",
+        zero: 64,
+      },
     ],
   },
   {
     names: ["BLTSIZV"],
-    summary: "Blitter height, up to 15 bits. ECS.",
+    summary: "Blitter height, up to 15 bits. Write it before BLTSIZH.",
+    chipset: "ECS",
   },
   {
     names: ["BLTSIZH"],
-    summary: "Blitter width, up to 11 bits, and start. ECS.",
+    summary: "Blitter width, up to 11 bits, and start: write it last.",
+    chipset: "ECS",
   },
   {
     names: ["BLTxDAT"],
@@ -275,7 +363,11 @@ export const registerDocs: readonly RegisterDoc[] = [
       "Display mode: resolution, number of bitplanes, HAM, dual playfield and interlace.",
     bits: [
       { bits: 15, name: "HIRES", text: "High resolution (70 ns pixels)" },
-      { bits: [14, 12], name: "BPU2–BPU0", text: "Number of bitplanes, 0–6" },
+      {
+        bits: [14, 12],
+        name: "BPU2–BPU0",
+        text: "Number of bitplanes, 0–6; 0–8 with BPU3 on AGA",
+      },
       {
         bits: 11,
         name: "HOMOD",
@@ -288,6 +380,30 @@ export const registerDocs: readonly RegisterDoc[] = [
       },
       { bits: 9, name: "COLOR", text: "Colour on composite video" },
       { bits: 8, name: "GAUD", text: "Genlock audio" },
+      {
+        bits: 7,
+        name: "UHRES",
+        text: "Ultra high resolution: enables the UHRES pointers",
+        chipset: "ECS",
+      },
+      {
+        bits: 6,
+        name: "SHRES",
+        text: "Super high resolution (35 ns pixels); clear HIRES with it",
+        chipset: "ECS",
+      },
+      {
+        bits: 5,
+        name: "BYPASS",
+        text: "Bypass the colour table: bitplane data goes straight out (BPLHWRM on ECS)",
+        chipset: "AGA",
+      },
+      {
+        bits: 4,
+        name: "BPU3",
+        text: "High bit of the number of bitplanes (SPRHWRM on ECS)",
+        chipset: "AGA",
+      },
       { bits: 3, name: "LPEN", text: "Light pen" },
       { bits: 2, name: "LACE", text: "Interlace" },
       {
@@ -295,13 +411,43 @@ export const registerDocs: readonly RegisterDoc[] = [
         name: "ERSY",
         text: "External resync: sync pins become inputs",
       },
+      {
+        bits: 0,
+        name: "ECSENA",
+        text: "Enable BPLCON3's border and ZD bits (ENBPLCN3 in the manual)",
+        chipset: "ECS",
+      },
     ],
   },
   {
     names: ["BPLCON1"],
     summary:
-      "Horizontal scroll for each playfield, 0–15 low-resolution pixels.",
+      "Horizontal scroll for each playfield, 0–15 low-resolution pixels. AGA adds finer and wider scrolling in the top byte, and renames the low byte's bits PF2H5–PF2H2 and PF1H5–PF1H2.",
     bits: [
+      {
+        bits: [15, 14],
+        name: "PF2H7–PF2H6",
+        text: "Playfield 2 delay, high bits, for wide fetch modes",
+        chipset: "AGA",
+      },
+      {
+        bits: [13, 12],
+        name: "PF2H1–PF2H0",
+        text: "Playfield 2 delay, fine bits, in 35 ns steps",
+        chipset: "AGA",
+      },
+      {
+        bits: [11, 10],
+        name: "PF1H7–PF1H6",
+        text: "Playfield 1 delay, high bits, for wide fetch modes",
+        chipset: "AGA",
+      },
+      {
+        bits: [9, 8],
+        name: "PF1H1–PF1H0",
+        text: "Playfield 1 delay, fine bits, in 35 ns steps",
+        chipset: "AGA",
+      },
       {
         bits: [7, 4],
         name: "PF2H3–PF2H0",
@@ -317,8 +463,44 @@ export const registerDocs: readonly RegisterDoc[] = [
   {
     names: ["BPLCON2"],
     summary:
-      "Display priority: playfields against each other and against sprites.",
+      "Display priority: playfields against each other and against sprites. ECS and AGA add genlock and palette controls.",
     bits: [
+      {
+        bits: [14, 12],
+        name: "ZDBPSEL2–ZDBPSEL0",
+        text: "Bitplane that drives the ZD pin, with ZDBPEN",
+        chipset: "ECS",
+      },
+      {
+        bits: 11,
+        name: "ZDBPEN",
+        text: "ZD pin follows the bitplane ZDBPSEL selects",
+        chipset: "ECS",
+      },
+      {
+        bits: 10,
+        name: "ZDCTEN",
+        text: "ZD pin follows the colour table's transparency bit, not colour 0",
+        chipset: "ECS",
+      },
+      {
+        bits: 9,
+        name: "KILLEHB",
+        text: "Disable Extra Half-Brite",
+        chipset: "ECS",
+      },
+      {
+        bits: 8,
+        name: "RDRAM",
+        text: "Colour register addresses read the palette instead of writing it",
+        chipset: "AGA",
+      },
+      {
+        bits: 7,
+        name: "SOGEN",
+        text: "Drive the SOG output pin high",
+        chipset: "AGA",
+      },
       {
         bits: 6,
         name: "PF2PRI",
@@ -338,17 +520,93 @@ export const registerDocs: readonly RegisterDoc[] = [
   },
   {
     names: ["BPLCON3"],
-    summary: "Enhanced display features. ECS and AGA.",
+    summary:
+      "Enhanced display features: border, genlock, sprite resolution and AGA palette access. The border and ZD bits do nothing unless BPLCON0's ECSENA is set. Resets to $0C00: PF2OF is 3, an offset of 8.",
+    chipset: "ECS",
+    bits: [
+      {
+        bits: [15, 13],
+        name: "BANK2–BANK0",
+        text: "Which of the eight 32-colour banks COLORxx writes",
+        chipset: "AGA",
+      },
+      {
+        bits: [12, 10],
+        name: "PF2OF2–PF2OF0",
+        text: "Playfield 2's offset into the palette in dual playfield: 0, 2, 4, 8 … 128",
+        chipset: "AGA",
+      },
+      {
+        bits: 9,
+        name: "LOCT",
+        text: "COLORxx writes set the low nibbles of the 24-bit colour",
+        chipset: "AGA",
+      },
+      {
+        bits: [7, 6],
+        name: "SPRES1–SPRES0",
+        text: "Sprite resolution: default, low, high or super high",
+        chipset: "AGA",
+      },
+      { bits: 5, name: "BRDRBLNK", text: "Border is blanked", chipset: "ECS" },
+      {
+        bits: 4,
+        name: "BRDNTRAN",
+        text: "Border is opaque to genlock",
+        chipset: "ECS",
+      },
+      {
+        bits: 2,
+        name: "ZDCLKEN",
+        text: "ZD pin outputs a 14 MHz clock instead",
+        chipset: "AGA",
+      },
+      {
+        bits: 1,
+        name: "BRDSPRT",
+        text: "Sprites show in the border",
+        chipset: "AGA",
+      },
+      {
+        bits: 0,
+        name: "EXTBLKEN",
+        text: "Blank output is programmable",
+        chipset: "AGA",
+      },
+    ],
+  },
+  {
+    names: ["BPLCON4"],
+    summary:
+      "Palette remapping: a mask for bitplane colours and the colour banks sprites use. Resets to $0011.",
+    chipset: "AGA",
+    bits: [
+      {
+        bits: [15, 8],
+        name: "BPLAM7–BPLAM0",
+        text: "XORed with each pixel's bitplane colour number",
+      },
+      {
+        bits: [7, 4],
+        name: "ESPRM7–ESPRM4",
+        text: "Colour bank for even sprites: the high four bits of their colour numbers",
+      },
+      {
+        bits: [3, 0],
+        name: "OSPRM7–OSPRM4",
+        text: "Colour bank for odd sprites: the high four bits of their colour numbers",
+      },
+    ],
   },
   {
     names: ["BPLxDAT"],
     summary:
-      "Bitplane data, loaded by DMA. Writing BPL1DAT sends all six to the display, 16 pixels, leftmost first.",
+      "Bitplane data, loaded by DMA. Writing BPL1DAT sends them all to the display, leftmost pixel first. Planes 7 and 8 are AGA.",
   },
   {
     names: ["BPLxPTH", "BPLxPTL"],
     summary:
-      "Bitplane address. Reload it every frame, from the Copper or in vertical blank.",
+      "Bitplane address. Reload it every frame, from the Copper or in vertical blank. Planes 7 and 8 are AGA.",
   },
   {
     names: ["CLXCON"],
@@ -365,6 +623,18 @@ export const registerDocs: readonly RegisterDoc[] = [
         name: "MVBP6–MVBP1",
         text: "Value the bitplane must have",
       },
+    ],
+  },
+  {
+    names: ["CLXCON2"],
+    summary:
+      "Collision control for bitplanes 7 and 8. Writing CLXCON clears it.",
+    chipset: "AGA",
+    bits: [
+      { bits: 7, name: "ENBP8", text: "Bitplane 8 takes part" },
+      { bits: 6, name: "ENBP7", text: "Bitplane 7 takes part" },
+      { bits: 1, name: "MVBP8", text: "Value bitplane 8 must have" },
+      { bits: 0, name: "MVBP7", text: "Value bitplane 7 must have" },
     ],
   },
   {
@@ -392,8 +662,14 @@ export const registerDocs: readonly RegisterDoc[] = [
   {
     names: ["COLORxx"],
     summary:
-      "Colour palette entry, as 12-bit RGB: $0RGB, four bits per component.",
+      "Colour palette entry, as 12-bit RGB: $0RGB, four bits per component. On AGA these write one bank of the 256-entry 24-bit palette, selected by BPLCON3's BANK bits, and LOCT chooses the high or low nibbles.",
     bits: [
+      {
+        bits: 15,
+        name: "T",
+        text: "Transparent to genlock: this colour drives the ZD pin",
+        chipset: "AGA",
+      },
       { bits: [11, 8], name: "R3–R0", text: "Red" },
       { bits: [7, 4], name: "G3–G0", text: "Green" },
       { bits: [3, 0], name: "B3–B0", text: "Blue" },
@@ -435,6 +711,44 @@ export const registerDocs: readonly RegisterDoc[] = [
     summary:
       "Horizontal start and stop of bitplane data fetch, in colour clocks. Normal values are $38 and $D0.",
     bits: [{ bits: [7, 2], name: "H8–H3", text: "Horizontal position" }],
+  },
+  {
+    names: ["DENISEID"],
+    summary:
+      "Denise revision, in the low byte: $FC for ECS Denise, $F8 for AGA Lisa. The original Denise has no such register, and reading it gives whatever was last on the bus.",
+    chipset: "ECS",
+  },
+  {
+    names: ["DIWHIGH"],
+    summary:
+      "High bits of the display window start and stop. Once written, DIWSTRT and DIWSTOP's implied bits no longer apply, so write it after them.",
+    chipset: "ECS",
+    bits: [
+      {
+        bits: 13,
+        name: "H8",
+        text: "Horizontal stop, high bit (H10 in AGA.guide)",
+      },
+      {
+        bits: [12, 11],
+        name: "H1–H0",
+        text: "Horizontal stop, fine bits in 70 and 35 ns steps",
+        chipset: "AGA",
+      },
+      { bits: [10, 8], name: "V10–V8", text: "Vertical stop, high bits" },
+      {
+        bits: 5,
+        name: "H8",
+        text: "Horizontal start, high bit (H10 in AGA.guide)",
+      },
+      {
+        bits: [4, 3],
+        name: "H1–H0",
+        text: "Horizontal start, fine bits in 70 and 35 ns steps",
+        chipset: "AGA",
+      },
+      { bits: [2, 0], name: "V10–V8", text: "Vertical start, high bits" },
+    ],
   },
   {
     names: ["DIWSTRT", "DIWSTOP"],
@@ -521,6 +835,138 @@ export const registerDocs: readonly RegisterDoc[] = [
   {
     names: ["DSKSYNC"],
     summary: "Disk sync word, matched when ADKCON's WORDSYNC is set.",
+  },
+  {
+    names: ["FMODE"],
+    summary:
+      "Chip RAM fetch width for bitplanes and sprites: 16, 32 or 64 bits at a time, and scan-doubling.",
+    chipset: "AGA",
+    bits: [
+      { bits: 15, name: "SSCAN2", text: "Sprite scan-doubling" },
+      {
+        bits: 14,
+        name: "BSCAN2",
+        text: "Bitplane scan-doubling: alternate lines use BPL2MOD",
+      },
+      {
+        bits: 3,
+        name: "SPAGEM",
+        text: "Sprite page mode: double the sprite fetch",
+      },
+      { bits: 2, name: "SPR32", text: "32-bit sprite fetch" },
+      {
+        bits: 1,
+        name: "BPAGEM",
+        text: "Bitplane page mode: double the bitplane fetch",
+      },
+      {
+        bits: 0,
+        name: "BPL32",
+        text: "32-bit bitplane fetch (BLP32 in AGA.guide)",
+      },
+    ],
+  },
+  {
+    names: ["HTOTAL"],
+    summary:
+      "Colour clocks per line, less one, when BEAMCON0's VARBEAMEN or DUAL is set.",
+    chipset: "ECS",
+    bits: [
+      { bits: [7, 0], name: "H8–H1", text: "Last colour clock of the line" },
+    ],
+  },
+  {
+    names: ["HSSTRT", "HSSTOP"],
+    summary:
+      "Horizontal sync start (HSSTRT) and stop (HSSTOP), in colour clocks, when BEAMCON0's VARHSYEN is set.",
+    chipset: "ECS",
+    bits: [{ bits: [7, 0], name: "H8–H1", text: "Horizontal position" }],
+  },
+  {
+    names: ["HBSTRT", "HBSTOP"],
+    summary:
+      "Horizontal blank start (HBSTRT) and stop (HBSTOP), when BEAMCON0's programmable blanking is in use.",
+    chipset: "ECS",
+    bits: [
+      { bits: [10, 8], text: "Fine position, in 35 ns steps", chipset: "AGA" },
+      { bits: [7, 0], text: "Position, in 280 ns steps" },
+    ],
+  },
+  {
+    names: ["HCENTER"],
+    summary:
+      "Horizontal position of vertical sync on long fields, for interlace with variable beam counters.",
+    chipset: "ECS",
+    bits: [{ bits: [7, 0], name: "H8–H1", text: "Horizontal position" }],
+  },
+  {
+    names: ["HHPOSR", "HHPOSW"],
+    summary:
+      "The second horizontal beam counter, which runs the UHRES pointers and horizontal comparisons in BEAMCON0's DUAL mode.",
+    chipset: "ECS",
+    bits: [{ bits: [7, 0], name: "H8–H1", text: "Horizontal position" }],
+  },
+  {
+    names: ["BPLHSTRT"],
+    summary: "The line UHRES bitplane fetch starts on.",
+    chipset: "ECS",
+    bits: [{ bits: [10, 0], name: "V10–V0", text: "Line" }],
+  },
+  {
+    names: ["BPLHSTOP"],
+    summary: "The line UHRES bitplane fetch stops on.",
+    chipset: "ECS",
+    bits: [
+      {
+        bits: 15,
+        name: "BPLHWRM",
+        text: "Invert ARW* while BPLHDAT is on the bus, for external memory",
+      },
+      { bits: [10, 0], name: "V10–V0", text: "Line" },
+    ],
+  },
+  {
+    names: ["BPLHMOD"],
+    summary:
+      "UHRES bitplane modulo: bytes added to the address at the end of each line.",
+    chipset: "ECS",
+  },
+  {
+    names: ["BPLHPTH", "BPLHPTL"],
+    summary:
+      "UHRES (VRAM) bitplane address, fetched in the second free cycle of each line when BPLCON0's UHRES is set.",
+    chipset: "ECS",
+  },
+  {
+    names: ["SPRHSTRT"],
+    summary: "The line UHRES sprite display starts on.",
+    chipset: "ECS",
+    bits: [{ bits: [10, 0], name: "V10–V0", text: "Line" }],
+  },
+  {
+    names: ["SPRHSTOP"],
+    summary: "The line UHRES sprite display stops on.",
+    chipset: "ECS",
+    bits: [
+      {
+        bits: 15,
+        name: "SPRHWRM",
+        text: "Invert ARW* while SPRHDAT is on the bus, for external memory",
+      },
+      { bits: [10, 0], name: "V10–V0", text: "Line" },
+    ],
+  },
+  {
+    names: ["SPRHPTH", "SPRHPTL"],
+    summary:
+      "UHRES sprite address, fetched in the first and third free cycles of each line.",
+    chipset: "ECS",
+  },
+  {
+    names: ["SPRHDAT", "BPLHDAT"],
+    summary:
+      "Addresses the chips put on the bus to mark UHRES sprite and bitplane fetches for external logic. Not for writing.",
+    chipset: "ECS",
   },
   {
     names: ["INTENA", "INTENAR"],
@@ -614,13 +1060,27 @@ export const registerDocs: readonly RegisterDoc[] = [
   {
     names: ["SPRxCTL"],
     summary:
-      "Sprite end line and control. Normally loaded by DMA; writing it disarms the sprite.",
+      "Sprite end line and control. Normally loaded by DMA; writing it disarms the sprite. AGA.guide renames SH0 to SH2, counting the finer horizontal bits as SH1 and SH0.",
     bits: [
       { bits: [15, 8], name: "EV7–EV0", text: "End line, low bits" },
       {
         bits: 7,
         name: "ATT",
         text: "Attach to the even sprite before it (odd sprites)",
+      },
+      { bits: 6, name: "SV9", text: "Start line, bit 9", chipset: "AGA" },
+      { bits: 5, name: "EV9", text: "End line, bit 9", chipset: "AGA" },
+      {
+        bits: 4,
+        name: "SHSH1",
+        text: "Horizontal start, 70 ns step (SH1 in AGA.guide)",
+        chipset: "ECS",
+      },
+      {
+        bits: 3,
+        name: "SHSH0",
+        text: "Horizontal start, 35 ns step; named on ECS, working on AGA (SH0 in AGA.guide)",
+        chipset: "AGA",
       },
       { bits: 2, name: "SV8", text: "Start line, high bit" },
       { bits: 1, name: "EV8", text: "End line, high bit" },
@@ -634,7 +1094,8 @@ export const registerDocs: readonly RegisterDoc[] = [
   },
   {
     names: ["SPRxPOS"],
-    summary: "Sprite start position. Normally loaded by DMA.",
+    summary:
+      "Sprite start position. Normally loaded by DMA. AGA.guide names the horizontal bits SH10–SH3, counting the finer bits in SPRxCTL.",
     bits: [
       { bits: [15, 8], name: "SV7–SV0", text: "Start line, low bits" },
       { bits: [7, 0], name: "SH8–SH1", text: "Horizontal start, high bits" },
@@ -651,6 +1112,27 @@ export const registerDocs: readonly RegisterDoc[] = [
       "Strobe addresses used by the chips during refresh. Not for writing.",
   },
   {
+    names: ["VTOTAL"],
+    summary:
+      "Lines per field, less one, when BEAMCON0's VARBEAMEN is set. With interlace, long fields have one more.",
+    chipset: "ECS",
+    bits: [{ bits: [10, 0], name: "V10–V0", text: "Last line of the field" }],
+  },
+  {
+    names: ["VSSTRT", "VSSTOP"],
+    summary:
+      "Vertical sync start (VSSTRT) and stop (VSSTOP) lines, when BEAMCON0's VARVSYEN is set.",
+    chipset: "ECS",
+    bits: [{ bits: [10, 0], name: "V10–V0", text: "Line" }],
+  },
+  {
+    names: ["VBSTRT", "VBSTOP"],
+    summary:
+      "Vertical blank start (VBSTRT) and stop (VBSTOP) lines, when BEAMCON0's VARVBEN is set.",
+    chipset: "ECS",
+    bits: [{ bits: [10, 0], name: "V10–V0", text: "Line" }],
+  },
+  {
     names: ["VHPOSR", "VHPOSW"],
     summary: "Beam position, or light pen position when it has latched.",
     bits: [
@@ -664,9 +1146,24 @@ export const registerDocs: readonly RegisterDoc[] = [
   },
   {
     names: ["VPOSR", "VPOSW"],
-    summary: "Beam line high bit, and the long frame flag for interlace.",
+    summary:
+      "Beam line high bits, the long frame flag for interlace and, when read, the Agnus or Alice chip ID.",
     bits: [
       { bits: 15, name: "LOF", text: "Long frame" },
+      {
+        bits: [14, 8],
+        name: "I6–I0",
+        readOnly: true,
+        text: "Agnus ID: $00 PAL or $10 NTSC original; $20 or $30 ECS; from $22 or $32 AGA Alice",
+      },
+      {
+        bits: 7,
+        name: "LOL",
+        readOnly: true,
+        text: "Long line; clear on a short line",
+        chipset: "ECS",
+      },
+      { bits: [2, 1], name: "V10–V9", text: "Line, top bits", chipset: "ECS" },
       { bits: 0, name: "V8", text: "Line, high bit" },
     ],
   },
@@ -696,7 +1193,7 @@ function familyName(name: string): string {
   return name
     .replace(/^AUD[0-3](LCH|LCL|LEN|PER|VOL|DAT)$/, "AUDx$1")
     .replace(/^BLT[A-D](DAT|MOD|PTH|PTL)$/, "BLTx$1")
-    .replace(/^BPL[1-6](DAT|PTH|PTL)$/, "BPLx$1")
+    .replace(/^BPL[1-8](DAT|PTH|PTL)$/, "BPLx$1")
     .replace(/^SPR[0-7](PTH|PTL|POS|CTL|DATA|DATB)$/, "SPRx$1")
     .replace(/^COLOR(0\d|[12]\d|3[01])$/, "COLORxx");
 }
@@ -740,4 +1237,54 @@ export function flagSymbol(name: string): FlagSymbol | undefined {
   // A bit number names one bit; only a mask can name several.
   if (!bits.length || (kind === "B" && bits.length > 1)) return undefined;
   return { docs, bits, bitNumber: kind === "B" };
+}
+
+/** A value written to a register, read against its bits. */
+export interface DecodedValue {
+  /**
+   * For a register written with SET/CLR in bit 15, whether the other bits
+   * written as 1 are set or cleared.
+   */
+  setClear?: "set" | "clear";
+  /** The single bits written as 1, apart from SET/CLR. */
+  flags: RegisterBit[];
+  /** Each field, with the value it is given. */
+  fields: { bit: RegisterBit; value: number }[];
+  /** Bits written as 1 that nothing here describes, highest first. */
+  unknown: number[];
+}
+
+/** A 16-bit value written to a register, read against its bits. */
+export function decodeRegisterValue(
+  doc: RegisterDoc,
+  value: number,
+): DecodedValue | undefined {
+  if (!doc.bits?.length) return undefined;
+  const word = value & 0xffff;
+  const decoded: DecodedValue = { flags: [], fields: [], unknown: [] };
+  let described = 0;
+  for (const bit of doc.bits) {
+    if (typeof bit.bits === "number") {
+      described |= 1 << bit.bits;
+      if (!(word & (1 << bit.bits))) continue;
+      if (bit.name === "SET/CLR") continue;
+      decoded.flags.push(bit);
+      continue;
+    }
+    const [high, low] = bit.bits;
+    const width = high - low + 1;
+    const mask = ((1 << width) - 1) << low;
+    described |= mask;
+    const field = (word & mask) >>> low;
+    decoded.fields.push({
+      bit,
+      value: field === 0 && bit.zero ? bit.zero : field,
+    });
+  }
+  if (doc.bits.some((bit) => bit.name === "SET/CLR"))
+    decoded.setClear = word & 0x8000 ? "set" : "clear";
+  for (let bit = 15; bit >= 0; bit--)
+    if (word & (1 << bit) && !(described & (1 << bit)))
+      decoded.unknown.push(bit);
+  return decoded;
 }

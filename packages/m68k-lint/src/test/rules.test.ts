@@ -3573,6 +3573,31 @@ describe("Amiga custom-register direction table", () => {
     }
   });
 
+  test("covers ECS and AGA registers with a documented direction", () => {
+    // Written: reading them is the mistake.
+    for (const address of [
+      "$dff106", // BPLCON3
+      "$dff10c", // BPLCON4
+      "$dff10e", // CLXCON2
+      "$dff1dc", // BEAMCON0
+      "$dff1e4", // DIWHIGH
+      "$dff1fc", // FMODE
+    ]) {
+      expect([address, flags(`move.w ${address},d0`)]).toEqual([address, true]);
+      expect([address, flags(`move.w #0,${address}`)]).toEqual([
+        address,
+        false,
+      ]);
+    }
+    // DENISEID is read.
+    expect(flags("move.w $dff07c,d0")).toBe(false);
+    expect(flags("move.w #0,$dff07c")).toBe(true);
+    // The display-sync block is written, except HHPOSR.
+    expect(flags("move.w $dff1c0,d0")).toBe(true); // HTOTAL
+    expect(flags("move.w $dff1da,d0")).toBe(false); // HHPOSR
+    expect(flags("move.w #0,$dff1da")).toBe(true);
+  });
+
   test("covers the generated register families", () => {
     for (const address of [
       "$dff0a0", // AUD0LCH
@@ -3619,11 +3644,11 @@ describe("Amiga custom-register direction table", () => {
     expect(flags("    lea $40000,a6\n    clr.w bltamod(a6)")).toBe(false);
   });
 
-  test("stays silent on the deliberately omitted ECS/AGA sync block", () => {
-    // $1C0-$1FE mixes directions and varies by chipset, so it is not tabulated.
-    // Omission must produce no diagnostic rather than a guess.
-    expect(flags("move.w $dff1c0,d0")).toBe(false);
-    expect(flags("move.w #0,$dff1c0")).toBe(false);
+  test("stays silent on addresses no register is known at", () => {
+    // $1F0-$1FA is reserved. Omission must produce no diagnostic rather than
+    // a guess.
+    expect(flags("move.w $dff1f0,d0")).toBe(false);
+    expect(flags("move.w #0,$dff1f0")).toBe(false);
   });
 });
 

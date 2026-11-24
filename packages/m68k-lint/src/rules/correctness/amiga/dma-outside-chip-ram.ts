@@ -23,7 +23,7 @@ const CHANNELS: readonly [RegExp, string][] = [
   [/^AUD[0-3]LCH$/, "audio sample"],
   [/^BLT[ABC]PTH$/, "blitter source"],
   [/^BLTDPTH$/, "blitter destination"],
-  [/^BPL[1-6]PTH$/, "bitplane"],
+  [/^BPL[1-8]PTH$/, "bitplane"],
   [/^SPR[0-7]PTH$/, "sprite data"],
   [/^DSKPTH$/, "disk buffer"],
 ];

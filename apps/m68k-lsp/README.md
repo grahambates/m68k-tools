@@ -34,7 +34,7 @@ Adds language support for Motorola 68000 Assembly to Visual Studio Code.
   - Instruction/directive documentation
   - Symbol info
   - Data/address register descriptions from comments and assignments
-  - Amiga custom chip registers and flags named as the includes name them (`intena`, `DMAF_SPRITE`), with their bits and a link to the Hardware Reference Manual
+  - Amiga custom chip registers and flags named as the includes name them (`intena`, `DMAF_SPRITE`), with their bits and a link to the Hardware Reference Manual, and values written to them decoded bit by bit
 - Multiple workspaces
 - Rename Symbols
 - Update `include` and `incbin` paths on file and folder rename or move

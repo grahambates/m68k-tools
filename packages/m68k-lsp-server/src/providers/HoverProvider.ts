@@ -55,7 +55,12 @@ import {
 } from "../formatting";
 import { type MarkupContent } from "vscode-languageserver";
 import { expandMacroAtLine } from "../macros";
-import { amigaHardwareDocs } from "../amigaHardware";
+import {
+  amigaHardwareDocs,
+  registerWrite,
+  registerWriteDocs,
+  standardFlagValue,
+} from "../amigaHardware";
 import { type AliasResolver, registersAt } from "../registerEffects";
 import { analyzeDocumentConditionals } from "../documentConditionals";
 
@@ -130,16 +135,7 @@ export default class HoverProvider implements Provider {
     path: AstPath,
     position: lsp.Position,
   ): string | undefined {
-    const { node } = path;
-    const name =
-      node.type === "symbol"
-        ? (node as unknown as { name: string }).name
-        : node.type === "label"
-          ? path.line.label?.label
-          : undefined;
-    if (!name) return;
-    const symbol = parseExpression(name);
-    if (symbol.errors.length) return;
+    const { node, line } = path;
     const { evaluateAtLine } = analyzeDocumentConditionals(
       this.ctx,
       processed.uri,
@@ -147,7 +143,44 @@ export default class HoverProvider implements Provider {
       processed.blocks,
       position.line,
     );
-    return amigaHardwareDocs(name, evaluateAtLine?.(symbol.value));
+    const docs: string[] = [];
+
+    const name =
+      node.type === "symbol"
+        ? (node as unknown as { name: string }).name
+        : node.type === "label"
+          ? line.label?.label
+          : undefined;
+    const symbol = name ? parseExpression(name) : undefined;
+    if (name && symbol && !symbol.errors.length) {
+      const symbolDocs = amigaHardwareDocs(
+        name,
+        evaluateAtLine?.(symbol.value),
+      );
+      if (symbolDocs) docs.push(symbolDocs);
+    }
+
+    // A value written to a named register, read against its bits.
+    const operands = (line.operands ?? []) as AstNode[];
+    const index = operands.findIndex(
+      (operand) => operand === node || path.ancestors.includes(operand),
+    );
+    const write = index >= 0 ? registerWrite(line, index) : undefined;
+    // Flags the project does not define take the includes' values.
+    const value =
+      write &&
+      evaluateAtLine &&
+      (evaluateAtLine(write.value) ??
+        evaluateWithStandardFlags(write.value, evaluateAtLine));
+    if (write && value !== undefined) {
+      const writeDocs = registerWriteDocs(
+        write.register.name,
+        evaluateAtLine?.(write.register),
+        value,
+      );
+      if (writeDocs) docs.push(writeDocs);
+    }
+    return docs.length ? docs.join("\n\n") : undefined;
   }
 
   private async hoverAt({
@@ -795,6 +828,22 @@ function instructionForm(
     form = `move from ${source}`;
   }
   return instructionFormDocs[form] ? form : undefined;
+}
+
+/**
+ * An expression's value where some of its symbols are standard Amiga flags the
+ * project does not define, read as the includes define them.
+ */
+function evaluateWithStandardFlags(
+  expr: ExpressionNode,
+  evaluateAtLine: (expr: ExpressionNode) => number | undefined,
+): number | undefined {
+  const result = evaluateConstant(expr, (name) => {
+    const symbol = parseExpression(name);
+    const own = symbol.errors.length ? undefined : evaluateAtLine(symbol.value);
+    return own ?? standardFlagValue(name);
+  });
+  return result.known ? result.value : undefined;
 }
 
 /** A hover with Markdown documentation added beneath what it already shows. */

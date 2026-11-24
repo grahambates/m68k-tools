@@ -9,12 +9,16 @@ export const CUSTOM_BASE = 0xdff000;
  */
 export type CustomRegisterAccess = "read-only" | "write-only";
 
+/** The chip set that added a register or bit, where it is not the original. */
+export type Chipset = "ECS" | "AGA";
+
 export interface CustomRegister {
   /** The name the Hardware Reference Manual gives it, in upper case. */
   name: string;
   /** Offset from the custom chip base, `CUSTOM_BASE`. */
   offset: number;
   access: CustomRegisterAccess;
+  chipset?: Chipset;
 }
 
 // Address-ordered register list from the Amiga Hardware Reference Manual
@@ -22,9 +26,10 @@ export interface CustomRegister {
 //
 // Omission is safe here and commission is not - a register absent from the
 // table simply produces no diagnostic, while a wrong direction produces a
-// confident false error. The ECS/AGA display-sync block at $1C0-$1FE is
-// therefore left out pending verification; it mixes directions (HHPOSR at $1DA
-// is readable) and its ECS/AGA availability varies.
+// confident false error. Registers ECS and AGA added are listed apart, each
+// with the direction both the manual's ECS appendix (where it covers them) and
+// AGA.guide's register table give. The display-sync block at $1C0-$1FE mixes
+// directions: HHPOSR at $1DA is the one there that is read.
 const OCS_READ_ONLY: readonly [number, string][] = [
   [0x000, "BLTDDAT"],
   [0x002, "DMACONR"],
@@ -76,9 +81,6 @@ const OCS_WRITE_ONLY: readonly [number, string][] = [
   [0x054, "BLTDPTH"],
   [0x056, "BLTDPTL"],
   [0x058, "BLTSIZE"],
-  [0x05a, "BLTCON0L"],
-  [0x05c, "BLTSIZV"],
-  [0x05e, "BLTSIZH"],
   [0x060, "BLTCMOD"],
   [0x062, "BLTBMOD"],
   [0x064, "BLTAMOD"],
@@ -106,7 +108,6 @@ const OCS_WRITE_ONLY: readonly [number, string][] = [
   [0x100, "BPLCON0"],
   [0x102, "BPLCON1"],
   [0x104, "BPLCON2"],
-  [0x106, "BPLCON3"],
   [0x108, "BPL1MOD"],
   [0x10a, "BPL2MOD"],
 ];
@@ -144,6 +145,55 @@ function generatedWriteOnly(): [number, string][] {
   return entries;
 }
 
+// Registers ECS and AGA added. ECS from the Hardware Reference Manual's
+// Appendix C register map and, for the UHRES registers it leaves out,
+// AGA.guide's register table, which marks them new for the HiRes (ECS) chips;
+// AGA from AGA.guide's register table.
+const LATER: readonly [number, string, CustomRegisterAccess, Chipset][] = [
+  [0x05a, "BLTCON0L", "write-only", "ECS"],
+  [0x05c, "BLTSIZV", "write-only", "ECS"],
+  [0x05e, "BLTSIZH", "write-only", "ECS"],
+  [0x078, "SPRHDAT", "write-only", "ECS"],
+  [0x07a, "BPLHDAT", "write-only", "ECS"],
+  [0x07c, "DENISEID", "read-only", "ECS"],
+  [0x0f8, "BPL7PTH", "write-only", "AGA"],
+  [0x0fa, "BPL7PTL", "write-only", "AGA"],
+  [0x0fc, "BPL8PTH", "write-only", "AGA"],
+  [0x0fe, "BPL8PTL", "write-only", "AGA"],
+  [0x106, "BPLCON3", "write-only", "ECS"],
+  [0x10c, "BPLCON4", "write-only", "AGA"],
+  // AGA.guide's entry for CLXCON2 says $10C, which is BPLCON4; its register
+  // table has $10E.
+  [0x10e, "CLXCON2", "write-only", "AGA"],
+  [0x11c, "BPL7DAT", "write-only", "AGA"],
+  [0x11e, "BPL8DAT", "write-only", "AGA"],
+  [0x1c0, "HTOTAL", "write-only", "ECS"],
+  [0x1c2, "HSSTOP", "write-only", "ECS"],
+  [0x1c4, "HBSTRT", "write-only", "ECS"],
+  [0x1c6, "HBSTOP", "write-only", "ECS"],
+  [0x1c8, "VTOTAL", "write-only", "ECS"],
+  [0x1ca, "VSSTOP", "write-only", "ECS"],
+  [0x1cc, "VBSTRT", "write-only", "ECS"],
+  [0x1ce, "VBSTOP", "write-only", "ECS"],
+  [0x1d0, "SPRHSTRT", "write-only", "ECS"],
+  [0x1d2, "SPRHSTOP", "write-only", "ECS"],
+  [0x1d4, "BPLHSTRT", "write-only", "ECS"],
+  [0x1d6, "BPLHSTOP", "write-only", "ECS"],
+  [0x1d8, "HHPOSW", "write-only", "ECS"],
+  [0x1da, "HHPOSR", "read-only", "ECS"],
+  [0x1dc, "BEAMCON0", "write-only", "ECS"],
+  [0x1de, "HSSTRT", "write-only", "ECS"],
+  [0x1e0, "VSSTRT", "write-only", "ECS"],
+  [0x1e2, "HCENTER", "write-only", "ECS"],
+  [0x1e4, "DIWHIGH", "write-only", "ECS"],
+  [0x1e6, "BPLHMOD", "write-only", "ECS"],
+  [0x1e8, "SPRHPTH", "write-only", "ECS"],
+  [0x1ea, "SPRHPTL", "write-only", "ECS"],
+  [0x1ec, "BPLHPTH", "write-only", "ECS"],
+  [0x1ee, "BPLHPTL", "write-only", "ECS"],
+  [0x1fc, "FMODE", "write-only", "AGA"],
+];
+
 /** The custom chip registers whose direction is known, in address order. */
 export const customRegisters: readonly CustomRegister[] = [
   ...OCS_READ_ONLY.map(([offset, name]) => ({
@@ -155,6 +205,12 @@ export const customRegisters: readonly CustomRegister[] = [
     name,
     offset,
     access: "write-only" as const,
+  })),
+  ...LATER.map(([offset, name, access, chipset]) => ({
+    name,
+    offset,
+    access,
+    chipset,
   })),
 ].sort((a, b) => a.offset - b.offset);
 

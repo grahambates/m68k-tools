@@ -30,9 +30,40 @@ describe("Amiga custom registers", () => {
     });
   });
 
-  test("leaves out registers whose direction is not verified", () => {
-    // HHPOSR, in the ECS/AGA block at $1C0-$1FE.
-    expect(customRegisterAt(0xdff1da)).toBeUndefined();
+  test.each([
+    // ECS, from the manual's Appendix C register map.
+    [0xdff07c, "DENISEID", "read-only", "ECS"],
+    [0xdff106, "BPLCON3", "write-only", "ECS"],
+    [0xdff1dc, "BEAMCON0", "write-only", "ECS"],
+    [0xdff1e4, "DIWHIGH", "write-only", "ECS"],
+    // AGA, from AGA.guide's register table.
+    [0xdff0fc, "BPL8PTH", "write-only", "AGA"],
+    [0xdff10c, "BPLCON4", "write-only", "AGA"],
+    // AGA.guide's own entry says $10C, which is BPLCON4.
+    [0xdff10e, "CLXCON2", "write-only", "AGA"],
+    [0xdff11e, "BPL8DAT", "write-only", "AGA"],
+    [0xdff1fc, "FMODE", "write-only", "AGA"],
+  ])("%s is %s, %s, %s", (address, name, access, chipset) => {
+    expect(customRegisterAt(address)).toEqual({
+      name,
+      offset: address - CUSTOM_BASE,
+      access,
+      chipset,
+    });
+  });
+
+  test("leaves out addresses with no register", () => {
+    // Reserved, between BPLHPTL and FMODE.
+    expect(customRegisterAt(0xdff1f0)).toBeUndefined();
+  });
+
+  test("reads the one readable register in the display-sync block", () => {
+    expect(customRegisterAt(0xdff1da)).toMatchObject({
+      name: "HHPOSR",
+      access: "read-only",
+      chipset: "ECS",
+    });
+    expect(customRegisterAt(0xdff1d8)?.access).toBe("write-only");
   });
 
   test("lists each register once, in address order", () => {
@@ -50,8 +81,34 @@ describe("Amiga custom registers", () => {
   });
 
   test("links every register to its page in the Hardware Reference Manual", () => {
+    // Every original register, and every ECS register the manual's
+    // Appendix C lists. It leaves out the UHRES registers, and AGA has no
+    // official manual.
+    const ecsInManual = new Set([
+      "BLTCON0L",
+      "BLTSIZV",
+      "BLTSIZH",
+      "DENISEID",
+      "BPLCON3",
+      "BEAMCON0",
+      "DIWHIGH",
+      "HTOTAL",
+      "HSSTOP",
+      "HBSTRT",
+      "HBSTOP",
+      "VTOTAL",
+      "VSSTOP",
+      "VBSTRT",
+      "VBSTOP",
+      "HSSTRT",
+      "VSSTRT",
+      "HCENTER",
+    ]);
     expect(
-      customRegisters.filter(({ name }) => !hardwareManualUrl(name)),
+      customRegisters.filter(
+        ({ name, chipset }) =>
+          (!chipset || ecsInManual.has(name)) && !hardwareManualUrl(name),
+      ),
     ).toEqual([]);
     expect(hardwareManualUrl("intena")).toBe(
       "http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0036.html",

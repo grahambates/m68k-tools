@@ -322,8 +322,115 @@ describe("HoverProvider", () => {
         ).not.toContain("DMACON");
       });
 
+      it("labels registers and bits ECS and AGA added", async () => {
+        expect(await hoverText(" move.w d0,fmode(a6)", 0, 12)).toContain(
+          "**FMODE** · $DFF1FC · write · AGA",
+        );
+        // A numbered register's own chip set, though its family is older.
+        expect(await hoverText(" move.l d0,bpl7pt(a6)", 0, 12)).toContain(
+          "**BPL7PT** · $DFF0F8 · long, BPL7PTH/BPL7PTL · AGA",
+        );
+        const bplcon0 = await hoverText(" move.w d0,bplcon0(a6)", 0, 12);
+        expect(bplcon0).not.toContain("· ECS");
+        expect(bplcon0).toContain(
+          "| 6 | SHRES | Super high resolution (35 ns pixels); clear HIRES with it (ECS) |",
+        );
+      });
+
       it("says nothing of other symbols", async () => {
         expect(await hoverText(" move.w d0,foo(a6)", 0, 12)).toBe("");
+      });
+
+      describe("values written to registers", () => {
+        it.each([
+          [
+            "a set",
+            " move.w #$8020,dmacon(a6)",
+            9,
+            "Written to **DMACON**: Sets SPREN",
+          ],
+          [
+            "a clear",
+            " move.w #$7fff,INTENA(a6)",
+            9,
+            "Written to **INTENA**: Clears INTEN, EXTER, DSKSYN, RBF, AUD3, AUD2, AUD1, AUD0, BLIT, VERTB, COPER, PORTS, SOFT, DSKBLK, TBE",
+          ],
+          [
+            "bits and fields",
+            " move.w #$4204,custom+bplcon0",
+            9,
+            "Written to **BPLCON0**: BPU = 4 · COLOR · LACE",
+          ],
+          [
+            "a copper list",
+            " dc.w COLOR00,$0f80,BPLCON0,$1200",
+            16,
+            "Written to **COLOR00**: R = 15 · G = 8 · B = 0",
+          ],
+          [
+            "the second pair in a copper list",
+            " dc.w COLOR00,$0f80,BPLCON0,$1200",
+            30,
+            "Written to **BPLCON0**: BPU = 1 · COLOR",
+          ],
+          [
+            "a size where 0 means the most",
+            " move.w #(200<<6),bltsize(a6)",
+            12,
+            "Written to **BLTSIZE**: H = 200 · W = 64",
+          ],
+          [
+            "AGA bits",
+            " move.w #$0211,bplcon0(a6)",
+            9,
+            "Written to **BPLCON0**: BPU = 0 · COLOR · BPU3 · ECSENA",
+          ],
+          [
+            "unused bits",
+            " move.w #$9800,dmacon(a6)",
+            9,
+            "Written to **DMACON**: Sets nothing. Bits not described here: 12, 11",
+          ],
+        ])("decodes %s", async (_what, source, column, expected) => {
+          expect(await hoverText(source, 0, column)).toContain(expected);
+        });
+
+        it("reads standard flags the project does not define", async () => {
+          const text = await hoverText(
+            " move.w #DMAF_SETCLR|DMAF_SPRITE|DMAF_COPPER,dmacon(a6)",
+            0,
+            22,
+          );
+          // The flag under the cursor, then the whole value.
+          expect(text).toContain("**DMAF_SPRITE** · DMACON bit 5");
+          expect(text).toContain("Written to **DMACON**: Sets COPEN, SPREN");
+        });
+
+        it("uses the project's own value for a flag it defines", async () => {
+          const text = await hoverText(
+            "DMAF_SPRITE equ $0010\n move.w #$8000|DMAF_SPRITE,dmacon(a6)",
+            1,
+            9,
+          );
+          expect(text).toContain("Written to **DMACON**: Sets DSKEN");
+        });
+
+        it.each([
+          ["a partial write", " or.w #$8020,dmacon(a6)", 8],
+          ["a long write", " move.l #$8020,dmacon(a6)", 10],
+          ["an unknown value", " move.w #FOO,dmacon(a6)", 10],
+          ["a register without bits", " move.w #40,bpl1mod(a6)", 9],
+          [
+            "a register that is not one",
+            "dmacon equ 4\n move.w #$8020,dmacon(a6)",
+            9,
+          ],
+        ])("leaves %s alone", async (_what, source, column) => {
+          const lines = source.split("\n");
+          expect(
+            await hoverText(source, lines.length - 1, column),
+          ).not.toContain("Written to");
+        });
       });
     });
 

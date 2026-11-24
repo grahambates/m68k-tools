@@ -1,7 +1,9 @@
+import type { ExpressionNode, ParsedLine } from "m68k-parser";
 import {
   CUSTOM_BASE,
   customRegisterAt,
   customRegisterSymbols,
+  decodeRegisterValue,
   flagSymbol,
   hardwareManualUrl,
   registerDoc,
@@ -46,6 +48,9 @@ function registerDocs(
   const upper = name.toUpperCase();
   // A pointer pair named as one long register is written with a long MOVE.
   const long = register && register.name !== upper;
+  // The register's own chip set before its family's: BPL7PTH is AGA though
+  // the BPLxPTH description covers the original planes too.
+  const chipset = register?.chipset ?? doc.chipset;
   const header = [
     `**${upper}**`,
     hex(CUSTOM_BASE + offset),
@@ -54,6 +59,7 @@ function registerDocs(
       : register?.access === "read-only"
         ? "read"
         : "write",
+    ...(chipset ? [chipset] : []),
   ];
   const others = doc.names
     .filter((other) => other !== upper && !other.includes("x"))
@@ -112,6 +118,7 @@ function describe(bit: RegisterBit): string {
     bit.level !== undefined ? `Level ${bit.level}: ` : "",
     bit.text,
     bit.readOnly ? " (read only)" : "",
+    bit.chipset ? ` (${bit.chipset})` : "",
   ].join("");
 }
 
@@ -128,4 +135,154 @@ function bitTable(doc: RegisterDoc): string | undefined {
 function manualLink(name: string): string | undefined {
   const url = hardwareManualUrl(name);
   return url && `[Hardware Reference Manual](${url})`;
+}
+
+/**
+ * The value the includes give a standard flag (`DMAF_SPRITE` is $0020,
+ * `INTB_VERTB` is 5), for working out a value written to a register when the
+ * includes themselves are not to hand. A symbol the project defines keeps its
+ * own value; this is only for one it does not.
+ */
+export function standardFlagValue(name: string): number | undefined {
+  const flag = flagSymbol(name);
+  if (!flag) return undefined;
+  const numbers = flag.bits.map((bit) => bit.bits as number);
+  return flag.bitNumber
+    ? numbers[0]
+    : numbers.reduce((mask, bit) => mask | (1 << bit), 0);
+}
+
+/** A value being written to a register named as the includes name it. */
+export interface RegisterWrite {
+  /** The register symbol, as written. */
+  register: ExpressionNode & { type: "symbol"; name: string };
+  /** The value written. */
+  value: ExpressionNode;
+}
+
+const isRegisterSymbol = (
+  expr: ExpressionNode | undefined,
+): expr is ExpressionNode & { type: "symbol"; name: string } =>
+  expr?.type === "symbol" && customRegisterSymbols.has(expr.name.toLowerCase());
+
+/**
+ * The register a destination operand names: `dmacon(a6)`, `custom+dmacon`, or
+ * the register symbol alone.
+ */
+function namedRegister(
+  operand: NonNullable<ParsedLine["operands"]>[number],
+): RegisterWrite["register"] | undefined {
+  const expr =
+    operand.type === "address-register-indirect-displacement"
+      ? operand.displacement
+      : operand.type === "absolute-address"
+        ? operand.address
+        : undefined;
+  if (isRegisterSymbol(expr)) return expr;
+  if (expr?.type === "binary-op" && expr.operator === "+") {
+    if (isRegisterSymbol(expr.right)) return expr.right;
+    if (isRegisterSymbol(expr.left)) return expr.left;
+  }
+  return undefined;
+}
+
+/**
+ * The write the operand at `index` provides the value for, if any: the
+ * immediate of `move.w #value,dmacon(a6)`, or the value in a copper list pair,
+ * `dc.w DMACON,value`. Only whole-word writes: `or` and `and` change some bits
+ * and leave the rest, and a long write covers two registers.
+ */
+export function registerWrite(
+  line: ParsedLine,
+  index: number,
+): RegisterWrite | undefined {
+  const operands = line.operands ?? [];
+  const operand = operands[index];
+  const size = line.qualifier?.type === "size" ? line.qualifier.size : "w";
+  if (!operand || size.toLowerCase() !== "w") return undefined;
+  const mnemonic = line.mnemonic;
+
+  if (
+    mnemonic?.type === "instruction" &&
+    mnemonic.instruction.toLowerCase() === "move" &&
+    index === 0 &&
+    operand.type === "immediate" &&
+    operand.value.type !== "string-literal" &&
+    operands[1]
+  ) {
+    const register = namedRegister(operands[1]);
+    return register && { register, value: operand.value as ExpressionNode };
+  }
+
+  if (
+    mnemonic?.type === "directive" &&
+    mnemonic.directive.toLowerCase() === "dc" &&
+    index % 2 === 1 &&
+    operand.type === "value"
+  ) {
+    const previous = operands[index - 1];
+    const register =
+      previous?.type === "value" && isRegisterSymbol(previous.value)
+        ? previous.value
+        : undefined;
+    return register && { register, value: operand.value };
+  }
+  return undefined;
+}
+
+/**
+ * What a value written to a register does, bit by bit, or undefined for a
+ * register whose bits are not described. `registerValue` is the register
+ * symbol's own value, where known, which must agree as for its hover.
+ */
+export function registerWriteDocs(
+  name: string,
+  registerValue: number | undefined,
+  value: number,
+): string | undefined {
+  const offset = customRegisterSymbols.get(name.toLowerCase());
+  if (offset === undefined) return;
+  if (
+    registerValue !== undefined &&
+    registerValue !== offset &&
+    registerValue !== CUSTOM_BASE + offset
+  )
+    return;
+  const doc = registerDoc(name);
+  const decoded = doc && decodeRegisterValue(doc, value);
+  if (!decoded) return;
+
+  const parts: string[] = [];
+  const flags = decoded.flags.map((bit) => bit.name ?? bit.text);
+  if (decoded.setClear) {
+    parts.push(
+      `${decoded.setClear === "set" ? "Sets" : "Clears"} ${flags.join(", ") || "nothing"}`,
+    );
+  } else {
+    // Bits and fields in the order they sit in the register.
+    const items = [
+      ...decoded.flags.map((bit) => ({ bit, text: bit.name ?? bit.text })),
+      ...decoded.fields.map(({ bit, value }) => ({
+        bit,
+        text: `${fieldName(bit.name)} = ${value}`,
+      })),
+    ].sort((a, b) => highBit(b.bit.bits) - highBit(a.bit.bits));
+    parts.push(items.map(({ text }) => text).join(" · ") || "No bits set");
+  }
+  if (decoded.unknown.length)
+    parts.push(`Bits not described here: ${decoded.unknown.join(", ")}`);
+
+  return `Written to **${name.toUpperCase()}**: ${parts.join(". ")}`;
+}
+
+const highBit = (bits: number | readonly [number, number]) =>
+  typeof bits === "number" ? bits : bits[0];
+
+/** A field's name without its bit range: BPU for BPU2–BPU0. */
+function fieldName(name: string | undefined): string {
+  if (!name) return "Value";
+  const [high, low] = name.split("–");
+  if (!low) return name;
+  const prefix = /^(.*?)\d+$/.exec(high)?.[1];
+  return prefix && low.startsWith(prefix) ? prefix : name;
 }

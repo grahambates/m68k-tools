@@ -46,6 +46,8 @@ describe("DMA pointers outside chip RAM", () => {
     ["BLTAPT(a6)", "BLTAPT"],
     ["BLTDPT(a6)", "BLTDPT"],
     ["BPL6PT(a6)", "BPL6PT"],
+    // AGA's extra bitplanes are fetched from chip RAM too.
+    ["BPL8PT(a6)", "BPL8PT"],
     ["SPR7PT(a6)", "SPR7PT"],
     ["DSKPT(a6)", "DSKPT"],
     ["CUSTOM+COP1LC", "COP1LC"],

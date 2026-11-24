@@ -1,5 +1,10 @@
 import * as lsp from "vscode-languageserver";
-import { parseExpression, symbolKey } from "m68k-parser";
+import {
+  evaluateConstant,
+  parseExpression,
+  symbolKey,
+  type ExpressionNode,
+} from "m68k-parser";
 import { type Provider } from ".";
 import {
   colourConstants,
@@ -7,8 +12,12 @@ import {
   definitionColours,
   definitionLiteral,
   documentColours,
+  type ColourWriteOptions,
   type ConstantLookup,
 } from "../amigaColours";
+import { addressedWrite } from "../amigaAddresses";
+import { AddressResolver } from "../addressOperands";
+import { addressFeaturesOn, namedFeaturesOn } from "../platform";
 import { symbolsCaseSensitive } from "../config";
 import { type Context } from "../context";
 import { analyzeDocumentConditionals } from "../documentConditionals";
@@ -30,6 +39,29 @@ export default class ColorProvider implements Provider {
     return (name: string) => symbolKey(name, caseSensitive);
   }
 
+  /** Which colour writes count in a document, as the platform setting says. */
+  private writeOptions(
+    processed: ProcessedDocument,
+    constant: ConstantLookup,
+  ): ColourWriteOptions {
+    const named = namedFeaturesOn(this.ctx, processed.uri, "amiga");
+    const moves = addressFeaturesOn(this.ctx, processed.uri, "amiga");
+    if (!named && !moves) return { named };
+    const evaluate = (expr: ExpressionNode) => {
+      const result = evaluateConstant(expr, constant);
+      return result.known ? result.value : undefined;
+    };
+    const addresses = new AddressResolver(this.ctx, processed, evaluate);
+    return {
+      named,
+      addressed: (line, operand) =>
+        addressedWrite(addresses, processed.parsed, line, operand, constant, {
+          moves,
+          copper: named,
+        }),
+    };
+  }
+
   private constants(processed: ProcessedDocument): ConstantLookup {
     const { constants } = analyzeDocumentConditionals(
       this.ctx,
@@ -46,6 +78,11 @@ export default class ColorProvider implements Provider {
   }: lsp.DocumentColorParams): Promise<lsp.ColorInformation[]> {
     const processed = this.ctx.store.get(textDocument.uri);
     if (!isProcessed(processed)) return [];
+    if (
+      !namedFeaturesOn(this.ctx, processed.uri, "amiga") &&
+      !addressFeaturesOn(this.ctx, processed.uri, "amiga")
+    )
+      return [];
     const constant = this.constants(processed);
     const key = this.key(processed.uri);
 
@@ -59,12 +96,17 @@ export default class ColorProvider implements Provider {
       const doc = this.ctx.store.get(uri);
       if (!isProcessed(doc)) continue;
       const lookup = doc === processed ? constant : this.constants(doc);
-      for (const name of colourConstants(doc.parsed, lookup))
+      const options = this.writeOptions(doc, lookup);
+      for (const name of colourConstants(doc.parsed, lookup, options))
         colourNames.add(key(name));
     }
 
     return [
-      ...documentColours(processed.parsed, constant),
+      ...documentColours(
+        processed.parsed,
+        constant,
+        this.writeOptions(processed, constant),
+      ),
       ...definitionColours(processed.parsed, (name) =>
         colourNames.has(key(name)),
       ),

@@ -199,6 +199,11 @@ function namedRegister(
   return undefined;
 }
 
+/** Whether an operand names a custom register as the includes name it. */
+export const namedRegisterOperand = (
+  operand: NonNullable<ParsedLine["operands"]>[number],
+) => namedRegister(operand) !== undefined;
+
 /**
  * The write the operand at `index` provides the value for, if any: the
  * immediate of `move.w #value,dmacon(a6)`, or the value in a copper list pair,

@@ -23,7 +23,7 @@ family assembly, using [m68k-parser](https://github.com/grahambates/m68k-tools/t
 - Code Folding
 - Document Formatting
 - Document Highlights
-- Colour swatches and a colour picker for values written to Amiga colour registers (`dc.w COLOR00,$0f80`)
+- Colour swatches and a colour picker for values written to Amiga colour registers (`dc.w COLOR00,$0f80`, or by address, `move.w #$0f80,$180(a6)`)
 - Semantic highlighting for resolved symbols and their declarations
 - Values on hover for resolved constants, `rs`/`so`/`fo` offsets and operand expressions, including constants defined later in the source, in decimal, hexadecimal, binary and octal and as characters
 - Dimming for conditional assembly branches that can be resolved from known source values
@@ -46,6 +46,8 @@ family assembly, using [m68k-parser](https://github.com/grahambates/m68k-tools/t
   - Amiga custom chip registers and flags named as the includes name them (`intena`, `DMAF_SPRITE`), with their bits and a link to the Hardware Reference Manual, and values written to them decoded bit by bit, including blitter minterms as logic equations
   - Amiga CIA registers and flags (`ciaa+ciapra`, `CIAB_GAMEPORT0`), the bits `btst`/`bset`/`bclr`/`bchg` test and change in them, and bytes written to them
   - Copper WAIT, SKIP and numeric MOVE instructions in copper lists (`dc.w $2c07,$fffe`)
+  - Amiga OS library calls (`jsr _LVOOpenLibrary(a6)`), with the library, offset, each argument's register and a link to the Autodocs
+  - Amiga registers given by address alone (`$dff096`, `btst #6,$bfe001`, or `$96(a6)` after `lea $dff000,a6`), where the workspace shows signs of being Amiga code or the `platform` setting says so
 - Multiple workspaces
 - Rename Symbols
 - Signature Help and completions that take the size suffix and operand forms into account
@@ -189,6 +191,31 @@ way is left alone. Turn it off with `inferIncludePaths: false`.
 ```
 
 Default: on
+
+### Platform:
+
+Which platform's hardware and OS features are on. Some go by standard names: Amiga register and flag
+symbols such as `intena` and `DMAF_SPRITE`, and library offsets such as `_LVOOpenLibrary`. These are
+evidence enough, and are on everywhere with the default, `auto`. Others go by addresses alone, which
+could mean something else on another machine: `move.w d0,$dff180`, or `$96(a6)` after
+`lea $dff000,a6`. With `auto` these are on for the platforms the workspace shows signs of; for the
+Amiga, its includes (`hardware/custom.i`, `exec/exec_lib.i`), those symbols, or a number that is a
+hardware register's address. `amiga` turns all the Amiga features on, and `none` turns them all off.
+
+Each file goes by its nearest `.m68krc.json`, so a project building for several machines can set
+each build's platform in its own directory. Shared code above them keeps the workspace's setting.
+
+An address register's value is followed back through the routine to a `lea address,An` or
+`move.l #address,An`; anything else that may change it on the way, including a call for A0 and A1,
+leaves it unknown.
+
+```json
+{
+  "platform": "amiga"
+}
+```
+
+Default: `auto`
 
 ### Escape sequences:
 
@@ -545,7 +572,7 @@ default: `lf`
 - Full documentation for 68010+ instructions
 - Diagnostics
   - Instruction signatures
-- Amiga or other platform specific docs?
+- Other platforms: Atari TOS calls and hardware, Mega Drive VDP commands
 
 ## License
 

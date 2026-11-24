@@ -319,3 +319,18 @@ export function ciaManualUrl(name?: string): string {
     ((name && manualPages[name.toUpperCase()]) ?? "node012E.html")
   );
 }
+
+/**
+ * The CIA register at an address, and its CIA: $BFE001 is CIA-A's PRA,
+ * $BFDD00 CIA-B's ICR.
+ */
+export function ciaRegisterAt(
+  address: number,
+): { cia: Cia; register: CiaRegister } | undefined {
+  for (const cia of ["A", "B"] as const) {
+    const offset = (address >>> 0) - CIA_BASE[cia];
+    const register = ciaRegisters.find((r) => r.offset === offset);
+    if (register) return { cia, register };
+  }
+  return undefined;
+}

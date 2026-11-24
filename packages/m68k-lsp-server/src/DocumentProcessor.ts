@@ -12,6 +12,7 @@ import { readDocumentFromUri, resolveIncludeLines } from "./files";
 import { processSymbols, type Symbols } from "./symbols";
 import { type Context } from "./context";
 import { symbolsCaseSensitive } from "./config";
+import { platformEvidence, type Platform } from "./platform";
 import { configFor } from "./documentConfigs";
 import {
   analyzeConditionals,
@@ -32,6 +33,8 @@ export interface IndexedDocument {
   resolvedIncludeLines?: Map<number, string>;
   assemblyConstants?: AssemblyConstants;
   macros: Map<string, MacroDefinition>;
+  /** The platforms the file shows signs of being written for. */
+  platforms?: Platform[];
 }
 
 /**
@@ -95,6 +98,7 @@ export default class DocumentProcessor {
         symbolsCaseSensitive(this.ctx.config),
       ),
       referencedUris: [],
+      platforms: platformEvidence(parsed),
       assemblyConstants: analyzeConditionals(
         parsed,
         blocks,
@@ -157,6 +161,7 @@ export default class DocumentProcessor {
         symbolsCaseSensitive(this.ctx.config),
       ),
       referencedUris: [],
+      platforms: platformEvidence(parsed),
       assemblyConstants: analyzeConditionals(
         parsed,
         blocks,

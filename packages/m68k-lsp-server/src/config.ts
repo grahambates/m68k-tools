@@ -5,6 +5,7 @@ import * as os from "os";
 import { dirname, isAbsolute, relative, resolve } from "path";
 import { optionsFromVasmArgs, vasmArgs } from "@m68k-lsp/assembly-options";
 import { type VasmOptions } from "./diagnostics";
+import { type PlatformSetting } from "./platform";
 
 export interface Config {
   format: FormatterOptions;
@@ -40,6 +41,12 @@ export interface Config {
   inferIncludePaths?: boolean;
   processors: Processor[];
   vasm: VasmOptions;
+  /**
+   * Which platform's hardware and OS features are on. `auto`, the default,
+   * has those that go by standard names on, and those that go by addresses
+   * alone for the platforms the workspace shows signs of.
+   */
+  platform?: PlatformSetting;
 }
 
 export const defaultConfig: Config = {

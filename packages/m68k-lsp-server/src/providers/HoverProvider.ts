@@ -58,6 +58,13 @@ import { expandMacroAtLine } from "../macros";
 import { copperDocs } from "../amigaCopper";
 import { libraryFunctionDocs } from "../amigaLibraries";
 import {
+  addressedAccessDocs,
+  addressedRegister,
+  addressedRegisterDocs,
+} from "../amigaAddresses";
+import { AddressResolver } from "../addressOperands";
+import { addressFeaturesOn, namedFeaturesOn } from "../platform";
+import {
   ciaAccess,
   ciaBitDocs,
   ciaOperand,
@@ -66,6 +73,7 @@ import {
 } from "../amigaCia";
 import {
   amigaHardwareDocs,
+  namedRegisterOperand,
   registerWrite,
   registerWriteDocs,
   standardFlagValue,
@@ -145,6 +153,9 @@ export default class HoverProvider implements Provider {
     path: AstPath,
     position: lsp.Position,
   ): string | undefined {
+    const named = namedFeaturesOn(this.ctx, processed.uri, "amiga");
+    const addressed = addressFeaturesOn(this.ctx, processed.uri, "amiga");
+    if (!named && !addressed) return undefined;
     const { node, line } = path;
     const { evaluateAtLine } = analyzeDocumentConditionals(
       this.ctx,
@@ -168,58 +179,94 @@ export default class HoverProvider implements Provider {
         ? ciaOperand(line.operands[index], lookup)
         : undefined;
 
-    const name =
-      node.type === "symbol"
-        ? (node as unknown as { name: string }).name
-        : node.type === "label"
-          ? line.label?.label
+    const isNamed = (operand: (typeof operands)[number] | undefined) =>
+      operand !== undefined &&
+      line.operands !== undefined &&
+      (namedRegisterOperand(operand as never) ||
+        ciaOperand(operand as never, lookup) !== undefined);
+
+    if (named) {
+      const name =
+        node.type === "symbol"
+          ? (node as unknown as { name: string }).name
+          : node.type === "label"
+            ? line.label?.label
+            : undefined;
+      if (name) {
+        const value = lookup(name);
+        const symbolDocs =
+          amigaHardwareDocs(name, value) ??
+          ciaSymbolDocs(name, value, cia?.cia) ??
+          libraryFunctionDocs(name, value, line);
+        if (symbolDocs) docs.push(symbolDocs);
+      }
+
+      // A bit tested or changed in a CIA register, or a byte written to one.
+      const access = index >= 0 ? ciaAccess(line, index, lookup) : undefined;
+      const accessValue =
+        access &&
+        evaluateAtLine &&
+        (evaluateAtLine(access.value) ??
+          evaluateWithStandardFlags(access.value, evaluateAtLine));
+      if (access && accessValue !== undefined) {
+        const accessDocs =
+          access.kind === "bit"
+            ? ciaBitDocs(access.operand, accessValue)
+            : ciaWriteDocs(access.operand, accessValue);
+        if (accessDocs) docs.push(accessDocs);
+      }
+
+      // A Copper instruction written as numbers.
+      const copper =
+        index >= 0
+          ? copperDocs(processed.parsed, position.line, index, lookup)
           : undefined;
-    if (name) {
-      const value = lookup(name);
-      const symbolDocs =
-        amigaHardwareDocs(name, value) ??
-        ciaSymbolDocs(name, value, cia?.cia) ??
-        libraryFunctionDocs(name, value, line);
-      if (symbolDocs) docs.push(symbolDocs);
+      if (copper) docs.push(copper);
+
+      // A value written to a named register, read against its bits.
+      const write = index >= 0 ? registerWrite(line, index) : undefined;
+      // Flags the project does not define take the includes' values.
+      const value =
+        write &&
+        evaluateAtLine &&
+        (evaluateAtLine(write.value) ??
+          evaluateWithStandardFlags(write.value, evaluateAtLine));
+      if (write && value !== undefined) {
+        const writeDocs = registerWriteDocs(
+          write.register.name,
+          evaluateAtLine?.(write.register),
+          value,
+        );
+        if (writeDocs) docs.push(writeDocs);
+      }
     }
 
-    // A bit tested or changed in a CIA register, or a byte written to one.
-    const access = index >= 0 ? ciaAccess(line, index, lookup) : undefined;
-    const accessValue =
-      access &&
-      evaluateAtLine &&
-      (evaluateAtLine(access.value) ??
-        evaluateWithStandardFlags(access.value, evaluateAtLine));
-    if (access && accessValue !== undefined) {
-      const accessDocs =
-        access.kind === "bit"
-          ? ciaBitDocs(access.operand, accessValue)
-          : ciaWriteDocs(access.operand, accessValue);
-      if (accessDocs) docs.push(accessDocs);
-    }
-
-    // A Copper instruction written as numbers.
-    const copper =
-      index >= 0
-        ? copperDocs(processed.parsed, position.line, index, lookup)
-        : undefined;
-    if (copper) docs.push(copper);
-
-    // A value written to a named register, read against its bits.
-    const write = index >= 0 ? registerWrite(line, index) : undefined;
-    // Flags the project does not define take the includes' values.
-    const value =
-      write &&
-      evaluateAtLine &&
-      (evaluateAtLine(write.value) ??
-        evaluateWithStandardFlags(write.value, evaluateAtLine));
-    if (write && value !== undefined) {
-      const writeDocs = registerWriteDocs(
-        write.register.name,
-        evaluateAtLine?.(write.register),
-        value,
+    // A register an operand refers to by its address alone: `$dff096`, or
+    // `$96(a6)` after `lea $dff000,a6`.
+    if (addressed && index >= 0 && line.operands && evaluateAtLine) {
+      const addresses = new AddressResolver(
+        this.ctx,
+        processed,
+        evaluateAtLine,
       );
-      if (writeDocs) docs.push(writeDocs);
+      const operand = line.operands[index];
+      const register = isNamed(operands[index])
+        ? undefined
+        : addressedRegister(addresses, position.line, operand);
+      const registerDocs = register && addressedRegisterDocs(register);
+      if (registerDocs) docs.push(registerDocs);
+      const accessDocs = isNamed(operands[1])
+        ? undefined
+        : addressedAccessDocs(
+            addresses,
+            position.line,
+            line,
+            index,
+            (expr) =>
+              evaluateAtLine(expr) ??
+              evaluateWithStandardFlags(expr, evaluateAtLine),
+          );
+      if (accessDocs) docs.push(accessDocs);
     }
     return docs.length ? docs.join("\n\n") : undefined;
   }

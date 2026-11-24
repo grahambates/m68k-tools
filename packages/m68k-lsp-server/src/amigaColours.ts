@@ -17,9 +17,22 @@ const LOCT = 0x0200;
 export type ConstantLookup = (name: string) => number | undefined;
 
 /**
+ * Which writes count: to registers named as the includes name them, and to
+ * registers given by address, found by `addressed` for an operand of a line.
+ */
+export interface ColourWriteOptions {
+  named: boolean;
+  addressed?: (
+    line: number,
+    operand: number,
+  ) => { name: string; value: ExpressionNode } | undefined;
+}
+
+/**
  * The values written to Amiga colour registers named as the includes name
  * them, by `move.w #$0f80,color00(a6)` or in a copper list as
- * `dc.w COLOR00,$0f80`, with the line each is on.
+ * `dc.w COLOR00,$0f80`, or given by address where `options` finds those, with
+ * the line each is on.
  *
  * A register symbol the project defines as something else is passed over, as
  * for its hover. On AGA, a write while BPLCON3's LOCT bit is set gives the low
@@ -31,6 +44,7 @@ export type ConstantLookup = (name: string) => number | undefined;
 function colourWrites(
   parsed: ParsedFile,
   constant: ConstantLookup,
+  options: ColourWriteOptions,
 ): { line: number; value: ExpressionNode }[] {
   const writes: { line: number; value: ExpressionNode }[] = [];
   const isRegister = (name: string) => {
@@ -46,9 +60,17 @@ function colourWrites(
     if (parsedLine.label?.scope === "global") lowNibbles = false;
     const count = parsedLine.operands?.length ?? 0;
     for (let operand = 0; operand < count; operand++) {
-      const write = registerWrite(parsedLine, operand);
-      if (!write || !isRegister(write.register.name)) continue;
-      const name = write.register.name.toUpperCase();
+      const named = options.named
+        ? registerWrite(parsedLine, operand)
+        : undefined;
+      const write =
+        named && isRegister(named.register.name)
+          ? { name: named.register.name, value: named.value }
+          : named
+            ? undefined
+            : options.addressed?.(line, operand);
+      if (!write) continue;
+      const name = write.name.toUpperCase();
       if (name === "BPLCON3") {
         const result = evaluateConstant(write.value, constant);
         lowNibbles = result.known ? (result.value & LOCT) !== 0 : undefined;
@@ -71,8 +93,9 @@ const isLiteral = (value: ExpressionNode) =>
 export function documentColours(
   parsed: ParsedFile,
   constant: ConstantLookup,
+  options: ColourWriteOptions,
 ): lsp.ColorInformation[] {
-  return colourWrites(parsed, constant).flatMap(({ line, value }) => {
+  return colourWrites(parsed, constant, options).flatMap(({ line, value }) => {
     const known =
       value.type === "numeric-literal" && isLiteral(value)
         ? value.value
@@ -94,8 +117,9 @@ export function documentColours(
 export function colourConstants(
   parsed: ParsedFile,
   constant: ConstantLookup,
+  options: ColourWriteOptions,
 ): string[] {
-  return colourWrites(parsed, constant).flatMap(({ value }) =>
+  return colourWrites(parsed, constant, options).flatMap(({ value }) =>
     value.type === "symbol" ? [value.name] : [],
   );
 }

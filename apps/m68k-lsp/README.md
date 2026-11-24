@@ -21,7 +21,7 @@ Adds language support for Motorola 68000 Assembly to Visual Studio Code.
 - Code Folding
 - Document Formatting
 - Document Highlights
-- Colour swatches and a colour picker for values written to Amiga colour registers (`dc.w COLOR00,$0f80`)
+- Colour swatches and a colour picker for values written to Amiga colour registers (`dc.w COLOR00,$0f80`, or by address, `move.w #$0f80,$180(a6)`)
 - Document Links
 - Document Symbols
 - Used/unused data and address registers for a selected range
@@ -38,6 +38,8 @@ Adds language support for Motorola 68000 Assembly to Visual Studio Code.
   - Amiga custom chip registers and flags named as the includes name them (`intena`, `DMAF_SPRITE`), with their bits and a link to the Hardware Reference Manual, and values written to them decoded bit by bit, including blitter minterms as logic equations
   - Amiga CIA registers and flags (`ciaa+ciapra`, `CIAB_GAMEPORT0`), the bits `btst`/`bset`/`bclr`/`bchg` test and change in them, and bytes written to them
   - Copper WAIT, SKIP and numeric MOVE instructions in copper lists (`dc.w $2c07,$fffe`)
+  - Amiga OS library calls (`jsr _LVOOpenLibrary(a6)`), with the library, offset, each argument's register and a link to the Autodocs
+  - Amiga registers given by address alone (`$dff096`, `btst #6,$bfe001`, or `$96(a6)` after `lea $dff000,a6`), where the workspace shows signs of being Amiga code or the `platform` setting says so
 - Multiple workspaces
 - Rename Symbols
 - Update `include` and `incbin` paths on file and folder rename or move

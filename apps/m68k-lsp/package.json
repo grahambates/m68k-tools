@@ -465,6 +465,21 @@
           "default": null,
           "markdownDescription": "Whether the assembler reads backslash escapes in strings (`vasm -esc`), so `\"a\\n\"` holds a newline. Leave unset to follow an `-esc` in `m68k.vasm.args`."
         },
+        "m68k.platform": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "amiga",
+            "none"
+          ],
+          "enumDescriptions": [
+            "Features that go by standard names everywhere, and those that go by addresses alone for platforms the workspace shows signs of.",
+            "All the Amiga features, including those that go by addresses alone.",
+            "No platform features."
+          ],
+          "default": "auto",
+          "markdownDescription": "Which platform's hardware and OS features are on. With `auto`, those that go by standard names (Amiga register and flag symbols such as `intena`, library offsets such as `_LVOOpenLibrary`) are on everywhere, and those that go by addresses alone (`move.w d0,$dff180`, or `$96(a6)` after `lea $dff000,a6`) are on for the platforms the workspace shows signs of: for the Amiga, its includes, those symbols, or a hardware register's address."
+        },
         "m68k.inferIncludePaths": {
           "type": "boolean",
           "default": true,

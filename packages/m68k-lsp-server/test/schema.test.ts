@@ -27,6 +27,7 @@ describe("m68krc.schema.json", () => {
       "escapeSequences",
       "sourceRoot",
       "inferIncludePaths",
+      "platform",
     ]) {
       expect(keys).toContain(key);
     }

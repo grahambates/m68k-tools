@@ -8,16 +8,16 @@ import {
 } from "../src/amigaColours";
 
 const colours = (source: string, constants: Record<string, number> = {}) =>
-  documentColours(parseFile(source), (name) => constants[name]).map(
-    ({ range, color }) => [
-      range.start.line,
-      range.start.character,
-      range.end.character,
-      Math.round(color.red * 15),
-      Math.round(color.green * 15),
-      Math.round(color.blue * 15),
-    ],
-  );
+  documentColours(parseFile(source), (name) => constants[name], {
+    named: true,
+  }).map(({ range, color }) => [
+    range.start.line,
+    range.start.character,
+    range.end.character,
+    Math.round(color.red * 15),
+    Math.round(color.green * 15),
+    Math.round(color.blue * 15),
+  ]);
 
 describe("documentColours", () => {
   test("finds values written to colour registers", () => {
@@ -145,11 +145,9 @@ describe("constants used as colours", () => {
   };
 
   test("names the constants written to colour registers", () => {
-    expect(colourConstants(parsed, (name) => constants[name])).toEqual([
-      "RED",
-      "GREY",
-      "SHADE",
-    ]);
+    expect(
+      colourConstants(parsed, (name) => constants[name], { named: true }),
+    ).toEqual(["RED", "GREY", "SHADE"]);
   });
 
   test("puts a swatch on a colour constant's literal definition", () => {

@@ -25,6 +25,7 @@ export {
   ciaDocsFor,
   ciaManualUrl,
   ciaRegister,
+  ciaRegisterAt,
   ciaRegisters,
   type Cia,
   type CiaRegister,

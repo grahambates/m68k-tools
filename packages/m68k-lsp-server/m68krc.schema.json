@@ -53,6 +53,11 @@
       "type": "boolean",
       "default": true
     },
+    "platform": {
+      "description": "Which platform's hardware and OS features are on. auto, the default, has those that go by standard names (Amiga register and flag symbols, library offsets) on everywhere, and those that go by addresses alone (move.w d0,$dff180, or $96(a6) after lea $dff000,a6) on for the platforms the workspace shows signs of. amiga has all the Amiga features on; none turns them all off.",
+      "enum": ["auto", "amiga", "none"],
+      "default": "auto"
+    },
     "exclude": {
       "description": "Glob patterns to leave out of the workspace index, on top of the built-in ones for build output and dependency directories.",
       "type": "array",

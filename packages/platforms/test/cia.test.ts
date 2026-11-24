@@ -5,6 +5,7 @@ import {
   ciaDocsFor,
   ciaManualUrl,
   ciaRegister,
+  ciaRegisterAt,
   ciaRegisters,
   decodeRegisterValue,
   flagSymbol,
@@ -109,5 +110,22 @@ describe("CIA flags", () => {
     expect(clear.setClear).toBe("clear");
     // Bits 6 and 5 are not connected.
     expect(clear.unknown).toEqual([6, 5]);
+  });
+});
+
+describe("CIA register addresses", () => {
+  test.each([
+    [0xbfe001, "A", "PRA"],
+    [0xbfed01, "A", "ICR"],
+    [0xbfd100, "B", "PRB"],
+    [0xbfdf00, "B", "CRB"],
+  ])("$%s is CIA-%s %s", (address, cia, name) => {
+    expect(ciaRegisterAt(address)).toMatchObject({ cia, register: { name } });
+  });
+
+  test("knows nothing at other addresses", () => {
+    expect(ciaRegisterAt(0xbfe000)).toBeUndefined();
+    expect(ciaRegisterAt(0xbfeb01)).toBeUndefined();
+    expect(ciaRegisterAt(0xbfd001)).toBeUndefined();
   });
 });

@@ -3,6 +3,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { type Context } from "../../src/context";
 import DocumentProcessor from "../../src/DocumentProcessor";
+import { formatNumber } from "../../src/formatting";
 import HoverProvider from "../../src/providers/HoverProvider";
 import { createTestContext, range } from "../helpers";
 
@@ -105,7 +106,10 @@ describe("HoverProvider", () => {
 
       expect(hover).toEqual({
         range: range(1, 7, 1, 10),
-        contents: [{ language: "vasmmot", value: "foo = 1 ($1)" }],
+        contents: [
+          { language: "vasmmot", value: "foo = 1 ($1)" },
+          formatNumber(1),
+        ],
       });
     });
 
@@ -116,13 +120,17 @@ describe("HoverProvider", () => {
       );
       for (const [line, value] of [
         "FOO = 256 ($100)",
-        "BAR equ 256 ($100)",
+        // Written in hexadecimal, so shown hexadecimal first.
+        "BAR equ $100 (256)",
       ].entries()) {
         const hover = await provider.onHover({
           textDocument: doc,
           position: lsp.Position.create(line, 1),
         });
-        expect(hover?.contents).toEqual([{ language: "vasmmot", value }]);
+        expect(hover?.contents).toEqual([
+          { language: "vasmmot", value },
+          formatNumber(256),
+        ]);
       }
     });
 
@@ -149,6 +157,7 @@ describe("HoverProvider", () => {
           value:
             "SCREEN_SIZE = SCREEN_BW*SCREEN_H*BPLS\n            = 32000 ($7D00)",
         },
+        formatNumber(32000),
       ]);
       const operand = await hover(4, 16);
       expect(operand?.range).toEqual(range(4, 9, 4, 26));
@@ -158,11 +167,72 @@ describe("HoverProvider", () => {
           value:
             "SCREEN_SIZE = SCREEN_BW*SCREEN_H*BPLS\n            = 32000 ($7D00)\nExpression = 16004 ($3E84)",
         },
+        // The expression's value, the one asked about, in every form.
+        formatNumber(16004),
       ]);
       expect((await hover(4, 8))?.contents).toEqual([
         { language: "vasmmot", value: "Expression = 16004 ($3E84)" },
+        formatNumber(16004),
       ]);
       expect(await hover(5, 13)).toBeUndefined();
+    });
+
+    describe("addresses", () => {
+      const source = [
+        "custom equ $DFF000",
+        "intena equ $09A",
+        "WIDTH equ 320",
+        " lea custom,a6",
+        " move.w #$7fff,custom+intena",
+        " move.w #$7fff,intena(a6)",
+        " move.l #custom,a5",
+        " lea WIDTH(pc),a0",
+        " move.w #WIDTH,d0",
+      ].join("\n");
+      const code = async (line: number, character: number) => {
+        const textDocument = await createDoc("address-hover.s", source);
+        const hover = await provider.onHover({
+          textDocument,
+          position: lsp.Position.create(line, character),
+        });
+        return (hover?.contents as (string | { value: string })[])
+          .map((part) => (typeof part === "string" ? part : part.value))
+          .slice(0, -1);
+      };
+
+      it.each([
+        ["an absolute address", 3, 6, ["custom equ $DFF000"]],
+        [
+          "an absolute address expression",
+          4,
+          17,
+          ["custom equ $DFF000\nExpression = $DFF09A"],
+        ],
+        [
+          "an immediate moved into an address register",
+          6,
+          10,
+          ["custom equ $DFF000"],
+        ],
+        ["a PC-relative target", 7, 6, ["WIDTH equ $140"]],
+      ])(
+        "shows hexadecimal alone in %s",
+        async (_what, line, character, expected) => {
+          expect(await code(line, character)).toEqual(expected);
+        },
+      );
+
+      it("keeps decimal first for an offset from a register", async () => {
+        expect(await code(5, 16)).toEqual(["intena equ $9A (154)"]);
+      });
+
+      it("keeps decimal first for data", async () => {
+        expect(await code(8, 10)).toEqual(["WIDTH equ 320 ($140)"]);
+      });
+
+      it("keeps a hexadecimal definition hexadecimal first", async () => {
+        expect(await code(0, 1)).toEqual(["custom equ $DFF000 (14675968)"]);
+      });
     });
 
     it("uses the SET value in effect at the hovered operand", async () => {
@@ -245,36 +315,48 @@ describe("HoverProvider", () => {
           textDocument,
           position: lsp.Position.create(line, character),
         });
-        return (hover?.contents as { value: string }[] | undefined)?.map(
-          ({ value }) => value,
+        return (hover?.contents as (string | { value: string })[]).map(
+          (part) => (typeof part === "string" ? part : part.value),
         );
       };
 
       it.each([
-        [2, 1, "Obj_y rs.w 1\n      = 2 ($2)"],
-        [4, 2, "Obj_sizeof rs.b 0\n           = 5 ($5)"],
-        [11, 2, "Later_a rs.l 3\n        = 0 ($0)"],
+        [2, 1, "Obj_y rs.w 1\n      = 2 ($2)", 2],
+        [4, 2, "Obj_sizeof rs.b 0\n           = 5 ($5)", 5],
+        [11, 2, "Later_a rs.l 3\n        = 0 ($0)", 0],
       ])(
         "shows the offset an RS label takes, on line %i",
-        async (line, character, code) => {
-          expect(await hoverCode(line, character)).toEqual([code]);
+        async (line, character, code, value) => {
+          expect(await hoverCode(line, character)).toEqual([
+            code,
+            formatNumber(value),
+          ]);
         },
       );
 
       it("shows offsets where they are used", async () => {
         expect(await hoverCode(5, 10)).toEqual([
           "Obj_y rs.w 1\n      = 2 ($2)",
+          formatNumber(2),
         ]);
         expect(await hoverCode(6, 8)).toEqual([
           "Obj_sizeof rs.b 0\n           = 5 ($5)\nExpression = 20 ($14)",
+          formatNumber(20),
         ]);
       });
 
       it("resolves constants through later constants and offsets", async () => {
-        expect(await hoverCode(7, 0)).toEqual(["A equ B*2\n  = 24 ($18)"]);
-        expect(await hoverCode(8, 10)).toEqual(["A equ B*2\n  = 24 ($18)"]);
+        expect(await hoverCode(7, 0)).toEqual([
+          "A equ B*2\n  = 24 ($18)",
+          formatNumber(24),
+        ]);
+        expect(await hoverCode(8, 10)).toEqual([
+          "A equ B*2\n  = 24 ($18)",
+          formatNumber(24),
+        ]);
         expect(await hoverCode(9, 0)).toEqual([
           "B equ Later_sizeof\n  = 12 ($C)",
+          formatNumber(12),
         ]);
       });
     });
@@ -302,6 +384,7 @@ describe("HoverProvider", () => {
           language: "vasmmot",
           value: "SCROLL_ROW = HEIGHT\n           = 128 ($80)",
         },
+        formatNumber(128),
       ]);
       expect((await hover(2, 10))?.contents).toEqual([
         {
@@ -309,6 +392,7 @@ describe("HoverProvider", () => {
           value:
             "SCROLL_ROW = HEIGHT\n           = 128 ($80)\nExpression = 256 ($100)",
         },
+        formatNumber(256),
       ]);
       expect((await hover(3, 9))?.contents).toEqual([
         { language: "vasmmot", value: "SCROLL_ROW = HEIGHT" },

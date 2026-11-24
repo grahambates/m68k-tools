@@ -15,23 +15,35 @@ export function formatDeclaration(definitionLine: string) {
 }
 
 export function formatNumeric(text: string): string {
-  const value = Number(
-    text.replace("$", "0x").replace("%", "0b").replace("@", "0o"),
+  return formatNumber(
+    Number(text.replace("$", "0x").replace("%", "0b").replace("@", "0o")),
   );
-  const hex = value.toString(16);
-  const oct = value.toString(8);
-  const bin = value.toString(2);
-  const ascii = asciiValue(value);
+}
+
+/**
+ * A value in decimal, hexadecimal, binary and octal, and as characters, for
+ * hover. A negative value is shown in decimal as it is and in the other bases
+ * as its 32-bit pattern, as vasm stores it: -1 is $ffffffff.
+ */
+export function formatNumber(value: number): string {
+  const bits = Number.isInteger(value) && value < 0 ? value >>> 0 : value;
+  const hex = bits.toString(16).toUpperCase();
+  const oct = bits.toString(8);
+  const bin = bits.toString(2);
+  // Characters that would otherwise be read as Markdown.
+  const ascii = asciiValue(bits).replace(/([\\`*_[\]<&])/g, "\\$1");
 
   return `${value} | $${hex} | %${bin} | @${oct} | "${ascii}"`;
 }
 
 export function asciiValue(num: number) {
+  // Unsigned shifts: a signed one would make a top byte of $80 or more
+  // negative, and it would be dropped as if it were a leading zero.
   const bytes = [
-    (num & 0xff000000) >> 24,
-    (num & 0x00ff0000) >> 16,
-    (num & 0x0000ff00) >> 8,
-    num & 0x000000ff,
+    (num >>> 24) & 0xff,
+    (num >>> 16) & 0xff,
+    (num >>> 8) & 0xff,
+    num & 0xff,
   ];
   const firstByte = bytes.findIndex((b) => b > 0);
 

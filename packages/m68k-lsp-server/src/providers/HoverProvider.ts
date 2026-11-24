@@ -11,7 +11,7 @@ import type {
 import * as lsp from "vscode-languageserver";
 import { type TextDocument } from "vscode-languageserver-textdocument";
 import { type Provider } from ".";
-import { childNodes, type AstNode, nodeAtPosition } from "../ast";
+import { childNodes, type AstNode, type AstPath, nodeAtPosition } from "../ast";
 import {
   addressingMode,
   type AddressingModeName,
@@ -50,6 +50,7 @@ import { isProcessed } from "../DocumentProcessor";
 import {
   formatDeclaration,
   formatMnemonicDoc,
+  formatNumber,
   formatNumeric,
 } from "../formatting";
 import { type MarkupContent } from "vscode-languageserver";
@@ -59,8 +60,50 @@ import { analyzeDocumentConditionals } from "../documentConditionals";
 
 const macroHoverColumnLimit = 200;
 
-function formatEvaluatedValue(value: number): string {
-  return String(value) + " ($" + (value >>> 0).toString(16).toUpperCase() + ")";
+/**
+ * How a value is written in hover: decimal then hexadecimal, hexadecimal then
+ * decimal where the source writes it in hexadecimal, or hexadecimal alone for
+ * an address, which nobody reads in decimal.
+ */
+type ValueStyle = "decimal" | "hex" | "address";
+
+function formatEvaluatedValue(
+  value: number,
+  style: ValueStyle = "decimal",
+): string {
+  const hex = "$" + (value >>> 0).toString(16).toUpperCase();
+  if (style === "address") return hex;
+  if (style === "hex") return `${hex} (${value})`;
+  return `${value} (${hex})`;
+}
+
+/**
+ * Whether the operand at `path` holds an address, as its addressing mode says:
+ * an absolute address, as in `lea custom,a6` or `move.w d0,custom+intena`, a
+ * PC-relative target, or an immediate moved into an address register. A
+ * displacement from a register, such as `intena(a6)` or `_LVOOpenLibrary(a6)`,
+ * is an offset rather than an address.
+ */
+function isAddressOperand(path: AstPath): boolean {
+  const { line } = path;
+  const operands = line.operands ?? [];
+  const operand = [...path.ancestors, path.node].find((node) =>
+    (operands as AstNode[]).includes(node),
+  );
+  if (!operand || line.mnemonic?.type !== "instruction") return false;
+  if (
+    operand.type === "absolute-address" ||
+    operand.type === "pc-relative" ||
+    operand.type === "pc-relative-index"
+  )
+    return true;
+  const mnemonic = line.mnemonic.instruction.toLowerCase();
+  return (
+    operand.type === "immediate" &&
+    operand === (operands[0] as AstNode) &&
+    operands[1]?.type === "address-register" &&
+    (mnemonic === "move" || mnemonic === "movea")
+  );
 }
 
 export default class HoverProvider implements Provider {
@@ -167,6 +210,11 @@ export default class HoverProvider implements Provider {
         );
         const declaration = contents[declarationIndex];
         const code: string[] = [];
+        let shown = symbolValue;
+        // Every value in an address operand is shown as an address.
+        const style: ValueStyle = isAddressOperand(path)
+          ? "address"
+          : "decimal";
         if (declaration && typeof declaration !== "string") {
           code.push(declaration.value);
           contents.splice(declarationIndex, 1);
@@ -189,7 +237,16 @@ export default class HoverProvider implements Provider {
                 expr.operand.type === "numeric-literal");
             const result =
               literal && !errors.length ? evaluateConstant(expr) : undefined;
-            const formatted = formatEvaluatedValue(symbolValue);
+            // A literal written in hexadecimal keeps it first.
+            const written = expr?.type === "unary-op" ? expr.operand : expr;
+            const formatted = formatEvaluatedValue(
+              symbolValue,
+              style === "decimal" &&
+                written?.type === "numeric-literal" &&
+                written.format === "hex"
+                ? "hex"
+                : style,
+            );
             if (expr && result?.known && result.value === symbolValue) {
               code[0] =
                 original.slice(0, expr.loc.start) +
@@ -197,13 +254,17 @@ export default class HoverProvider implements Provider {
                 original.slice(expr.loc.end);
             } else {
               const indent = /^[^=\s]+\s*/.exec(original)?.[0].length ?? 0;
-              code.push(" ".repeat(indent) + "= " + formatted);
+              code.push(
+                " ".repeat(indent) +
+                  "= " +
+                  formatEvaluatedValue(symbolValue, style),
+              );
             }
           } else {
             const name = processed.document.getText(
               locationAsRange(node.loc, position.line),
             );
-            code.push(name + " = " + formatEvaluatedValue(symbolValue));
+            code.push(name + " = " + formatEvaluatedValue(symbolValue, style));
           }
         }
         if (
@@ -217,7 +278,8 @@ export default class HoverProvider implements Provider {
                   locationAsRange(expression.loc, position.line),
                 )
               : "Expression";
-          code.push(name + " = " + formatEvaluatedValue(value));
+          code.push(name + " = " + formatEvaluatedValue(value, style));
+          shown = value;
         }
         return {
           range: locationAsRange(
@@ -228,6 +290,8 @@ export default class HoverProvider implements Provider {
           contents: [
             ...contents,
             { language: processed.document.languageId, value: code.join("\n") },
+            // The value last shown in every form, as a literal's hover shows it.
+            ...(shown !== undefined ? [formatNumber(shown)] : []),
           ],
         };
       }
